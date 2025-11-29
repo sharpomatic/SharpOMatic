@@ -11,7 +11,7 @@ export class CodeNodeEntity extends NodeEntity<CodeNodeSnapshot> {
   public code: WritableSignal<string>;
 
   constructor(snapshot: CodeNodeSnapshot) {
-    super(snapshot, 'bi-filetype-cs');
+    super(snapshot);
 
     this.code = signal(snapshot.code);
 

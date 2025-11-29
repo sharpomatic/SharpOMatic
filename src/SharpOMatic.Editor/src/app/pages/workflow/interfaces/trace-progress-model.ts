@@ -1,16 +1,17 @@
 import { NodeStatus } from "../../../enumerations/node-status";
+import { NodeType } from "../../../entities/enumerations/node-type";
 
 export interface TraceProgressModel {
-  workflowId: string;
-  runId: string;
   traceId: string;
+  runId: string;
+  workflowId: string;
   nodeEntityId: string;
+  nodeType: NodeType;
   nodeStatus: NodeStatus;
-  inputContext?: string;
-  outputContext?: string; 
-  message: string;
-  error: string;
   title: string;
-  symbol: string;
+  inputContext?: string;
+  outputContext?: string;
+  message?: string;
+  error?: string;
 }
 

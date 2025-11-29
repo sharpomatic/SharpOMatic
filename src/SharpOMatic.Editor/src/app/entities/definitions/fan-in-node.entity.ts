@@ -8,7 +8,7 @@ export interface FanInNodeSnapshot extends NodeSnapshot {
 export class FanInNodeEntity extends NodeEntity<FanInNodeSnapshot> {
 
     constructor(snapshot: FanInNodeSnapshot) {
-        super(snapshot, 'bi-box-arrow-in-right');
+        super(snapshot);
     }
 
     public override toSnapshot(): FanInNodeSnapshot {

@@ -4,6 +4,7 @@ import { NodeStatus } from '../../../enumerations/node-status';
 import { RunStatus } from '../../../enumerations/run-status';
 import { WorkflowService } from '../services/workflow.service';
 import { ContextEntryType } from '../../../entities/enumerations/context-entry-type';
+import { getNodeSymbol } from '../../../entities/enumerations/node-type';
 import { FormsModule } from '@angular/forms';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { ContextEntryEntity } from '../../../entities/definitions/context-entry.entity';
@@ -27,6 +28,7 @@ export class TracebarComponent implements OnInit, OnDestroy {
   public readonly contextEntryTypeKeys = Object.keys(ContextEntryType).filter(k => isNaN(Number(k)));
   public readonly RunStatus = RunStatus;
   public readonly NodeStatus = NodeStatus;
+  public readonly getNodeSymbol = getNodeSymbol;
   public isResizing = false;
   public tabs: TabItem[] = [];
   public activeTabId = 'input';

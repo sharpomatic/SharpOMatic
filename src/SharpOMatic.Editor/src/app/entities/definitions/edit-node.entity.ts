@@ -12,7 +12,7 @@ export class EditNodeEntity extends NodeEntity<EditNodeSnapshot> {
   public edits: WritableSignal<ContextEntryListEntity>;
 
   constructor(snapshot: EditNodeSnapshot) {
-    super(snapshot, 'bi-pencil');
+    super(snapshot);
 
     this.edits = signal(ContextEntryListEntity.fromSnapshot(snapshot.edits));
 

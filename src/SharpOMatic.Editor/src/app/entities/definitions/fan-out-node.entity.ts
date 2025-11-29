@@ -11,7 +11,7 @@ export class FanOutNodeEntity extends NodeEntity<FanOutNodeSnapshot> {
     public names: WritableSignal<string[]>;
 
     constructor(snapshot: FanOutNodeSnapshot) {
-        super(snapshot, 'bi-box-arrow-right');
+        super(snapshot);
 
         this.names = signal([...snapshot.names]);
 

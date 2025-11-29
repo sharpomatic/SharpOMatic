@@ -14,7 +14,7 @@ export class EndNodeEntity extends NodeEntity<EndNodeSnapshot> {
   public mappings: WritableSignal<ContextEntryListEntity>;
 
   constructor(snapshot: EndNodeSnapshot) {
-    super(snapshot, 'bi-chevron-bar-right');
+    super(snapshot);
 
     this.applyMappings = signal(snapshot.applyMappings);
     this.mappings = signal(ContextEntryListEntity.fromSnapshot(snapshot.mappings));

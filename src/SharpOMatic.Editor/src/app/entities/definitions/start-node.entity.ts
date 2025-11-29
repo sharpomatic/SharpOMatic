@@ -14,7 +14,7 @@ export class StartNodeEntity extends NodeEntity<StartNodeSnapshot> {
   public initializing: WritableSignal<ContextEntryListEntity>;
 
   constructor(snapshot: StartNodeSnapshot) {
-    super(snapshot, 'bi-chevron-bar-left');
+    super(snapshot);
 
     this.applyInitialization = signal(snapshot.applyInitialization);
     this.initializing = signal(ContextEntryListEntity.fromSnapshot(snapshot.initializing));

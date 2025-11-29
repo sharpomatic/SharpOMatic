@@ -18,7 +18,6 @@ export interface NodeSnapshot extends EntitySnapshot {
 export abstract class NodeEntity<T extends NodeSnapshot> extends Entity<T> {
   public nodeType: Signal<NodeType>;
   public title: WritableSignal<string>;
-  public symbol: string;
   public top: WritableSignal<number>;
   public left: WritableSignal<number>;
   public width: WritableSignal<number>;
@@ -28,9 +27,8 @@ export abstract class NodeEntity<T extends NodeSnapshot> extends Entity<T> {
   public displayState: WritableSignal<NodeStatus>;
   public isDirty: Signal<boolean>;
 
-  constructor(snapshot: T, symbol: string) {
+  constructor(snapshot: T) {
     super(snapshot);
-    this.symbol = symbol;
 
     this.nodeType = signal(snapshot.nodeType);
     this.title = signal(snapshot.title);

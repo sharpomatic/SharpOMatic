@@ -7,3 +7,24 @@ export enum NodeType {
   FanIn = 5,
   FanOut = 6,
 }
+
+export function getNodeSymbol(nodeType: NodeType): string {
+  switch (nodeType) {
+    case NodeType.Start:
+      return 'bi-chevron-bar-left';
+    case NodeType.End:
+      return 'bi-chevron-bar-right';
+    case NodeType.FanIn:
+      return 'bi-box-arrow-in-right';
+    case NodeType.FanOut:
+      return 'bi-box-arrow-right';
+    case NodeType.Switch:
+      return 'bi-option';
+    case NodeType.Edit:
+      return 'bi-pencil';
+    case NodeType.Code:
+      return 'bi-filetype-cs';
+    default:
+      return '';
+  }
+}

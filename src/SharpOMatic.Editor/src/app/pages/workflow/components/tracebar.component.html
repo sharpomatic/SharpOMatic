@@ -1,12 +1,8 @@
-<div class="trace-panel flex-shrink-0 h-100 bg-body-secondary d-flex flex-column"
-     [class.is-resizing]="isResizing">
-  <div class="trace-resize-handle"
-       (mousedown)="startResize($event)"
-       (touchstart)="startResize($event)"></div>
+<div class="trace-panel flex-shrink-0 h-100 bg-body-secondary d-flex flex-column" [class.is-resizing]="isResizing">
+  <div class="trace-resize-handle" (mousedown)="startResize($event)" (touchstart)="startResize($event)"></div>
   <div class="d-flex flex-row align-items-center">
     <div class="trace-heading-text">Run</div>
-    <span class="run-text"
-      [class.created]="workflowService.runProgress()?.runStatus === RunStatus.Created"
+    <span class="run-text" [class.created]="workflowService.runProgress()?.runStatus === RunStatus.Created"
       [class.running]="workflowService.runProgress()?.runStatus === RunStatus.Running"
       [class.success]="workflowService.runProgress()?.runStatus === RunStatus.Success"
       [class.failed]="workflowService.runProgress()?.runStatus === RunStatus.Failed">
@@ -14,9 +10,9 @@
     </span>
   </div>
   @if (workflowService.runProgress()?.runStatus === RunStatus.Failed) {
-    <hr class="header-separator" />
-    <div class="run-error-text">{{ workflowService.runProgress()?.error }}</div>
-    <hr class="header-separator" />
+  <hr class="header-separator" />
+  <div class="run-error-text">{{ workflowService.runProgress()?.error }}</div>
+  <hr class="header-separator" />
   }
   <div class="tab-shell mt-2">
     <app-tab [tabs]="tabs" [(activeTabId)]="activeTabId"></app-tab>
@@ -25,70 +21,58 @@
   <ng-template #inputTab>
     <div class="bg-body-tertiary flex-grow-1 d-flex flex-column p-3 h-100">
       @if (workflowService.runInputs().entries().length > 0) {
-        <div class="run-inputs flex-grow-1">
-          <div class="d-flex align-items-start gap-2 mb-2">
-            <label class="form-label editPath mb-0">Path</label>
-            <label class="form-label editType mb-0">Type</label>
-            <label class="form-label editValue mb-0">Value</label>
+      <div class="run-inputs flex-grow-1">
+        <div class="d-flex align-items-start gap-2 mb-2">
+          <label class="form-label editPath mb-0">Path</label>
+          <label class="form-label editType mb-0">Type</label>
+          <label class="form-label editValue mb-0">Value</label>
+        </div>
+        @for (entry of workflowService.runInputs().entries(); track entry.id) {
+        <div class="d-flex align-items-start gap-2 mb-2 run-input-row">
+          <input type="text" class="form-control editPath" [value]="entry.inputPath()" readonly />
+          @if (entry.optional()) {
+          <input type="text" class="form-control editType" [value]="getEntryTypeDisplay(entry.entryType())" readonly />
+          } @else {
+          <select class="form-select editType" [ngModel]="entry.entryType()"
+            (ngModelChange)="entry.entryType.set($event)">
+            @for (key of contextEntryTypeKeys; track key) {
+            <option [ngValue]="getEnumValue(key)">{{ getEntryTypeDisplay(getEnumValue(key)) }}</option>
+            }
+          </select>
+          }
+          @if (entry.entryType() === contextEntryType.JSON) {
+          <div class="editValue">
+            <ngx-monaco-editor class="editJson" [options]="getEditorOptions(entry)" [ngModel]="entry.entryValue()"
+              (ngModelChange)="entry.entryValue.set($event)" />
           </div>
-          @for (entry of workflowService.runInputs().entries(); track entry.id) {
-            <div class="d-flex align-items-start gap-2 mb-2 run-input-row">
-              <input type="text" class="form-control editPath" [value]="entry.inputPath()" readonly />
-              @if (entry.optional()) {
-                <input type="text" class="form-control editType" [value]="getEntryTypeDisplay(entry.entryType())" readonly />
-              } @else {
-                <select class="form-select editType"
-                        [ngModel]="entry.entryType()"
-                        (ngModelChange)="entry.entryType.set($event)">
-                  @for (key of contextEntryTypeKeys; track key) {
-                    <option [ngValue]="getEnumValue(key)">{{ getEntryTypeDisplay(getEnumValue(key)) }}</option>
-                  }
-                </select>
-              }
-              @if (entry.entryType() === contextEntryType.JSON) {
-                <div class="editValue">
-                  <ngx-monaco-editor class="editJson"
-                                     [options]="getEditorOptions(entry)"
-                                     [ngModel]="entry.entryValue()"
-                                     (ngModelChange)="entry.entryValue.set($event)"/>
-                </div>
-              } @else if (entry.entryType() === contextEntryType.Expression) {
-                <div class="editValue">
-                  <ngx-monaco-editor class="editExpression"
-                                     [options]="getEditorOptions(entry)"
-                                     [ngModel]="entry.entryValue()"
-                                     (ngModelChange)="entry.entryValue.set($event)"/>
-                </div>
-              } @else if (entry.entryType() === contextEntryType.Bool) {
-                <div class="d-flex editValue">
-                  <select class="form-select editBoolValue"
-                          [ngModel]="entry.entryValue() || 'False'"
-                          (ngModelChange)="entry.entryValue.set(($event ?? 'False').toString())">
-                    <option value="True">True</option>
-                    <option value="False">False</option>
-                  </select>
-                </div>
-              } @else if (entry.entryType() === contextEntryType.Int) {
-                <input type="number"
-                       class="form-control editValue"
-                       inputmode="numeric"
-                       pattern="[0-9]*"
-                       step="1"
-                       [ngModel]="entry.entryValue() !== '' ? +entry.entryValue() : null"
-                       (ngModelChange)="entry.entryValue.set(($event ?? '').toString())"/>
-              } @else if (entry.entryType() === contextEntryType.Double) {
-                <input type="number"
-                       class="form-control editValue"
-                       inputmode="decimal"
-                       step="any"
-                       [ngModel]="entry.entryValue() !== '' ? +entry.entryValue() : null"
-                       (ngModelChange)="entry.entryValue.set(($event ?? '').toString())"/>
-              } @else {
-                <input type="text" class="form-control editValue" [ngModel]="entry.entryValue()" (ngModelChange)="entry.entryValue.set($event)"/>
-              }
-            </div>
+          } @else if (entry.entryType() === contextEntryType.Expression) {
+          <div class="editValue">
+            <ngx-monaco-editor class="editExpression" [options]="getEditorOptions(entry)" [ngModel]="entry.entryValue()"
+              (ngModelChange)="entry.entryValue.set($event)" />
+          </div>
+          } @else if (entry.entryType() === contextEntryType.Bool) {
+          <div class="d-flex editValue">
+            <select class="form-select editBoolValue" [ngModel]="entry.entryValue() || 'False'"
+              (ngModelChange)="entry.entryValue.set(($event ?? 'False').toString())">
+              <option value="True">True</option>
+              <option value="False">False</option>
+            </select>
+          </div>
+          } @else if (entry.entryType() === contextEntryType.Int) {
+          <input type="number" class="form-control editValue" inputmode="numeric" pattern="[0-9]*" step="1"
+            [ngModel]="entry.entryValue() !== '' ? +entry.entryValue() : null"
+            (ngModelChange)="entry.entryValue.set(($event ?? '').toString())" />
+          } @else if (entry.entryType() === contextEntryType.Double) {
+          <input type="number" class="form-control editValue" inputmode="decimal" step="any"
+            [ngModel]="entry.entryValue() !== '' ? +entry.entryValue() : null"
+            (ngModelChange)="entry.entryValue.set(($event ?? '').toString())" />
+          } @else {
+          <input type="text" class="form-control editValue" [ngModel]="entry.entryValue()"
+            (ngModelChange)="entry.entryValue.set($event)" />
           }
         </div>
+        }
+      </div>
       }
     </div>
   </ng-template>
@@ -96,21 +80,20 @@
   <ng-template #traceTab>
     <div class="bg-body-tertiary flex-grow-1 p-1 h-100">
       @for (trace of workflowService.traces(); track $index) {
-        <div class="d-flex flex-row trace-line flex-grow-1">
-          <i class="bi trace-symbol flex-shrink-0" [class]="trace.symbol"></i>
-          <div class="trace-title flex-shrink-0">{{ trace.title }}</div>
-          <div class="d-flex flex-column trace-message flex-grow-1 align-items-start">
-            <span class="trace-text"
-              [class.running]="trace.nodeStatus === NodeStatus.Running"
-              [class.success]="trace.nodeStatus === NodeStatus.Success"
-              [class.failed]="trace.nodeStatus === NodeStatus.Failed">
-              {{ trace.message }}
-            </span>
-            @if (trace.nodeStatus === NodeStatus.Failed) {
-              <span>{{ trace.error }}</span>
-            }
-          </div>
+      <div class="d-flex flex-row trace-line flex-grow-1">
+        <i class="bi trace-symbol flex-shrink-0" [class]="getNodeSymbol(trace.nodeType)"></i>
+        <div class="trace-title flex-shrink-0">{{ trace.title }}</div>
+        <div class="d-flex flex-column trace-message flex-grow-1 align-items-start">
+          <span class="trace-text" [class.running]="trace.nodeStatus === NodeStatus.Running"
+            [class.success]="trace.nodeStatus === NodeStatus.Success"
+            [class.failed]="trace.nodeStatus === NodeStatus.Failed">
+            {{ trace.message }}
+          </span>
+          @if (trace.nodeStatus === NodeStatus.Failed) {
+          <span>{{ trace.error }}</span>
+          }
         </div>
+      </div>
       }
     </div>
   </ng-template>

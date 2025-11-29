@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, HostListener, inject, OnDestroy, signal, ViewChild, WritableSignal, input, Signal, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, HostListener, inject, signal, ViewChild, WritableSignal, input, Signal, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DesignerUpdateService } from '../services/designer-update.service';
 import { Point } from '../interfaces/point';
@@ -18,6 +18,7 @@ import { StartNodeDialogComponent } from '../../../dialogs/start-node/start-node
 import { StartNodeEntity } from '../../../entities/definitions/start-node.entity';
 import { EndNodeDialogComponent } from '../../../dialogs/end-node/end-node-dialog.component';
 import { NodeStatus } from '../../../enumerations/node-status';
+import { NodeType, getNodeSymbol } from '../../../entities/enumerations/node-type';
 import { WorkflowEntity } from '../../../entities/definitions/workflow.entity';
 import { SwitchNodeDialogComponent } from '../../../dialogs/switch-node/switch-node-dialog.component';
 import { SwitchNodeEntity } from '../../../entities/definitions/switch-node.entity';
@@ -35,7 +36,7 @@ import { TraceProgressModel } from '../../../pages/workflow/interfaces/trace-pro
   styleUrls: ['./designer.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class DesignerComponent implements OnDestroy {
+export class DesignerComponent {
   @ViewChild('designerSurface') designerSurface!: ElementRef<HTMLDivElement>;
   @Input() workflow!: Signal<WorkflowEntity>;
   @Input() traces!: Signal<TraceProgressModel[]>;
@@ -48,6 +49,7 @@ export class DesignerComponent implements OnDestroy {
   public pendingConnection: WritableSignal<{ from: ConnectorEntity, targetPoint: Point } | null> = signal(null);
 
   public NodeStatus = NodeStatus;
+  public NodeType = NodeType;
 
   private isSurfaceEnabled = false;
   private isSurfaceDragging = false;
@@ -85,8 +87,7 @@ export class DesignerComponent implements OnDestroy {
     const deltaX = mousePoint.x - this.dragStartPoint.x;
     const deltaY = mousePoint.y - this.dragStartPoint.y;
 
-    if (this.isSurfaceEnabled)
-    {
+    if (this.isSurfaceEnabled) {
       if (!this.isSurfaceDragging) {
         const maxDelta = Math.max(Math.abs(deltaX), Math.abs(deltaY));
         if (maxDelta < DesignerUpdateService.GRID_SIZE)
@@ -140,9 +141,9 @@ export class DesignerComponent implements OnDestroy {
           return;
 
         const selectedEntity = this.selectionNode as Entity<EntitySnapshot>;
-        if (!this.selectionService.isSelected(selectedEntity)){
+        if (!this.selectionService.isSelected(selectedEntity)) {
           if (event.ctrlKey) {
-              this.selectionService.selectEntities([selectedEntity]);
+            this.selectionService.selectEntities([selectedEntity]);
           } else {
             this.selectionService.setSelection([selectedEntity]);
           }
@@ -204,12 +205,12 @@ export class DesignerComponent implements OnDestroy {
     this.selectionNode = node;
     this.dragStartPoint = this.getMouseInSurfaceUnits(event);
 
-      if (event.ctrlKey) {
-        if (!this.selectionService.isSelected(node))
-          this.selectionService.selectEntities([node]);
-        else
-          this.selectionService.deselectEntities([node]);
-      }
+    if (event.ctrlKey) {
+      if (!this.selectionService.isSelected(node))
+        this.selectionService.selectEntities([node]);
+      else
+        this.selectionService.deselectEntities([node]);
+    }
   }
 
   onNodeMouseUp(node: NodeEntity<NodeSnapshot>, event: MouseEvent): void {
@@ -351,6 +352,7 @@ export class DesignerComponent implements OnDestroy {
     this.updateService.deleteSelected(this.workflow());
   }
 
-  ngOnDestroy(): void {
+  public getNodeSymbol(nodeType: NodeType): string {
+    return getNodeSymbol(nodeType);
   }
 }

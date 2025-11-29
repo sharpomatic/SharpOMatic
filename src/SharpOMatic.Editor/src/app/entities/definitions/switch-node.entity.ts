@@ -12,7 +12,7 @@ export class SwitchNodeEntity extends NodeEntity<SwitchNodeSnapshot> {
   public switches: WritableSignal<SwitchEntryEntity[]>;
 
   constructor(snapshot: SwitchNodeSnapshot) {
-    super(snapshot, 'bi-option');
+    super(snapshot);
 
     this.switches = signal(snapshot.switches.map(SwitchEntryEntity.fromSnapshot));
 
