@@ -98,7 +98,7 @@ public class ContextList : IList<object?>
             throw new SharpOMaticException($"Path '{path}' not found.");
 
         if (ContextPathResolver.TryStrictCast(value, out T? result))
-            return result;
+            return result!;
 
         var actual = value is null ? "null" : value.GetType().FullName;
         throw new SharpOMaticException($"Value at '{path}' is of type '{actual}', not '{typeof(T).FullName}'.");
