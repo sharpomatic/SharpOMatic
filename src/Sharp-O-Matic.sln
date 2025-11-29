@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11222.15
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C1D1C31F-1981-4468-8C79-B87AA72465E8}"
+	ProjectSection(SolutionItems) = preProject
+		DEV.md = DEV.md
+		TODO.md = TODO.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharp-O-Matic.Engine", "Sharp-O-Matic.Engine\Sharp-O-Matic.Engine.csproj", "{4B444FCF-57E6-B829-280A-C64958710E08}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharp-O-Matic.Server", "Sharp-O-Matic.Server\Sharp-O-Matic.Server.csproj", "{28F3686E-CAA2-FF13-61D9-DF3D7E812442}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sharp-O-Matic.Engine.Test", "Sharp-O-Matic.Test\Sharp-O-Matic.Engine.Test.csproj", "{3F99595A-D313-33E4-759A-3C6E1030D702}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4B444FCF-57E6-B829-280A-C64958710E08}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B444FCF-57E6-B829-280A-C64958710E08}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B444FCF-57E6-B829-280A-C64958710E08}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B444FCF-57E6-B829-280A-C64958710E08}.Release|Any CPU.Build.0 = Release|Any CPU
+		{28F3686E-CAA2-FF13-61D9-DF3D7E812442}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{28F3686E-CAA2-FF13-61D9-DF3D7E812442}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{28F3686E-CAA2-FF13-61D9-DF3D7E812442}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{28F3686E-CAA2-FF13-61D9-DF3D7E812442}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3F99595A-D313-33E4-759A-3C6E1030D702}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F99595A-D313-33E4-759A-3C6E1030D702}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F99595A-D313-33E4-759A-3C6E1030D702}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F99595A-D313-33E4-759A-3C6E1030D702}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C9184C54-C07B-41E8-AB84-D143D3F22BD5}
+	EndGlobalSection
+EndGlobal

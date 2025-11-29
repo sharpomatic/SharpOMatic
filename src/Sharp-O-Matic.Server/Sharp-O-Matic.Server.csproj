@@ -17,7 +17,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SharpOMatic.Engine\SharpOMatic.Engine.csproj" />
+    <ProjectReference Include="..\Sharp-O-Matic.Engine\Sharp-O-Matic.Engine.csproj" />
   </ItemGroup>
 
 </Project>
