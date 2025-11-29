@@ -13,3 +13,8 @@ Currently under construction but with an intended first release in early 2026.
 
 <img width="2245" height="888" alt="image" src="https://github.com/user-attachments/assets/5b7b57e4-0218-4819-ac56-c1b62b958122" />
 
+## Affiliation
+
+Sharp-O-Matic is a personal project created and maintained by Philip Wright.
+It is not affiliated with, sponsored by, or endorsed by my employer.
+All names and trademarks remain the property of their respective owners.
