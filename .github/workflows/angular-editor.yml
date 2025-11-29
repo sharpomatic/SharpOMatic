@@ -14,7 +14,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: src/SharpOMatic.Editor
+        working-directory: 'src/SharpOMatic.Editor'
 
     steps:
       - name: Checkout repository
