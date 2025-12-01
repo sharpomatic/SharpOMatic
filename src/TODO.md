@@ -47,6 +47,9 @@ Build
 
 # Implementation Details
 
+Connection
+	Do not use dialog to overlay, instead have an error bar that covers the top of the page
+
 Errors
 	All errors should show toastie with error message
 
