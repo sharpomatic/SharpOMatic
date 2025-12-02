@@ -4,13 +4,13 @@ import { ServerConnectionService } from '../../services/server.connection.servic
 import { API_URL } from '../../components/app/app.tokens';
 
 @Component({
-  selector: 'app-status',
+  selector: 'app-settings',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './status.component.html',
-  styleUrls: ['./status.component.scss']
+  templateUrl: './settings.component.html',
+  styleUrls: ['./settings.component.scss']
 })
-export class StatusComponent {
+export class SettingsComponent {
   private readonly serverConnectionService = inject(ServerConnectionService);
   public readonly apiUrl = inject(API_URL);
   public isConnected: Signal<boolean>;

@@ -23,13 +23,13 @@
         </button>
     </li>
     <li class="nav-item w-100 ">
-      <button class="nav-link w-100 d-flex" routerLink="/status" routerLinkActive="active"
-          #statusLink="routerLinkActive"
-          [class.active]="statusLink.isActive"
-          [class.link-body-emphasis]="!statusLink.isActive">
+      <button class="nav-link w-100 d-flex" routerLink="/settings" routerLinkActive="active"
+          #settingsLink="routerLinkActive"
+          [class.active]="settingsLink.isActive"
+          [class.link-body-emphasis]="!settingsLink.isActive">
           <i class="bi bi-activity" [class.me-3]="!isSidebarClosed"></i>
           @if(!isSidebarClosed) {
-            <span >Status</span>
+            <span >Settings</span>
           }
         </button>
     </li>
