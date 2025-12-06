@@ -1,11 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { catchError, map, Observable, of } from 'rxjs';
+import { catchError, config, map, Observable, of } from 'rxjs';
 import { WorkflowEntity, WorkflowSnapshot } from '../entities/definitions/workflow.entity';
 import { WorkflowSummaryEntity, WorkflowSummarySnapshot } from '../entities/definitions/workflow.summary.entity';
 import { RunProgressModel } from '../pages/workflow/interfaces/run-progress-model';
 import { TraceProgressModel } from '../pages/workflow/interfaces/trace-progress-model';
 import { ContextEntryListEntity } from '../entities/definitions/context-entry-list.entity';
+import { ConnectionConfig, ConnectionConfigSnapshot } from '../metadata/definitions/connection-config';
 import { ToastService } from './toast.service';
 import { SettingsService } from './settings.service';
 
@@ -85,6 +86,17 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Loading run traces', error);
         return of(null);
+      })
+    );
+  }
+
+  public getConnectionConfigs(): Observable<ConnectionConfig[]> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.get<ConnectionConfigSnapshot[]>(`${apiUrl}/api/metadata/connections`).pipe(
+      map(snapshots => snapshots.map(ConnectionConfig.fromSnapshot)),
+      catchError((error) => {
+        this.notifyError('Loading connection configs', error);
+        return of([]);
       })
     );
   }

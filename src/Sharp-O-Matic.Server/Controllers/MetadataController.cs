@@ -1,6 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-using SharpOMatic.Engine.Interfaces;
-
 namespace SharpOMatic.Server.Controllers;
 
 [ApiController]
