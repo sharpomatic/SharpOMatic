@@ -1,0 +1,21 @@
+<div class="container-fluid p-0">
+  <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary">
+    <h2 class=""><i class="bi bi-plug pe-3 icon-sm"></i>{{ connection.name() }}</h2>
+    <button class="btn btn-primary" [disabled]="!connection.isDirty()"
+          (click)="save()">Save</button>
+  </div>
+  <hr class="m-0"/>
+  <div class="p-3 details bg-body-tertiary h-100">
+    <div class="mb-3 name">
+      <label for="connection-name" class="form-label">Name</label>
+      <input type="text" class="form-control" id="connection-title" [ngModel]="connection.name()"
+          (ngModelChange)="connection.name.set($event)" />
+    </div>
+    <div class="mb-3 description">
+      <label for="connection-description" class="form-label">Description</label>
+      <textarea class="form-control" id="connection-description" rows="3"
+        [ngModel]="connection.description()"
+        (ngModelChange)="connection.description.set($event)"></textarea>
+    </div>
+  </div>
+</div>
