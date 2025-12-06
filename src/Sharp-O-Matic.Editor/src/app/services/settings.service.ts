@@ -34,7 +34,6 @@ export class SettingsService {
         return stored.trim();
       }
     } catch {
-      // Ignore storage failures and fall back to default.
     }
     return null;
   }
@@ -43,7 +42,6 @@ export class SettingsService {
     try {
       localStorage.setItem(this.storageKey, value);
     } catch {
-      // Ignore storage failures; in-memory value still updated.
     }
   }
 }

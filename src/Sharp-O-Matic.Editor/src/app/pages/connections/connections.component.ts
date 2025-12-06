@@ -33,7 +33,11 @@ export class ConnectionsComponent {
 
   newConnection(): void {
     // TODO, get user to choose from connection config options
-    const newConnection: Connection = new Connection(crypto.randomUUID(), 'Untitled', 'New connection needs a description.', '', '', {});
+    const newConnection = new Connection({
+      ...Connection.defaultSnapshot(),
+      name: 'Untitled',
+      description: 'New connection needs a description.',
+    });
     this.serverWorkflow.upsertConnection(newConnection).subscribe(() => {
       this.router.navigate(['/connections', newConnection.connectionId]);
     });

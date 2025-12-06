@@ -125,9 +125,9 @@ export class ServerRepositoryService {
     );
   }
 
-  public upsertConnection(connection: ConnectionSnapshot): Observable<void> {
+  public upsertConnection(connection: Connection): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.post<void>(`${apiUrl}/api/metadata/connections`, connection).pipe(
+    return this.http.post<void>(`${apiUrl}/api/metadata/connections`, connection.toSnapshot()).pipe(
       catchError((error) => {
         this.notifyError('Saving connection', error);
         return of(undefined);
