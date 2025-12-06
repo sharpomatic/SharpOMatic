@@ -14,9 +14,9 @@ public class CodeCheckService : ICodeCheck
         s_namespaces = GetNamespacesFromAssemblies();
     }
 
-    public Task<List<CodeCheckResultModel>> CodeCheck(CodeCheckRequestModel request)
+    public Task<List<CodeCheckResult>> CodeCheck(CodeCheckRequest request)
     {
-        List<CodeCheckResultModel> results = [];
+        List<CodeCheckResult> results = [];
 
         if (!string.IsNullOrWhiteSpace(request.Code))
         {
@@ -28,20 +28,20 @@ public class CodeCheckService : ICodeCheck
                 Compilation compilation = script.GetCompilation();
                 ImmutableArray<Diagnostic> diagnostics = compilation.GetDiagnostics();
                 foreach (Diagnostic diagnostic in diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error || d.Severity == DiagnosticSeverity.Warning))
-                    results.Add(new CodeCheckResultModel(diagnostic.Severity,
-                                                         diagnostic.Location.SourceSpan.Start,
-                                                         diagnostic.Location.SourceSpan.End,
-                                                         diagnostic.Id,
-                                                         diagnostic.GetMessage()));
+                    results.Add(new CodeCheckResult(diagnostic.Severity,
+                                                    diagnostic.Location.SourceSpan.Start,
+                                                    diagnostic.Location.SourceSpan.End,
+                                                    diagnostic.Id,
+                                                    diagnostic.GetMessage()));
             }
             catch (CompilationErrorException ex)
             {
                 foreach (Diagnostic diagnostic in ex.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error || d.Severity == DiagnosticSeverity.Warning))
-                    results.Add(new CodeCheckResultModel(diagnostic.Severity,
-                                                         diagnostic.Location.SourceSpan.Start,
-                                                         diagnostic.Location.SourceSpan.End,
-                                                         diagnostic.Id,
-                                                         diagnostic.GetMessage()));
+                    results.Add(new CodeCheckResult(diagnostic.Severity,
+                                                    diagnostic.Location.SourceSpan.Start,
+                                                    diagnostic.Location.SourceSpan.End,
+                                                    diagnostic.Id,
+                                                    diagnostic.GetMessage()));
             }
         }
 

@@ -3,6 +3,8 @@
 
 # Minimum Viable Product Features
 
+[JsonConverter(typeof(JsonStringEnumConverter))]
+
 Model Call
 	- Specify model from registry
 	- Specify instructions
@@ -37,13 +39,11 @@ Build
 
 - Domain name
 - GitHub account
-  - Actions to auto build
   - Manual build (or tag) to create and publish a release
   - Docusaurus setup for generated static pages site (auto build and publish on changes)
 
 - Build first version of documentation
 - Publish and announce
-- 
 
 # Implementation Details
 

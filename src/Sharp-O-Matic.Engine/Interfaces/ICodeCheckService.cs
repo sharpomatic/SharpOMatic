@@ -2,5 +2,5 @@ namespace SharpOMatic.Engine.Interfaces;
 
 public interface ICodeCheck
 {
-    Task<List<CodeCheckResultModel>> CodeCheck(CodeCheckRequestModel request);
+    Task<List<CodeCheckResult>> CodeCheck(CodeCheckRequest request);
 }

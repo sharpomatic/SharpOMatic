@@ -5,7 +5,7 @@ namespace SharpOMatic.Server.Controllers;
 public class MonacoController(ICodeCheck code): ControllerBase
 {
     [HttpPost("codecheck")]
-    public Task<List<CodeCheckResultModel>> CodeCheck([FromBody] CodeCheckRequestModel request)
+    public Task<List<CodeCheckResult>> CodeCheck([FromBody] CodeCheckRequest request)
     {
         return code.CodeCheck(request);
     }

@@ -15,8 +15,8 @@ public class FanOutNode(ThreadContext threadContext, FanOutNodeEntity node) : Ru
             nextNodes.Add(new NextNodeData(newThreadContext, resolveNode));
         }
 
-        threadContext.FanOutCount = nextNodes.Count;
-        threadContext.FanInArrived = 0;
+        ThreadContext.FanOutCount = nextNodes.Count;
+        ThreadContext.FanInArrived = 0;
 
         return ($"{nextNodes.Count} threads started", nextNodes);
     }

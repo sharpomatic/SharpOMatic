@@ -1,0 +1,51 @@
+{
+  "Id": "openai",
+  "DisplayName": "OpenAI",
+  "Description": "Direct connection to the OpenAI API.",
+  "AuthModes": [
+    {
+      "Id": "apikey",
+      "DisplayName": "API Key",
+      "Kind": 0,
+      "IsDefault": true,
+      "Fields": [
+        {
+          "Name": "endpoint",
+          "Label": "URL",
+          "Description": "OpenAI API Base End Point",
+          "Type": 0,
+          "IsRequired": true,
+          "DefaultValue": "https://api.openai.com/v1",
+          "EnumOptions": []
+        },
+        {
+          "Name": "apikey",
+          "Label": "Key",
+          "Description": "OpenAI API Key",
+          "Type": 1,
+          "IsRequired": true,
+          "DefaultValue": "",
+          "EnumOptions": []
+        },
+        {
+          "Name": "organizationid",
+          "Label": "Organization Id",
+          "Description": "Optional Organization Id",
+          "Type": 0,
+          "IsRequired": false,
+          "DefaultValue": "",
+          "EnumOptions": []
+        },
+        {
+          "Name": "projectId",
+          "Label": "Project Id",
+          "Description": "Optional Project Id",
+          "Type": 0,
+          "IsRequired": false,
+          "DefaultValue": "",
+          "EnumOptions": []
+        }
+      ]
+    }
+  ]
+}
