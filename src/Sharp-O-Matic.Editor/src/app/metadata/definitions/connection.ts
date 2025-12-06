@@ -6,7 +6,7 @@ export interface ConnectionSnapshot {
   description: string;
   configId: string;
   authenticationModeId: string;
-  fieldValues: object;
+  fieldValues: Record<string, string | null>;
 }
 
 export class Connection {
@@ -15,7 +15,7 @@ export class Connection {
   public description: WritableSignal<string>;
   public configId: WritableSignal<string>;
   public authenticationModeId: WritableSignal<string>;
-  public fieldValues: WritableSignal<object>;
+  public fieldValues: WritableSignal<Map<string, string | null>>;
 
   constructor(snapshot: ConnectionSnapshot) {
     this.connectionId = snapshot.connectionId;
@@ -23,7 +23,7 @@ export class Connection {
     this.description = signal(snapshot.description);
     this.configId = signal(snapshot.configId);
     this.authenticationModeId = signal(snapshot.authenticationModeId);
-    this.fieldValues = signal(snapshot.fieldValues);
+    this.fieldValues = signal(Connection.mapFromSnapshot(snapshot.fieldValues));
   }
 
   public toSnapshot(): ConnectionSnapshot {
@@ -33,7 +33,7 @@ export class Connection {
       description: this.description(),
       configId: this.configId(),
       authenticationModeId: this.authenticationModeId(),
-      fieldValues: this.fieldValues(),
+      fieldValues: Connection.snapshotFromMap(this.fieldValues()),
     };
   }
 
@@ -50,5 +50,19 @@ export class Connection {
       authenticationModeId: '',
       fieldValues: {},
     };
+  }
+
+  private static mapFromSnapshot(fieldValues: ConnectionSnapshot['fieldValues'] | undefined): Map<string, string | null> {
+    const entries = Object.entries(fieldValues ?? {}).map(([key, value]) => [key, value ?? null] as const);
+    return new Map<string, string | null>(entries);
+  }
+
+  private static snapshotFromMap(fieldValues: Map<string, string | null> | undefined): ConnectionSnapshot['fieldValues'] {
+    if (!fieldValues) {
+      return {};
+    }
+
+    const entries = Array.from(fieldValues.entries()).map(([key, value]) => [key, value ?? null] as const);
+    return Object.fromEntries(entries) as Record<string, string | null>;
   }
 }

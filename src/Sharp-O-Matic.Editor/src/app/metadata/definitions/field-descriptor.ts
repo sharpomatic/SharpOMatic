@@ -1,4 +1,3 @@
-import { AuthenticationModeKind } from '../enumerations/authentication-mode-kind';
 import { FieldDescriptorType } from '../enumerations/field-descriptor-type';
 
 export interface FieldDescriptorSnapshot {
