@@ -1,12 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { catchError, config, map, Observable, of } from 'rxjs';
+import { catchError, map, Observable, of } from 'rxjs';
+import { Connection, ConnectionSnapshot } from '../metadata/definitions/connection';
 import { WorkflowEntity, WorkflowSnapshot } from '../entities/definitions/workflow.entity';
 import { WorkflowSummaryEntity, WorkflowSummarySnapshot } from '../entities/definitions/workflow.summary.entity';
 import { RunProgressModel } from '../pages/workflow/interfaces/run-progress-model';
 import { TraceProgressModel } from '../pages/workflow/interfaces/trace-progress-model';
 import { ContextEntryListEntity } from '../entities/definitions/context-entry-list.entity';
 import { ConnectionConfig, ConnectionConfigSnapshot } from '../metadata/definitions/connection-config';
+import { ConnectionSummary, ConnectionSummarySnapshot } from '../metadata/definitions/connection summary';
 import { ToastService } from './toast.service';
 import { SettingsService } from './settings.service';
 
@@ -92,11 +94,53 @@ export class ServerRepositoryService {
 
   public getConnectionConfigs(): Observable<ConnectionConfig[]> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<ConnectionConfigSnapshot[]>(`${apiUrl}/api/metadata/connections`).pipe(
+    return this.http.get<ConnectionConfigSnapshot[]>(`${apiUrl}/api/metadata/connection-configs`).pipe(
       map(snapshots => snapshots.map(ConnectionConfig.fromSnapshot)),
       catchError((error) => {
         this.notifyError('Loading connection configs', error);
         return of([]);
+      })
+    );
+  }
+
+  public getConnectionSummaries(): Observable<ConnectionSummary[]> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.get<ConnectionSummarySnapshot[]>(`${apiUrl}/api/metadata/connections`).pipe(
+      map(snapshots => snapshots.map(ConnectionSummary.fromSnapshot)),
+      catchError((error) => {
+        this.notifyError('Loading connections', error);
+        return of([]);
+      })
+    );
+  }
+
+  public getConnection(id: string): Observable<Connection | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.get<ConnectionSnapshot>(`${apiUrl}/api/metadata/connections/${id}`).pipe(
+      map(Connection.fromSnapshot),
+      catchError((error) => {
+        this.notifyError('Loading connection', error);
+        return of(null);
+      })
+    );
+  }
+
+  public upsertConnection(connection: ConnectionSnapshot): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.post<void>(`${apiUrl}/api/metadata/connections`, connection).pipe(
+      catchError((error) => {
+        this.notifyError('Saving connection', error);
+        return of(undefined);
+      })
+    );
+  }
+
+  public deleteConnection(id: string): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.delete<void>(`${apiUrl}/api/metadata/connections/${id}`).pipe(
+      catchError((error) => {
+        this.notifyError('Deleting connection', error);
+        return of(undefined);
       })
     );
   }
