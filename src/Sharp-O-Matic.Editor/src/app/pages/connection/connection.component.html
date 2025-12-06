@@ -16,6 +16,28 @@
       <textarea class="form-control" id="connection-description" rows="3"
         [ngModel]="connection.description()"
         (ngModelChange)="connection.description.set($event)"></textarea>
+    </div>    
+    <div class="mb-3 type">
+      <label for="connection-type" class="form-label">Type</label>
+      <input
+        type="text"
+        class="form-control"
+        id="connection-type"
+        [value]="connectionConfig?.displayName ?? '(unknown)'"
+        disabled />
+    </div>
+    <div class="mb-3 authMode">
+      <label for="authentication-mode" class="form-label">Authentication Method</label>
+      <select
+        id="authentication-mode"
+        class="form-select"
+        [ngModel]="connection.authenticationModeId()"
+        (ngModelChange)="connection.authenticationModeId.set($event)"
+        [disabled]="!connectionConfig?.authModes?.length">
+        <option *ngFor="let mode of connectionConfig?.authModes" [ngValue]="mode.id">
+          {{ mode.displayName }}
+        </option>
+      </select>
     </div>
   </div>
 </div>
