@@ -1,10 +1,8 @@
-﻿namespace SharpOMatic.Engine.Repository;
+﻿namespace SharpOMatic.Engine.Connections;
 
-public class ConnectionMetadata
+public class ConnectionSummary
 {
-    [Key]
     public required Guid ConnectionId { get; set; }
     public required string Name { get; set; }
     public required string Description { get; set; }
-    public required string Config { get; set; }
 }

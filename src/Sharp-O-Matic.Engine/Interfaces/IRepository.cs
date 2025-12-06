@@ -16,6 +16,11 @@ public interface IRepository
     Task UpsertTrace(Trace trace);
 
     Task<List<ConnectionConfig>> GetConnectionConfigs();
-    Task<ConnectionConfig?> GetConnectionConfig(string id);
+    Task<ConnectionConfig?> GetConnectionConfig(string configId);
     Task UpsertConnectionConfig(ConnectionConfig config);
+
+    IQueryable<ConnectionMetadata> GetConnections();
+    Task<Connection> GetConnection(Guid connectionId);
+    Task UpsertConnection(Connection connection);
+    Task DeleteConnection(Guid connectionId);
 }

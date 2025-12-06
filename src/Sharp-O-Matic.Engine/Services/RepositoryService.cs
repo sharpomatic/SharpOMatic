@@ -1,3 +1,6 @@
+using SharpOMatic.Engine.Repository;
+using System.Configuration;
+
 namespace SharpOMatic.Engine.Services;
 
 public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContextFactory) : IRepository
@@ -140,18 +143,18 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task<ConnectionConfig?> GetConnectionConfig(string id)
+    public async Task<ConnectionConfig?> GetConnectionConfig(string configId)
     {
         var dbContext = dbContextFactory.CreateDbContext();
 
-        var entry = await (from c in dbContext.ConnectionMetadata
-                           where c.Id == id
-                           select c).AsNoTracking().FirstOrDefaultAsync();
+        var metadata = await (from c in dbContext.ConnectionConfigMetadata
+                              where c.ConfigId == configId
+                              select c).AsNoTracking().FirstOrDefaultAsync();
 
-        if (entry is null)
+        if (metadata is null)
             return null;
 
-        return JsonSerializer.Deserialize<ConnectionConfig>(entry.Config, _options);
+        return JsonSerializer.Deserialize<ConnectionConfig>(metadata.Config, _options);
 
     }
 
@@ -159,7 +162,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         var dbContext = dbContextFactory.CreateDbContext();
 
-        var entries = await dbContext.ConnectionMetadata.AsNoTracking().ToListAsync();
+        var entries = await dbContext.ConnectionConfigMetadata.AsNoTracking().ToListAsync();
 
         var results = new List<ConnectionConfig>();
         foreach (var entry in entries)
@@ -176,22 +179,90 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
+        var metadata = await (from c in dbContext.ConnectionConfigMetadata
+                              where c.ConfigId == config.ConfigId
+                              select c).FirstOrDefaultAsync();
+
+        if (metadata is null)
+        {
+            metadata = new ConnectionConfigMetadata()
+            {
+                ConfigId = config.ConfigId,
+                Config = ""
+            };
+
+            dbContext.ConnectionConfigMetadata.Add(metadata);
+        }
+
+        metadata.Config = JsonSerializer.Serialize(config, _options);
+        await dbContext.SaveChangesAsync();
+    }
+
+    public IQueryable<ConnectionMetadata> GetConnections()
+    {
+        var dbContext = dbContextFactory.CreateDbContext();
+        return dbContext.ConnectionMetadata;
+    }
+
+    public async Task<Connection> GetConnection(Guid connectionId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var metadata = await (from c in dbContext.ConnectionMetadata
+                              where c.ConnectionId == connectionId
+                              select c).AsNoTracking().FirstOrDefaultAsync();
+
+        if (metadata is null)
+            throw new SharpOMaticException($"Connection '{connectionId}' cannot be found.");
+
+        var connection = JsonSerializer.Deserialize<Connection>(metadata.Config);
+
+        if (connection is null)
+            throw new SharpOMaticException($"Connection '{connectionId}' configuration is invalid.");
+
+        return connection;
+    }
+
+    public async Task UpsertConnection(Connection connection)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
         var entry = await (from c in dbContext.ConnectionMetadata
-                           where c.Id == config.Id
+                           where c.ConnectionId == connection.ConnectionId
                            select c).FirstOrDefaultAsync();
 
         if (entry is null)
         {
             entry = new ConnectionMetadata()
             {
-                Id = config.Id,
+                ConnectionId = connection.ConnectionId,
+                Name = "",
+                Description = "",
                 Config = ""
             };
 
             dbContext.ConnectionMetadata.Add(entry);
         }
 
-        entry.Config = JsonSerializer.Serialize(config, _options);
+        entry.Name = connection.Name;
+        entry.Description = connection.Description;
+        entry.Config = JsonSerializer.Serialize(connection);
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task DeleteConnection(Guid connectionId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var metadata = await (from c in dbContext.ConnectionMetadata
+                              where c.ConnectionId == connectionId
+                              select c).FirstOrDefaultAsync();
+
+        if (metadata is null)
+            throw new SharpOMaticException($"Connection '{connectionId}' cannot be found.");
+
+        dbContext.Remove(metadata);
         await dbContext.SaveChangesAsync();
     }
 }

@@ -1,6 +1,4 @@
-﻿using SharpOMatic.Engine.Entities;
-
-namespace SharpOMatic.Engine.Repository;
+﻿namespace SharpOMatic.Engine.Repository;
 
 public class Trace
 {

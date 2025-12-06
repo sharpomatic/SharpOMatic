@@ -27,13 +27,13 @@ public class WorkflowController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<WorkflowEntity>> Get(IRepository repository, Guid id)
+    public async Task<ActionResult<WorkflowEntity>> GetWorkflow(IRepository repository, Guid id)
     {
         return await repository.GetWorkflow(id);
     }
 
     [HttpPost()]
-    public async Task Upsert(IRepository repository)
+    public async Task UpsertWorkflow(IRepository repository)
     {
         string requestBody;
         using var reader = new StreamReader(Request.Body);
@@ -43,7 +43,7 @@ public class WorkflowController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task Delete(IRepository repository, Guid id)
+    public async Task DeleteWorkflow(IRepository repository, Guid id)
     {
         await repository.DeleteWorkflow(id);
     }
