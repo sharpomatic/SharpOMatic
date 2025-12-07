@@ -26,6 +26,7 @@ export class ConnectionComponent implements OnInit {
 
   public connection: Connection = new Connection(Connection.defaultSnapshot());
   public connectionConfig: ConnectionConfig | null = null;
+  public readonly connectionConfigs = this.metadataService.connectionConfigs;
   public readonly fieldDescriptorType = FieldDescriptorType;
 
   ngOnInit(): void {
@@ -34,7 +35,7 @@ export class ConnectionComponent implements OnInit {
       this.serverRepository.getConnection(connectionId).subscribe(connection => {
         if (connection) {
           this.connection = connection;
-          this.loadConnectionConfig(connection.configId());
+          this.setConnectionConfig(connection.configId(), false);
         }
       });
     }
@@ -47,19 +48,26 @@ export class ConnectionComponent implements OnInit {
     });
   }
 
-  private loadConnectionConfig(configId: string): void {
+  public onConnectionConfigChange(configId: string): void {
+    this.setConnectionConfig(configId, true);
+  }
+
+  private setConnectionConfig(configId: string, resetFieldValues: boolean): void {
     if (!configId) {
       this.connectionConfig = null;
+      this.connection.configId.set('');
+      this.connection.authenticationModeId.set('');
+      if (resetFieldValues) {
+        this.connection.fieldValues.set(new Map());
+      }
       return;
     }
 
-    const configs = this.metadataService.connectionConfigs();
+    const configs = this.connectionConfigs();
     this.connectionConfig = configs.find(config => config.configId === configId) ?? null;
+    this.connection.configId.set(this.connectionConfig?.configId ?? '');
 
-    const authModes = this.connectionConfig?.authModes ?? [];
-    if (this.connection && !this.connection.authenticationModeId() && authModes.length > 0) {
-      this.connection.authenticationModeId.set(authModes[0].id);
-    }
+    this.ensureAuthMode(resetFieldValues);
   }
 
   public get selectedAuthMode() {
@@ -105,5 +113,45 @@ export class ConnectionComponent implements OnInit {
       next.set(field.name, checked ? 'true' : 'false');
       return next;
     });
+  }
+
+  private ensureAuthMode(resetFieldValues: boolean): void {
+    const authModes = this.connectionConfig?.authModes ?? [];
+    if (!authModes.length) {
+      this.connection.authenticationModeId.set('');
+      if (resetFieldValues) {
+        this.connection.fieldValues.set(new Map());
+      }
+      return;
+    }
+
+    let current = this.connection.authenticationModeId();
+    if (!current || !authModes.some(mode => mode.id === current)) {
+      current = authModes[0].id;
+      this.connection.authenticationModeId.set(current);
+    }
+
+    if (resetFieldValues) {
+      this.resetFieldsForSelectedAuthMode();
+    }
+  }
+
+  private resetFieldsForSelectedAuthMode(): void {
+    const mode = this.selectedAuthMode;
+    if (!mode) {
+      this.connection.fieldValues.set(new Map());
+      return;
+    }
+
+    const next = new Map<string, string | null>();
+    mode.fields.forEach(field => {
+      if (field.defaultValue === null || field.defaultValue === undefined) {
+        next.set(field.name, null);
+      } else {
+        next.set(field.name, String(field.defaultValue));
+      }
+    });
+
+    this.connection.fieldValues.set(next);
   }
 }

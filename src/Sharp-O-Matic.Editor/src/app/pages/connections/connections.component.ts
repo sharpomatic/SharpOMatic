@@ -5,7 +5,6 @@ import { Router, RouterLink } from '@angular/router';
 import { ServerRepositoryService } from '../../services/server.repository.service';
 import { ConnectionSummary } from '../../metadata/definitions/connection summary';
 import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
-import { SelectConnectorDialogComponent } from '../../dialogs/new-connector/new-connector-dialog.component';
 import { Connection } from '../../metadata/definitions/connection';
 
 @Component({
@@ -24,7 +23,6 @@ export class ConnectionsComponent {
   private readonly modalService = inject(BsModalService);
   private readonly router = inject(Router);  
   private confirmModalRef: BsModalRef<ConfirmDialogComponent> | undefined;
-  private selectConnectorModalRef: BsModalRef<SelectConnectorDialogComponent> | undefined;
   
   public connections: ConnectionSummary[] = [];
 
@@ -35,25 +33,15 @@ export class ConnectionsComponent {
   }
 
   newConnection(): void {
-    this.selectConnectorModalRef = this.modalService.show(SelectConnectorDialogComponent);
+    const newConnection = new Connection({
+      ...Connection.defaultSnapshot(),
+      configId: '',
+      name: 'Untitled',
+      description: 'Connection needs a description.',
+    });
 
-    this.selectConnectorModalRef.onHidden?.subscribe(() => {
-      const selectedConfigId = this.selectConnectorModalRef?.content?.resultConfigId;
-
-      if (!selectedConfigId) {
-        return;
-      }
-
-      const newConnection = new Connection({
-        ...Connection.defaultSnapshot(),
-        configId: selectedConfigId,
-        name: 'Untitled',
-        description: 'Connection needs a description.',
-      });
-
-      this.serverWorkflow.upsertConnection(newConnection).subscribe(() => {
-        this.router.navigate(['/connections', newConnection.connectionId]);
-      });
+    this.serverWorkflow.upsertConnection(newConnection).subscribe(() => {
+      this.router.navigate(['/connections', newConnection.connectionId]);
     });
   }
 

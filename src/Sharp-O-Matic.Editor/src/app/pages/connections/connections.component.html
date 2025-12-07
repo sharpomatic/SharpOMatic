@@ -11,6 +11,7 @@
           <h5>{{ connection.name }}</h5>
         </div>
         <div class="card-body">
+          <p class="card-text">{{ connection.description }}</p>          
           <button class="btn btn-primary" [routerLink]="['/connections', connection.connectionId]">Open</button>
           <button class="btn btn-primary ms-2" (click)="deleteConnection(connection)">Delete</button>
         </div>

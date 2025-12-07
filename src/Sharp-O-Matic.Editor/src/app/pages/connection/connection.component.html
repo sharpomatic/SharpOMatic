@@ -8,21 +8,30 @@
   <hr class="m-0"/>
   
   <div class="p-3 details bg-body-tertiary">
-    <div class="mb-3 type">
+    <div class="mb-3 short">
       <label for="connection-type" class="form-label">Type</label>
-      <input
-        type="text"
-        class="form-control"
+      <select
         id="connection-type"
-        [value]="connectionConfig?.displayName ?? '(unknown)'"
-        disabled />
+        class="form-select"
+        [ngModel]="connection.configId()"
+        (ngModelChange)="onConnectionConfigChange($event)"
+        [disabled]="!connectionConfigs().length">
+        <option *ngFor="let config of connectionConfigs()" [ngValue]="config.configId">
+          {{ config.displayName }}
+        </option>
+      </select>
     </div>
-    <div class="mb-3 name">
+    <div class="mb-3 short">
       <label for="connection-name" class="form-label">Name</label>
-      <input type="text" class="form-control" id="connection-title" [ngModel]="connection.name()"
+      <input type="text" class="form-control" id="connection-name" [ngModel]="connection.name()"
           (ngModelChange)="connection.name.set($event)" />
     </div>  
-    <div class="mb-3 authMode">
+    <div class="mb-3 long">
+      <label for="connection-description" class="form-label">Description</label>
+      <input type="text" class="form-control" id="connection-description" [ngModel]="connection.description()"
+          (ngModelChange)="connection.description.set($event)" />
+    </div>      
+    <div class="mb-3 long">
       <label for="authentication-mode" class="form-label">Authentication Method</label>
       <select
         id="authentication-mode"
@@ -36,7 +45,7 @@
       </select>
     </div>
     @for (field of selectedAuthMode?.fields; track field.name) {      
-    <div class="mb-3 authField">
+    <div class="mb-3 long">
       @if (field.type === fieldDescriptorType.String || field.type === fieldDescriptorType.Secret) {
       <label class="form-label">{{ field.label }} @if (!field.isRequired) {(Optional)} </label>
       <input
