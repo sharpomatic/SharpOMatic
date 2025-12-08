@@ -1,0 +1,142 @@
+import { Signal, WritableSignal, computed, signal } from '@angular/core';
+import { ModelCapabilities, ModelCapabilitiesSnapshot } from './model-capabilities';
+
+export interface ModelSnapshot {
+  modelId: string;
+  name: string;
+  description: string;
+  connectionId: string;
+  configId: string;
+  customCapabilities: ModelCapabilitiesSnapshot;
+  parameterValues: Record<string, string | null>;
+}
+
+export class Model {
+  public readonly modelId: string;
+  public name: WritableSignal<string>;
+  public description: WritableSignal<string>;
+  public connectionId: WritableSignal<string>;
+  public configId: WritableSignal<string>;
+  public customCapabilities: WritableSignal<ModelCapabilities>;
+  public parameterValues: WritableSignal<Map<string, string | null>>;
+  public readonly isDirty: Signal<boolean>;
+
+  private initialName: string;
+  private initialDescription: string;
+  private initialConnectionId: string;
+  private initialConfigId: string;
+  private initialCustomCapabilities: ModelCapabilities;
+  private initialParameterValues: Map<string, string | null>;
+  private readonly cleanVersion = signal(0);
+
+  constructor(snapshot: ModelSnapshot) {
+    this.modelId = snapshot.modelId;
+    this.initialName = snapshot.name;
+    this.initialDescription = snapshot.description;
+    this.initialConnectionId = snapshot.connectionId;
+    this.initialConfigId = snapshot.configId;
+    this.initialCustomCapabilities = ModelCapabilities.fromSnapshot(snapshot.customCapabilities);
+    this.initialParameterValues = Model.mapFromSnapshot(snapshot.parameterValues);
+
+    this.name = signal(snapshot.name);
+    this.description = signal(snapshot.description);
+    this.connectionId = signal(snapshot.connectionId);
+    this.configId = signal(snapshot.configId);
+    this.customCapabilities = signal(ModelCapabilities.fromSnapshot(snapshot.customCapabilities));
+    this.parameterValues = signal(Model.mapFromSnapshot(snapshot.parameterValues));
+
+    this.isDirty = computed(() => {
+      this.cleanVersion();
+
+      const currentName = this.name();
+      const currentDescription = this.description();
+      const currentConnectionId = this.connectionId();
+      const currentConfigId = this.configId();
+      const currentCustomCapabilities = this.customCapabilities();
+      const currentParameterValues = this.parameterValues();
+
+      const parameterValuesChanged = !Model.areParameterValuesEqual(
+        currentParameterValues,
+        this.initialParameterValues,
+      );
+
+      const capabilitiesChanged = !currentCustomCapabilities.equals(this.initialCustomCapabilities);
+
+      return currentName !== this.initialName ||
+             currentDescription !== this.initialDescription ||
+             currentConnectionId !== this.initialConnectionId ||
+             currentConfigId !== this.initialConfigId ||
+             capabilitiesChanged ||
+             parameterValuesChanged;
+    });
+  }
+
+  public toSnapshot(): ModelSnapshot {
+    return {
+      modelId: this.modelId,
+      name: this.name(),
+      description: this.description(),
+      connectionId: this.connectionId(),
+      configId: this.configId(),
+      customCapabilities: this.customCapabilities().toSnapshot(),
+      parameterValues: Model.snapshotFromMap(this.parameterValues()),
+    };
+  }
+
+  public static fromSnapshot(snapshot: ModelSnapshot): Model {
+    return new Model(snapshot);
+  }
+
+  public static defaultSnapshot(): ModelSnapshot {
+    return {
+      modelId: crypto.randomUUID(),
+      name: '',
+      description: '',
+      connectionId: '',
+      configId: '',
+      customCapabilities: ModelCapabilities.defaultSnapshot(),
+      parameterValues: {},
+    };
+  }
+
+  public markClean(): void {
+    this.initialName = this.name();
+    this.initialDescription = this.description();
+    this.initialConnectionId = this.connectionId();
+    this.initialConfigId = this.configId();
+    this.initialCustomCapabilities = ModelCapabilities.fromSnapshot(this.customCapabilities().toSnapshot());
+    this.initialParameterValues = new Map(this.parameterValues());
+    this.cleanVersion.update(v => v + 1);
+  }
+
+  private static mapFromSnapshot(parameterValues: ModelSnapshot['parameterValues'] | undefined): Map<string, string | null> {
+    const entries = Object.entries(parameterValues ?? {}).map(([key, value]) => [key, value ?? null] as const);
+    return new Map<string, string | null>(entries);
+  }
+
+  private static snapshotFromMap(parameterValues: Map<string, string | null> | undefined): ModelSnapshot['parameterValues'] {
+    if (!parameterValues) {
+      return {};
+    }
+
+    const entries = Array.from(parameterValues.entries()).map(([key, value]) => [key, value ?? null] as const);
+    return Object.fromEntries(entries) as Record<string, string | null>;
+  }
+
+  private static areParameterValuesEqual(
+    current: Map<string, string | null>,
+    initial: Map<string, string | null>
+  ): boolean {
+    if (current.size !== initial.size) {
+      return false;
+    }
+
+    for (const [key, value] of current.entries()) {
+      if (!initial.has(key) || initial.get(key) !== value) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+}

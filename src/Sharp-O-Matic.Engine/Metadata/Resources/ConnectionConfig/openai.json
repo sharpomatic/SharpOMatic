@@ -15,7 +15,7 @@
           "Description": "OpenAI API End Point",
           "Type": 0,
           "IsRequired": true,
-          "DefaultValue": "https://api.openai.com/v1",
+          "DefaultValue": "https://api.openai.com/v1"
         },
         {
           "Name": "key",

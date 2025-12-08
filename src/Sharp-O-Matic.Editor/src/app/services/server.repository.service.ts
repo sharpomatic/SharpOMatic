@@ -9,6 +9,9 @@ import { TraceProgressModel } from '../pages/workflow/interfaces/trace-progress-
 import { ContextEntryListEntity } from '../entities/definitions/context-entry-list.entity';
 import { ConnectionConfig, ConnectionConfigSnapshot } from '../metadata/definitions/connection-config';
 import { ConnectionSummary, ConnectionSummarySnapshot } from '../metadata/definitions/connection summary';
+import { ModelConfig, ModelConfigSnapshot } from '../metadata/definitions/model-config';
+import { ModelSummary, ModelSummarySnapshot } from '../metadata/definitions/model-summary';
+import { Model, ModelSnapshot } from '../metadata/definitions/model';
 import { ToastService } from './toast.service';
 import { SettingsService } from './settings.service';
 
@@ -140,6 +143,59 @@ export class ServerRepositoryService {
     return this.http.delete<void>(`${apiUrl}/api/metadata/connections/${id}`).pipe(
       catchError((error) => {
         this.notifyError('Deleting connection', error);
+        return of(undefined);
+      })
+    );
+  }
+
+  public getModelConfigs(): Observable<ModelConfig[]> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.get<ModelConfigSnapshot[]>(`${apiUrl}/api/metadata/model-configs`).pipe(
+      map(snapshots => snapshots.map(ModelConfig.fromSnapshot)),
+      catchError((error) => {
+        this.notifyError('Loading model configs', error);
+        return of([]);
+      })
+    );
+  }
+
+  public getModelSummaries(): Observable<ModelSummary[]> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.get<ModelSummarySnapshot[]>(`${apiUrl}/api/metadata/models`).pipe(
+      map(snapshots => snapshots.map(ModelSummary.fromSnapshot)),
+      catchError((error) => {
+        this.notifyError('Loading models', error);
+        return of([]);
+      })
+    );
+  }
+
+  public getModel(id: string): Observable<Model | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.get<ModelSnapshot>(`${apiUrl}/api/metadata/models/${id}`).pipe(
+      map(Model.fromSnapshot),
+      catchError((error) => {
+        this.notifyError('Loading model', error);
+        return of(null);
+      })
+    );
+  }
+
+  public upsertModel(model: Model): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.post<void>(`${apiUrl}/api/metadata/models`, model.toSnapshot()).pipe(
+      catchError((error) => {
+        this.notifyError('Saving model', error);
+        return of(undefined);
+      })
+    );
+  }
+
+  public deleteModel(id: string): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.delete<void>(`${apiUrl}/api/metadata/models/${id}`).pipe(
+      catchError((error) => {
+        this.notifyError('Deleting model', error);
         return of(undefined);
       })
     );
