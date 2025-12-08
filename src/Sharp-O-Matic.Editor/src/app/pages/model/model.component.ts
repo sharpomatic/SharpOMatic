@@ -67,6 +67,10 @@ export class ModelComponent implements OnInit {
       this.modelVersion();
       const configId = this.model.configId();
       const configs = this.availableModelConfigs();
+      if (!configs.length) {
+        return;
+      }
+
       if (configId && configs.length) {
         if (!this.modelConfig || this.modelConfig.configId !== configId) {
           this.setModelConfig(configId, false);
@@ -81,9 +85,6 @@ export class ModelComponent implements OnInit {
       const configs = this.availableModelConfigs();
       const currentConfigId = this.model.configId();
       if (!configs.length) {
-        if (currentConfigId) {
-          this.onModelConfigChange('');
-        }
         return;
       }
 
@@ -293,6 +294,8 @@ export class ModelComponent implements OnInit {
       return;
     }
 
+    const previousValues = new Map(this.model.parameterValues());
+
     const availableConfigs = this.availableModelConfigs();
     const searchConfigs = availableConfigs.length ? availableConfigs : this.modelConfigs();
     this.modelConfig = searchConfigs.find(config => config.configId === configId) ?? null;
@@ -300,27 +303,28 @@ export class ModelComponent implements OnInit {
 
     if (resetValues && this.modelConfig) {
       this.model.customCapabilities.set(ModelCapabilities.fromSnapshot(this.modelConfig.capabilities.toSnapshot()));
-      this.resetParameterFieldsForConfig();
+      const nextValues = this.buildParameterValuesForConfig(this.modelConfig, previousValues);
+      this.model.parameterValues.set(nextValues);
     }
   }
 
-  private resetParameterFieldsForConfig(): void {
-    const config = this.modelConfig;
-    if (!config) {
-      this.model.parameterValues.set(new Map());
-      return;
-    }
-
+  private buildParameterValuesForConfig(config: ModelConfig, previousValues: Map<string, string | null>): Map<string, string | null> {
     const next = new Map<string, string | null>();
     config.parameterFields.forEach(field => {
-      if (field.defaultValue === null || field.defaultValue === undefined) {
+      const capabilityOk = !field.capability || (this.isCapabilityEnabled(field.capability) && (!config.isCustom || this.isCustomCapabilityEnabled(field.capability)));
+      if (!capabilityOk) {
+        return;
+      }
+
+      if (previousValues.has(field.name)) {
+        next.set(field.name, previousValues.get(field.name) ?? null);
+      } else if (field.defaultValue === null || field.defaultValue === undefined) {
         next.set(field.name, null);
       } else {
         next.set(field.name, String(field.defaultValue));
       }
     });
-
-    this.model.parameterValues.set(next);
+    return next;
   }
 
   private getResolvedParameterValue(field: FieldDescriptor): string | null {
