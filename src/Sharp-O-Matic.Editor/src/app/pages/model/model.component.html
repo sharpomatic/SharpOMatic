@@ -58,16 +58,16 @@
       @if (modelConfig.isCustom) {
         <div class="mb-3 long">
           <label class="form-label">Capabilities</label>
-          @for (cap of capabilityEntries(); track cap.key) {
+          @for (cap of capabilityEntries(); track cap.capability.name) {
             <div class="form-check">
               <input
                 class="form-check-input"
                 type="checkbox"
-                [id]="'cap-' + cap.key"
-                [checked]="cap.value"
-                (change)="onCapabilityChange(cap.key, $any($event.target).checked)">
-              <label class="form-check-label" [for]="'cap-' + cap.key">
-                {{ cap.label }}
+                [id]="'cap-' + cap.capability.name"
+                [checked]="cap.selected"
+                (change)="onCapabilityChange(cap.capability.name, $any($event.target).checked)">
+              <label class="form-check-label" [for]="'cap-' + cap.capability.name">
+                {{ cap.capability.displayName }}
               </label>
             </div>
           }

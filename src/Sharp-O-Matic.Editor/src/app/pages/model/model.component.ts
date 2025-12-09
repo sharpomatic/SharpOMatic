@@ -5,7 +5,7 @@ import { ActivatedRoute } from '@angular/router';
 import { ConnectionSummary } from '../../metadata/definitions/connection summary';
 import { FieldDescriptor } from '../../metadata/definitions/field-descriptor';
 import { Model } from '../../metadata/definitions/model';
-import { ModelCapabilities, ModelCapabilitiesSnapshot } from '../../metadata/definitions/model-capabilities';
+import { ModelCapability } from '../../metadata/definitions/model-capability';
 import { ModelConfig } from '../../metadata/definitions/model-config';
 import { FieldDescriptorType } from '../../metadata/enumerations/field-descriptor-type';
 import { MetadataService } from '../../services/metadata.service';
@@ -124,51 +124,35 @@ export class ModelComponent implements OnInit {
     this.setModelConfig(configId, true);
   }
 
-  public capabilityEntries(): { key: keyof ModelCapabilitiesSnapshot; label: string; value: boolean }[] {
+  public capabilityEntries(): { capability: ModelCapability; selected: boolean }[] {
     if (!this.modelConfig) {
       return [];
     }
 
-    const configCaps = this.modelConfig.capabilities.toSnapshot();
-    const customCaps = this.model.customCapabilities().toSnapshot();
-
-    return Object.entries(configCaps)
-      .filter(([, enabled]) => Boolean(enabled))
-      .map(([key]) => ({
-        key: key as keyof ModelCapabilitiesSnapshot,
-        label: this.formatCapabilityLabel(key),
-        value: Boolean(customCaps[key as keyof ModelCapabilitiesSnapshot]),
-      }));
+    return this.modelConfig.capabilities.map(capability => ({
+      capability,
+      selected: this.isCustomCapabilityEnabled(capability.name),
+    }));
   }
 
-  public onCapabilityChange(capability: keyof ModelCapabilitiesSnapshot, enabled: boolean): void {
-    const snapshot = this.model.customCapabilities().toSnapshot();
-    const updated = { ...snapshot, [capability]: enabled } as ModelCapabilitiesSnapshot;
-    this.model.customCapabilities.set(ModelCapabilities.fromSnapshot(updated));
+  public onCapabilityChange(capability: string, enabled: boolean): void {
+    this.model.customCapabilities.update(set => {
+      const next = new Set(set);
+      if (enabled) {
+        next.add(capability);
+      } else {
+        next.delete(capability);
+      }
+      return next;
+    });
   }
 
   public isCapabilityEnabled(capability: string): boolean {
-    if (!this.modelConfig) {
-      return false;
-    }
-    const caps = this.modelConfig.capabilities.toSnapshot();
-    const key = capability as keyof ModelCapabilitiesSnapshot;
-    const record = caps as Record<keyof ModelCapabilitiesSnapshot, boolean | undefined>;
-    return Boolean(record[key]);
+    return Boolean(this.modelConfig?.capabilities.some(c => c.name === capability));
   }
 
   public isCustomCapabilityEnabled(capability: string): boolean {
-    const caps = this.model.customCapabilities().toSnapshot();
-    const key = capability as keyof ModelCapabilitiesSnapshot;
-    const record = caps as Record<keyof ModelCapabilitiesSnapshot, boolean | undefined>;
-    return Boolean(record[key]);
-  }
-
-  private formatCapabilityLabel(key: string): string {
-    return key
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, c => c.toUpperCase())
-      .trim();
+    return this.model.customCapabilities().has(capability);
   }
 
   public getParameterValue(field: FieldDescriptor): string {
@@ -289,7 +273,7 @@ export class ModelComponent implements OnInit {
       this.model.configId.set('');
       if (resetValues) {
         this.model.parameterValues.set(new Map());
-        this.model.customCapabilities.set(ModelCapabilities.fromSnapshot(ModelCapabilities.defaultSnapshot()));
+        this.model.customCapabilities.set(new Set());
       }
       return;
     }
@@ -302,7 +286,8 @@ export class ModelComponent implements OnInit {
     this.model.configId.set(this.modelConfig?.configId ?? (availableConfigs.length ? '' : configId));
 
     if (resetValues && this.modelConfig) {
-      this.model.customCapabilities.set(ModelCapabilities.fromSnapshot(this.modelConfig.capabilities.toSnapshot()));
+      const capabilityNames = this.modelConfig.capabilities.map(c => c.name);
+      this.model.customCapabilities.set(new Set(capabilityNames));
       const nextValues = this.buildParameterValuesForConfig(this.modelConfig, previousValues);
       this.model.parameterValues.set(nextValues);
     }

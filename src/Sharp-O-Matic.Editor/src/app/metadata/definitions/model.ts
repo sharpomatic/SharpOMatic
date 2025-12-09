@@ -1,5 +1,4 @@
 import { Signal, WritableSignal, computed, signal } from '@angular/core';
-import { ModelCapabilities, ModelCapabilitiesSnapshot } from './model-capabilities';
 
 export interface ModelSnapshot {
   modelId: string;
@@ -7,7 +6,7 @@ export interface ModelSnapshot {
   description: string;
   connectionId: string | null;
   configId: string;
-  customCapabilities: ModelCapabilitiesSnapshot;
+  customCapabilities: string[];
   parameterValues: Record<string, string | null>;
 }
 
@@ -17,7 +16,7 @@ export class Model {
   public description: WritableSignal<string>;
   public connectionId: WritableSignal<string | null>;
   public configId: WritableSignal<string>;
-  public customCapabilities: WritableSignal<ModelCapabilities>;
+  public customCapabilities: WritableSignal<Set<string>>;
   public parameterValues: WritableSignal<Map<string, string | null>>;
   public readonly isDirty: Signal<boolean>;
 
@@ -25,7 +24,7 @@ export class Model {
   private initialDescription: string;
   private initialConnectionId: string | null;
   private initialConfigId: string;
-  private initialCustomCapabilities: ModelCapabilities;
+  private initialCustomCapabilities: Set<string>;
   private initialParameterValues: Map<string, string | null>;
   private readonly cleanVersion = signal(0);
 
@@ -35,14 +34,14 @@ export class Model {
     this.initialDescription = snapshot.description;
     this.initialConnectionId = snapshot.connectionId ?? null;
     this.initialConfigId = snapshot.configId;
-    this.initialCustomCapabilities = ModelCapabilities.fromSnapshot(snapshot.customCapabilities);
+    this.initialCustomCapabilities = Model.capabilitiesFromSnapshot(snapshot.customCapabilities);
     this.initialParameterValues = Model.mapFromSnapshot(snapshot.parameterValues);
 
     this.name = signal(snapshot.name);
     this.description = signal(snapshot.description);
     this.connectionId = signal(snapshot.connectionId ?? null);
     this.configId = signal(snapshot.configId);
-    this.customCapabilities = signal(ModelCapabilities.fromSnapshot(snapshot.customCapabilities));
+    this.customCapabilities = signal(Model.capabilitiesFromSnapshot(snapshot.customCapabilities));
     this.parameterValues = signal(Model.mapFromSnapshot(snapshot.parameterValues));
 
     this.isDirty = computed(() => {
@@ -60,7 +59,10 @@ export class Model {
         this.initialParameterValues,
       );
 
-      const capabilitiesChanged = !currentCustomCapabilities.equals(this.initialCustomCapabilities);
+      const capabilitiesChanged = !Model.areCapabilitiesEqual(
+        currentCustomCapabilities,
+        this.initialCustomCapabilities,
+      );
 
       return currentName !== this.initialName ||
              currentDescription !== this.initialDescription ||
@@ -78,7 +80,7 @@ export class Model {
       description: this.description(),
       connectionId: this.connectionId() ?? null,
       configId: this.configId(),
-      customCapabilities: this.customCapabilities().toSnapshot(),
+      customCapabilities: Model.capabilitiesToSnapshot(this.customCapabilities()),
       parameterValues: Model.snapshotFromMap(this.parameterValues()),
     };
   }
@@ -94,7 +96,7 @@ export class Model {
       description: '',
       connectionId: null,
       configId: '',
-      customCapabilities: ModelCapabilities.defaultSnapshot(),
+      customCapabilities: [],
       parameterValues: {},
     };
   }
@@ -104,7 +106,7 @@ export class Model {
     this.initialDescription = this.description();
     this.initialConnectionId = this.connectionId() ?? null;
     this.initialConfigId = this.configId();
-    this.initialCustomCapabilities = ModelCapabilities.fromSnapshot(this.customCapabilities().toSnapshot());
+    this.initialCustomCapabilities = new Set(this.customCapabilities());
     this.initialParameterValues = new Map(this.parameterValues());
     this.cleanVersion.update(v => v + 1);
   }
@@ -121,6 +123,35 @@ export class Model {
 
     const entries = Array.from(parameterValues.entries()).map(([key, value]) => [key, value ?? null] as const);
     return Object.fromEntries(entries) as Record<string, string | null>;
+  }
+
+  private static capabilitiesFromSnapshot(capabilities: ModelSnapshot['customCapabilities'] | undefined): Set<string> {
+    return new Set(capabilities ?? []);
+  }
+
+  private static capabilitiesToSnapshot(capabilities: Set<string> | undefined): ModelSnapshot['customCapabilities'] {
+    if (!capabilities) {
+      return [];
+    }
+
+    return Array.from(capabilities);
+  }
+
+  private static areCapabilitiesEqual(
+    current: Set<string>,
+    initial: Set<string>
+  ): boolean {
+    if (current.size !== initial.size) {
+      return false;
+    }
+
+    for (const capability of current) {
+      if (!initial.has(capability)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   private static areParameterValuesEqual(

@@ -1,4 +1,4 @@
-import { ModelCapabilities, ModelCapabilitiesSnapshot } from './model-capabilities';
+import { ModelCapability, ModelCapabilitySnapshot } from './model-capability';
 import { FieldDescriptor, FieldDescriptorSnapshot } from './field-descriptor';
 
 export interface ModelConfigSnapshot {
@@ -7,7 +7,7 @@ export interface ModelConfigSnapshot {
   description: string;
   connectionConfigId: string;
   isCustom: boolean;
-  capabilities: ModelCapabilitiesSnapshot;
+  capabilities: ModelCapabilitySnapshot[];
   parameterFields: FieldDescriptorSnapshot[];
 }
 
@@ -18,7 +18,7 @@ export class ModelConfig {
     public readonly description: string,
     public readonly connectionConfigId: string,
     public readonly isCustom: boolean,
-    public readonly capabilities: ModelCapabilities,
+    public readonly capabilities: ModelCapability[],
     public readonly parameterFields: FieldDescriptor[],
   ) {}
 
@@ -29,7 +29,7 @@ export class ModelConfig {
       snapshot.description,
       snapshot.connectionConfigId,
       snapshot.isCustom,
-      ModelCapabilities.fromSnapshot(snapshot.capabilities),
+      snapshot.capabilities.map(ModelCapability.fromSnapshot),
       snapshot.parameterFields.map(FieldDescriptor.fromSnapshot),
     );
   }
