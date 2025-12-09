@@ -47,6 +47,7 @@ public class NodeEntityConverter : JsonConverter<NodeEntity>
             NodeType.Switch => JsonSerializer.Deserialize<SwitchNodeEntity>(ref reader, innerOptions)!,
             NodeType.FanIn => JsonSerializer.Deserialize<FanInNodeEntity>(ref reader, innerOptions)!,
             NodeType.FanOut => JsonSerializer.Deserialize<FanOutNodeEntity>(ref reader, innerOptions)!,
+            NodeType.ModelCall => JsonSerializer.Deserialize<ModelCallNodeEntity>(ref reader, innerOptions)!,
             _ => throw new NotSupportedException($"NodeType '{nodeType}' is not supported.")
         };
     }
@@ -79,6 +80,9 @@ public class NodeEntityConverter : JsonConverter<NodeEntity>
                 break;
             case FanOutNodeEntity fanOut:
                 JsonSerializer.Serialize(writer, fanOut, innerOptions);
+                break;
+            case ModelCallNodeEntity modelCall:
+                JsonSerializer.Serialize(writer, modelCall, innerOptions);
                 break;
             default:
                 throw new NotSupportedException($"Type '{value.GetType()}' is not supported.");

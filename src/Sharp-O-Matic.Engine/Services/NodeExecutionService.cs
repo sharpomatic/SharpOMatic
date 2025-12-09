@@ -134,6 +134,7 @@ public class NodeExecutionService(INodeQueue queue, IServiceScopeFactory scopeFa
             SwitchNodeEntity switchNode => new SwitchNode(threadContext, switchNode).Run(),
             FanInNodeEntity fanInNode => new FanInNode(threadContext, fanInNode).Run(),
             FanOutNodeEntity fanOutNode => new FanOutNode(threadContext, fanOutNode).Run(),
+            ModelCallNodeEntity modelCallNode => new ModelCallNode(threadContext, modelCallNode).Run(),
             _ => throw new SharpOMaticException($"Unrecognized node type' {node.NodeType}'")
         };
     }

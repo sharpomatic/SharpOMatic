@@ -8,5 +8,6 @@ public enum NodeType
     Edit = 3,
     Switch = 4,
     FanIn = 5,
-    FanOut = 6
+    FanOut = 6,
+    ModelCall = 7
 }
