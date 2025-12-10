@@ -16,6 +16,8 @@ public class SharpOMaticDbContext : DbContext
         : base(options)
     {
         _options = dbOptions.Value;
+        if (_options.CommandTimeout.HasValue)
+            Database.SetCommandTimeout(_options.CommandTimeout);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

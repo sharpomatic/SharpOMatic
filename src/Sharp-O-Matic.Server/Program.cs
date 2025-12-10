@@ -10,7 +10,7 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 builder.Services.AddSignalR();
 builder.Services.AddSharpOMaticEngine();
 builder.Services.AddSingleton<INotification, NotificationService>();
-builder.Services.AddSharpOMaticRepository(options =>
+builder.Services.AddSharpOMaticRepository((options) =>
 {
     var folder = Environment.SpecialFolder.LocalApplicationData;
     var path = Environment.GetFolderPath(folder);
