@@ -9,9 +9,11 @@
     </div>
     <ng-template #detailsTab>
       <div class="p-3 details">
-        <div class="mb-3 title">
-          <label for="workflow-title" class="form-label">Title</label>
-          <input type="text" class="form-control" id="workflow-title" [ngModel]="node.title()" (ngModelChange)="node.title.set($event)"/>
+        <div class="mb-3 form-line">
+          <label for="workflow-title" class="form-label field-label">Title</label>
+          <div class="flex-fill control-column title">
+            <input type="text" class="form-control w-100" id="workflow-title" [ngModel]="node.title()" (ngModelChange)="node.title.set($event)"/>
+          </div>
         </div>
       </div>
     </ng-template>

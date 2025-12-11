@@ -1,19 +1,23 @@
 <div>
-  <label for="select-context" class="form-label">Select Context</label>
-  <select class="form-select selectContext"
-          id="select-context"
-          [disabled]="contexts.length === 0"
-          [ngModel]="selectedIndex()"
-          (ngModelChange)="onSelectedIndexChange($event)">
-    @for (context of contexts; track $index; let i = $index) {
-      <option [ngValue]="i">
-        Call {{ i + 1 }}
-      </option>
-    }
-    @if (contexts.length === 0) {
-      <option [ngValue]="-1">(none)</option>
-    }
-  </select>
+  <div class="form-line">
+    <label for="select-context" class="form-label field-label">Select Context</label>
+    <div class="flex-fill control-column context">
+      <select class="form-select selectContext"
+              id="select-context"
+              [disabled]="contexts.length === 0"
+              [ngModel]="selectedIndex()"
+              (ngModelChange)="onSelectedIndexChange($event)">
+        @for (context of contexts; track $index; let i = $index) {
+          <option [ngValue]="i">
+            Call {{ i + 1 }}
+          </option>
+        }
+        @if (contexts.length === 0) {
+          <option [ngValue]="-1">(none)</option>
+        }
+      </select>
+    </div>
+  </div>
 
   <hr/>
 

@@ -29,9 +29,30 @@
   min-height: 0;
 }
 
+.form-line {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.field-label {
+  margin-bottom: 0;
+  text-align: right;
+}
+
+.control-column {
+  flex: 1;
+  min-width: 0;
+}
+
+.control-column .form-control {
+  width: 100%;
+}
+
 .title {
-  min-width: 350px;
-  width: 350px;
+  max-width: 350px;
+  width: 100%;
 }
 
 .editCode {

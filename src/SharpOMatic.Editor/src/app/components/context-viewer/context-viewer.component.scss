@@ -2,8 +2,34 @@
   display: block;
 }
 
+.form-line {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.field-label {
+  margin-bottom: 0;
+  text-align: right;
+}
+
+.control-column {
+  flex: 1;
+  min-width: 0;
+}
+
+.context {
+  max-width: 350px;
+  width: 100%;
+}
+
+.control-column .form-select {
+  width: 100%;
+}
+
 .selectContext {
-  width: 150px;
+  width: 100%;
 }
 
 .context-value {
