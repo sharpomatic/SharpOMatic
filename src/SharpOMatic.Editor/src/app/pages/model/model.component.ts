@@ -337,7 +337,6 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   hasUnsavedChanges(): boolean {
-    debugger;
     return this.model.isDirty();
   }
 

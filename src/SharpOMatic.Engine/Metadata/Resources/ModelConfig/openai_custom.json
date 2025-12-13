@@ -2,7 +2,7 @@
   "ConfigId": "openai_custom",
   "DisplayName": "custom",
   "Description": "Chat completion model.",
-  "ConnectionConfigId": "openai",
+  "ConnectorConfigId": "openai",
   "IsCustom": true,
   "Capabilities": [
     {

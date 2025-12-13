@@ -64,7 +64,6 @@ export class ConnectorComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
     const configs = this.connectorConfigs();
     this.connectorConfig = configs.find(config => config.configId === configId) ?? null;
-    debugger;
     this.connector.configId.set(this.connectorConfig?.configId ?? '');
 
     this.ensureAuthMode(resetFieldValues);
