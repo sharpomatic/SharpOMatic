@@ -11,7 +11,7 @@ using SharpOMatic.Engine.Repository;
 namespace SharpOMatic.Engine.Migrations
 {
     [DbContext(typeof(SharpOMaticDbContext))]
-    [Migration("20251207103659_InitialCreate")]
+    [Migration("20251213125854_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -20,7 +20,7 @@ namespace SharpOMatic.Engine.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
 
-            modelBuilder.Entity("SharpOMatic.Engine.Repository.ConnectionConfigMetadata", b =>
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.ConnectorConfigMetadata", b =>
                 {
                     b.Property<string>("ConfigId")
                         .HasColumnType("TEXT");
@@ -31,12 +31,12 @@ namespace SharpOMatic.Engine.Migrations
 
                     b.HasKey("ConfigId");
 
-                    b.ToTable("ConnectionConfigMetadata");
+                    b.ToTable("ConnectorConfigMetadata");
                 });
 
-            modelBuilder.Entity("SharpOMatic.Engine.Repository.ConnectionMetadata", b =>
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.ConnectorMetadata", b =>
                 {
-                    b.Property<Guid>("ConnectionId")
+                    b.Property<Guid>("ConnectorId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
@@ -52,9 +52,9 @@ namespace SharpOMatic.Engine.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.HasKey("ConnectionId");
+                    b.HasKey("ConnectorId");
 
-                    b.ToTable("ConnectionMetadata");
+                    b.ToTable("ConnectorMetadata");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.ModelConfigMetadata", b =>

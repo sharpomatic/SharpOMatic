@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnInit, Signal, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { ConnectionSummary } from '../../metadata/definitions/connection summary';
+import { ConnectorSummary } from '../../metadata/definitions/connector-summary';
 import { FieldDescriptor } from '../../metadata/definitions/field-descriptor';
 import { Model } from '../../metadata/definitions/model';
 import { ModelCapability } from '../../metadata/definitions/model-capability';
@@ -10,7 +10,7 @@ import { ModelConfig } from '../../metadata/definitions/model-config';
 import { FieldDescriptorType } from '../../metadata/enumerations/field-descriptor-type';
 import { MetadataService } from '../../services/metadata.service';
 import { ServerRepositoryService } from '../../services/server.repository.service';
-import { Connection } from '../../metadata/definitions/connection';
+import { Connector } from '../../metadata/definitions/connector';
 import { CanLeaveWithUnsavedChanges } from '../../guards/unsaved-changes.guard';
 import { Observable, map } from 'rxjs';
 
@@ -32,21 +32,21 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
   public model: Model = new Model(Model.defaultSnapshot());
   public modelConfig: ModelConfig | null = null;
   public readonly modelConfigs = this.metadataService.modelConfigs;
-  private readonly connectionConfigId = signal<string | null>(null);
+  private readonly connectorConfigId = signal<string | null>(null);
   private readonly modelVersion = signal(0);
   public readonly availableModelConfigs: Signal<ModelConfig[]>;
-  public connectionSummaries: ConnectionSummary[] = [];
+  public connectorSummaries: ConnectorSummary[] = [];
   public readonly fieldDescriptorType = FieldDescriptorType;
 
   constructor() {
     this.availableModelConfigs = computed(() => {
-      const configId = this.connectionConfigId();
+      const configId = this.connectorConfigId();
       if (!configId) {
         return [];
       }
 
       return this.modelConfigs()
-        .filter(cfg => cfg.connectionConfigId === configId)
+        .filter(cfg => cfg.connectorConfigId === configId)
         .slice()
         .sort((a, b) => {
           if (a.isCustom && !b.isCustom) {
@@ -61,8 +61,8 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
     effect(() => {
       this.modelVersion();
-      const connectionId = this.model.connectionId();
-      this.loadConnectionConfig(connectionId);
+      const connectorId = this.model.connectorId();
+      this.loadConnectorConfig(connectorId);
     });
 
     effect(() => {
@@ -99,8 +99,8 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   ngOnInit(): void {
-    this.serverRepository.getConnectionSummaries().subscribe(connections => {
-      this.connectionSummaries = [...connections].sort((a, b) => a.name.localeCompare(b.name));
+    this.serverRepository.getConnectorSummaries().subscribe(connectors => {
+      this.connectorSummaries = [...connectors].sort((a, b) => a.name.localeCompare(b.name));
     });
 
     const modelId = this.route.snapshot.paramMap.get('id');
@@ -325,14 +325,14 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
     return null;
   }
 
-  private loadConnectionConfig(connectionId: string | null): void {
-    if (!connectionId) {
-      this.connectionConfigId.set(null);
+  private loadConnectorConfig(connectorId: string | null): void {
+    if (!connectorId) {
+      this.connectorConfigId.set(null);
       return;
     }
 
-    this.serverRepository.getConnection(connectionId).subscribe((connection: Connection | null) => {
-      this.connectionConfigId.set(connection?.configId() ?? null);
+    this.serverRepository.getConnector(connectorId).subscribe((connector: Connector | null) => {
+      this.connectorConfigId.set(connector?.configId() ?? null);
     });
   }
 

@@ -5,7 +5,7 @@ export interface ModelConfigSnapshot {
   configId: string;
   displayName: string;
   description: string;
-  connectionConfigId: string;
+  connectorConfigId: string;
   isCustom: boolean;
   capabilities: ModelCapabilitySnapshot[];
   parameterFields: FieldDescriptorSnapshot[];
@@ -16,7 +16,7 @@ export class ModelConfig {
     public readonly configId: string,
     public readonly displayName: string,
     public readonly description: string,
-    public readonly connectionConfigId: string,
+    public readonly connectorConfigId: string,
     public readonly isCustom: boolean,
     public readonly capabilities: ModelCapability[],
     public readonly parameterFields: FieldDescriptor[],
@@ -27,7 +27,7 @@ export class ModelConfig {
       snapshot.configId,
       snapshot.displayName,
       snapshot.description,
-      snapshot.connectionConfigId,
+      snapshot.connectorConfigId,
       snapshot.isCustom,
       snapshot.capabilities.map(ModelCapability.fromSnapshot),
       snapshot.parameterFields.map(FieldDescriptor.fromSnapshot),

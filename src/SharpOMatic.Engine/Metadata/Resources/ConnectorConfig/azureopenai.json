@@ -1,7 +1,7 @@
 {
   "ConfigId": "azureopenai",
   "DisplayName": "Azure OpenAI",
-  "Description": "OpenAI model hosted on Azure",
+  "Description": "Connector to OpenAI hosted on Azure",
   "AuthModes": [
     {
       "Id": "apikey",
@@ -40,7 +40,7 @@
           "Type": 3,
           "IsRequired": true,
           "DefaultValue": "dos",
-          "EnumOptions": ["uno", "dos", "tres", "quattro"]
+          "EnumOptions": [ "uno", "dos", "tres", "quattro" ]
         },
         {
           "Name": "integer",

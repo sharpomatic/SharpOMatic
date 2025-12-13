@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { Connection } from '../../metadata/definitions/connection';
-import { ConnectionConfig } from '../../metadata/definitions/connection-config';
+import { Connector } from '../../metadata/definitions/connector';
+import { ConnectorConfig } from '../../metadata/definitions/connector-config';
 import { FieldDescriptor } from '../../metadata/definitions/field-descriptor';
 import { FieldDescriptorType } from '../../metadata/enumerations/field-descriptor-type';
 import { ServerRepositoryService } from '../../services/server.repository.service';
@@ -12,32 +12,32 @@ import { CanLeaveWithUnsavedChanges } from '../../guards/unsaved-changes.guard';
 import { Observable, map } from 'rxjs';
 
 @Component({
-  selector: 'app-connection',
+  selector: 'app-connector',
   standalone: true,
   imports: [
     CommonModule,
     FormsModule
   ],
-  templateUrl: './connection.component.html',
-  styleUrls: ['./connection.component.scss'],
+  templateUrl: './connector.component.html',
+  styleUrls: ['./connector.component.scss'],
 })
-export class ConnectionComponent implements OnInit, CanLeaveWithUnsavedChanges {
+export class ConnectorComponent implements OnInit, CanLeaveWithUnsavedChanges {
   private readonly route = inject(ActivatedRoute);
   private readonly serverRepository = inject(ServerRepositoryService);
   private readonly metadataService = inject(MetadataService);
 
-  public connection: Connection = new Connection(Connection.defaultSnapshot());
-  public connectionConfig: ConnectionConfig | null = null;
-  public readonly connectionConfigs = this.metadataService.connectionConfigs;
+  public connector: Connector = new Connector(Connector.defaultSnapshot());
+  public connectorConfig: ConnectorConfig | null = null;
+  public readonly connectorConfigs = this.metadataService.connectorConfigs;
   public readonly fieldDescriptorType = FieldDescriptorType;
 
   ngOnInit(): void {
-    const connectionId = this.route.snapshot.paramMap.get('id');
-    if (connectionId) {
-      this.serverRepository.getConnection(connectionId).subscribe(connection => {
-        if (connection) {
-          this.connection = connection;
-          this.setConnectionConfig(connection.configId(), false);
+    const connectorId = this.route.snapshot.paramMap.get('id');
+    if (connectorId) {
+      this.serverRepository.getConnector(connectorId).subscribe(connector => {
+        if (connector) {
+          this.connector = connector;
+          this.setConnectorConfig(connector.configId(), false);
         }
       });
     }
@@ -47,32 +47,32 @@ export class ConnectionComponent implements OnInit, CanLeaveWithUnsavedChanges {
     this.saveChanges().subscribe();
   }
 
-  public onConnectionConfigChange(configId: string): void {
-    this.setConnectionConfig(configId, true);
+  public onConnectorConfigChange(configId: string): void {
+    this.setConnectorConfig(configId, true);
   }
 
-  private setConnectionConfig(configId: string, resetFieldValues: boolean): void {
+  private setConnectorConfig(configId: string, resetFieldValues: boolean): void {
     if (!configId) {
-      this.connectionConfig = null;
-      this.connection.configId.set('');
-      this.connection.authenticationModeId.set('');
+      this.connectorConfig = null;
+      this.connector.configId.set('');
+      this.connector.authenticationModeId.set('');
       if (resetFieldValues) {
-        this.connection.fieldValues.set(new Map());
+        this.connector.fieldValues.set(new Map());
       }
       return;
     }
 
-    const configs = this.connectionConfigs();
-    this.connectionConfig = configs.find(config => config.configId === configId) ?? null;
+    const configs = this.connectorConfigs();
+    this.connectorConfig = configs.find(config => config.configId === configId) ?? null;
     debugger;
-    this.connection.configId.set(this.connectionConfig?.configId ?? '');
+    this.connector.configId.set(this.connectorConfig?.configId ?? '');
 
     this.ensureAuthMode(resetFieldValues);
   }
 
   public get selectedAuthMode() {
-    const authModeId = this.connection.authenticationModeId();
-    return this.connectionConfig?.authModes.find(mode => mode.id === authModeId);
+    const authModeId = this.connector.authenticationModeId();
+    return this.connectorConfig?.authModes.find(mode => mode.id === authModeId);
   }
 
   public getFieldValue(field: FieldDescriptor): string {
@@ -81,7 +81,7 @@ export class ConnectionComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   public onFieldValueChange(field: FieldDescriptor, value: string): void {
-    this.connection.fieldValues.update(map => {
+    this.connector.fieldValues.update(map => {
       const next = new Map(map);
       next.set(field.name, value === '' ? null : value ?? '');
       return next;
@@ -98,7 +98,7 @@ export class ConnectionComponent implements OnInit, CanLeaveWithUnsavedChanges {
     }
 
     if (field.isRequired && field.defaultValue != null) {
-      this.connection.fieldValues.update(map => {
+      this.connector.fieldValues.update(map => {
         const next = new Map(map);
         next.set(field.name, String(field.defaultValue));
         return next;
@@ -112,7 +112,7 @@ export class ConnectionComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   public onFieldNumericChange(field: FieldDescriptor, value: string | number): void {
-    this.connection.fieldValues.update(map => {
+    this.connector.fieldValues.update(map => {
       const next = new Map(map);
       if (value === '' || value === null || value === undefined) {
         next.set(field.name, null);
@@ -136,7 +136,7 @@ export class ConnectionComponent implements OnInit, CanLeaveWithUnsavedChanges {
     if (rawValue === null || rawValue === '') {
       const shouldApplyDefault = field.isRequired && field.defaultValue != null;
       const defaultValue = shouldApplyDefault ? String(field.defaultValue) : null;
-      this.connection.fieldValues.update(map => {
+      this.connector.fieldValues.update(map => {
         const next = new Map(map);
         next.set(field.name, defaultValue);
         return next;
@@ -162,7 +162,7 @@ export class ConnectionComponent implements OnInit, CanLeaveWithUnsavedChanges {
     }
 
     const finalValue = numeric.toString();
-    this.connection.fieldValues.update(map => {
+    this.connector.fieldValues.update(map => {
       const next = new Map(map);
       next.set(field.name, finalValue);
       return next;
@@ -170,7 +170,7 @@ export class ConnectionComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   private getResolvedFieldValue(field: FieldDescriptor): string | null {
-    const fieldValues = this.connection.fieldValues();
+    const fieldValues = this.connector.fieldValues();
     if (fieldValues.has(field.name)) {
       return fieldValues.get(field.name) ?? null;
     }
@@ -183,7 +183,7 @@ export class ConnectionComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   public getFieldBooleanValue(field: FieldDescriptor): boolean {
-    const value = this.connection.fieldValues().get(field.name);
+    const value = this.connector.fieldValues().get(field.name);
 
     if (value != null) {
       return value.toLowerCase() === 'true';
@@ -193,7 +193,7 @@ export class ConnectionComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   public onFieldBooleanChange(field: FieldDescriptor, checked: boolean): void {
-    this.connection.fieldValues.update(map => {
+    this.connector.fieldValues.update(map => {
       const next = new Map(map);
       next.set(field.name, checked ? 'true' : 'false');
       return next;
@@ -201,19 +201,19 @@ export class ConnectionComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   private ensureAuthMode(resetFieldValues: boolean): void {
-    const authModes = this.connectionConfig?.authModes ?? [];
+    const authModes = this.connectorConfig?.authModes ?? [];
     if (!authModes.length) {
-      this.connection.authenticationModeId.set('');
+      this.connector.authenticationModeId.set('');
       if (resetFieldValues) {
-        this.connection.fieldValues.set(new Map());
+        this.connector.fieldValues.set(new Map());
       }
       return;
     }
 
-    let current = this.connection.authenticationModeId();
+    let current = this.connector.authenticationModeId();
     if (!current || !authModes.some(mode => mode.id === current)) {
       current = authModes[0].id;
-      this.connection.authenticationModeId.set(current);
+      this.connector.authenticationModeId.set(current);
     }
 
     if (resetFieldValues) {
@@ -224,7 +224,7 @@ export class ConnectionComponent implements OnInit, CanLeaveWithUnsavedChanges {
   private resetFieldsForSelectedAuthMode(): void {
     const mode = this.selectedAuthMode;
     if (!mode) {
-      this.connection.fieldValues.set(new Map());
+      this.connector.fieldValues.set(new Map());
       return;
     }
 
@@ -237,18 +237,18 @@ export class ConnectionComponent implements OnInit, CanLeaveWithUnsavedChanges {
       }
     });
 
-    this.connection.fieldValues.set(next);
+    this.connector.fieldValues.set(next);
   }
 
   hasUnsavedChanges(): boolean {
-    return this.connection.isDirty();
+    return this.connector.isDirty();
   }
 
   saveChanges(): Observable<void> {
-    return this.serverRepository.upsertConnection(this.connection)
+    return this.serverRepository.upsertConnector(this.connector)
       .pipe(
         map(() => {
-          this.connection?.markClean();
+          this.connector?.markClean();
           return;
         })
       );

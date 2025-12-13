@@ -8,6 +8,7 @@ Model Call
 	- Resolve path strings in the instructions and prompt
 	- Build out the different gpt-5.1 chat properties
 	- Support tool calling, reuse existing attributes etc?
+	- Support structured output
 
 Connection
 	- Add test button to check connectivity

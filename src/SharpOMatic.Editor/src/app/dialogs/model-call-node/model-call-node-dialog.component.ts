@@ -71,12 +71,12 @@ export class ModelCallNodeDialogComponent implements OnInit {
     this.showTextFields = false;
 
     if (!modelId) {
-      this.node.modelName.set('');
+      this.node.modelId.set('');
       return;
     }
 
     const summary = this.availableModels.find(model => model.modelId === modelId);
-    this.node.modelName.set(summary?.name ?? '');
+    this.node.modelId.set(summary?.modelId ?? modelId);
     this.loadModel(modelId);
   }
 
@@ -88,11 +88,11 @@ export class ModelCallNodeDialogComponent implements OnInit {
   }
 
   private syncSelectedModel(): void {
-    const matchedModel = this.availableModels.find(model => model.name === this.node.modelName());
+    const matchedModel = this.availableModels.find(model => model.modelId === this.node.modelId());
 
     if (matchedModel) {
       this.selectedModelId = matchedModel.modelId;
-      this.node.modelName.set(matchedModel.name);
+      this.node.modelId.set(matchedModel.modelId);
       this.loadModel(matchedModel.modelId);
       return;
     }
@@ -101,7 +101,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
     this.loadedModel = null;
     this.modelConfig = null;
     this.showTextFields = false;
-    this.node.modelName.set('');
+    this.node.modelId.set('');
   }
 
   private loadModel(modelId: string): void {
@@ -113,7 +113,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
         return;
       }
 
-      this.node.modelName.set(model.name());
+      this.node.modelId.set(model.modelId);
       this.loadModelConfig(model.configId());
     });
   }

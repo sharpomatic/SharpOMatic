@@ -5,8 +5,8 @@ public class SharpOMaticDbContext : DbContext
     public DbSet<Workflow> Workflows { get; set; }
     public DbSet<Run> Runs { get; set; }
     public DbSet<Trace> Traces { get; set; }
-    public DbSet<ConnectionConfigMetadata> ConnectionConfigMetadata { get; set; }
-    public DbSet<ConnectionMetadata> ConnectionMetadata { get; set; }
+    public DbSet<ConnectorConfigMetadata> ConnectorConfigMetadata { get; set; }
+    public DbSet<ConnectorMetadata> ConnectorMetadata { get; set; }
     public DbSet<ModelConfigMetadata> ModelConfigMetadata { get; set; }
     public DbSet<ModelMetadata> ModelMetadata { get; set; }
 

@@ -1,14 +1,14 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { catchError, map, Observable, of } from 'rxjs';
-import { Connection, ConnectionSnapshot } from '../metadata/definitions/connection';
+import { Connector, ConnectorSnapshot } from '../metadata/definitions/connector';
 import { WorkflowEntity, WorkflowSnapshot } from '../entities/definitions/workflow.entity';
 import { WorkflowSummaryEntity, WorkflowSummarySnapshot } from '../entities/definitions/workflow.summary.entity';
 import { RunProgressModel } from '../pages/workflow/interfaces/run-progress-model';
 import { TraceProgressModel } from '../pages/workflow/interfaces/trace-progress-model';
 import { ContextEntryListEntity } from '../entities/definitions/context-entry-list.entity';
-import { ConnectionConfig, ConnectionConfigSnapshot } from '../metadata/definitions/connection-config';
-import { ConnectionSummary, ConnectionSummarySnapshot } from '../metadata/definitions/connection summary';
+import { ConnectorConfig, ConnectorConfigSnapshot } from '../metadata/definitions/connector-config';
+import { ConnectorSummary, ConnectorSummarySnapshot } from '../metadata/definitions/connector-summary';
 import { ModelConfig, ModelConfigSnapshot } from '../metadata/definitions/model-config';
 import { ModelSummary, ModelSummarySnapshot } from '../metadata/definitions/model-summary';
 import { Model, ModelSnapshot } from '../metadata/definitions/model';
@@ -95,54 +95,54 @@ export class ServerRepositoryService {
     );
   }
 
-  public getConnectionConfigs(): Observable<ConnectionConfig[]> {
+  public getConnectorConfigs(): Observable<ConnectorConfig[]> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<ConnectionConfigSnapshot[]>(`${apiUrl}/api/metadata/connection-configs`).pipe(
-      map(snapshots => snapshots.map(ConnectionConfig.fromSnapshot)),
+    return this.http.get<ConnectorConfigSnapshot[]>(`${apiUrl}/api/metadata/connector-configs`).pipe(
+      map(snapshots => snapshots.map(ConnectorConfig.fromSnapshot)),
       catchError((error) => {
-        this.notifyError('Loading connection configs', error);
+        this.notifyError('Loading connector configs', error);
         return of([]);
       })
     );
   }
 
-  public getConnectionSummaries(): Observable<ConnectionSummary[]> {
+  public getConnectorSummaries(): Observable<ConnectorSummary[]> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<ConnectionSummarySnapshot[]>(`${apiUrl}/api/metadata/connections`).pipe(
-      map(snapshots => snapshots.map(ConnectionSummary.fromSnapshot)),
+    return this.http.get<ConnectorSummarySnapshot[]>(`${apiUrl}/api/metadata/connectors`).pipe(
+      map(snapshots => snapshots.map(ConnectorSummary.fromSnapshot)),
       catchError((error) => {
-        this.notifyError('Loading connections', error);
+        this.notifyError('Loading connectors', error);
         return of([]);
       })
     );
   }
 
-  public getConnection(id: string): Observable<Connection | null> {
+  public getConnector(id: string): Observable<Connector | null> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<ConnectionSnapshot>(`${apiUrl}/api/metadata/connections/${id}`).pipe(
-      map(Connection.fromSnapshot),
+    return this.http.get<ConnectorSnapshot>(`${apiUrl}/api/metadata/connectors/${id}`).pipe(
+      map(Connector.fromSnapshot),
       catchError((error) => {
-        this.notifyError('Loading connection', error);
+        this.notifyError('Loading connector', error);
         return of(null);
       })
     );
   }
 
-  public upsertConnection(connection: Connection): Observable<void> {
+  public upsertConnector(connector: Connector): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.post<void>(`${apiUrl}/api/metadata/connections`, connection.toSnapshot()).pipe(
+    return this.http.post<void>(`${apiUrl}/api/metadata/connectors`, connector.toSnapshot()).pipe(
       catchError((error) => {
-        this.notifyError('Saving connection', error);
+        this.notifyError('Saving connector', error);
         return of(undefined);
       })
     );
   }
 
-  public deleteConnection(id: string): Observable<void> {
+  public deleteConnector(id: string): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.delete<void>(`${apiUrl}/api/metadata/connections/${id}`).pipe(
+    return this.http.delete<void>(`${apiUrl}/api/metadata/connectors/${id}`).pipe(
       catchError((error) => {
-        this.notifyError('Deleting connection', error);
+        this.notifyError('Deleting connector', error);
         return of(undefined);
       })
     );

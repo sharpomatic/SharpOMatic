@@ -1,6 +1,6 @@
 ﻿namespace SharpOMatic.Engine.Metadata.Definitions;
 
-public class ConnectionConfig
+public class ConnectorConfig
 {
     public required string ConfigId { get; set; }
     public required string DisplayName { get; set; }

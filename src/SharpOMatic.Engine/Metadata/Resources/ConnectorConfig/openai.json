@@ -1,7 +1,7 @@
 {
   "ConfigId": "openai",
   "DisplayName": "OpenAI",
-  "Description": "Direct connection to the OpenAI API.",
+  "Description": "Connector to the OpenAI API.",
   "AuthModes": [
     {
       "Id": "apikey",
@@ -10,23 +10,15 @@
       "IsDefault": true,
       "Fields": [
         {
-          "Name": "endpoint",
-          "Label": "End Point",
-          "Description": "OpenAI API End Point",
-          "Type": 0,
-          "IsRequired": true,
-          "DefaultValue": "https://api.openai.com/v1"
-        },
-        {
-          "Name": "key",
-          "Label": "Key",
+          "Name": "apikey",
+          "Label": "API key",
           "Description": "OpenAI API Key",
           "Type": 1,
           "IsRequired": true,
           "DefaultValue": ""
         },
         {
-          "Name": "openai_apikey_organizationid",
+          "Name": "organizationid",
           "Label": "Organization Id",
           "Description": "Optional Organization Id",
           "Type": 0,
@@ -34,7 +26,7 @@
           "DefaultValue": ""
         },
         {
-          "Name": "openai_apikey_projectId",
+          "Name": "projectId",
           "Label": "Project Id",
           "Description": "Optional Project Id",
           "Type": 0,

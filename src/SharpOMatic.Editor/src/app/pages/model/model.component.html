@@ -9,25 +9,25 @@
 
   <div class="p-3 details bg-body-tertiary">
     <div class="mb-3 form-line">
-      <label for="model-connection" class="form-label field-label">Connector</label>
+      <label for="model-connector" class="form-label field-label">Connector</label>
       <div class="flex-fill control-column short">
         <select
-          id="model-connection"
+          id="model-connector"
           class="form-select w-100"
-          [ngModel]="model.connectionId()"
-          (ngModelChange)="model.connectionId.set($event)"
-          [disabled]="!connectionSummaries.length">
+          [ngModel]="model.connectorId()"
+          (ngModelChange)="model.connectorId.set($event)"
+          [disabled]="!connectorSummaries.length">
           <option [ngValue]="null">(None)</option>
-          @for(connection of connectionSummaries; track connection.connectionId) {
-            <option [ngValue]="connection.connectionId">
-              {{ connection.name }}
+          @for(conector of connectorSummaries; track conector.connectorId) {
+            <option [ngValue]="conector.connectorId">
+              {{ conector.name }}
             </option>
           }
         </select>
       </div>
     </div>
 
-    @if (model.connectionId()) {
+    @if (model.connectorId()) {
       <div class="mb-3 form-line">
         <label for="model-type" class="form-label field-label">Model</label>
         <div class="flex-fill control-column short">

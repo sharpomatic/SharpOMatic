@@ -1,4 +1,5 @@
-﻿global using Microsoft.CodeAnalysis;
+﻿global using Microsoft.Agents.AI;
+global using Microsoft.CodeAnalysis;
 global using Microsoft.CodeAnalysis.CSharp.Scripting;
 global using Microsoft.CodeAnalysis.Scripting;
 global using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,7 @@ global using Microsoft.EntityFrameworkCore.Design;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Hosting;
 global using Microsoft.Extensions.Options;
+global using OpenAI;
 global using SharpOMatic.Engine.Contexts;
 global using SharpOMatic.Engine.DataTransferObjects;
 global using SharpOMatic.Engine.Entities.Definitions;

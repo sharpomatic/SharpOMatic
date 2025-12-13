@@ -20,6 +20,13 @@
   ],
   "ParameterFields": [
     {
+      "Name": "modelName",
+      "Label": "Model Name",
+      "Description": "Custom model name.",
+      "Type": 0,
+      "IsRequired": true
+    },
+    {
       "Name": "temperature",
       "Label": "temperature",
       "Description": "Zero to 2.",

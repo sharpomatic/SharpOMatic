@@ -96,7 +96,7 @@ public class NodeExecutionService(INodeQueue queue, IServiceScopeFactory scopeFa
 
     private async Task LoadMetadata()
     {
-        await LoadMetadata<ConnectionConfig>("Metadata.Resources.ConnectionConfig", (repo, config) => repo.UpsertConnectionConfig(config));
+        await LoadMetadata<ConnectorConfig>("Metadata.Resources.ConnectorConfig", (repo, config) => repo.UpsertConnectorConfig(config));
         await LoadMetadata<ModelConfig>("Metadata.Resources.ModelConfig", (repo, config) => repo.UpsertModelConfig(config));
     }
 

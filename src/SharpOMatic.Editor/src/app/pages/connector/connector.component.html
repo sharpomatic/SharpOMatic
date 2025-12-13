@@ -1,7 +1,7 @@
 <div class="container-fluid p-0 connection-page">
   <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary">
-    <h2 class=""><i class="bi bi-plug pe-3 icon-sm"></i>{{ connection.name() }}</h2>
-    <button class="btn btn-primary" [disabled]="!connection.isDirty()"
+    <h2 class=""><i class="bi bi-plug pe-3 icon-sm"></i>{{ connector.name() }}</h2>
+    <button class="btn btn-primary" [disabled]="!connector.isDirty()"
           (click)="save()">Save</button>
   </div>
 
@@ -14,10 +14,10 @@
         <select
           id="connection-type"
           class="form-select w-100"
-          [ngModel]="connection.configId()"
-          (ngModelChange)="onConnectionConfigChange($event)"
-          [disabled]="!connectionConfigs().length">
-          @for(config of connectionConfigs(); track config.configId) {
+          [ngModel]="connector.configId()"
+          (ngModelChange)="onConnectorConfigChange($event)"
+          [disabled]="!connectorConfigs().length">
+          @for(config of connectorConfigs(); track config.configId) {
           <option [ngValue]="config.configId">
             {{ config.displayName }}
           </option>
@@ -25,19 +25,19 @@
         </select>
       </div>
     </div>
-    @if (connectionConfig) {
+    @if (connectorConfig) {
       <div class="mb-3 form-line">
         <label for="connection-name" class="form-label field-label">Name</label>
         <div class="flex-fill control-column short">
-          <input type="text" class="form-control w-100" id="connection-name" [ngModel]="connection.name()"
-              (ngModelChange)="connection.name.set($event)" />
+          <input type="text" class="form-control w-100" id="connection-name" [ngModel]="connector.name()"
+              (ngModelChange)="connector.name.set($event)" />
         </div>
       </div>  
       <div class="mb-3 form-line">
         <label for="connection-description" class="form-label field-label">Description</label>
         <div class="flex-fill control-column long">
-          <input type="text" class="form-control w-100" id="connection-description" [ngModel]="connection.description()"
-              (ngModelChange)="connection.description.set($event)" />
+          <input type="text" class="form-control w-100" id="connection-description" [ngModel]="connector.description()"
+              (ngModelChange)="connector.description.set($event)" />
         </div>
       </div>      
       <div class="mb-3 form-line">
@@ -46,10 +46,10 @@
           <select
             id="authentication-mode"
             class="form-select w-100"
-            [ngModel]="connection.authenticationModeId()"
-            (ngModelChange)="connection.authenticationModeId.set($event)"
-            [disabled]="!connectionConfig.authModes.length">
-            @for(mode of connectionConfig.authModes; track mode.id) {
+            [ngModel]="connector.authenticationModeId()"
+            (ngModelChange)="connector.authenticationModeId.set($event)"
+            [disabled]="!connectorConfig.authModes.length">
+            @for(mode of connectorConfig.authModes; track mode.id) {
             <option [ngValue]="mode.id">
               {{ mode.displayName }}
             </option>

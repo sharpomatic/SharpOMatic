@@ -25,19 +25,19 @@ public interface IRepository
     Task UpsertTrace(Trace trace);
 
     // ------------------------------------------------
-    // ConnectionConfig Operations
+    // ConnectorConfig Operations
     // ------------------------------------------------
-    Task<List<ConnectionConfig>> GetConnectionConfigs();
-    Task<ConnectionConfig?> GetConnectionConfig(string configId);
-    Task UpsertConnectionConfig(ConnectionConfig config);
+    Task<List<ConnectorConfig>> GetConnectorConfigs();
+    Task<ConnectorConfig?> GetConnectorConfig(string configId);
+    Task UpsertConnectorConfig(ConnectorConfig config);
 
     // ------------------------------------------------
-    // Connection Operations
+    // Connector Operations
     // ------------------------------------------------
-    IQueryable<ConnectionMetadata> GetConnections();
-    Task<Connection> GetConnection(Guid connectionId);
-    Task UpsertConnection(Connection connection);
-    Task DeleteConnection(Guid connectionId);
+    IQueryable<ConnectorMetadata> GetConnectors();
+    Task<Connector> GetConnector(Guid connectionId, bool hideSecrets = true);
+    Task UpsertConnector(Connector connection, bool hideSecrets = true);
+    Task DeleteConnector(Guid connectionId);
 
     // ------------------------------------------------
     // ModelConfig Operations

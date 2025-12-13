@@ -1,7 +1,7 @@
 import { Signal, computed, signal, WritableSignal } from '@angular/core';
 
-export interface ConnectionSnapshot {
-  connectionId: string;
+export interface ConnectorSnapshot {
+  connectorId: string;
   name: string;
   description: string;
   configId: string;
@@ -9,8 +9,8 @@ export interface ConnectionSnapshot {
   fieldValues: Record<string, string | null>;
 }
 
-export class Connection {
-  public readonly connectionId: string;
+export class Connector {
+  public readonly connectorId: string;
   public name: WritableSignal<string>;
   public description: WritableSignal<string>;
   public configId: WritableSignal<string>;
@@ -25,19 +25,19 @@ export class Connection {
   private initialFieldValues: Map<string, string | null>;
   private readonly cleanVersion = signal(0);
 
-  constructor(snapshot: ConnectionSnapshot) {
-    this.connectionId = snapshot.connectionId;
+  constructor(snapshot: ConnectorSnapshot) {
+    this.connectorId = snapshot.connectorId;
     this.initialName = snapshot.name;
     this.initialDescription = snapshot.description;
     this.initialConfigId = snapshot.configId;
     this.initialAuthenticationModeId = snapshot.authenticationModeId;
-    this.initialFieldValues = Connection.mapFromSnapshot(snapshot.fieldValues);
+    this.initialFieldValues = Connector.mapFromSnapshot(snapshot.fieldValues);
 
     this.name = signal(snapshot.name);
     this.description = signal(snapshot.description);
     this.configId = signal(snapshot.configId);
     this.authenticationModeId = signal(snapshot.authenticationModeId);
-    this.fieldValues = signal(Connection.mapFromSnapshot(snapshot.fieldValues));
+    this.fieldValues = signal(Connector.mapFromSnapshot(snapshot.fieldValues));
 
     this.isDirty = computed(() => {
       this.cleanVersion();
@@ -48,7 +48,7 @@ export class Connection {
       const currentAuthenticationModeId = this.authenticationModeId();
       const currentFieldValues = this.fieldValues();
 
-      const fieldValuesChanged = !Connection.areFieldValuesEqual(currentFieldValues, this.initialFieldValues);
+      const fieldValuesChanged = !Connector.areFieldValuesEqual(currentFieldValues, this.initialFieldValues);
 
       return currentName !== this.initialName ||
              currentDescription !== this.initialDescription ||
@@ -58,24 +58,24 @@ export class Connection {
     });
   }
 
-  public toSnapshot(): ConnectionSnapshot {
+  public toSnapshot(): ConnectorSnapshot {
     return {
-      connectionId: this.connectionId,
+      connectorId: this.connectorId,
       name: this.name(),
       description: this.description(),
       configId: this.configId(),
       authenticationModeId: this.authenticationModeId(),
-      fieldValues: Connection.snapshotFromMap(this.fieldValues()),
+      fieldValues: Connector.snapshotFromMap(this.fieldValues()),
     };
   }
 
-  public static fromSnapshot(snapshot: ConnectionSnapshot): Connection {
-    return new Connection(snapshot);
+  public static fromSnapshot(snapshot: ConnectorSnapshot): Connector {
+    return new Connector(snapshot);
   }
 
-  public static defaultSnapshot(): ConnectionSnapshot {
+  public static defaultSnapshot(): ConnectorSnapshot {
     return {
-      connectionId: crypto.randomUUID(),
+      connectorId: crypto.randomUUID(),
       name: '',
       description: '',
       configId: '',
@@ -93,7 +93,7 @@ export class Connection {
     this.cleanVersion.update(v => v + 1);
   }
 
-  private static mapFromSnapshot(fieldValues: ConnectionSnapshot['fieldValues'] | undefined): Map<string, string | null> {
+  private static mapFromSnapshot(fieldValues: ConnectorSnapshot['fieldValues'] | undefined): Map<string, string | null> {
     const entries = Object.entries(fieldValues ?? {}).map(([key, value]) => [key, value ?? null] as const);
     return new Map<string, string | null>(entries);
   }
@@ -115,7 +115,7 @@ export class Connection {
     return true;
   }
 
-  private static snapshotFromMap(fieldValues: Map<string, string | null> | undefined): ConnectionSnapshot['fieldValues'] {
+  private static snapshotFromMap(fieldValues: Map<string, string | null> | undefined): ConnectorSnapshot['fieldValues'] {
     if (!fieldValues) {
       return {};
     }

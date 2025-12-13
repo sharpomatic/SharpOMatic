@@ -1,8 +1,8 @@
 ﻿namespace SharpOMatic.Engine.Metadata.Definitions;
 
-public class ConnectionSummary
+public class ConnectorSummary
 {
-    public required Guid ConnectionId { get; set; }
+    public required Guid ConnectorId { get; set; }
     public required string Name { get; set; }
     public required string Description { get; set; }
 }

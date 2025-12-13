@@ -7,13 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Metadata\Resources\ConnectionConfig\azureopenai.json" />
-    <EmbeddedResource Include="Metadata\Resources\ConnectionConfig\openai.json" />
+    <EmbeddedResource Include="Metadata\Resources\ConnectorConfig\azureopenai.json" />
+    <EmbeddedResource Include="Metadata\Resources\ConnectorConfig\openai.json" />
     <EmbeddedResource Include="Metadata\Resources\ModelConfig\openai_custom.json" />
-    <EmbeddedResource Include="Metadata\Resources\ModelConfig\openai_gpt-5-chat.json" />
+    <EmbeddedResource Include="Metadata\Resources\ModelConfig\openai_gpt-5.2-chat-latest.json" />
   </ItemGroup>
 
   <ItemGroup>
+	<PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.0.0-preview.251204.1" />
 	<PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.14.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Features" Version="4.14.0" />

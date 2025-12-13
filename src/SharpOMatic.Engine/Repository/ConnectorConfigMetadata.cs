@@ -1,6 +1,6 @@
 ﻿namespace SharpOMatic.Engine.Repository;
 
-public class ConnectionConfigMetadata
+public class ConnectorConfigMetadata
 {
     [Key]
     public required string ConfigId { get; set; }

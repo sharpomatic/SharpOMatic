@@ -1,6 +1,6 @@
 {
-  "ConfigId": "openai_gpt-5-chat",
-  "DisplayName": "gpt-5-chat",
+  "ConfigId": "openai_gpt-5.2-chat-latest",
+  "DisplayName": "gpt-5.2-chat-latest",
   "Description": "Chat completion model.",
   "ConnectionConfigId": "openai",
   "IsCustom": false,

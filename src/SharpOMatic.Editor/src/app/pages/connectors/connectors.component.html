@@ -1,0 +1,21 @@
+<div class="container-fluid p-0 connections-page">
+  <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary">
+    <h2 class=""><i class="bi bi-plug pe-3 icon-sm"></i>Connectors ({{ connectors.length }})</h2>
+        <button class="btn btn-primary" (click)="newConnector()">New</button>
+  </div>
+  <hr class="m-0"/>
+  <div class="d-flex flex-wrap gap-3 p-3 connections-list">
+    @for (connector of connectors; track connector.connectorId) {
+      <div class="card workflow-card">
+        <div class="card-header">
+          <h5>{{ connector.name }}</h5>
+        </div>
+        <div class="card-body">
+          <p class="card-text">{{ connector.description }}</p>          
+          <button class="btn btn-primary" [routerLink]="['/connectors', connector.connectorId]">Open</button>
+          <button class="btn btn-primary ms-2" (click)="deleteConnector(connector)">Delete</button>
+        </div>
+      </div>
+    }    
+  </div>
+</div>

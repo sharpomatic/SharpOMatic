@@ -4,41 +4,41 @@ namespace SharpOMatic.Server.Controllers;
 [Route("api/[controller]")]
 public class MetadataController(IRepository repository) : ControllerBase
 {
-    [HttpGet("connection-configs")]
-    public async Task<IEnumerable<ConnectionConfig>> GetConnectionConfigs()
+    [HttpGet("connector-configs")]
+    public async Task<IEnumerable<ConnectorConfig>> GetConnectorConfigs()
     {
-        return await repository.GetConnectionConfigs();
+        return await repository.GetConnectorConfigs();
     }
 
-    [HttpGet("connections")]
-    public Task<List<ConnectionSummary>> GetConnectionSummaries(IRepository repository)
+    [HttpGet("connectors")]
+    public Task<List<ConnectorSummary>> GetConnectorSummaries(IRepository repository)
     {
-        return (from c in repository.GetConnections()
+        return (from c in repository.GetConnectors()
                 orderby c.Name
-                select new ConnectionSummary()
+                select new ConnectorSummary()
                 {
-                    ConnectionId = c.ConnectionId,
+                    ConnectorId = c.ConnectorId,
                     Name = c.Name,
                     Description = c.Description,
                 }).ToListAsync();
     }
 
-    [HttpGet("connections/{id}")]
-    public async Task<ActionResult<Connection>> GetConnection(IRepository repository, Guid id)
+    [HttpGet("connectors/{id}")]
+    public async Task<ActionResult<Connector>> GetConnector(IRepository repository, Guid id)
     {
-        return await repository.GetConnection(id);
+        return await repository.GetConnector(id);
     }
 
-    [HttpPost("connections")]
-    public async Task UpsertConnection(IRepository repository, [FromBody]Connection connection)
+    [HttpPost("connectors")]
+    public async Task UpsertConnector(IRepository repository, [FromBody]Connector connector)
     {
-        await repository.UpsertConnection(connection);
+        await repository.UpsertConnector(connector);
     }
 
-    [HttpDelete("connections/{id}")]
-    public async Task DeleteConnection(IRepository repository, Guid id)
+    [HttpDelete("connectors/{id}")]
+    public async Task DeleteConnector(IRepository repository, Guid id)
     {
-        await repository.DeleteConnection(id);
+        await repository.DeleteConnector(id);
     }
 
     [HttpGet("model-configs")]

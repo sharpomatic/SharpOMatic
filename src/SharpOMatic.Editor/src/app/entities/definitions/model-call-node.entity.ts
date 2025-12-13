@@ -4,20 +4,20 @@ import { NodeEntity, NodeSnapshot } from './node.entity';
 import { NodeType } from '../enumerations/node-type';
 
 export interface ModelCallNodeSnapshot extends NodeSnapshot {
-  modelName: string;
+  modelId: string;
   instructions: string;
   prompt: string;
 }
 
 export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
-  public modelName: WritableSignal<string>;
+  public modelId: WritableSignal<string>;
   public instructions: WritableSignal<string>;
   public prompt: WritableSignal<string>;
 
   constructor(snapshot: ModelCallNodeSnapshot) {
     super(snapshot);
 
-    this.modelName = signal(snapshot.modelName);
+    this.modelId = signal(snapshot.modelId);
     this.instructions = signal(snapshot.instructions);
     this.prompt = signal(snapshot.prompt);
 
@@ -27,12 +27,12 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
 
       // Must touch all property signals
       const currentIsDirty = baseIsDirty();
-      const currentModelName = this.modelName();
+      const currentModelId = this.modelId();
       const currentInstructions = this.instructions();
       const currentPrompt = this.prompt();
 
       return currentIsDirty ||
-        currentModelName !== snapshot.modelName ||
+        currentModelId !== snapshot.modelId ||
         currentInstructions !== snapshot.instructions ||
         currentPrompt !== snapshot.prompt;
     });
@@ -41,7 +41,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
   public override toSnapshot(): ModelCallNodeSnapshot {
     return {
       ...super.toNodeSnapshot(),
-      modelName: this.modelName(),
+      modelId: this.modelId(),
       instructions: this.instructions(),
       prompt: this.prompt(),
     };
@@ -58,7 +58,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       title: 'Model Call',
       inputs: [ConnectorEntity.defaultSnapshot()],
       outputs: [ConnectorEntity.defaultSnapshot()],
-      modelName: '',
+      modelId: '',
       instructions: '',
       prompt: '',
     };

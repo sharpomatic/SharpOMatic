@@ -23,10 +23,10 @@
         </button>
     </li>
     <li class="nav-item w-100">
-      <button class="nav-link w-100 d-flex" routerLink="/connections" routerLinkActive="active"
-          #connectionsLink="routerLinkActive"
-          [class.active]="connectionsLink.isActive"
-          [class.link-body-emphasis]="!connectionsLink.isActive">
+      <button class="nav-link w-100 d-flex" routerLink="/connectors" routerLinkActive="active"
+          #connectorsLink="routerLinkActive"
+          [class.active]="connectorsLink.isActive"
+          [class.link-body-emphasis]="!connectorsLink.isActive">
           <i class="bi bi-plug" [class.me-3]="!isSidebarClosed"></i>
           @if(!isSidebarClosed) {
             <span>Connectors</span>

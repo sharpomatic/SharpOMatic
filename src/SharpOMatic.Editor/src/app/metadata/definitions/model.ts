@@ -4,7 +4,7 @@ export interface ModelSnapshot {
   modelId: string;
   name: string;
   description: string;
-  connectionId: string | null;
+  connectorId: string | null;
   configId: string;
   customCapabilities: string[];
   parameterValues: Record<string, string | null>;
@@ -14,7 +14,7 @@ export class Model {
   public readonly modelId: string;
   public name: WritableSignal<string>;
   public description: WritableSignal<string>;
-  public connectionId: WritableSignal<string | null>;
+  public connectorId: WritableSignal<string | null>;
   public configId: WritableSignal<string>;
   public customCapabilities: WritableSignal<Set<string>>;
   public parameterValues: WritableSignal<Map<string, string | null>>;
@@ -22,7 +22,7 @@ export class Model {
 
   private initialName: string;
   private initialDescription: string;
-  private initialConnectionId: string | null;
+  private initialConnectorId: string | null;
   private initialConfigId: string;
   private initialCustomCapabilities: Set<string>;
   private initialParameterValues: Map<string, string | null>;
@@ -32,14 +32,14 @@ export class Model {
     this.modelId = snapshot.modelId;
     this.initialName = snapshot.name;
     this.initialDescription = snapshot.description;
-    this.initialConnectionId = snapshot.connectionId ?? null;
+    this.initialConnectorId = snapshot.connectorId ?? null;
     this.initialConfigId = snapshot.configId;
     this.initialCustomCapabilities = Model.capabilitiesFromSnapshot(snapshot.customCapabilities);
     this.initialParameterValues = Model.mapFromSnapshot(snapshot.parameterValues);
 
     this.name = signal(snapshot.name);
     this.description = signal(snapshot.description);
-    this.connectionId = signal(snapshot.connectionId ?? null);
+    this.connectorId = signal(snapshot.connectorId ?? null);
     this.configId = signal(snapshot.configId);
     this.customCapabilities = signal(Model.capabilitiesFromSnapshot(snapshot.customCapabilities));
     this.parameterValues = signal(Model.mapFromSnapshot(snapshot.parameterValues));
@@ -49,7 +49,7 @@ export class Model {
 
       const currentName = this.name();
       const currentDescription = this.description();
-      const currentConnectionId = this.connectionId();
+      const currentConnectorId = this.connectorId();
       const currentConfigId = this.configId();
       const currentCustomCapabilities = this.customCapabilities();
       const currentParameterValues = this.parameterValues();
@@ -66,7 +66,7 @@ export class Model {
 
       return currentName !== this.initialName ||
              currentDescription !== this.initialDescription ||
-             currentConnectionId !== this.initialConnectionId ||
+             currentConnectorId !== this.initialConnectorId ||
              currentConfigId !== this.initialConfigId ||
              capabilitiesChanged ||
              parameterValuesChanged;
@@ -78,7 +78,7 @@ export class Model {
       modelId: this.modelId,
       name: this.name(),
       description: this.description(),
-      connectionId: this.connectionId() ?? null,
+      connectorId: this.connectorId() ?? null,
       configId: this.configId(),
       customCapabilities: Model.capabilitiesToSnapshot(this.customCapabilities()),
       parameterValues: Model.snapshotFromMap(this.parameterValues()),
@@ -94,7 +94,7 @@ export class Model {
       modelId: crypto.randomUUID(),
       name: '',
       description: '',
-      connectionId: null,
+      connectorId: null,
       configId: '',
       customCapabilities: [],
       parameterValues: {},
@@ -104,7 +104,7 @@ export class Model {
   public markClean(): void {
     this.initialName = this.name();
     this.initialDescription = this.description();
-    this.initialConnectionId = this.connectionId() ?? null;
+    this.initialConnectorId = this.connectorId() ?? null;
     this.initialConfigId = this.configId();
     this.initialCustomCapabilities = new Set(this.customCapabilities());
     this.initialParameterValues = new Map(this.parameterValues());

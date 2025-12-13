@@ -1,7 +1,11 @@
+using Microsoft.CodeAnalysis;
+
 namespace SharpOMatic.Engine.Services;
 
 public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContextFactory) : IRepository
 {
+    private const string SECRET_OBFUSCATION = "********";
+
     private static readonly JsonSerializerOptions _options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -151,33 +155,33 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     }
 
     // ------------------------------------------------
-    // ConnectionConfig Operations
+    // ConnectorConfig Operations
     // ------------------------------------------------
-    public async Task<ConnectionConfig?> GetConnectionConfig(string configId)
+    public async Task<ConnectorConfig?> GetConnectorConfig(string configId)
     {
         var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (from c in dbContext.ConnectionConfigMetadata
+        var metadata = await (from c in dbContext.ConnectorConfigMetadata
                               where c.ConfigId == configId
                               select c).AsNoTracking().FirstOrDefaultAsync();
 
         if (metadata is null)
             return null;
 
-        return JsonSerializer.Deserialize<ConnectionConfig>(metadata.Config, _options);
+        return JsonSerializer.Deserialize<ConnectorConfig>(metadata.Config, _options);
 
     }
 
-    public async Task<List<ConnectionConfig>> GetConnectionConfigs()
+    public async Task<List<ConnectorConfig>> GetConnectorConfigs()
     {
         var dbContext = dbContextFactory.CreateDbContext();
 
-        var entries = await dbContext.ConnectionConfigMetadata.AsNoTracking().ToListAsync();
+        var entries = await dbContext.ConnectorConfigMetadata.AsNoTracking().ToListAsync();
 
-        var results = new List<ConnectionConfig>();
+        var results = new List<ConnectorConfig>();
         foreach (var entry in entries)
         {
-            var config = JsonSerializer.Deserialize<ConnectionConfig>(entry.Config, _options);
+            var config = JsonSerializer.Deserialize<ConnectorConfig>(entry.Config, _options);
             if (config != null)
                 results.Add(config);
         }
@@ -185,23 +189,23 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return results;
     }
 
-    public async Task UpsertConnectionConfig(ConnectionConfig config)
+    public async Task UpsertConnectorConfig(ConnectorConfig config)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (from c in dbContext.ConnectionConfigMetadata
+        var metadata = await (from c in dbContext.ConnectorConfigMetadata
                               where c.ConfigId == config.ConfigId
                               select c).FirstOrDefaultAsync();
 
         if (metadata is null)
         {
-            metadata = new ConnectionConfigMetadata()
+            metadata = new ConnectorConfigMetadata()
             {
                 ConfigId = config.ConfigId,
                 Config = ""
             };
 
-            dbContext.ConnectionConfigMetadata.Add(metadata);
+            dbContext.ConnectorConfigMetadata.Add(metadata);
         }
 
         metadata.Config = JsonSerializer.Serialize(config, _options);
@@ -209,86 +213,109 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     }
 
     // ------------------------------------------------
-    // Connection Operations
+    // Connector Operations
     // ------------------------------------------------
-    public IQueryable<ConnectionMetadata> GetConnections()
+    public IQueryable<ConnectorMetadata> GetConnectors()
     {
         var dbContext = dbContextFactory.CreateDbContext();
-        return dbContext.ConnectionMetadata;
+        return dbContext.ConnectorMetadata;
     }
 
-    public async Task<Connection> GetConnection(Guid connectionId)
+    public async Task<Connector> GetConnector(Guid connectorId, bool hideSecrets = true)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (from c in dbContext.ConnectionMetadata
-                              where c.ConnectionId == connectionId
+        var metadata = await (from c in dbContext.ConnectorMetadata
+                              where c.ConnectorId == connectorId
                               select c).AsNoTracking().FirstOrDefaultAsync();
 
         if (metadata is null)
-            throw new SharpOMaticException($"Connection '{connectionId}' cannot be found.");
+            throw new SharpOMaticException($"Connector '{connectorId}' cannot be found.");
 
-        var connection = JsonSerializer.Deserialize<Connection>(metadata.Config);
+        var connector = JsonSerializer.Deserialize<Connector>(metadata.Config);
 
-        if (connection is null)
-            throw new SharpOMaticException($"Connection '{connectionId}' configuration is invalid.");
+        if (connector is null)
+            throw new SharpOMaticException($"Connector '{connectorId}' configuration is invalid.");
 
-        // We need to ensure that any field that is a secret, is replaced to prevent it being available in the client
-        if ((connection.FieldValues.Count > 0) && !string.IsNullOrWhiteSpace(connection.ConfigId))
+        // We need to ensure that any field that is a secret, is replaced to prevent it being available to clients
+        if (hideSecrets && (connector.FieldValues.Count > 0) && !string.IsNullOrWhiteSpace(connector.ConfigId))
         {
-            var config = await GetConnectionConfig(connection.ConfigId);
+            var config = await GetConnectorConfig(connector.ConfigId);
             if (config is not null)
             {
                 foreach (var authModes in config.AuthModes)
                 {
                     foreach (var field in authModes.Fields)
-                        if ((field.Type == FieldDescriptorType.Secret) && connection.FieldValues.ContainsKey(field.Name))
-                            connection.FieldValues[field.Name] = "**********";
+                        if ((field.Type == FieldDescriptorType.Secret) && connector.FieldValues.ContainsKey(field.Name))
+                            connector.FieldValues[field.Name] = SECRET_OBFUSCATION;
                 }
             }
         }
 
-        return connection;
+        return connector;
     }
 
-    public async Task UpsertConnection(Connection connection)
+    public async Task UpsertConnector(Connector connector, bool hideSecrets = true)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entry = await (from c in dbContext.ConnectionMetadata
-                           where c.ConnectionId == connection.ConnectionId
+        var entry = await (from c in dbContext.ConnectorMetadata
+                           where c.ConnectorId == connector.ConnectorId
                            select c).FirstOrDefaultAsync();
 
         if (entry is null)
         {
-            entry = new ConnectionMetadata()
+            entry = new ConnectorMetadata()
             {
-                ConnectionId = connection.ConnectionId,
+                ConnectorId = connector.ConnectorId,
                 Name = "",
                 Description = "",
                 Config = ""
             };
 
-            dbContext.ConnectionMetadata.Add(entry);
+            dbContext.ConnectorMetadata.Add(entry);
+        }
+        else if (hideSecrets)
+        {
+            // If any provided secrets are the obfuscated value then we do not want to overwrite the existing value
+            var entryConfig = JsonSerializer.Deserialize<Connector>(entry.Config);
+            if (entryConfig is not null)
+            {
+                var config = await GetConnectorConfig(connector.ConfigId);
+                if (config is not null)
+                {
+                    foreach (var authModes in config.AuthModes)
+                    {
+                        foreach (var field in authModes.Fields)
+                            if ((field.Type == FieldDescriptorType.Secret) && 
+                                connector.FieldValues.ContainsKey(field.Name) &&
+                                entryConfig.FieldValues.ContainsKey(field.Name) &&
+                                (connector.FieldValues[field.Name] != SECRET_OBFUSCATION))
+                            {
+                                connector.FieldValues[field.Name] = entryConfig.FieldValues[field.Name];
+                            }
+                    }
+                }
+            }
         }
 
-        entry.Name = connection.Name;
-        entry.Description = connection.Description;
-        entry.Config = JsonSerializer.Serialize(connection);
+        entry.Name = connector.Name;
+        entry.Description = connector.Description;
+        entry.Config = JsonSerializer.Serialize(connector);
 
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task DeleteConnection(Guid connectionId)
+    public async Task DeleteConnector(Guid connectorId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (from c in dbContext.ConnectionMetadata
-                              where c.ConnectionId == connectionId
+        var metadata = await (from c in dbContext.ConnectorMetadata
+                              where c.ConnectorId == connectorId
                               select c).FirstOrDefaultAsync();
 
         if (metadata is null)
-            throw new SharpOMaticException($"Connection '{connectionId}' cannot be found.");
+            throw new SharpOMaticException($"Connector '{connectorId}' cannot be found.");
 
         dbContext.Remove(metadata);
         await dbContext.SaveChangesAsync();

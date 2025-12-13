@@ -1,5 +1,5 @@
 import { effect, inject, Injectable, WritableSignal, signal } from '@angular/core';
-import { ConnectionConfig } from '../metadata/definitions/connection-config';
+import { ConnectorConfig } from '../metadata/definitions/connector-config';
 import { ModelConfig } from '../metadata/definitions/model-config';
 import { ServerRepositoryService } from './server.repository.service';
 import { SignalrService } from './signalr.service';
@@ -10,27 +10,27 @@ import { SignalrService } from './signalr.service';
 export class MetadataService {
   private readonly serverRepository = inject(ServerRepositoryService);
   private readonly signalrService = inject(SignalrService);
-  private readonly _connectionConfigs: WritableSignal<ConnectionConfig[]> = signal([]);
+  private readonly _connectorConfigs: WritableSignal<ConnectorConfig[]> = signal([]);
   private readonly _modelConfigs: WritableSignal<ModelConfig[]> = signal([]);
-  readonly connectionConfigs = this._connectionConfigs.asReadonly();
+  readonly connectorConfigs = this._connectorConfigs.asReadonly();
   readonly modelConfigs = this._modelConfigs.asReadonly();
 
   constructor() {
     effect(() => {
       if (this.signalrService.isConnected()) {
-        this.loadConnectionConfigs();
+        this.loadConnectorConfigs();
         this.loadModelConfigs();
       } else {
-        this._connectionConfigs.set([]);
+        this._connectorConfigs.set([]);
         this._modelConfigs.set([]);
       }
     });
   }
 
-  private loadConnectionConfigs(): void {
-    this.serverRepository.getConnectionConfigs().subscribe(configs => {
+  private loadConnectorConfigs(): void {
+    this.serverRepository.getConnectorConfigs().subscribe(configs => {
       const sorted = [...configs].sort((a, b) => a.displayName.localeCompare(b.displayName));
-      this._connectionConfigs.set(sorted);
+      this._connectorConfigs.set(sorted);
     });
   }
 

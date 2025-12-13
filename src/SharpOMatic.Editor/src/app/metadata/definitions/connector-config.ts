@@ -1,13 +1,13 @@
 import { AuthenticationModeConfig, AuthenticationModeConfigSnapshot } from "./authentication-mode-config";
 
-export interface ConnectionConfigSnapshot {
+export interface ConnectorConfigSnapshot {
   configId: string;
   displayName: string;
   description: string;
   authModes: AuthenticationModeConfigSnapshot[];
 }
 
-export class ConnectionConfig {
+export class ConnectorConfig {
   constructor(
     public readonly configId: string,
     public readonly displayName: string,
@@ -15,8 +15,8 @@ export class ConnectionConfig {
     public readonly authModes: AuthenticationModeConfig[],
   ) {}
 
-  public static fromSnapshot(snapshot: ConnectionConfigSnapshot): ConnectionConfig {
-    return new ConnectionConfig(
+  public static fromSnapshot(snapshot: ConnectorConfigSnapshot): ConnectorConfig {
+    return new ConnectorConfig(
       snapshot.configId,
       snapshot.displayName,
       snapshot.description,

@@ -12,7 +12,7 @@ namespace SharpOMatic.Engine.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "ConnectionConfigMetadata",
+                name: "ConnectorConfigMetadata",
                 columns: table => new
                 {
                     ConfigId = table.Column<string>(type: "TEXT", nullable: false),
@@ -20,21 +20,21 @@ namespace SharpOMatic.Engine.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ConnectionConfigMetadata", x => x.ConfigId);
+                    table.PrimaryKey("PK_ConnectorConfigMetadata", x => x.ConfigId);
                 });
 
             migrationBuilder.CreateTable(
-                name: "ConnectionMetadata",
+                name: "ConnectorMetadata",
                 columns: table => new
                 {
-                    ConnectionId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    ConnectorId = table.Column<Guid>(type: "TEXT", nullable: false),
                     Name = table.Column<string>(type: "TEXT", nullable: false),
                     Description = table.Column<string>(type: "TEXT", nullable: false),
                     Config = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ConnectionMetadata", x => x.ConnectionId);
+                    table.PrimaryKey("PK_ConnectorMetadata", x => x.ConnectorId);
                 });
 
             migrationBuilder.CreateTable(
@@ -129,10 +129,10 @@ namespace SharpOMatic.Engine.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "ConnectionConfigMetadata");
+                name: "ConnectorConfigMetadata");
 
             migrationBuilder.DropTable(
-                name: "ConnectionMetadata");
+                name: "ConnectorMetadata");
 
             migrationBuilder.DropTable(
                 name: "ModelConfigMetadata");
