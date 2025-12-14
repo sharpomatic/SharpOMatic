@@ -70,7 +70,8 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         var response = await agent.RunAsync(prompt, options: new ChatClientAgentRunOptions(chatOptions));
         
         var tempContext = new ContextObject();
-        tempContext.Set("output.text", response.Text);
+        var textPath = !string.IsNullOrWhiteSpace(Node.TextOutputPath) ? Node.TextOutputPath : "output.text";
+        tempContext.Set(textPath, response.Text);
         ThreadContext.RunContext.MergeContexts(ThreadContext.NodeContext, tempContext);
 
         return ("Model call executed", new List<NextNodeData> { new(ThreadContext, RunContext.ResolveSingleOutput(Node)) });
