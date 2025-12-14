@@ -56,41 +56,6 @@
         </button>
     </li>
   </ul>
-
-  <!-- Separator -->
-  <hr class="m-0"/>
-
-  <!-- Theme Selection -->
-  <div class="dropdown p-3">
-    <a href="#" class="d-flex align-items-center link-body-emphasis text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-      @if(!isSidebarClosed) {
-        <span class="bi" [class.ms-2]="!isSidebarClosed">{{ activeTheme|titlecase }}</span>
-      }
-      @if(isSidebarClosed) {
-        <span class="bi" [class]="activeThemeIcon"></span>
-      }
-    </a>
-    <ul class="dropdown-menu text-small shadow">
-      <li>
-        <a class="dropdown-item d-flex align-items-center" (click)="setTheme('light')" [class.active]="activeTheme === 'light'">
-          <i class="bi bi-sun-fill me-2"></i>
-          Light
-        </a>
-      </li>
-      <li>
-        <a class="dropdown-item d-flex align-items-center" (click)="setTheme('dark')" [class.active]="activeTheme === 'dark'">
-          <i class="bi bi-moon-stars-fill me-2"></i>
-          Dark
-        </a>
-      </li>
-      <li>
-        <a class="dropdown-item d-flex align-items-center" (click)="setTheme('auto')" [class.active]="activeTheme === 'auto'">
-          <i class="bi bi-circle-half me-2"></i>
-          Auto
-        </a>
-      </li>
-    </ul>
-  </div>
 </div>
 
 <!-- Select Page -->

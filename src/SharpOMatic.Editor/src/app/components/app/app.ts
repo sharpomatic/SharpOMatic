@@ -1,5 +1,5 @@
-import { Component, effect, inject, OnDestroy, OnInit } from '@angular/core';
-import { CommonModule, TitleCasePipe } from '@angular/common';
+import { Component, inject, OnDestroy, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { BsModalService, BsModalRef } from 'ngx-bootstrap/modal';
 import { NotConnectedDialogComponent } from '../../dialogs/not-connected/not-connected-dialog.component';
@@ -13,7 +13,6 @@ import { ToastService } from '../../services/toast.service';
     RouterOutlet,
     RouterLink,
     RouterLinkActive,
-    TitleCasePipe,
   ],
   providers: [BsModalService],
   templateUrl: './app.html',
@@ -24,8 +23,6 @@ export class App implements OnInit, OnDestroy {
   protected readonly toastService = inject(ToastService);
   private modalRef?: BsModalRef;
 
-  activeTheme: string = 'auto';
-  activeThemeIcon: string = 'bi-circle-half';
   isSidebarClosed = false;
 
   constructor() {
@@ -36,31 +33,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.initializeTheme();
-  }
-
-  setTheme(theme: string): void {
-    this.activeTheme = theme;
-    if (theme === 'auto') {
-      this.activeThemeIcon = 'bi-circle-half';
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.documentElement.setAttribute('data-bs-theme', prefersDark ? 'dark' : 'light');
-    } else {
-      this.activeThemeIcon = theme === 'light' ? 'bi-sun-fill' : 'bi-moon-stars-fill';
-      document.documentElement.setAttribute('data-bs-theme', theme);
-    }
-    localStorage.setItem('theme', theme);
-  }
-
-  private initializeTheme(): void {
-    const storedTheme = localStorage.getItem('theme') ?? 'auto';
-    this.setTheme(storedTheme);
-
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-      if (this.activeTheme === 'auto') {
-        this.setTheme('auto');
-      }
-    });
+    document.documentElement.setAttribute('data-bs-theme', 'dark');
   }
 
   private openNotConnectedDialog(): void {
