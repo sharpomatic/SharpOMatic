@@ -86,6 +86,22 @@
           [allowedCapabilities]="['SupportsStructuredOutput']"
           (valuesChange)="onParameterValuesChange($event)">
         </app-dynamic-fields>
+
+        @if (isSchemaMode) {
+          <div class="mt-3">
+            <div class="mb-2 form-line align-top">
+              <label class="form-label field-label align-top">Schema</label>
+              <div class="flex-fill control-column extra-long">
+                <ngx-monaco-editor
+                  class="editJson"
+                  [options]="structuredSchemaEditorOptions"
+                  [ngModel]="node.parameterValues()['structuredOutputSchema'] ?? ''"
+                  (ngModelChange)="onStructuredSchemaChange($event)">
+                </ngx-monaco-editor>
+              </div>
+            </div>
+          </div>
+        }
       </div>
     </ng-template>
     <ng-template #inputsTab>

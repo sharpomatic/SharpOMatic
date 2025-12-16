@@ -13,6 +13,8 @@ import { ModelConfig } from '../../metadata/definitions/model-config';
 import { FieldDescriptor } from '../../metadata/definitions/field-descriptor';
 import { FieldDescriptorType } from '../../metadata/enumerations/field-descriptor-type';
 import { DynamicFieldsCapabilityContext, DynamicFieldsComponent } from '../../components/dynamic-fields/dynamic-fields.component';
+import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
+import { MonacoService } from '../../services/monaco.service';
 
 @Component({
   selector: 'app-model-call-node-dialog',
@@ -23,6 +25,7 @@ import { DynamicFieldsCapabilityContext, DynamicFieldsComponent } from '../../co
     TabComponent,
     ContextViewerComponent,
     DynamicFieldsComponent,
+    MonacoEditorModule,
   ],
   templateUrl: './model-call-node-dialog.component.html',
   styleUrls: ['./model-call-node-dialog.component.scss'],
@@ -42,6 +45,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
   public availableModels: ModelSummary[] = [];
   public selectedModelId: string | null = null;
   public showTextFields = false;
+  public structuredSchemaEditorOptions = MonacoService.editorOptionsJson;
   public get capabilityContext(): DynamicFieldsCapabilityContext | null {
     if (!this.modelConfig) {
       return null;
@@ -185,6 +189,22 @@ export class ModelCallNodeDialogComponent implements OnInit {
 
   public onParameterValuesChange(values: Record<string, string | null>): void {
     this.node.parameterValues.set(values);
+  }
+
+  public get structuredOutputMode(): string {
+    const values = this.node.parameterValues();
+    return values['structured_output'] ?? values['structuredOutput'] ?? '';
+  }
+
+  public get isSchemaMode(): boolean {
+    return this.structuredOutputMode === 'Schema';
+  }
+
+  public onStructuredSchemaChange(value: string): void {
+    this.node.parameterValues.update(v => ({
+      ...v,
+      structuredOutputSchema: value ?? '',
+    }));
   }
 
   private syncCallParameterValues(): void {
