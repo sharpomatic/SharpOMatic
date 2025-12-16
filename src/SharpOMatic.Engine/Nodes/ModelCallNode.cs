@@ -1,3 +1,4 @@
+using System.Text.Json;
 namespace SharpOMatic.Engine.Nodes;
 
 [RunNode(NodeType.ModelCall)]
@@ -53,6 +54,25 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
         var chatOptions = new ChatOptions();
 
+        if (modelConfig.Capabilities.Any(c => c.Name == "SupportsStructuredOutput") &&
+            Node.ParameterValues.TryGetValue("structured_output", out var outputFormat))
+
+        {
+            if (outputFormat == "Schema" &&
+                Node.ParameterValues.TryGetValue("structured_output_schema", out var outputSchema) &&
+                !string.IsNullOrWhiteSpace(outputSchema))
+            {
+                //JsonElement example = AIJsonUtilities.CreateJsonSchema(typeof(Response));
+                //var responseString = JsonSerializer.Serialize(example);
+
+
+                JsonElement element = JsonSerializer.Deserialize<JsonElement>(outputSchema);
+                chatOptions.ResponseFormat = ChatResponseFormat.ForJsonSchema(element);
+            }
+        }
+
+        // JsonElement schema = AIJsonUtilities.CreateJsonSchema(typeof(PersonInfo));
+
         if (modelConfig.Capabilities.Any(c => c.Name == "SupportsMaxOutputTokens") &&
             model.ParameterValues.TryGetValue("max_output_tokens", out var paramMaxOutputTokens) &&
             int.TryParse(paramMaxOutputTokens, out var maxOutputTokens))
@@ -75,5 +95,11 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         ThreadContext.RunContext.MergeContexts(ThreadContext.NodeContext, tempContext);
 
         return ("Model call executed", new List<NextNodeData> { new(ThreadContext, RunContext.ResolveSingleOutput(Node)) });
+    }
+
+    public class Response
+    {
+        public required string Answer { get; set; }
+        public required string Reason { get; set; }
     }
 }
