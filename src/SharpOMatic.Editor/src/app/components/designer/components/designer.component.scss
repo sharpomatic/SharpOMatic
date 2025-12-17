@@ -7,6 +7,10 @@
   background-image: radial-gradient(circle, #444444 1px, transparent 1px);
   background-size: 16px 16px;
   overflow: hidden;
+
+  &.panning {
+    cursor: grabbing;
+  }
 }
 
 .selection-rect {
@@ -14,6 +18,13 @@
   border: 1px dashed #fff;
   background-color: rgba(192, 192, 192, 0.25);
   z-index: 9999;
+  pointer-events: none;
+}
+
+.designer-content {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
 }
 
 @keyframes border-pulse {
@@ -182,4 +193,3 @@
     left: 0;
   }
 }
-

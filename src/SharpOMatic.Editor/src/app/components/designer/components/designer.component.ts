@@ -49,6 +49,7 @@ export class DesignerComponent {
   public readonly selectedEntities = this.selectionService.selectedEntities;
   public selectionRect: WritableSignal<Rect | null> = signal(null);
   public pendingConnection: WritableSignal<{ from: ConnectorEntity, targetPoint: Point } | null> = signal(null);
+  public panOffset: WritableSignal<Point> = signal({ x: 0, y: 0 });
 
   public NodeStatus = NodeStatus;
   public NodeType = NodeType;
@@ -58,19 +59,39 @@ export class DesignerComponent {
   private isNodeEnabled = false;
   private isNodeDragging = false;
   private isConnectorDragging = false;
-  private dragStartPoint: Point = { x: 0, y: 0 };
+  private isPanning = false;
+  private suppressContextMenu = false;
+  private dragStartViewPoint: Point = { x: 0, y: 0 };
+  private dragStartWorldPoint: Point = { x: 0, y: 0 };
   private dragStartSelections: Entity<EntitySnapshot>[] = [];
   private dragStartPositions: Point[] = [];
+  private panStartViewPoint: Point = { x: 0, y: 0 };
+  private panStartOffset: Point = { x: 0, y: 0 };
   private selectionNode: NodeEntity<NodeSnapshot> | null = null;
   private selectionConnector: ConnectorEntity | null = null;
 
-  private getMouseInSurfaceUnits(event: MouseEvent): Point {
+  private getMouseViewPoint(event: MouseEvent): Point {
     const surfaceRect = this.designerSurface.nativeElement.getBoundingClientRect();
     return { x: event.clientX - surfaceRect.left, y: event.clientY - surfaceRect.top };
   }
 
+  private getMouseWorldPoint(event: MouseEvent): Point {
+    const viewPoint = this.getMouseViewPoint(event);
+    const offset = this.panOffset();
+    return { x: viewPoint.x - offset.x, y: viewPoint.y - offset.y };
+  }
+
   onSurfaceMouseDown(event: MouseEvent): void {
     event.stopPropagation();
+
+    if (event.button === 2) {
+      event.preventDefault();
+      this.isPanning = true;
+      this.suppressContextMenu = true;
+      this.panStartViewPoint = this.getMouseViewPoint(event);
+      this.panStartOffset = this.panOffset();
+      return;
+    }
 
     if (event.button !== 0) return;
 
@@ -79,19 +100,29 @@ export class DesignerComponent {
     }
 
     this.isSurfaceEnabled = true;
-    this.dragStartPoint = this.getMouseInSurfaceUnits(event);
+    this.dragStartViewPoint = this.getMouseViewPoint(event);
   }
 
   onSurfaceMove(event: MouseEvent): void {
     event.stopPropagation();
 
-    const mousePoint = this.getMouseInSurfaceUnits(event);
-    const deltaX = mousePoint.x - this.dragStartPoint.x;
-    const deltaY = mousePoint.y - this.dragStartPoint.y;
+    const mouseViewPoint = this.getMouseViewPoint(event);
+    const mouseWorldPoint = this.getMouseWorldPoint(event);
+
+    if (this.isPanning) {
+      this.setPanOffset({
+        x: this.panStartOffset.x + (mouseViewPoint.x - this.panStartViewPoint.x),
+        y: this.panStartOffset.y + (mouseViewPoint.y - this.panStartViewPoint.y),
+      });
+      return;
+    }
+
+    const deltaXView = mouseViewPoint.x - this.dragStartViewPoint.x;
+    const deltaYView = mouseViewPoint.y - this.dragStartViewPoint.y;
 
     if (this.isSurfaceEnabled) {
       if (!this.isSurfaceDragging) {
-        const maxDelta = Math.max(Math.abs(deltaX), Math.abs(deltaY));
+        const maxDelta = Math.max(Math.abs(deltaXView), Math.abs(deltaYView));
         if (maxDelta < DesignerUpdateService.GRID_SIZE)
           return;
 
@@ -105,21 +136,24 @@ export class DesignerComponent {
         }
       }
 
-      const left = Math.min(this.dragStartPoint.x, mousePoint.x);
-      const top = Math.min(this.dragStartPoint.y, mousePoint.y);
-      const width = Math.abs(this.dragStartPoint.x - mousePoint.x);
-      const height = Math.abs(this.dragStartPoint.y - mousePoint.y);
+      const left = Math.min(this.dragStartViewPoint.x, mouseViewPoint.x);
+      const top = Math.min(this.dragStartViewPoint.y, mouseViewPoint.y);
+      const width = Math.abs(this.dragStartViewPoint.x - mouseViewPoint.x);
+      const height = Math.abs(this.dragStartViewPoint.y - mouseViewPoint.y);
 
       this.selectionRect.set({ left, top, width, height });
 
       const workflow = this.workflow();
+      const pan = this.panOffset();
       const selectedNodes = workflow.nodes()
         .filter(node => {
+          const nodeLeft = node.left() + pan.x;
+          const nodeTop = node.top() + pan.y;
           return (
-            node.left() >= left &&
-            node.left() + node.width() <= left + width &&
-            node.top() >= top &&
-            node.top() + node.height() <= top + height
+            nodeLeft >= left &&
+            nodeLeft + node.width() <= left + width &&
+            nodeTop >= top &&
+            nodeTop + node.height() <= top + height
           );
         });
 
@@ -138,7 +172,9 @@ export class DesignerComponent {
 
     if (this.isNodeEnabled) {
       if (!this.isNodeDragging) {
-        const maxDelta = Math.max(Math.abs(deltaX), Math.abs(deltaY));
+        const deltaXWorld = mouseWorldPoint.x - this.dragStartWorldPoint.x;
+        const deltaYWorld = mouseWorldPoint.y - this.dragStartWorldPoint.y;
+        const maxDelta = Math.max(Math.abs(deltaXWorld), Math.abs(deltaYWorld));
         if (maxDelta < DesignerUpdateService.GRID_SIZE)
           return;
 
@@ -160,8 +196,8 @@ export class DesignerComponent {
       }
 
       const nodePositions = this.dragStartPositions.map(point => {
-        let newX = Math.round((point.x + deltaX) / DesignerUpdateService.GRID_SIZE) * DesignerUpdateService.GRID_SIZE;
-        let newY = Math.round((point.y + deltaY) / DesignerUpdateService.GRID_SIZE) * DesignerUpdateService.GRID_SIZE;
+        let newX = Math.round((point.x + (mouseWorldPoint.x - this.dragStartWorldPoint.x)) / DesignerUpdateService.GRID_SIZE) * DesignerUpdateService.GRID_SIZE;
+        let newY = Math.round((point.y + (mouseWorldPoint.y - this.dragStartWorldPoint.y)) / DesignerUpdateService.GRID_SIZE) * DesignerUpdateService.GRID_SIZE;
         return { x: newX, y: newY };
       });
 
@@ -170,12 +206,18 @@ export class DesignerComponent {
     }
 
     if (this.isConnectorDragging && this.selectionConnector) {
-      this.pendingConnection.set({ from: this.selectionConnector, targetPoint: mousePoint });
+      this.pendingConnection.set({ from: this.selectionConnector, targetPoint: mouseWorldPoint });
     }
   }
 
   onSurfaceMouseUp(event: MouseEvent): void {
     event.stopPropagation();
+
+    if (this.isPanning) {
+      this.isPanning = false;
+      this.suppressContextMenu = false;
+      return;
+    }
 
     if (this.isSurfaceEnabled) {
       this.isSurfaceEnabled = false;
@@ -205,7 +247,7 @@ export class DesignerComponent {
 
     this.isNodeEnabled = true;
     this.selectionNode = node;
-    this.dragStartPoint = this.getMouseInSurfaceUnits(event);
+    this.dragStartWorldPoint = this.getMouseWorldPoint(event);
 
     if (event.ctrlKey) {
       if (!this.selectionService.isSelected(node))
@@ -274,8 +316,8 @@ export class DesignerComponent {
     if (this.workflow().connections().find(c => c.from() === connector.id) === undefined) {
       this.isConnectorDragging = true;
       this.selectionConnector = connector;
-      this.dragStartPoint = this.getMouseInSurfaceUnits(event);
-      this.pendingConnection.set({ from: connector, targetPoint: this.dragStartPoint });
+      this.dragStartWorldPoint = this.getMouseWorldPoint(event);
+      this.pendingConnection.set({ from: connector, targetPoint: this.dragStartWorldPoint });
     }
   }
 
@@ -358,5 +400,50 @@ export class DesignerComponent {
 
   public getNodeSymbol(nodeType: NodeType): string {
     return getNodeSymbol(nodeType);
+  }
+
+  public getPanTransform(): string {
+    const offset = this.panOffset();
+    return `translate(${offset.x}px, ${offset.y}px)`;
+  }
+
+  public isPanDragging(): boolean {
+    return this.isPanning;
+  }
+
+  onSurfaceContextMenu(event: MouseEvent): void {
+    event.preventDefault();
+    this.suppressContextMenu = false;
+  }
+
+  public resetPanOffset(): void {
+    this.setPanOffset({ x: 0, y: 0 });
+  }
+
+  onSurfaceLeave(): void {
+    if (this.isPanning) {
+      this.isPanning = false;
+      this.suppressContextMenu = false;
+    }
+  }
+
+  private setPanOffset(offset: Point): void {
+    const clamped = this.clampPanOffset(offset);
+    this.panOffset.set(clamped);
+  }
+
+  private clampPanOffset(offset: Point): Point {
+    const nodes = this.workflow().nodes();
+    if (!nodes.length) {
+      return offset;
+    }
+
+    const maxLeft = Math.max(...nodes.map(n => n.left()));
+    const maxTop = Math.max(...nodes.map(n => n.top()));
+
+    return {
+      x: Math.min(Math.max(offset.x, -maxLeft), 3000),
+      y: Math.min(Math.max(offset.y, -maxTop), 3000),
+    };
   }
 }
