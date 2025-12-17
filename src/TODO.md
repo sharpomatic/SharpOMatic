@@ -3,13 +3,9 @@
 
 # Minimum Viable Product Features
 
-Designer
-	right mouse down to drag around
-	mouse wheel to zoom in and out
-	reset on loading a new workflow
-
 Model Call
 	- Support tool calling, reuse existing attributes etc?
+	- Support MCP Servers
 	- Reasoning effort
 
 Connection

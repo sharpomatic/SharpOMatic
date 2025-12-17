@@ -122,13 +122,17 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             else
                 throw new SharpOMaticException($"Unrecognized structured output setting of '{outputFormat}'");
         }
+
         OpenAIClient client = new OpenAIClient(apiKey);
-        var chatCompletionClient = client.GetChatClient(modelName);
+        //var agentClient = client.GetChatClient(modelName);
+        
+        #pragma warning disable OPENAI001
+        var agentClient = client.GetOpenAIResponseClient(modelName);
 
         var instructions = ContextHelpers.SubstituteValues(Node.Instructions, ThreadContext.NodeContext);
         var prompt = ContextHelpers.SubstituteValues(Node.Prompt, ThreadContext.NodeContext);
 
-        AIAgent agent = chatCompletionClient.CreateAIAgent(instructions: instructions);
+        AIAgent agent = agentClient.CreateAIAgent(instructions: instructions);
         var response = await agent.RunAsync(prompt, options: new ChatClientAgentRunOptions(chatOptions));
         
         var tempContext = new ContextObject();
