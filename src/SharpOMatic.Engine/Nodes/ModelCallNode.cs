@@ -1,5 +1,6 @@
-using System.Text.Json;
-using System.Xml.Linq;
+#pragma warning disable OPENAI001
+
+using OpenAI.Responses;
 namespace SharpOMatic.Engine.Nodes;
 
 [RunNode(NodeType.ModelCall)]
@@ -53,7 +54,8 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         else
             modelName = modelConfig.DisplayName;
 
-        var chatOptions = new ChatOptions();
+        var responseOptions = new ResponseCreationOptions();
+        var chatOptions = new ChatOptions() { RawRepresentationFactory = (_) => responseOptions };
 
         if (modelConfig.Capabilities.Any(c => c.Name == "SupportsMaxOutputTokens") &&
             model.ParameterValues.TryGetValue("max_output_tokens", out var paramMaxOutputTokens) &&
@@ -74,6 +76,16 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             float.TryParse(paramTopP, out var topP))
         {
             chatOptions.TopP = topP;
+        }
+
+        if (modelConfig.Capabilities.Any(c => c.Name == "SupportsReasoningEffort") &&
+            Node.ParameterValues.TryGetValue("reasoning_effort", out var outputEffort) &&
+            !string.IsNullOrWhiteSpace(outputEffort))
+        {
+            responseOptions.ReasoningOptions = new ResponseReasoningOptions()
+            {
+                ReasoningEffortLevel = new ResponseReasoningEffortLevel(outputEffort.ToLower())
+            };
         }
 
         if (modelConfig.Capabilities.Any(c => c.Name == "SupportsStructuredOutput") &&
@@ -126,7 +138,6 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         OpenAIClient client = new OpenAIClient(apiKey);
         //var agentClient = client.GetChatClient(modelName);
         
-        #pragma warning disable OPENAI001
         var agentClient = client.GetOpenAIResponseClient(modelName);
 
         var instructions = ContextHelpers.SubstituteValues(Node.Instructions, ThreadContext.NodeContext);

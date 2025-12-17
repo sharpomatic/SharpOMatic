@@ -14,6 +14,10 @@
       "DisplayName": "Supports Max Output Tokens"
     },
     {
+      "Name": "SupportsReasoningEffort",
+      "DisplayName": "Supports Max Output Tokens"
+    },
+    {
       "Name": "SupportsStructuredOutput",
       "DisplayName": "Supports Structured Output"
     }
@@ -31,6 +35,23 @@
       "Min": 0,
       "Max": 128000,
       "Step": 10000
+    },
+    {
+      "Name": "reasoning_effort",
+      "Label": "Reasoning Effort",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsReasoningEffort",
+      "DefaultValue": "None",
+      "EnumOptions": [
+        "None",
+        "Low",
+        "Medium",
+        "High",
+        "XHigh"
+      ]
     },
     {
       "Name": "structured_output",
