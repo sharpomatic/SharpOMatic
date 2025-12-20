@@ -6,7 +6,6 @@
 Model Call
 	- Support tool calling, reuse existing attributes etc?
 	- Support MCP Servers
-	- Text tab
 	- Images
 
 Connection
