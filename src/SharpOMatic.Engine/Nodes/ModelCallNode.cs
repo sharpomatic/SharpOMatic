@@ -135,9 +135,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                 throw new SharpOMaticException($"Unrecognized structured output setting of '{outputFormat}'");
         }
 
-        OpenAIClient client = new OpenAIClient(apiKey);
-        //var agentClient = client.GetChatClient(modelName);
-        
+        OpenAIClient client = new OpenAIClient(apiKey);       
         var agentClient = client.GetOpenAIResponseClient(modelName);
 
         var instructions = ContextHelpers.SubstituteValues(Node.Instructions, ThreadContext.NodeContext);

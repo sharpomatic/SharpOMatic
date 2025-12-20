@@ -6,7 +6,8 @@
 Model Call
 	- Support tool calling, reuse existing attributes etc?
 	- Support MCP Servers
-	- Reasoning effort
+	- Text tab
+	- Images
 
 Connection
 	- Add test button to check connectivity
