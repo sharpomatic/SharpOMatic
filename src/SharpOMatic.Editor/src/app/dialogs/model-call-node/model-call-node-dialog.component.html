@@ -90,26 +90,28 @@
     </ng-template>
     <ng-template #toolCallingTab>
       <div class="bg-body-tertiary p-3">
-        @if (toolDisplayNames.length) {
-          <div class="mb-3 form-line">
-            <label class="form-label field-label align-top">Available Tools</label>
-            <div class="flex-fill control-column long">
+        <div class="mb-3 form-line">
+          <label class="form-label field-label align-top">Available Tools</label>
+          <div class="flex-fill control-column long">
+          @if (toolDisplayNames.length) {
             @for (toolName of toolDisplayNames; track toolName) {
-                <div class="form-check">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    [id]="toolId(toolName)"
-                    [checked]="isToolSelected(toolName)"
-                    (change)="onToolSelectionChange(toolName, $any($event.target).checked)">
-                  <label class="form-check-label" [for]="toolId(toolName)">
-                    {{ toolName }}
-                  </label>
-                </div>
-              }
-            </div>
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  [id]="toolId(toolName)"
+                  [checked]="isToolSelected(toolName)"
+                  (change)="onToolSelectionChange(toolName, $any($event.target).checked)">
+                <label class="form-check-label" [for]="toolId(toolName)">
+                  {{ toolName }}
+                </label>
+              </div>
+            }
+          } @else {
+            <em>(no tools)</em>
+          }
           </div>
-        }
+        </div>
 
         <app-dynamic-fields
           [fields]="modelConfig?.parameterFields ?? []"

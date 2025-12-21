@@ -1,12 +1,15 @@
-﻿using System.ComponentModel;
+﻿using SharpOMatic.Engine.Contexts;
+using System.ComponentModel;
 
 namespace SharpOMatic.Server;
 
 public static class Tools
 {
     [Description("Get a friendly greeting.")]
-    public static string GetGreeting()
+    public static string GetGreeting(IServiceProvider services)
     {
+        var context = services.GetRequiredService<ContextObject>();
+        context.Set("GetGreetingCalled", true);
         return "Hello there!";
     }
 
@@ -14,6 +17,8 @@ public static class Tools
     public static string GetTime(IServiceProvider services)
     {
         var clockService = services.GetRequiredService<IClockService>();
+        var context = services.GetRequiredService<ContextObject>();
+        context.Set("GetTimeCalled", true);
         return DateTimeOffset.Now.ToString();
     }
 }

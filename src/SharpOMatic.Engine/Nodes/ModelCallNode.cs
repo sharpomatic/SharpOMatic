@@ -1,5 +1,7 @@
 #pragma warning disable OPENAI001
 
+using SharpOMatic.Engine.Services;
+
 namespace SharpOMatic.Engine.Nodes;
 
 [RunNode(NodeType.ModelCall)]
@@ -137,12 +139,16 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                 throw new SharpOMaticException($"Unrecognized structured output setting of '{outputFormat}'");
         }
 
+
+        var agentServiceProvider = RunContext.ServiceScope.ServiceProvider;
         if (modelConfig.Capabilities.Any(c => c.Name == "SupportsToolCalling") &&
             Node.ParameterValues.TryGetValue("selected_tools", out var outputSelected) &&
             !string.IsNullOrWhiteSpace(outputSelected))
         {
             if (RunContext.ToolMethodRegistry is null)
                 throw new SharpOMaticException($"IToolMethodRegistry not registered in dependency injection.");
+
+            agentServiceProvider = new OverlayServiceProvider(agentServiceProvider, ThreadContext.NodeContext);
 
             var toolNames = outputSelected.Split(',');
             List<AITool> tools = [];
@@ -157,9 +163,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
             if (tools.Count > 0)
                 chatOptions.Tools = tools;
-        }
-
-  
+        }  
 
         OpenAIClient client = new OpenAIClient(apiKey);       
         var agentClient = client.GetOpenAIResponseClient(modelName);
@@ -167,7 +171,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         var instructions = ContextHelpers.SubstituteValues(Node.Instructions, ThreadContext.NodeContext);
         var prompt = ContextHelpers.SubstituteValues(Node.Prompt, ThreadContext.NodeContext);
 
-        AIAgent agent = agentClient.CreateAIAgent(instructions: instructions, services: RunContext.ServiceScope.ServiceProvider);
+        AIAgent agent = agentClient.CreateAIAgent(instructions: instructions, services: agentServiceProvider);
         var response = await agent.RunAsync(prompt, options: new ChatClientAgentRunOptions(chatOptions));
         
         var tempContext = new ContextObject();

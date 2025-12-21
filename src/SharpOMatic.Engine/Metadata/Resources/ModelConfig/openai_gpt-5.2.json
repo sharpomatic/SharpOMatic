@@ -15,7 +15,7 @@
     },
     {
       "Name": "SupportsReasoningEffort",
-      "DisplayName": "Supports Max Output Tokens"
+      "DisplayName": "Supports Reasoning Effort"
     },
     {
       "Name": "SupportsToolCalling",

@@ -6,7 +6,6 @@
 Model Call
 	- Split into textin and textout capabilities
 	- Support MCP Servers
-	- Images
 
 Connection
 	- Add test button to check connectivity
