@@ -12,16 +12,20 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<INotification, NotificationService>();
 builder.Services.AddSingleton<IClockService, ClockService>();
-builder.Services.AddSharpOMaticEngine();
-builder.Services.AddSharpOMaticTypes(typeof(TriviaResponse), typeof(StringList));
-builder.Services.AddSharpOMaticToolMethods(Tools.GetGreeting, Tools.GetTime);
-builder.Services.AddSharpOMaticRepository((options) =>
-{
-    var folder = Environment.SpecialFolder.LocalApplicationData;
-    var path = Environment.GetFolderPath(folder);
-    var dbPath = Path.Join(path, "sharpomatic.db");
-    options.UseSqlite($"Data Source={dbPath}");
-});
+builder.Services.AddSharpOMatic()
+    .AddSchemaTypes(typeof(TriviaResponse), typeof(StringList))
+    .AddToolMethods(Tools.GetGreeting, Tools.GetTime)
+    .AddRepository((optionBuilder) =>
+    {
+        var folder = Environment.SpecialFolder.LocalApplicationData;
+        var path = Environment.GetFolderPath(folder);
+        var dbPath = Path.Join(path, "sharpomatic.db");
+        optionBuilder.UseSqlite($"Data Source={dbPath}");
+    }, (dbOptions) =>
+    {
+        //dbOptions.TablePrefix = "Sample";
+        //dbOptions.DefaultSchema = "SharpOMatic";
+    });
 
 var app = builder.Build();
 

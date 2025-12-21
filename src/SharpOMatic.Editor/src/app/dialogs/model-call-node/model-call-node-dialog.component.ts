@@ -338,7 +338,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
     }
 
     this.typeSchemaNamesLoaded = true;
-    this.serverRepository.getTypeSchemaNames().subscribe(names => {
+    this.serverRepository.getSchemaTypeNames().subscribe(names => {
       this.typeSchemaNames = names ?? [];
     });
   }

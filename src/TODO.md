@@ -1,3 +1,12 @@
+# LLM's
+
+- Azure OpenAI - models
+- Azure AI Foundry - models
+
+# Workflows
+
+- Previous Runs
+
 # Export and Import
 
 - Workflows
@@ -23,7 +32,6 @@ Max values for nodes, execution and runs to keep
 
 # Implementation Details
 
-Improve sharpomatic setup via a builder.
 Add UI editor as exposed via a specified path
 
 

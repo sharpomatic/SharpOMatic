@@ -201,21 +201,21 @@ export class ServerRepositoryService {
     );
   }
 
-  public getTypeSchemaNames(): Observable<string[]> {
+  public getSchemaTypeNames(): Observable<string[]> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<string[]>(`${apiUrl}/api/typeschema`).pipe(
+    return this.http.get<string[]>(`${apiUrl}/api/schematype`).pipe(
       catchError((error) => {
-        this.notifyError('Loading type schema names', error);
+        this.notifyError('Loading schema type names', error);
         return of([]);
       })
     );
   }
 
-  public getTypeSchema(typeName: string): Observable<string | null> {
+  public getSchemaType(typeName: string): Observable<string | null> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<string>(`${apiUrl}/api/typeschema/${typeName}`).pipe(
+    return this.http.get<string>(`${apiUrl}/api/schematype/${typeName}`).pipe(
       catchError((error) => {
-        this.notifyError('Loading type schema', error);
+        this.notifyError('Loading schema type', error);
         return of(null);
       })
     );

@@ -1,6 +1,6 @@
 namespace SharpOMatic.Engine.Interfaces;
 
-public interface ITypeSchemaService
+public interface ISchemaTypeService
 {
     IEnumerable<string> GetTypeNames();
     string GetSchema(string typeName);

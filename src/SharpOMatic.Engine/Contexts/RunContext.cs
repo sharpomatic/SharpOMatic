@@ -13,7 +13,7 @@ public class RunContext
     public IRepository Repository { get; init; }
     public INotification Notifications { get; init; }
     public IToolMethodRegistry? ToolMethodRegistry { get; init; }
-    public ITypeSchemaService? TypeSchemaService { get; init; }
+    public ISchemaTypeService? SchemaTypeService { get; init; }
     public IEnumerable<JsonConverter> JsonConverters { get; init; }
     public WorkflowEntity Workflow { get; init; }
     public Run Run { get; init; }
@@ -28,7 +28,7 @@ public class RunContext
         Repository = serviceScope.ServiceProvider.GetRequiredService<IRepository>();
         Notifications = serviceScope.ServiceProvider.GetRequiredService<INotification>();
         ToolMethodRegistry = serviceScope.ServiceProvider.GetService<IToolMethodRegistry>();
-        TypeSchemaService = serviceScope.ServiceProvider.GetService<ITypeSchemaService>();
+        SchemaTypeService = serviceScope.ServiceProvider.GetService<ISchemaTypeService>();
         JsonConverters = jsonConverters;
         Workflow = workflow;
         Run = run;

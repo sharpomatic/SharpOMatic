@@ -130,13 +130,13 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                 if (Node.ParameterValues.TryGetValue("structured_output_configured_type", out var configuredType) &&
                     !string.IsNullOrWhiteSpace(configuredType))
                 {
-                    if (RunContext.TypeSchemaService is null)
-                        throw new SharpOMaticException($"ITypeSchemaService not registered in dependency injection.");
+                    if (RunContext.SchemaTypeService is null)
+                        throw new SharpOMaticException($"ISchemaTypeService not registered in dependency injection.");
 
                     Node.ParameterValues.TryGetValue("structured_output_schema_name", out var schemaName);
                     Node.ParameterValues.TryGetValue("structured_output_schema_description", out var schemaDescription);
 
-                    var outputSchema = RunContext.TypeSchemaService.GetSchema(configuredType);
+                    var outputSchema = RunContext.SchemaTypeService.GetSchema(configuredType);
                     var element = JsonSerializer.Deserialize<JsonElement>(outputSchema);
                     chatOptions.ResponseFormat = ChatResponseFormat.ForJsonSchema(element, schemaName: schemaName, schemaDescription: schemaDescription);
                     jsonOutput = true;
