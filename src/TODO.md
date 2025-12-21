@@ -1,10 +1,11 @@
 # LLM's
 
 - OpenAI
-  ToolChoice = ResponseToolChoice (none, auto, specified tool, etc) = ChatOptions ToolMode
-  ParallelToolCallsEnabled
-  FrequencyPenalty
-  PresencePenalty
+- ToolChoice = ResponseToolChoice (none, auto, specified tool, etc) = ChatOptions ToolMode
+- ParallelToolCallsEnabled
+- FrequencyPenalty
+- PresencePenalty
+- Verbosity
 
 - Azure OpenAI - models
 - Microsoft Foundry - models
