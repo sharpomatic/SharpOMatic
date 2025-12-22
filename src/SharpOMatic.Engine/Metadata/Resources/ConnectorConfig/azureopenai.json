@@ -11,65 +11,21 @@
       "IsDefault": true,
       "Fields": [
         {
-          "Name": "string",
-          "Label": "string",
+          "Name": "endpoint",
+          "Label": "Endpoint",
           "Description": "string",
           "CallDefined": false,
           "Type": 0,
           "IsRequired": true,
-          "DefaultValue": "(Default)"
+          "DefaultValue": "https://<resource-name>.openai.azure.com"
         },
         {
-          "Name": "secret",
-          "Label": "secret",
-          "Description": "secret",
+          "Name": "apikey",
+          "Label": "API key",
+          "Description": "",
           "CallDefined": false,
           "Type": 1,
-          "IsRequired": true,
-          "DefaultValue": "secret"
-        },
-        {
-          "Name": "boolean",
-          "Label": "boolean",
-          "Description": "boolean",
-          "CallDefined": false,
-          "Type": 2,
-          "IsRequired": true,
-          "DefaultValue": true
-        },
-        {
-          "Name": "enum",
-          "Label": "enum",
-          "Description": "enum",
-          "CallDefined": false,
-          "Type": 3,
-          "IsRequired": true,
-          "DefaultValue": "dos",
-          "EnumOptions": [ "uno", "dos", "tres", "quattro" ]
-        },
-        {
-          "Name": "integer",
-          "Label": "integer (1-99) step 3",
-          "Description": "integer",
-          "CallDefined": false,
-          "Type": 4,
-          "IsRequired": true,
-          "DefaultValue": 42,
-          "Min": 1,
-          "Max": 99,
-          "Step": 3
-        },
-        {
-          "Name": "double",
-          "Label": "double",
-          "Description": "double (1-99) step 1.5",
-          "CallDefined": false,
-          "Type": 5,
-          "IsRequired": true,
-          "DefaultValue": 3.14,
-          "Min": 1,
-          "Max": 99,
-          "Step": 1.5
+          "IsRequired": true
         }
       ]
     }
