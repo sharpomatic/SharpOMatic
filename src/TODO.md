@@ -1,12 +1,5 @@
 # LLM's
 
-- OpenAI
-- ToolChoice = ResponseToolChoice (none, auto, specified tool, etc) = ChatOptions ToolMode
-- ParallelToolCallsEnabled
-- FrequencyPenalty
-- PresencePenalty
-- Verbosity
-
 - Azure OpenAI - models
 - Microsoft Foundry - models
 
@@ -48,6 +41,12 @@ Add UI editor as exposed via a specified path
 
 
 # Futures
+
+Usage - token usage counts
+
+Traces - show tool calls, reasoning and other details
+
+Images - input and output of images
 
 ChatKit output integration
 User output, as there might be a stream of outputs

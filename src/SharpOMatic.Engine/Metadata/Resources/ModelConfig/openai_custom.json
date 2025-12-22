@@ -23,20 +23,16 @@
       "DisplayName": "Supports Reasoning Effort"
     },
     {
-      "Name": "SupportsTemperature",
-      "DisplayName": "Supports Temperature"
-    },
-    {
-      "Name": "SupportsTopP",
-      "DisplayName": "Supports TopP"
-    },
-    {
-      "Name": "SupportsToolCalling",
-      "DisplayName": "Supports Tool Calling"
+      "Name": "SupportsSampling",
+      "DisplayName": "Supports Sampling"
     },
     {
       "Name": "SupportsStructuredOutput",
       "DisplayName": "Supports Structured Output"
+    },
+    {
+      "Name": "SupportsToolCalling",
+      "DisplayName": "Supports Tool Calling"
     }
   ],
   "ParameterFields": [
@@ -60,32 +56,6 @@
       "Min": 0
     },
     {
-      "Name": "temperature",
-      "Description": "",
-      "Label": "temperature",
-      "CallDefined": true,
-      "Type": 5,
-      "IsRequired": false,
-      "Capability": "SupportsTemperature",
-      "DefaultValue": 1,
-      "Min": 0,
-      "Max": 2,
-      "Step": 0.1
-    },
-    {
-      "Name": "top_p",
-      "Description": "",
-      "Label": "top_p",
-      "CallDefined": true,
-      "IsRequired": false,
-      "Type": 5,
-      "Capability": "SupportsTopP",
-      "DefaultValue": 1,
-      "Min": 0,
-      "Max": 1,
-      "Step": 0.1
-    },
-    {
       "Name": "reasoning_effort",
       "Label": "Reasoning Effort",
       "Description": "",
@@ -103,6 +73,32 @@
       ]
     },
     {
+      "Name": "temperature",
+      "Description": "",
+      "Label": "Temperature",
+      "CallDefined": true,
+      "Type": 5,
+      "IsRequired": false,
+      "Capability": "SupportsSampling",
+      "DefaultValue": 1,
+      "Min": 0,
+      "Max": 2,
+      "Step": 0.1
+    },
+    {
+      "Name": "top_p",
+      "Description": "",
+      "Label": "Top P",
+      "CallDefined": true,
+      "IsRequired": false,
+      "Type": 5,
+      "Capability": "SupportsSampling",
+      "DefaultValue": 1,
+      "Min": 0,
+      "Max": 1,
+      "Step": 0.1
+    },
+    {
       "Name": "structured_output",
       "Label": "Structured Output",
       "Description": "",
@@ -116,6 +112,30 @@
         "Json",
         "Schema",
         "Configured Type"
+      ]
+    },
+    {
+      "Name": "parallel_tool_calls",
+      "Description": "",
+      "Label": "Parallel Tool Calls",
+      "CallDefined": true,
+      "IsRequired": false,
+      "Type": 2,
+      "Capability": "SupportsToolCalling",
+      "DefaultValue": true
+    },
+    {
+      "Name": "tool_choice",
+      "Label": "Tool Choice",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsToolCalling",
+      "DefaultValue": "Auto",
+      "EnumOptions": [
+        "None",
+        "Auto"
       ]
     }
   ]

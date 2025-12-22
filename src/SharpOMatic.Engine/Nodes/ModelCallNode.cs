@@ -1,6 +1,6 @@
 #pragma warning disable OPENAI001
 
-using SharpOMatic.Engine.Entities.Definitions;
+using SharpOMatic.Engine.Metadata.Definitions;
 using SharpOMatic.Engine.Services;
 
 namespace SharpOMatic.Engine.Nodes;
@@ -8,6 +8,9 @@ namespace SharpOMatic.Engine.Nodes;
 [RunNode(NodeType.ModelCall)]
 public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node) : RunNode<ModelCallNodeEntity>(threadContext, node)
 {
+    private Model? _model;
+    private ModelConfig? _modelConfig;
+
     protected override async Task<(string, List<NextNodeData>)> RunInternal()
     {
         var repository = ThreadContext.RunContext.Repository;
@@ -15,18 +18,18 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         if (Node.ModelId is null)
             throw new SharpOMaticException("No model selected");
 
-        var model = await repository.GetModel(Node.ModelId.Value);
-        if (model is null)
+        _model = await repository.GetModel(Node.ModelId.Value);
+        if (_model is null)
             throw new SharpOMaticException("Cannot find model");
 
-        if (model.ConnectorId is null)
+        if (_model.ConnectorId is null)
             throw new SharpOMaticException("Model has no connector defined");
 
-        var modelConfig = await repository.GetModelConfig(model.ConfigId);
-        if (modelConfig is null)
+        _modelConfig = await repository.GetModelConfig(_model.ConfigId);
+        if (_modelConfig is null)
             throw new SharpOMaticException("Cannot find the model configuration");
 
-        var connector = await repository.GetConnector(model.ConnectorId.Value, false);
+        var connector = await repository.GetConnector(_model.ConnectorId.Value, false);
         if (connector is null)
             throw new SharpOMaticException("Cannot find the model connector");
 
@@ -44,132 +47,135 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         if (!connector.FieldValues.TryGetValue("apikey", out var apiKey))
             throw new SharpOMaticException("Connector api key not specified.");
 
-        if (!modelConfig.Capabilities.Any(c => c.Name == "SupportsTextIn"))
+        if (!HasCapability("SupportsTextIn"))
             throw new SharpOMaticException("Model does not support text input.");
 
         var modelName = "";
-        if (modelConfig.IsCustom)
+        if (_modelConfig.IsCustom)
         {
-            if (!model.ParameterValues.TryGetValue("modelName", out modelName))
+            if (!_model.ParameterValues.TryGetValue("modelName", out modelName))
                 throw new SharpOMaticException("Model does not specify the custom model name");
         }
         else
-            modelName = modelConfig.DisplayName;
+            modelName = _modelConfig.DisplayName;
 
         var responseOptions = new ResponseCreationOptions();
-        var chatOptions = new ChatOptions() { RawRepresentationFactory = (_) => responseOptions };
+        var chatOptions = new ChatOptions() { AdditionalProperties = [], RawRepresentationFactory = (_) => responseOptions };
 
-        if (modelConfig.Capabilities.Any(c => c.Name == "SupportsMaxOutputTokens") &&
-            model.ParameterValues.TryGetValue("max_output_tokens", out var paramMaxOutputTokens) &&
-            int.TryParse(paramMaxOutputTokens, out var maxOutputTokens))
-        {
+        if (GetCapabilityInt("SupportsMaxOutputTokens", "max_output_tokens", out int maxOutputTokens))
             chatOptions.MaxOutputTokens = maxOutputTokens;
-        }
 
-        if (modelConfig.Capabilities.Any(c => c.Name == "SupportsTemperature") &&
-            model.ParameterValues.TryGetValue("temperature", out var paramTemperature) &&
-            float.TryParse(paramTemperature, out var temperature))
-        {
+        if (GetCapabilityString("SupportsReasoningEffort", "reasoning_effort", out string reasoningEffort))
+            responseOptions.ReasoningOptions = new ResponseReasoningOptions() { ReasoningEffortLevel = new ResponseReasoningEffortLevel(reasoningEffort.ToLower()) };
+
+        if (GetCapabilityFloat("SupportsSampling", "temperature", out float temperature))
             chatOptions.Temperature = temperature;
-        }
 
-        if (modelConfig.Capabilities.Any(c => c.Name == "SupportsTopP") &&
-            model.ParameterValues.TryGetValue("top_p", out var paramTopP) &&
-            float.TryParse(paramTopP, out var topP))
-        {
+        if (GetCapabilityFloat("SupportsSampling", "top_p", out float topP))
             chatOptions.TopP = topP;
-        }
-
-        if (modelConfig.Capabilities.Any(c => c.Name == "SupportsReasoningEffort") &&
-            Node.ParameterValues.TryGetValue("reasoning_effort", out var outputEffort) &&
-            !string.IsNullOrWhiteSpace(outputEffort))
-        {
-            responseOptions.ReasoningOptions = new ResponseReasoningOptions()
-            {
-                ReasoningEffortLevel = new ResponseReasoningEffortLevel(outputEffort.ToLower())
-            };
-        }
 
         bool jsonOutput = false;
-        if (modelConfig.Capabilities.Any(c => c.Name == "SupportsStructuredOutput") &&
-            Node.ParameterValues.TryGetValue("structured_output", out var outputFormat) &&
-            !string.IsNullOrWhiteSpace(outputFormat))
+        if (GetCapabilityString("SupportsStructuredOutput", "structured_output", out string structuredOutput))
         {
-            if (outputFormat == "Text")
-                chatOptions.ResponseFormat = ChatResponseFormat.Text;
-            else if (outputFormat == "Json")
+            switch (structuredOutput)
             {
-                chatOptions.ResponseFormat = ChatResponseFormat.Json;
-                jsonOutput = true;
-            }
-            else if (outputFormat == "Schema")
-            {
-                if (Node.ParameterValues.TryGetValue("structured_output_schema", out var outputSchema) &&
-                    !string.IsNullOrWhiteSpace(outputSchema))
-                {
-                    Node.ParameterValues.TryGetValue("structured_output_schema_name", out var schemaName);
-                    Node.ParameterValues.TryGetValue("structured_output_schema_description", out var schemaDescription);
+                case "Text":
+                    chatOptions.ResponseFormat = ChatResponseFormat.Text;
+                    break;
 
-                    if (string.IsNullOrWhiteSpace(schemaName))
-                        schemaName = null;
-                    else
-                        schemaName = schemaName.Trim();
-
-                    if (string.IsNullOrWhiteSpace(schemaDescription))
-                        schemaDescription = null;
-                    else
-                        schemaDescription = schemaDescription.Trim();
-
-                    var element = JsonSerializer.Deserialize<JsonElement>(outputSchema);
-                    chatOptions.ResponseFormat = ChatResponseFormat.ForJsonSchema(element, schemaName: schemaName, schemaDescription: schemaDescription);
+                case "Json":
+                    chatOptions.ResponseFormat = ChatResponseFormat.Json;
                     jsonOutput = true;
-                }
-            }
-            else if (outputFormat == "Configured Type")
-            {
-                if (Node.ParameterValues.TryGetValue("structured_output_configured_type", out var configuredType) &&
-                    !string.IsNullOrWhiteSpace(configuredType))
-                {
-                    Node.ParameterValues.TryGetValue("structured_output_schema_name", out var schemaName);
-                    Node.ParameterValues.TryGetValue("structured_output_schema_description", out var schemaDescription);
+                    break;
 
-                    var outputSchema = RunContext.SchemaTypeService.GetSchema(configuredType);
-                    if (string.IsNullOrWhiteSpace(outputSchema))
-                        throw new SharpOMaticException($"Configured type '{configuredType}' not found, check it is specified in the AddSchemaTypes setup.");
+                case "Schema":
+                    if (Node.ParameterValues.TryGetValue("structured_output_schema", out var outputSchema) &&
+                        !string.IsNullOrWhiteSpace(outputSchema))
+                    {
+                        Node.ParameterValues.TryGetValue("structured_output_schema_name", out var schemaName);
+                        Node.ParameterValues.TryGetValue("structured_output_schema_description", out var schemaDescription);
 
-                    var element = JsonSerializer.Deserialize<JsonElement>(outputSchema);
-                    chatOptions.ResponseFormat = ChatResponseFormat.ForJsonSchema(element, schemaName: schemaName, schemaDescription: schemaDescription);
-                    jsonOutput = true;
-                }
+                        if (string.IsNullOrWhiteSpace(schemaName))
+                            schemaName = null;
+                        else
+                            schemaName = schemaName.Trim();
+
+                        if (string.IsNullOrWhiteSpace(schemaDescription))
+                            schemaDescription = null;
+                        else
+                            schemaDescription = schemaDescription.Trim();
+
+                        var element = JsonSerializer.Deserialize<JsonElement>(outputSchema);
+                        chatOptions.ResponseFormat = ChatResponseFormat.ForJsonSchema(element, schemaName: schemaName, schemaDescription: schemaDescription);
+                        jsonOutput = true;
+                    }
+                    break;
+                case "Configured Type":
+                    if (Node.ParameterValues.TryGetValue("structured_output_configured_type", out var configuredType) &&
+                        !string.IsNullOrWhiteSpace(configuredType))
+                    {
+                        Node.ParameterValues.TryGetValue("structured_output_schema_name", out var schemaName);
+                        Node.ParameterValues.TryGetValue("structured_output_schema_description", out var schemaDescription);
+
+                        var configuredSchema = RunContext.SchemaTypeService.GetSchema(configuredType);
+                        if (string.IsNullOrWhiteSpace(configuredSchema))
+                            throw new SharpOMaticException($"Configured type '{configuredType}' not found, check it is specified in the AddSchemaTypes setup.");
+
+                        var element = JsonSerializer.Deserialize<JsonElement>(configuredSchema);
+                        chatOptions.ResponseFormat = ChatResponseFormat.ForJsonSchema(element, schemaName: schemaName, schemaDescription: schemaDescription);
+                        jsonOutput = true;
+                    }
+                    break;
+
+                default:
+                    throw new SharpOMaticException($"Unrecognized structured output setting of '{structuredOutput}'");
             }
-            else
-                throw new SharpOMaticException($"Unrecognized structured output setting of '{outputFormat}'");
         }
 
-
         var agentServiceProvider = RunContext.ServiceScope.ServiceProvider;
-        if (modelConfig.Capabilities.Any(c => c.Name == "SupportsToolCalling") &&
-            Node.ParameterValues.TryGetValue("selected_tools", out var outputSelected) &&
-            !string.IsNullOrWhiteSpace(outputSelected))
+        if (HasCapability("SupportsToolCalling"))
         {
-            agentServiceProvider = new OverlayServiceProvider(agentServiceProvider, ThreadContext.NodeContext);
+            if (GetCapabilityBool("SupportsToolCalling", "parallel_tool_calls", out bool parallelToolCalls))
+                responseOptions.ParallelToolCallsEnabled = parallelToolCalls;
 
-            var toolNames = outputSelected.Split(',');
-            List<AITool> tools = [];
-            foreach (var toolName in toolNames)
+            if (GetCapabilityCallString("SupportsToolCalling", "selected_tools", out string selectedTools))
             {
-                var toolDelegate = RunContext.ToolMethodRegistry.GetToolFromDisplayName(toolName.Trim());
-                if (toolDelegate is null)
-                    throw new SharpOMaticException($"Tool '{toolName.Trim()}' not found, check it is specified in the AddToolMethods setup.");
+                agentServiceProvider = new OverlayServiceProvider(agentServiceProvider, ThreadContext.NodeContext);
 
-                tools.Add(AIFunctionFactory.Create(toolDelegate));
+                var toolNames = selectedTools.Split(',');
+                List<AITool> tools = [];
+                foreach (var toolName in toolNames)
+                {
+                    var toolDelegate = RunContext.ToolMethodRegistry.GetToolFromDisplayName(toolName.Trim());
+                    if (toolDelegate is null)
+                        throw new SharpOMaticException($"Tool '{toolName.Trim()}' not found, check it is specified in the AddToolMethods setup.");
+
+                    tools.Add(AIFunctionFactory.Create(toolDelegate));
+                }
+
+                if (tools.Count > 0)
+                    chatOptions.Tools = tools;
             }
 
-            if (tools.Count > 0)
-                chatOptions.Tools = tools;
-        }  
+            if (GetCapabilityCallString("SupportsToolCalling", "tool_choice", out string toolChoice))
+            {
+                switch (toolChoice)
+                {
+                    case "None":
+                        chatOptions.ToolMode = ChatToolMode.None;
+                        break;
 
-        OpenAIClient client = new OpenAIClient(apiKey);       
+                    case "Auto":
+                        chatOptions.ToolMode = ChatToolMode.Auto;
+                        break;
+
+                    default:
+                        throw new SharpOMaticException($"Unrecognized tool choice setting of '{toolChoice}'");
+                }
+            }
+        }
+
+        OpenAIClient client = new OpenAIClient(apiKey);
         var agentClient = client.GetOpenAIResponseClient(modelName);
 
         string instructions = null;
@@ -205,5 +211,126 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         RunContext.MergeContexts(ThreadContext.NodeContext, tempContext);
 
         return ("Model call executed", new List<NextNodeData> { new(ThreadContext, RunContext.ResolveSingleOutput(Node)) });
+    }
+
+    private bool HasCapability(string capability)
+    {
+        if ((_model is null) || ( _modelConfig is null))
+            return false;
+
+        // If the config has the capability defined  (if custom then also selected in the model itself)
+        return (_modelConfig.Capabilities.Any(c => c.Name == capability) && (!_modelConfig.IsCustom ||
+               (_modelConfig.IsCustom && _model.CustomCapabilities.Any(c => c == capability))));
+    }
+
+    private bool GetCapabilityString(string capability, string field, out string paramValue)
+    {
+        if ((_model is not null) &&
+            (_modelConfig is not null) &&
+            HasCapability(capability))
+        {
+            var fieldDescription = _modelConfig.ParameterFields.FirstOrDefault(c => c.Name == field);
+            if (fieldDescription is not null)
+            {
+                string? paramString;
+                if ((fieldDescription.CallDefined && Node.ParameterValues.TryGetValue(field, out paramString) && !string.IsNullOrWhiteSpace(paramString)) ||
+                    (!fieldDescription.CallDefined && _model.ParameterValues.TryGetValue(field, out paramString) && !string.IsNullOrWhiteSpace(paramString)))
+                {
+                    paramValue = paramString;
+                    return true;
+                }
+            }
+        }
+
+        paramValue = "";
+        return false;
+    }
+
+    private bool GetCapabilityCallString(string capability, string field, out string paramValue)
+    {
+        if ((_model is not null) &&
+            (_modelConfig is not null) &&
+            HasCapability(capability) &&
+            Node.ParameterValues.TryGetValue(field, out var paramString) && 
+            !string.IsNullOrWhiteSpace(paramString))
+        {
+            paramValue = paramString;
+            return true;
+        }
+
+        paramValue = "";
+        return false;
+    }
+
+    private bool GetCapabilityInt(string capability, string field, out int paramValue)
+    {
+        if ((_model is not null) &&
+            (_modelConfig is not null) &&
+            HasCapability(capability))
+        {
+            var fieldDescription = _modelConfig.ParameterFields.FirstOrDefault(c => c.Name == field);
+            if (fieldDescription is not null)
+            {
+                string? paramString;
+                int paramInteger;
+                if ((fieldDescription.CallDefined && Node.ParameterValues.TryGetValue(field, out paramString) && int.TryParse(paramString, out paramInteger)) ||
+                    (!fieldDescription.CallDefined && _model.ParameterValues.TryGetValue(field, out paramString) && int.TryParse(paramString, out paramInteger)))
+                {
+                    paramValue = paramInteger;
+                    return true;
+                }
+            }
+        }
+
+        paramValue = 0;
+        return false;
+    }
+
+    private bool GetCapabilityFloat(string capability, string field, out float paramValue)
+    {
+        if ((_model is not null) &&
+            (_modelConfig is not null) &&
+            HasCapability(capability))
+        {
+            var fieldDescription = _modelConfig.ParameterFields.FirstOrDefault(c => c.Name == field);
+            if (fieldDescription is not null)
+            {
+                string? paramString;
+                float paramFloat;
+                if ((fieldDescription.CallDefined && Node.ParameterValues.TryGetValue(field, out paramString) && float.TryParse(paramString, out paramFloat)) ||
+                    (!fieldDescription.CallDefined && _model.ParameterValues.TryGetValue(field, out paramString) && float.TryParse(paramString, out paramFloat)))
+                {
+                    paramValue = paramFloat;
+                    return true;
+                }
+            }
+        }
+
+        paramValue = 0;
+        return false;
+    }
+
+    private bool GetCapabilityBool(string capability, string field, out bool paramValue)
+    {
+        if ((_model is not null) &&
+            (_modelConfig is not null) &&
+            HasCapability(capability))
+        {
+            var fieldDescription = _modelConfig.ParameterFields.FirstOrDefault(c => c.Name == field);
+            if (fieldDescription is not null)
+            {
+                string? paramString;
+                bool paramBool;
+                if ((fieldDescription.CallDefined && Node.ParameterValues.TryGetValue(field, out paramString) && bool.TryParse(paramString, out paramBool)) ||
+                    (!fieldDescription.CallDefined && _model.ParameterValues.TryGetValue(field, out paramString) && bool.TryParse(paramString, out paramBool)))
+                {
+                    paramValue = paramBool;
+                    return true;
+                }
+            }
+        }
+
+        paramValue = false;
+        return false;
     }
 }

@@ -10,7 +10,7 @@ public static class Tools
     {
         var context = services.GetRequiredService<ContextObject>();
         context.Set("GetGreetingCalled", true);
-        return "Hello there!";
+        return "Howdy doody!";
     }
 
     [Description("Get current time")]

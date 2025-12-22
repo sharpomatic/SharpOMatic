@@ -23,12 +23,12 @@
       "DisplayName": "Supports Reasoning Effort"
     },
     {
-      "Name": "SupportsToolCalling",
-      "DisplayName": "Supports Tool Calling"
-    },
-    {
       "Name": "SupportsStructuredOutput",
       "DisplayName": "Supports Structured Output"
+    },
+    {
+      "Name": "SupportsToolCalling",
+      "DisplayName": "Supports Tool Calling"
     }
   ],
   "ParameterFields": [
@@ -76,6 +76,30 @@
         "Json",
         "Schema",
         "Configured Type"
+      ]
+    },
+    {
+      "Name": "parallel_tool_calls",
+      "Description": "",
+      "Label": "Parallel Tool Calls",
+      "CallDefined": true,
+      "IsRequired": false,
+      "Type": 2,
+      "Capability": "SupportsToolCalling",
+      "DefaultValue": true
+    },
+    {
+      "Name": "tool_choice",
+      "Label": "Tool Choice",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsToolCalling",
+      "DefaultValue": "Auto",
+      "EnumOptions": [
+        "None",
+        "Auto"
       ]
     }
   ]

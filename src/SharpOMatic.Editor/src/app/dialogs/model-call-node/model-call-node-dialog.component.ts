@@ -377,6 +377,8 @@ export class ModelCallNodeDialogComponent implements OnInit {
       ...v,
       selected_tools: value,
     }));
+
+    console.log(`onToolSelectionChange ${JSON.stringify(this.node.parameterValues())}`);
   }
 
   public toolId(toolName: string): string {
