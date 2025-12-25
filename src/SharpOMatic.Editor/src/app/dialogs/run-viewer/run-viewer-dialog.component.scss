@@ -45,9 +45,40 @@
   overflow: auto;
 }
 
-.run-property-label {
-  width: 160px;
+.form-line {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.field-label {
+  width: 100px;
+  flex: 0 0 100px;
+  margin-bottom: 0;
+  text-align: right;
   white-space: nowrap;
+}
+
+.field-label.align-top {
+  align-self: flex-start;
+}
+
+.control-column {
+  flex: 1;
+  min-width: 0;
+}
+
+.control-column .form-control {
+  width: 100%;
+}
+
+.control-column .run-input {
+  width: 200px;
+}
+
+.run-textarea {
+  resize: vertical;
 }
 
 .run-text {

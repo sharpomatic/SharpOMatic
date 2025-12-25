@@ -13,16 +13,27 @@
 
     <ng-template #runTab>
       <div class="bg-body-tertiary p-3 run-details">
-        <table class="table table-sm table-striped mb-0">
-          <tbody>
-            @for (property of runProperties; track property.label) {
-            <tr>
-              <th scope="row" class="run-property-label">{{ property.label }}</th>
-              <td class="run-property-value">{{ property.value }}</td>
-            </tr>
+        @for (property of runProperties; track property.label) {
+        <div class="mb-3 form-line">
+          <label class="form-label field-label" [class.align-top]="property.multiline">{{ property.label }}</label>
+          <div class="control-column">
+            @if (property.status) {
+            <span class="run-text" [class.created]="run.runStatus === RunStatus.Created"
+              [class.running]="run.runStatus === RunStatus.Running"
+              [class.success]="run.runStatus === RunStatus.Success"
+              [class.failed]="run.runStatus === RunStatus.Failed">
+              {{ property.value }}
+            </span>
+            } @else if (property.multiline) {
+            <textarea class="form-control run-textarea" rows="8" [value]="property.value" readonly></textarea>
+            } @else if (property.date) {
+            <input type="text" class="form-control run-input" [value]="property.value ? (property.value | date:'short') : ''" readonly />
+            } @else {
+            <input type="text" class="form-control run-input" [value]="property.value" readonly />
             }
-          </tbody>
-        </table>
+          </div>
+        </div>
+        }
       </div>
     </ng-template>
 

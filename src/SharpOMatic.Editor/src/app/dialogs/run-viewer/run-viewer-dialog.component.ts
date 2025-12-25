@@ -19,6 +19,9 @@ import { MonacoService } from '../../services/monaco.service';
 interface RunPropertyRow {
   label: string;
   value: string;
+  multiline?: boolean;
+  status?: boolean;
+  date?: boolean;
 }
 
 @Component({
@@ -127,30 +130,14 @@ export class RunViewerDialogComponent implements OnInit {
 
   private buildRunProperties(): RunPropertyRow[] {
     return [
-      { label: 'Run ID', value: this.formatValue(this.run.runId) },
-      { label: 'Workflow ID', value: this.formatValue(this.run.workflowId) },
-      { label: 'Status', value: this.formatRunStatus(this.run.runStatus) },
+      { label: 'Created', value: this.run.created ?? '', date: true },
+      { label: 'Status', value: this.formatRunStatus(this.run.runStatus), status: true },
+      { label: 'Duration', value: this.formatDuration(this.run.started, this.run.stopped) },
+      { label: 'Started', value: this.run.started ?? '', date: true },
+      { label: 'Stopped', value: this.run.stopped ?? '', date: true },
       { label: 'Message', value: this.formatValue(this.run.message) },
-      { label: 'Error', value: this.formatValue(this.run.error) },
-      { label: 'Created', value: this.formatTimestamp(this.run.created) },
-      { label: 'Started', value: this.formatTimestamp(this.run.started) },
-      { label: 'Stopped', value: this.formatTimestamp(this.run.stopped) },
-      { label: 'Duration', value: this.formatDuration(this.run.started, this.run.stopped) }
+      { label: 'Error', value: this.formatValue(this.run.error), multiline: true }
     ];
-  }
-
-  private formatTimestamp(value?: string | null): string {
-    if (!value) {
-      return '-';
-    }
-
-    const parsed = Date.parse(value);
-    if (!Number.isFinite(parsed)) {
-      return value;
-    }
-
-    const date = new Date(parsed);
-    return `${date.getFullYear()}-${this.pad(date.getMonth() + 1)}-${this.pad(date.getDate())} ${this.pad(date.getHours())}:${this.pad(date.getMinutes())}:${this.pad(date.getSeconds())}`;
   }
 
   private formatDuration(started?: string | null, stopped?: string | null): string {
@@ -177,7 +164,7 @@ export class RunViewerDialogComponent implements OnInit {
 
   private formatValue(value?: string | null): string {
     const trimmed = (value ?? '').trim();
-    return trimmed.length ? trimmed : '-';
+    return trimmed.length ? trimmed : '';
   }
 
   private pad(value: number): string {
