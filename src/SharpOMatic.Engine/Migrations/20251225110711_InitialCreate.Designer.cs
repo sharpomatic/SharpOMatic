@@ -11,7 +11,7 @@ using SharpOMatic.Engine.Repository;
 namespace SharpOMatic.Engine.Migrations
 {
     [DbContext(typeof(SharpOMaticDbContext))]
-    [Migration("20251221053636_InitialCreate")]
+    [Migration("20251225110711_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -149,7 +149,39 @@ namespace SharpOMatic.Engine.Migrations
 
                     b.HasIndex("WorkflowId", "Created");
 
+                    b.HasIndex("WorkflowId", "RunStatus");
+
                     b.ToTable("Runs");
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.Setting", b =>
+                {
+                    b.Property<Guid>("SettingId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SettingType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("ValueBoolean")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("ValueDouble")
+                        .HasColumnType("REAL");
+
+                    b.Property<int?>("ValueInteger")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ValueString")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("SettingId");
+
+                    b.ToTable("Settings");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Trace", b =>

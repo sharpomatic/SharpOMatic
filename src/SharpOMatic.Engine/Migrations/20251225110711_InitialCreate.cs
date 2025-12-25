@@ -68,6 +68,23 @@ namespace SharpOMatic.Engine.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Settings",
+                columns: table => new
+                {
+                    SettingId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Name = table.Column<string>(type: "TEXT", nullable: false),
+                    SettingType = table.Column<int>(type: "INTEGER", nullable: false),
+                    ValueString = table.Column<string>(type: "TEXT", nullable: true),
+                    ValueBoolean = table.Column<bool>(type: "INTEGER", nullable: true),
+                    ValueInteger = table.Column<int>(type: "INTEGER", nullable: true),
+                    ValueDouble = table.Column<double>(type: "REAL", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Settings", x => x.SettingId);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Workflows",
                 columns: table => new
                 {
@@ -147,6 +164,11 @@ namespace SharpOMatic.Engine.Migrations
                 columns: new[] { "WorkflowId", "Created" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Runs_WorkflowId_RunStatus",
+                table: "Runs",
+                columns: new[] { "WorkflowId", "RunStatus" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Traces_RunId_Created",
                 table: "Traces",
                 columns: new[] { "RunId", "Created" });
@@ -166,6 +188,9 @@ namespace SharpOMatic.Engine.Migrations
 
             migrationBuilder.DropTable(
                 name: "ModelMetadata");
+
+            migrationBuilder.DropTable(
+                name: "Settings");
 
             migrationBuilder.DropTable(
                 name: "Traces");

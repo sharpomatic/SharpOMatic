@@ -9,6 +9,7 @@ public class SharpOMaticDbContext : DbContext
     public DbSet<ConnectorMetadata> ConnectorMetadata { get; set; }
     public DbSet<ModelConfigMetadata> ModelConfigMetadata { get; set; }
     public DbSet<ModelMetadata> ModelMetadata { get; set; }
+    public DbSet<Setting> Settings { get; set; }
 
     private readonly SharpOMaticDbOptions _options;
 
