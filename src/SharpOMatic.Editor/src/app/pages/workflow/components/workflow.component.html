@@ -118,6 +118,49 @@
           </tbody>
         </table>
       </div>
+      @if (workflowService.runsTotal() > 0) {
+        <div class="d-flex align-items-center justify-content-between runs-pagination">
+          <div class="text-muted small">
+            Page {{ workflowService.runsPage() }} of {{ runsPageCount() }} ({{ workflowService.runsTotal() }} total)
+          </div>
+          @if (runsPageCount() > 1) {
+            <nav aria-label="Runs pagination">
+              <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" [class.disabled]="workflowService.runsPage() === 1">
+                  <button class="page-link" type="button" [disabled]="workflowService.runsPage() === 1" aria-label="First"
+                    (click)="onRunsPageChange(1)">
+                    <span aria-hidden="true">&laquo;</span>
+                  </button>
+                </li>
+                <li class="page-item" [class.disabled]="workflowService.runsPage() === 1">
+                  <button class="page-link" type="button" [disabled]="workflowService.runsPage() === 1" aria-label="Previous"
+                    (click)="onRunsPageChange(workflowService.runsPage() - 1)">
+                    <span aria-hidden="true">&lsaquo;</span>
+                  </button>
+                </li>
+                @for (page of runsPageNumbers(); track page) {
+                  <li class="page-item" [class.active]="page === workflowService.runsPage()"
+                    [attr.aria-current]="page === workflowService.runsPage() ? 'page' : null">
+                    <button class="page-link" type="button" (click)="onRunsPageChange(page)">{{ page }}</button>
+                  </li>
+                }
+                <li class="page-item" [class.disabled]="workflowService.runsPage() >= runsPageCount()">
+                  <button class="page-link" type="button" [disabled]="workflowService.runsPage() >= runsPageCount()"
+                    aria-label="Next" (click)="onRunsPageChange(workflowService.runsPage() + 1)">
+                    <span aria-hidden="true">&rsaquo;</span>
+                  </button>
+                </li>
+                <li class="page-item" [class.disabled]="workflowService.runsPage() >= runsPageCount()">
+                  <button class="page-link" type="button" [disabled]="workflowService.runsPage() >= runsPageCount()"
+                    aria-label="Last" (click)="onRunsPageChange(runsPageCount())">
+                    <span aria-hidden="true">&raquo;</span>
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          }
+        </div>
+      }
     </div>
   </ng-template>
 </div>

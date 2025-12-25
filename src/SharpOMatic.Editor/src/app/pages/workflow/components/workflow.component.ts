@@ -52,6 +52,26 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
   public tabs: TabItem[] = [];
   public readonly hasStartNode = computed(() => this.workflowService.workflow().nodes().some(node => node.nodeType() === NodeType.Start));
   public readonly RunStatus = RunStatus;
+  public readonly runsPageCount = computed(() => this.workflowService.getRunsPageCount());
+  public readonly runsPageNumbers = computed(() => {
+    const totalPages = this.runsPageCount();
+    if (totalPages <= 1) {
+      return [];
+    }
+
+    const currentPage = this.workflowService.runsPage();
+    const windowSize = 5;
+    let start = Math.max(1, currentPage - Math.floor(windowSize / 2));
+    let end = Math.min(totalPages, start + windowSize - 1);
+    start = Math.max(1, end - windowSize + 1);
+
+    const pages: number[] = [];
+    for (let page = start; page <= end; page += 1) {
+      pages.push(page);
+    }
+
+    return pages;
+  });
 
   ngOnInit(): void {
     this.tabs = [
@@ -102,6 +122,19 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
   onRunRowDoubleClick(run: RunProgressModel): void {
     this.dialogService.open(RunViewerDialogComponent, { run });
+  }
+
+  onRunsPageChange(page: number): void {
+    const totalPages = this.runsPageCount();
+    if (page < 1 || (totalPages > 0 && page > totalPages)) {
+      return;
+    }
+
+    if (page === this.workflowService.runsPage()) {
+      return;
+    }
+
+    this.workflowService.loadRunsPage(page);
   }
 
   onAddStartNode(event: Event): void {

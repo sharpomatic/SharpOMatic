@@ -22,20 +22,22 @@ public class RunController : ControllerBase
         return run;
     }
 
-    [HttpGet("latestforworkflow/{id}/{count}")]
-    public async Task<List<Run>> GetLatestRunsForWorkflow(IRepository repository, Guid id, int count)
+    [HttpGet("latestforworkflow/{id}/{page}/{count}")]
+    public async Task<WorkflowRunPageResult> GetLatestRunsForWorkflow(IRepository repository, Guid id, int page, int count)
     {
-        if (count < 1)
-            return [];
+        var totalCount = await repository.GetWorkflowRuns(id).CountAsync();
+        if (count < 1 || page < 1 || totalCount == 0)
+            return new WorkflowRunPageResult([], totalCount);
 
+        var skip = (page - 1) * count;
         var runs = await (from r in repository.GetWorkflowRuns(id)
                           orderby r.Created descending
-                          select r).Take(count).ToListAsync();
+                          select r).Skip(skip).Take(count).ToListAsync();
 
         foreach (var run in runs)
             NormalizeInputEntriesForClient(run);
 
-        return runs;
+        return new WorkflowRunPageResult(runs, totalCount);
     }
 
     private static void NormalizeInputEntriesForClient(Run run)

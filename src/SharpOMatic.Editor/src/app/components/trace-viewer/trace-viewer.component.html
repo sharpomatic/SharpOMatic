@@ -7,7 +7,7 @@
       <span class="trace-text" [class.running]="trace.nodeStatus === NodeStatus.Running"
         [class.success]="trace.nodeStatus === NodeStatus.Success"
         [class.failed]="trace.nodeStatus === NodeStatus.Failed">
-        {{ NodeStatus[trace.nodeStatus] || '' }}
+        {{ trace.message }}
       </span>
       @if (trace.nodeStatus === NodeStatus.Failed) {
       <span>{{ trace.error }}</span>

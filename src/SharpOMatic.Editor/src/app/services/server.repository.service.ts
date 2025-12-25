@@ -5,6 +5,7 @@ import { Connector, ConnectorSnapshot } from '../metadata/definitions/connector'
 import { WorkflowEntity, WorkflowSnapshot } from '../entities/definitions/workflow.entity';
 import { WorkflowSummaryEntity, WorkflowSummarySnapshot } from '../entities/definitions/workflow.summary.entity';
 import { RunProgressModel } from '../pages/workflow/interfaces/run-progress-model';
+import { WorkflowRunPageResult } from '../pages/workflow/interfaces/workflow-run-page-result';
 import { TraceProgressModel } from '../pages/workflow/interfaces/trace-progress-model';
 import { ContextEntryListEntity } from '../entities/definitions/context-entry-list.entity';
 import { ConnectorConfig, ConnectorConfigSnapshot } from '../metadata/definitions/connector-config';
@@ -85,9 +86,9 @@ export class ServerRepositoryService {
     );
   }
 
-  public getLatestWorkflowRuns(id: string, count: number): Observable<RunProgressModel[] | null> {
+  public getLatestWorkflowRuns(id: string, page: number, count: number): Observable<WorkflowRunPageResult | null> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<RunProgressModel[]>(`${apiUrl}/api/run/latestforworkflow/${id}/${count}`).pipe(
+    return this.http.get<WorkflowRunPageResult>(`${apiUrl}/api/run/latestforworkflow/${id}/${page}/${count}`).pipe(
       catchError((error) => {
         this.notifyError('Loading latest workflow runs', error);
         return of(null);

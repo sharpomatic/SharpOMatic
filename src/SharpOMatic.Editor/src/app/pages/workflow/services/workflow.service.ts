@@ -17,13 +17,16 @@ import { ToastService } from '../../../services/toast.service';
 })
 export class WorkflowService implements OnDestroy  {
   private readonly serverWorkflowService = inject(ServerRepositoryService);
-  public readonly signalrService = inject(SignalrService);
   private readonly toastService = inject(ToastService);
+  public readonly signalrService = inject(SignalrService);
+  public readonly runsPageSize = 50;
 
   public workflow: WritableSignal<WorkflowEntity>;
   public runProgress: WritableSignal<RunProgressModel | undefined>;
   public traces: WritableSignal<TraceProgressModel[]>;
   public runs: WritableSignal<RunProgressModel[]>;
+  public runsTotal: WritableSignal<number>;
+  public runsPage: WritableSignal<number>;
   public isRunning: WritableSignal<boolean>;
   public runInputs: WritableSignal<ContextEntryListEntity>;
   private lastStartInputsSnapshot?: ContextEntryListSnapshot;
@@ -37,6 +40,8 @@ export class WorkflowService implements OnDestroy  {
     this.runProgress = signal(undefined);
     this.traces = signal([]);
     this.runs = signal([]);
+    this.runsTotal = signal(0);
+    this.runsPage = signal(1);
     this.isRunning = signal(false);
     this.runInputs = signal(ContextEntryListEntity.fromSnapshot(ContextEntryListEntity.defaultSnapshot()));
 
@@ -66,9 +71,11 @@ export class WorkflowService implements OnDestroy  {
       this.workflow.set(workflow as WorkflowEntity);
       this.workflow().nodes().forEach(nodeEntity => nodeEntity.displayState.set(NodeStatus.None));
       this.runProgress.set(undefined);
+      this.runsTotal.set(0);
+      this.runsPage.set(1);
       this.updateRunInputsFromWorkflow();
       this.workflow().markClean();
-      this.loadRecentRuns(id);
+      this.loadRunsPageForWorkflow(id, 1);
       this.serverWorkflowService.getLatestWorkflowRun(id).subscribe(run => {
         if (run) {
           this.runProgress.set(run);
@@ -139,7 +146,7 @@ export class WorkflowService implements OnDestroy  {
           const workflowName = workflow.name();
           const successMessage = `${workflowName} completed successfully.`;
           this.toastService.success(successMessage);
-          this.loadRecentRuns(workflow.id);
+          this.loadRunsPageForWorkflow(workflow.id, 1);
           break;
         }
         case RunStatus.Failed: {
@@ -149,7 +156,7 @@ export class WorkflowService implements OnDestroy  {
           const errorMessage = (data.error ?? '').trim();
           const failureMessage = errorMessage ? `${workflowName} failed: ${errorMessage}` : `${workflowName} failed.`;
           this.toastService.error(failureMessage);
-          this.loadRecentRuns(workflow.id);
+          this.loadRunsPageForWorkflow(workflow.id, 1);
           break;
         }
       }
@@ -235,10 +242,43 @@ export class WorkflowService implements OnDestroy  {
     });
   }
 
-  private loadRecentRuns(workflowId: string): void {
-    this.serverWorkflowService.getLatestWorkflowRuns(workflowId, 20).subscribe(runs => {
-      this.runs.set(runs ?? []);
+  public loadRunsPage(page: number): void {
+    const workflowId = this.workflow().id;
+    if (!workflowId) {
+      return;
+    }
+
+    const normalizedPage = Number.isFinite(page) ? Math.max(1, Math.floor(page)) : 1;
+    this.loadRunsPageForWorkflow(workflowId, normalizedPage);
+  }
+
+  private loadRunsPageForWorkflow(workflowId: string, page: number): void {
+    this.serverWorkflowService.getLatestWorkflowRuns(workflowId, page, this.runsPageSize).subscribe(result => {
+      if (!result) {
+        this.runs.set([]);
+        this.runsTotal.set(0);
+        return;
+      }
+
+      const totalCount = result.totalCount ?? 0;
+      const totalPages = this.getRunsPageCount(totalCount);
+      if (totalPages > 0 && page > totalPages) {
+        this.loadRunsPageForWorkflow(workflowId, totalPages);
+        return;
+      }
+
+      this.runs.set(result.runs ?? []);
+      this.runsTotal.set(totalCount);
+      this.runsPage.set(page);
     });
+  }
+
+  public getRunsPageCount(totalCount = this.runsTotal()): number {
+    if (totalCount <= 0) {
+      return 0;
+    }
+
+    return Math.ceil(totalCount / this.runsPageSize);
   }
 
   private syncRunInputsWithStartSnapshot(snapshot?: ContextEntryListSnapshot): void {
