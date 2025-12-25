@@ -111,27 +111,21 @@
             </tr>
           </thead>
           <tbody>
-            @if (workflowService.runs().length === 0) {
-              <tr>
-                <td colspan="4" class="text-muted">No runs yet.</td>
+            @for (run of workflowService.runs(); track run.runId) {
+              <tr class="run-row" (dblclick)="onRunRowDoubleClick(run)">
+                <td class="col-created">{{ run.created ? (run.created | date:'short') : '' }}</td>
+                <td class="col-status">
+                  <span class="run-text" 
+                    [class.created]="run.runStatus === RunStatus.Created"
+                    [class.running]="run.runStatus === RunStatus.Running"
+                    [class.success]="run.runStatus === RunStatus.Success"
+                    [class.failed]="run.runStatus === RunStatus.Failed">
+                    {{ run.message }}
+                  </span>
+                </td>
+                <td>{{ getRunDuration(run) }}</td>
+                <td>{{ run.error || '' }}</td>
               </tr>
-            } @else {
-              @for (run of workflowService.runs(); track run.runId) {
-                <tr class="run-row" (dblclick)="onRunRowDoubleClick(run)">
-                  <td class="col-created">{{ run.created ? (run.created | date:'short') : '' }}</td>
-                  <td class="col-status">
-                    <span class="run-text" 
-                      [class.created]="run.runStatus === RunStatus.Created"
-                      [class.running]="run.runStatus === RunStatus.Running"
-                      [class.success]="run.runStatus === RunStatus.Success"
-                      [class.failed]="run.runStatus === RunStatus.Failed">
-                      {{ run.message }}
-                    </span>
-                  </td>
-                  <td>{{ getRunDuration(run) }}</td>
-                  <td>{{ run.error || '' }}</td>
-                </tr>
-              }
             }
           </tbody>
         </table>

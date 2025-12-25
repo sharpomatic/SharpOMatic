@@ -16,57 +16,53 @@
       </div>
     </div>
     <div class="settings-list">
-      @if (settings.length === 0) {
-        <div class="text-muted">No settings found.</div>
-      } @else {
-        @for (setting of settings; track setting.settingId) {
-          <div class="mb-3 form-line">
-            <label class="form-label field-label" [attr.for]="settingInputId(setting)">
-              {{ setting.displayName }}
-            </label>
-            <div class="flex-fill control-column">
-              @if (setting.settingType === settingType.String) {
+      @for (setting of settings; track setting.settingId) {
+        <div class="mb-3 form-line">
+          <label class="form-label field-label" [attr.for]="settingInputId(setting)">
+            {{ setting.displayName }}
+          </label>
+          <div class="flex-fill control-column">
+            @if (setting.settingType === settingType.String) {
+              <input
+                [id]="settingInputId(setting)"
+                type="text"
+                class="form-control long"
+                [(ngModel)]="setting.valueString"
+                (blur)="onStringBlur(setting)"/>
+            }
+
+            @if (setting.settingType === settingType.Boolean) {
+              <div class="form-check mb-0">
                 <input
                   [id]="settingInputId(setting)"
-                  type="text"
-                  class="form-control long"
-                  [(ngModel)]="setting.valueString"
-                  (blur)="onStringBlur(setting)"/>
-              }
+                  class="form-check-input long"
+                  type="checkbox"
+                  [ngModel]="setting.valueBoolean ?? false"
+                  (ngModelChange)="onBooleanChange(setting, $event)">
+              </div>
+            }
 
-              @if (setting.settingType === settingType.Boolean) {
-                <div class="form-check mb-0">
-                  <input
-                    [id]="settingInputId(setting)"
-                    class="form-check-input long"
-                    type="checkbox"
-                    [ngModel]="setting.valueBoolean ?? false"
-                    (ngModelChange)="onBooleanChange(setting, $event)">
-                </div>
-              }
+            @if (setting.settingType === settingType.Integer) {
+              <input
+                [id]="settingInputId(setting)"
+                type="number"
+                class="form-control tiny"
+                step="1"
+                [(ngModel)]="setting.valueInteger"
+                (blur)="onIntegerBlur(setting)"/>
+            }
 
-              @if (setting.settingType === settingType.Integer) {
-                <input
-                  [id]="settingInputId(setting)"
-                  type="number"
-                  class="form-control tiny"
-                  step="1"
-                  [(ngModel)]="setting.valueInteger"
-                  (blur)="onIntegerBlur(setting)"/>
-              }
-
-              @if (setting.settingType === settingType.Double) {
-                <input
-                  [id]="settingInputId(setting)"
-                  type="number"
-                  class="form-control tiny"
-                  step="any"
-                  [(ngModel)]="setting.valueDouble"
-                  (blur)="onDoubleBlur(setting)"/>
-              }
-            </div>
+            @if (setting.settingType === settingType.Double) {
+              <input
+                [id]="settingInputId(setting)"
+                type="number"
+                class="form-control tiny"
+                step="any"
+                [(ngModel)]="setting.valueDouble"
+                (blur)="onDoubleBlur(setting)"/>
+            }
           </div>
-        }
+        </div>
       }
     </div>
   </div>
