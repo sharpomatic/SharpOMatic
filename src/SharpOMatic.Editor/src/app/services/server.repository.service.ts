@@ -7,6 +7,7 @@ import { WorkflowSummaryEntity, WorkflowSummarySnapshot } from '../entities/defi
 import { RunProgressModel } from '../pages/workflow/interfaces/run-progress-model';
 import { WorkflowRunPageResult } from '../pages/workflow/interfaces/workflow-run-page-result';
 import { TraceProgressModel } from '../pages/workflow/interfaces/trace-progress-model';
+import { Setting } from '../pages/settings/interfaces/setting';
 import { ContextEntryListEntity } from '../entities/definitions/context-entry-list.entity';
 import { ConnectorConfig, ConnectorConfigSnapshot } from '../metadata/definitions/connector-config';
 import { ConnectorSummary, ConnectorSummarySnapshot } from '../metadata/definitions/connector-summary';
@@ -113,6 +114,26 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Loading run traces', error);
         return of(null);
+      })
+    );
+  }
+
+  public getSettings(): Observable<Setting[]> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.get<Setting[]>(`${apiUrl}/api/setting`).pipe(
+      catchError((error) => {
+        this.notifyError('Loading settings', error);
+        return of([]);
+      })
+    );
+  }
+
+  public upsertSetting(setting: Setting): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.post<void>(`${apiUrl}/api/setting`, setting).pipe(
+      catchError((error) => {
+        this.notifyError('Saving setting', error);
+        return of(undefined);
       })
     );
   }
