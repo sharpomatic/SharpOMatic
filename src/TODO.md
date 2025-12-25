@@ -1,7 +1,3 @@
-# Workflows
-
-- Previous Runs
-
 # LLM's
 
 - Azure OpenAI - models
