@@ -1,3 +1,8 @@
+# Minimum Viable Product Features
+
+Max nodes executed for a workflow to prevent looping forever
+Max number of runs to keep for a workflow to prevent too much data storage
+
 # LLM's
 
 - Azure OpenAI - models
@@ -11,15 +16,6 @@
 # Export and Import
 
 - Workflows
-
-# Minimum Viable Product Features
-
-Max nodes executed for a workflow to prevent looping forever
-Max number of runs to keep for a workflow to prevent too much data storage
-
-# Integration Overrides
-
-Max values for nodes, execution and runs to keep
 	  
 # Process
 
@@ -29,9 +25,9 @@ Max values for nodes, execution and runs to keep
 
 - Build first version of documentation
 
-
 # Implementation Details
 
+Package the editor in a package that can be added with extension method
 Add UI editor as exposed via a specified path
 
 
