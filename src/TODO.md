@@ -1,8 +1,3 @@
-# Minimum Viable Product Features
-
-Max nodes executed for a workflow to prevent looping forever
-Max number of runs to keep for a workflow to prevent too much data storage
-
 # Node Traces
 
 - LLM streaming to get intermediate outputs
