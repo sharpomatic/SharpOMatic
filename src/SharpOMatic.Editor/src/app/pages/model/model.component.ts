@@ -122,6 +122,7 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
   public onModelConfigChange(configId: string): void {
     this.setModelConfig(configId, true);
+    this.setNameFromSelectedConfig();
   }
 
   public get parameterValuesRecord(): Record<string, string | null> {
@@ -198,6 +199,17 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
       this.model.customCapabilities.set(new Set(capabilityNames));
       const nextValues = this.buildParameterValuesForConfig(this.modelConfig, previousValues);
       this.model.parameterValues.set(nextValues);
+    }
+  }
+
+  private setNameFromSelectedConfig(): void {
+    if (!this.modelConfig) {
+      return;
+    }
+
+    const currentName = this.model.name().trim();
+    if (!currentName || currentName === 'Untitled') {
+      this.model.name.set(this.modelConfig.displayName);
     }
   }
 

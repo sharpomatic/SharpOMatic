@@ -3,16 +3,12 @@
 Max nodes executed for a workflow to prevent looping forever
 Max number of runs to keep for a workflow to prevent too much data storage
 
-# Quality
-
-- New connection should default name when drop down used
-- New model should default name when drop down used
-
 # Node Traces
 
 - LLM streaming to get intermediate outputs
 - Tool calling as child trace
 - Thinking output as child trace
+- 
 
 # LLM's
 
