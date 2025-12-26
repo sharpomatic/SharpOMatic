@@ -20,7 +20,7 @@ public class RunContext
     public WorkflowEntity Workflow { get; init; }
     public Run Run { get; init; }
     public int RunningThreadCount => _threadCount;
-    public int NodesRun => _nodesRun;
+    public int NodesRun => Volatile.Read(ref _nodesRun);
     public int RunNodeLimit => _runNodeLimit;
 
     public RunContext(IServiceScope serviceScope,
@@ -61,14 +61,30 @@ public class RunContext
         return Interlocked.Increment(ref _threadId);
     }
 
-    public int IncrementNodesRun()
+    public bool TryIncrementNodesRun(out int newCount)
     {
-        return Interlocked.Increment(ref _nodesRun);
-    }
+        if (_runNodeLimit <= 0)
+        {
+            newCount = Interlocked.Increment(ref _nodesRun);
+            return true;
+        }
 
-    public bool TryMarkNodeRunLimit()
-    {
-        return Interlocked.Exchange(ref _runNodeLimit, 1) == 0;
+        while (true)
+        {
+            var current = Volatile.Read(ref _nodesRun);
+            if (current >= _runNodeLimit)
+            {
+                newCount = current;
+                return false;
+            }
+
+            var next = current + 1;
+            if (Interlocked.CompareExchange(ref _nodesRun, next, current) == current)
+            {
+                newCount = next;
+                return true;
+            }
+        }
     }
 
     public async Task RunUpdated()

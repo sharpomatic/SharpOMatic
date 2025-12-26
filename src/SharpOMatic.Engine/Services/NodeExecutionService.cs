@@ -63,13 +63,15 @@ public class NodeExecutionService(INodeQueue queue, IServiceScopeFactory scopeFa
 
         try
         {
-            var nextNodes = await RunNode(threadContext, node);
             if (runContext.Run.RunStatus == RunStatus.Failed)
                 return;
 
-            var executedCount = runContext.IncrementNodesRun();
-            if (runContext.RunNodeLimit > 0 && executedCount >= runContext.RunNodeLimit)
+            if (!runContext.TryIncrementNodesRun(out _))
                 throw new SharpOMaticException($"Hit run node limit of {runContext.RunNodeLimit}");
+
+            var nextNodes = await RunNode(threadContext, node);
+            if (runContext.Run.RunStatus == RunStatus.Failed)
+                return;
 
             if (runContext.UpdateThreadCount(nextNodes.Count - 1) == 0)
             {

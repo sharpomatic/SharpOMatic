@@ -4,7 +4,7 @@ import { NodeEntity, NodeSnapshot } from './node.entity';
 import { NodeType } from '../enumerations/node-type';
 
 export interface ModelCallNodeSnapshot extends NodeSnapshot {
-  modelId: string;
+  modelId: string | null;
   instructions: string;
   prompt: string;
   textOutputPath: string;
@@ -13,7 +13,7 @@ export interface ModelCallNodeSnapshot extends NodeSnapshot {
 }
 
 export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
-  public modelId: WritableSignal<string>;
+  public modelId: WritableSignal<string | null>;
   public instructions: WritableSignal<string>;
   public prompt: WritableSignal<string>;
   public textOutputPath: WritableSignal<string>;
@@ -23,7 +23,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
   constructor(snapshot: ModelCallNodeSnapshot) {
     super(snapshot);
 
-    this.modelId = signal(snapshot.modelId ?? '');
+    this.modelId = signal(snapshot.modelId);
     this.instructions = signal(snapshot.instructions ?? '');
     this.prompt = signal(snapshot.prompt ?? '');
     this.textOutputPath = signal(snapshot.textOutputPath ?? '');
@@ -76,7 +76,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       title: 'Model Call',
       inputs: [ConnectorEntity.defaultSnapshot()],
       outputs: [ConnectorEntity.defaultSnapshot()],
-      modelId: '',
+      modelId: null,
       instructions: '',
       prompt: '',
       textOutputPath: 'output.text',

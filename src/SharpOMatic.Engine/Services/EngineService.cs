@@ -40,7 +40,7 @@ public class EngineService(IServiceProvider ServiceProvider,
             InputContext = JsonSerializer.Serialize(nodeContext, new JsonSerializerOptions().BuildOptions(converters))
         };
 
-        var nodeRunLimitSetting = await Repository.GetSettings().FirstOrDefaultAsync(s => s.Name == "NodeRunLimit");
+        var nodeRunLimitSetting = await Repository.GetSettings().FirstOrDefaultAsync(s => s.Name == "RunNodeLimit");
         var nodeRunLimit = nodeRunLimitSetting?.ValueInteger ?? NodeExecutionService.DEFAULT_NODE_RUN_LIMIT;
 
         var runContext = new RunContext(ServiceProvider.CreateScope(), converters, workflow, run, nodeRunLimit);
