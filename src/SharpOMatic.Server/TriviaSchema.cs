@@ -1,6 +1,6 @@
 ﻿namespace SharpOMatic.Server;
 
-public class TriviaShema
+public class TriviaSchema
 {
     public required string Answer { get; set; }
     public required string Reason { get; set; }

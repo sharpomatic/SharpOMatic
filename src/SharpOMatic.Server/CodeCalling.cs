@@ -1,13 +1,8 @@
 ﻿namespace SharpOMatic.Server;
 
-public class CodeCalling
+public class CodeCalling(int num)
 {
-    private readonly int _num;
-
-    public CodeCalling(int num)
-    {
-        _num = num;
-    }
+    private readonly int _num = num;
 
     public int Doubled()
     {

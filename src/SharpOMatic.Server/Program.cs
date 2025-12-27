@@ -1,15 +1,12 @@
-using SharpOMatic.Editor;
-using SharpOMatic.Server;
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.WebHost.UseUrls("http://localhost:9001");
 builder.Services.AddCors();
 builder.Services.AddSharpOMaticEditor();
 builder.Services.AddSharpOMaticEngine()
-    .AddSchemaTypes(typeof(Schema), typeof(StringList))
+    .AddSchemaTypes(typeof(TriviaSchema))
     .AddToolMethods(ToolCalling.GetGreeting, ToolCalling.GetTime)
-    .AddScriptOptions([typeof(ServerHelper).Assembly], ["SharpOMatic.Server"])
+    .AddScriptOptions([typeof(CodeCalling).Assembly], ["SharpOMatic.Server"])
     .AddRepository((optionBuilder) =>
     {
         var folder = Environment.SpecialFolder.LocalApplicationData;
@@ -21,6 +18,7 @@ builder.Services.AddSharpOMaticEngine()
         // dbOptions.TablePrefix = "Sample";
         // dbOptions.DefaultSchema = "SharpOMatic";
         // dbOptions.CommandTimeout = 120;
+        // dbOptions.ApplyMigrationsOnStartup = false;
     });
 
 var app = builder.Build();
@@ -28,14 +26,6 @@ var app = builder.Build();
 app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 app.UseDefaultFiles();
 app.UseStaticFiles();
-
-app.Use(async (context, next) =>
-{
-    // Buffering ensures we can read the content and then pass it on to the target
-    context.Request.EnableBuffering();
-    await next();
-});
-
 app.MapSharpOMaticEditor("/editor");
 app.Run();
 
