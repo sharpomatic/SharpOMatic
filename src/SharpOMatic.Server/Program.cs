@@ -7,8 +7,8 @@ builder.WebHost.UseUrls("http://localhost:9001");
 builder.Services.AddCors();
 builder.Services.AddSharpOMaticEditor();
 builder.Services.AddSharpOMaticEngine()
-    .AddSchemaTypes(typeof(TriviaResponse), typeof(StringList))
-    .AddToolMethods(Tools.GetGreeting, Tools.GetTime)
+    .AddSchemaTypes(typeof(Schema), typeof(StringList))
+    .AddToolMethods(ToolCalling.GetGreeting, ToolCalling.GetTime)
     .AddScriptOptions([typeof(ServerHelper).Assembly], ["SharpOMatic.Server"])
     .AddRepository((optionBuilder) =>
     {

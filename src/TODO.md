@@ -1,9 +1,4 @@
-# Node Traces
-
-- LLM streaming to get intermediate outputs
-- Tool calling as child trace
-- Thinking output as child trace
-- 
+Handle multiple INotification instances so editor and server specific actions work.
 
 # LLM's
 
@@ -29,7 +24,6 @@
 
 # Implementation Details
 
-Move the notification interface and signal into the editor package
 Output the editor and engine as nuget packages
 GitHub build pipeline to build/package and publish to nuget the two packages
 
