@@ -1,9 +1,4 @@
-using System.Text;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.FileProviders;
-
-namespace SharpOMatic.Editor.Hosting;
+namespace SharpOMatic.Editor;
 
 public static class SharpOMaticEditorExtensions
 {

@@ -15,7 +15,7 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node)
 
             if (!string.IsNullOrWhiteSpace(switcher.Code))
             {
-                var options = ScriptOptionsService.GetScriptOptions();
+                var options = RunContext.ScriptOptionsService.GetScriptOptions();
 
                 try
                 {

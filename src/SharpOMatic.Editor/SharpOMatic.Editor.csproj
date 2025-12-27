@@ -6,12 +6,12 @@
     <Nullable>enable</Nullable>
     <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
     <IsPackable>true</IsPackable>
-    <PackageId>SharpOMatic.Editor.Hosting</PackageId>
+    <PackageId>SharpOMatic.Editor</PackageId>
     <Description>SharpOMatic Editor assets and ASP.NET Core mapping extensions.</Description>
   </PropertyGroup>
 
   <PropertyGroup>
-    <SpaRoot>$(MSBuildThisFileDirectory)..\SharpOMatic.Editor\</SpaRoot>
+    <SpaRoot>$(MSBuildThisFileDirectory)..\SharpOMatic.FrontEnd\</SpaRoot>
     <EditorDistDir>$(SpaRoot)dist\SharpOMatic-Editor\browser\</EditorDistDir>
   </PropertyGroup>
 

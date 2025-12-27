@@ -178,7 +178,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         OpenAIClient client = new OpenAIClient(apiKey);
         var agentClient = client.GetOpenAIResponseClient(modelName);
 
-        string instructions = null;
+        string? instructions = null;
         if (!string.IsNullOrWhiteSpace(Node.Instructions))
             instructions = ContextHelpers.SubstituteValues(Node.Instructions, ThreadContext.NodeContext);
 
