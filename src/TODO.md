@@ -13,11 +13,6 @@ This allows code to get API keys or other secrets and provide them.
 - Azure OpenAI - models
 - Microsoft Foundry - models
 
-## Conversations
-
-- ChatMessage serializable (use AIJsonUtilities.DefaultOptions), would need to update our context serializing to notice and use this for serial/deserial
-- Allow ModelCall to specify the path to get current conversation from (with create one if not present), then append call result to this same instance.
-
 ## Export and Import to move between dev/staging/prod
 
 - Workflows

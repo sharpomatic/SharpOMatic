@@ -2,6 +2,7 @@
 
 using SharpOMatic.Engine.Metadata.Definitions;
 using SharpOMatic.Engine.Services;
+using System.Collections.Generic;
 
 namespace SharpOMatic.Engine.Nodes;
 
@@ -175,19 +176,35 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             }
         }
 
-        OpenAIClient client = new OpenAIClient(apiKey);
-        var agentClient = client.GetOpenAIResponseClient(modelName);
+        List<ChatMessage> chat = [];
+
+        if (!string.IsNullOrWhiteSpace(Node.ChatInputPath))
+        {
+            if (ThreadContext.NodeContext.TryGet<ChatMessage>(Node.ChatInputPath, out var chatMessage) && (chatMessage is not null))
+                chat.Add(chatMessage);
+            else if (ThreadContext.NodeContext.TryGet<ContextList>(Node.ChatInputPath, out var chatList) && (chatList is not null))
+            {
+                foreach(var listEntry in chatList)
+                    if ((listEntry is not null) && (listEntry is ChatMessage))
+                        chat.Add((ChatMessage)listEntry);
+            }
+        }
 
         string? instructions = null;
         if (!string.IsNullOrWhiteSpace(Node.Instructions))
             instructions = ContextHelpers.SubstituteValues(Node.Instructions, ThreadContext.NodeContext);
 
-        string prompt = "";
         if (!string.IsNullOrWhiteSpace(Node.Prompt))
-            prompt = ContextHelpers.SubstituteValues(Node.Prompt, ThreadContext.NodeContext);
+        {
+            var prompt = ContextHelpers.SubstituteValues(Node.Prompt, ThreadContext.NodeContext);
+            chat.Add(new ChatMessage(ChatRole.User, [new TextContent(prompt)]));
+        }
+
+        OpenAIClient client = new OpenAIClient(apiKey);
+        var agentClient = client.GetOpenAIResponseClient(modelName);
 
         AIAgent agent = agentClient.CreateAIAgent(instructions: instructions, services: agentServiceProvider);
-        var response = await agent.RunAsync(prompt, options: new ChatClientAgentRunOptions(chatOptions));
+        var response = await agent.RunAsync(chat, options: new ChatClientAgentRunOptions(chatOptions));
 
         var tempContext = new ContextObject();
         var textPath = !string.IsNullOrWhiteSpace(Node.TextOutputPath) ? Node.TextOutputPath : "output.text";
@@ -209,6 +226,19 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             tempContext.Set(textPath, response.Text);
 
         RunContext.MergeContexts(ThreadContext.NodeContext, tempContext);
+
+        if (!string.IsNullOrWhiteSpace(Node.ChatOutputPath))
+        {
+            ContextList chatList = [];
+
+            if (!Node.ChatOnlyAnswer)
+                chatList.AddRange(chat);
+
+            foreach (var message in response.Messages)
+                chatList.Add(message);
+
+            ThreadContext.NodeContext.TrySet(Node.ChatOutputPath, chatList);
+        }
 
         return ("Model call executed", new List<NextNodeData> { new(ThreadContext, RunContext.ResolveSingleOutput(Node)) });
     }

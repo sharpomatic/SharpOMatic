@@ -7,6 +7,9 @@ export interface ModelCallNodeSnapshot extends NodeSnapshot {
   modelId: string | null;
   instructions: string;
   prompt: string;
+  chatInputPath: string;
+  chatOutputPath: string;
+  chatOnlyAnswer: boolean;
   textOutputPath: string;
   imageOutputPath: string;
   parameterValues: Record<string, string | null>;
@@ -16,6 +19,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
   public modelId: WritableSignal<string | null>;
   public instructions: WritableSignal<string>;
   public prompt: WritableSignal<string>;
+  public chatInputPath: WritableSignal<string>;
+  public chatOutputPath: WritableSignal<string>;
+  public chatOnlyAnswer: WritableSignal<boolean>;
   public textOutputPath: WritableSignal<string>;
   public imageOutputPath: WritableSignal<string>;
   public parameterValues: WritableSignal<Record<string, string | null>>;
@@ -26,6 +32,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
     this.modelId = signal(snapshot.modelId);
     this.instructions = signal(snapshot.instructions ?? '');
     this.prompt = signal(snapshot.prompt ?? '');
+    this.chatInputPath = signal(snapshot.chatInputPath ?? '');
+    this.chatOutputPath = signal(snapshot.chatOutputPath ?? '');
+    this.chatOnlyAnswer = signal(snapshot.chatOnlyAnswer ?? false);
     this.textOutputPath = signal(snapshot.textOutputPath ?? '');
     this.imageOutputPath = signal(snapshot.imageOutputPath ?? '');
     this.parameterValues = signal({ ...(snapshot.parameterValues ?? {}) });
@@ -39,6 +48,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       const currentModelId = this.modelId();
       const currentInstructions = this.instructions();
       const currentPrompt = this.prompt();
+      const currentChatInputPath = this.chatInputPath();
+      const currentChatOutputPath = this.chatOutputPath();
+      const currentChatOnlyAnswer = this.chatOnlyAnswer();
       const currentTextOutputPath = this.textOutputPath();
       const currentImageOutputPath = this.imageOutputPath();
       const currentParameterValues = this.parameterValues();
@@ -47,6 +59,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
         currentModelId !== snapshot.modelId ||
         currentInstructions !== snapshot.instructions ||
         currentPrompt !== snapshot.prompt ||
+        currentChatInputPath !== (snapshot.chatInputPath ?? '') ||
+        currentChatOutputPath !== (snapshot.chatOutputPath ?? '') ||
+        currentChatOnlyAnswer !== (snapshot.chatOnlyAnswer ?? false) ||
         currentTextOutputPath !== snapshot.textOutputPath ||
         currentImageOutputPath !== snapshot.imageOutputPath ||
         !ModelCallNodeEntity.areParameterValuesEqual(currentParameterValues, snapshot.parameterValues);
@@ -59,6 +74,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       modelId: this.modelId(),
       instructions: this.instructions(),
       prompt: this.prompt(),
+      chatInputPath: this.chatInputPath(),
+      chatOutputPath: this.chatOutputPath(),
+      chatOnlyAnswer: this.chatOnlyAnswer(),
       textOutputPath: this.textOutputPath(),
       imageOutputPath: this.imageOutputPath(),
       parameterValues: this.parameterValues(),
@@ -79,6 +97,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       modelId: null,
       instructions: '',
       prompt: '',
+      chatInputPath: '',
+      chatOutputPath: '',
+      chatOnlyAnswer: false,
       textOutputPath: 'output.text',
       imageOutputPath: 'output.image',
       parameterValues: {},

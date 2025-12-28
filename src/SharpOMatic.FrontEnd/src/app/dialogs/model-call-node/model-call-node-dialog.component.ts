@@ -33,6 +33,7 @@ import { MonacoService } from '../../services/monaco.service';
 export class ModelCallNodeDialogComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
   @ViewChild('detailsTab', { static: true }) detailsTab!: TemplateRef<unknown>;
+  @ViewChild('chatTab', { static: true }) chatTab!: TemplateRef<unknown>;
   @ViewChild('inputsTab', { static: true }) inputsTab!: TemplateRef<unknown>;
   @ViewChild('outputsTab', { static: true }) outputsTab!: TemplateRef<unknown>;
   @ViewChild('textTab', { static: true }) textTab!: TemplateRef<unknown>;
@@ -394,6 +395,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
   private refreshTabs(): void {
     const newTabs: TabItem[] = [
       { id: 'details', title: 'Details', content: this.detailsTab },
+      { id: 'chat', title: 'Chat', content: this.chatTab },
     ];
 
     if (this.supportsTextIn || this.supportsTextOut) {

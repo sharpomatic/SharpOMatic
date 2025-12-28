@@ -47,6 +47,48 @@
         </app-dynamic-fields>
       </div>
     </ng-template>
+    <ng-template #chatTab>
+      <div class="bg-body-tertiary p-3">
+        <div class="mb-3 form-line">
+          <label for="model-call-chat-input" class="form-label field-label">Chat Input Path</label>
+          <div class="flex-fill control-column short">
+            <input
+              type="text"
+              class="form-control w-100"
+              id="model-call-chat-input"
+              [ngModel]="node.chatInputPath()"
+              (ngModelChange)="node.chatInputPath.set($event)" />
+          </div>
+        </div>
+
+        <div class="mb-3 form-line">
+          <label for="model-call-chat-output" class="form-label field-label">Chat Output Path</label>
+          <div class="flex-fill control-column short">
+            <input
+              type="text"
+              class="form-control w-100"
+              id="model-call-chat-output"
+              [ngModel]="node.chatOutputPath()"
+              (ngModelChange)="node.chatOutputPath.set($event)" />
+          </div>
+        </div>
+
+        <div class="mb-3 form-line">
+          <label for="model-call-chat-append" class="form-label field-label"></label>
+          <div class="flex-fill control-column short">
+            <div class="form-check form-switch">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="model-call-chat-append"
+                [ngModel]="node.chatOnlyAnswer()"
+                (ngModelChange)="node.chatOnlyAnswer.set($event)" />
+              <label class="form-check-label" for="model-call-chat-append">Output chat only has answer</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-template>
     <ng-template #textTab>
       <div class="bg-body-tertiary p-3">
         @if (showTextInFields) {
