@@ -1,6 +1,6 @@
 namespace SharpOMatic.Editor.Services;
 
-public class NotificationService(IHubContext<NotificationHub> hubContext) : INotificationService
+public class ProgressService(IHubContext<NotificationHub> hubContext) : IProgressService
 {
     public async Task RunProgress(Run model)
     {

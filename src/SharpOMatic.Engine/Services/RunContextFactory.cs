@@ -12,7 +12,7 @@ public class RunContextFactory(IServiceScopeFactory scopeFactory) : IRunContextF
         var scope = scopeFactory.CreateScope();
 
         var Servicerepository = scope.ServiceProvider.GetRequiredService<IRepositoryService>();
-        var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+        var progressService = scope.ServiceProvider.GetRequiredService<IProgressService>();
         var toolMethodRegistry = scope.ServiceProvider.GetRequiredService<IToolMethodRegistry>();
         var schemaTypeRegistry = scope.ServiceProvider.GetRequiredService<ISchemaTypeRegistry>();
         var scriptOptionsService = scope.ServiceProvider.GetRequiredService<IScriptOptionsService>();
@@ -20,7 +20,7 @@ public class RunContextFactory(IServiceScopeFactory scopeFactory) : IRunContextF
         return new RunContext(
             scope,
             Servicerepository,
-            notificationService,
+            progressService,
             toolMethodRegistry,
             schemaTypeRegistry,
             scriptOptionsService,

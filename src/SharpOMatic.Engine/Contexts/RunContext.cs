@@ -16,7 +16,7 @@ public class RunContext
 
     public IServiceScope ServiceScope { get; init; }
     public IRepositoryService RepositoryService { get; init; }
-    public INotificationService NotificationService { get; init; }
+    public IProgressService ProgressService { get; init; }
     public IToolMethodRegistry ToolMethodRegistry { get; init; }
     public ISchemaTypeRegistry SchemaTypeRegistry { get; init; }
     public IScriptOptionsService ScriptOptionsService { get; init; }
@@ -30,7 +30,7 @@ public class RunContext
 
     public RunContext(IServiceScope serviceScope,
                       IRepositoryService repositoryService,
-                      INotificationService notificationService,
+                      IProgressService progressService,
                       IToolMethodRegistry toolMethodRegistry,
                       ISchemaTypeRegistry schemaTypeRegistry,
                       IScriptOptionsService scriptOptionsService,
@@ -42,7 +42,7 @@ public class RunContext
     {
         ServiceScope = serviceScope;
         RepositoryService = repositoryService;
-        NotificationService = notificationService;
+        ProgressService = progressService;
         ToolMethodRegistry = toolMethodRegistry;
         SchemaTypeRegistry = schemaTypeRegistry;
         ScriptOptionsService = scriptOptionsService;
@@ -103,7 +103,7 @@ public class RunContext
     public async Task RunUpdated()
     {
         await RepositoryService.UpsertRun(Run);
-        await NotificationService.RunProgress(Run);
+        await ProgressService.RunProgress(Run);
         if (Run.RunStatus is RunStatus.Success or RunStatus.Failed)
             CompleteRun();
     }

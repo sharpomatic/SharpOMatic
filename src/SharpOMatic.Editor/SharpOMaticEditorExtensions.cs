@@ -17,7 +17,7 @@ public static class SharpOMaticEditorExtensions
             });
 
         services.AddSignalR();
-        services.AddSingleton<INotificationService, NotificationService>();
+        services.AddSingleton<IProgressService, ProgressService>();
 
         return services;
     }

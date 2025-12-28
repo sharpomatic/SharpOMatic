@@ -1,6 +1,6 @@
 namespace SharpOMatic.Engine.Interfaces;
 
-public interface INotificationService
+public interface IProgressService
 {
     Task RunProgress(Run run);
     Task TraceProgress(Trace trace);

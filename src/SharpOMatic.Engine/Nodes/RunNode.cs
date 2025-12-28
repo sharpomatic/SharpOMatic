@@ -49,7 +49,7 @@ public abstract class RunNode<T> : IRunNode where T : NodeEntity
     protected async Task NodeRunning()
     {
         await RunContext.RepositoryService.UpsertTrace(Trace);
-        await RunContext.NotificationService.TraceProgress(Trace);
+        await RunContext.ProgressService.TraceProgress(Trace);
     }
 
     protected Task NodeSuccess(string message)
@@ -71,7 +71,7 @@ public abstract class RunNode<T> : IRunNode where T : NodeEntity
         Trace.Message = message;
         Trace.OutputContext = RunContext.TypedSerialization(ThreadContext.NodeContext);
         await RunContext.RepositoryService.UpsertTrace(Trace);
-        await RunContext.NotificationService.TraceProgress(Trace);
+        await RunContext.ProgressService.TraceProgress(Trace);
     }
 
     protected Task<object?> EvaluateContextEntryValue(ContextEntryEntity entry)
