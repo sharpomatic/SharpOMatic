@@ -71,6 +71,8 @@
             } @else if (entry.entryType() === contextEntryType.Double) {
             <input type="number" class="form-control editValue" inputmode="decimal" step="any"
               [ngModel]="entry.entryValue() !== '' ? +entry.entryValue() : null" readonly />
+            } @else if (entry.entryType() === contextEntryType.AssetRef || entry.entryType() === contextEntryType.AssetRefList) {
+            <input type="text" class="form-control editValue" [value]="getAssetEntryDisplay(entry)" [title]="getAssetEntryDisplay(entry)" readonly />
             } @else {
             <input type="text" class="form-control editValue" [ngModel]="entry.entryValue()" readonly />
             }

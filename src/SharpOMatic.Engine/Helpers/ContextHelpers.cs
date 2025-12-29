@@ -2,6 +2,11 @@
 
 public static class ContextHelpers
 {
+    private static readonly JsonSerializerOptions AssetRefJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     public static async Task<object?> ResolveContextEntryValue(ContextObject context, ContextEntryEntity entry, IScriptOptionsService scriptOptionsService)
     {
         object? entryValue = entry.EntryValue;
@@ -75,9 +80,81 @@ public static class ContextHelpers
                     }
                 }
                 break;
+            case ContextEntryType.AssetRef:
+                entryValue = ParseAssetRef(entry.EntryValue, entry.InputPath);
+                break;
+            case ContextEntryType.AssetRefList:
+                entryValue = ParseAssetRefList(entry.EntryValue, entry.InputPath);
+                break;
         }
 
         return entryValue;
+    }
+
+    private static AssetRef ParseAssetRef(string rawValue, string inputPath)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+            throw new SharpOMaticException($"Input entry '{inputPath}' asset reference cannot be empty.");
+
+        try
+        {
+            var asset = JsonSerializer.Deserialize<AssetRef>(rawValue, AssetRefJsonOptions);
+            if (asset is null)
+                throw new SharpOMaticException($"Input entry '{inputPath}' asset reference cannot be null.");
+
+            ValidateAssetRef(asset, inputPath);
+            return asset;
+        }
+        catch (JsonException)
+        {
+            throw new SharpOMaticException($"Input entry '{inputPath}' value could not be parsed as an asset reference.");
+        }
+    }
+
+    private static ContextList ParseAssetRefList(string rawValue, string inputPath)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+            throw new SharpOMaticException($"Input entry '{inputPath}' asset list cannot be empty.");
+
+        try
+        {
+            var assets = JsonSerializer.Deserialize<List<AssetRef>>(rawValue, AssetRefJsonOptions);
+            if (assets is null)
+                throw new SharpOMaticException($"Input entry '{inputPath}' asset list cannot be null.");
+
+            var list = new ContextList();
+            for (var i = 0; i < assets.Count; i += 1)
+            {
+                var asset = assets[i];
+                ValidateAssetRef(asset, inputPath, i);
+                list.Add(asset);
+            }
+
+            return list;
+        }
+        catch (JsonException)
+        {
+            throw new SharpOMaticException($"Input entry '{inputPath}' value could not be parsed as an asset list.");
+        }
+    }
+
+    private static void ValidateAssetRef(AssetRef asset, string inputPath, int? index = null)
+    {
+        var label = index.HasValue
+            ? $"Input entry '{inputPath}' asset at index {index.Value}"
+            : $"Input entry '{inputPath}' asset";
+
+        if (asset.AssetId == Guid.Empty)
+            throw new SharpOMaticException($"{label} must include a valid assetId.");
+
+        if (string.IsNullOrWhiteSpace(asset.Name))
+            throw new SharpOMaticException($"{label} must include a name.");
+
+        if (string.IsNullOrWhiteSpace(asset.MediaType))
+            throw new SharpOMaticException($"{label} must include a mediaType.");
+
+        if (asset.SizeBytes < 0)
+            throw new SharpOMaticException($"{label} must include a non-negative size.");
     }
 
     public static string SubstituteValues(string input, ContextObject context)

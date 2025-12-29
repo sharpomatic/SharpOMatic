@@ -6,7 +6,7 @@ export const DIALOG_DATA = new InjectionToken<any>('DIALOG_DATA');
   providedIn: 'root'
 })
 export class DialogService {
-  private componentRef: any;
+  private componentRefs: any[] = [];
 
   constructor(
     private componentFactoryResolver: ComponentFactoryResolver,
@@ -15,7 +15,8 @@ export class DialogService {
   ) { }
 
   open(component: Type<any>, options?: any) {
-    if (this.componentRef) {
+    const allowStack = options?.allowStack === true;
+    if (this.componentRefs.length > 0 && !allowStack) {
       return;
     }
 
@@ -26,24 +27,29 @@ export class DialogService {
       parent: this.injector
     });
 
-    this.componentRef = componentFactory.create(dialogInjector);
-    this.appRef.attachView(this.componentRef.hostView);
+    const componentRef = componentFactory.create(dialogInjector);
+    this.componentRefs.push(componentRef);
+    this.appRef.attachView(componentRef.hostView);
 
-    const domElem = (this.componentRef.hostView as EmbeddedViewRef<any>).rootNodes[0] as HTMLElement;
+    const domElem = (componentRef.hostView as EmbeddedViewRef<any>).rootNodes[0] as HTMLElement;
     document.body.appendChild(domElem);
 
-    this.componentRef.instance.close.subscribe(() => {
-      this.close();
+    componentRef.instance.close.subscribe(() => {
+      this.close(componentRef);
     });
   }
 
-  close(): void {
-    if (!this.componentRef) {
+  close(componentRef?: any): void {
+    const ref = componentRef ?? this.componentRefs[this.componentRefs.length - 1];
+    if (!ref) {
       return;
     }
 
-    this.appRef.detachView(this.componentRef.hostView);
-    this.componentRef.destroy();
-    this.componentRef = null;
+    this.appRef.detachView(ref.hostView);
+    ref.destroy();
+    const index = this.componentRefs.indexOf(ref);
+    if (index >= 0) {
+      this.componentRefs.splice(index, 1);
+    }
   }
 }

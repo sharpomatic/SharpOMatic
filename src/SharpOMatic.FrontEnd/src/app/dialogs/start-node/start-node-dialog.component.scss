@@ -94,6 +94,23 @@
   flex: 0 0 auto;
 }
 
+.asset-selection {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.asset-selection .btn {
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
+}
+
+.asset-selection-label {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .tab-shell {
   flex: 1 1 auto;
   min-height: 0;

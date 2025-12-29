@@ -7,6 +7,7 @@ import { ContextViewerComponent } from '../../components/context-viewer/context-
 import { ContextEntryListEntity, ContextEntryListSnapshot } from '../../entities/definitions/context-entry-list.entity';
 import { ContextEntryEntity } from '../../entities/definitions/context-entry.entity';
 import { ContextEntryType } from '../../entities/enumerations/context-entry-type';
+import { parseAssetRefListValue, parseAssetRefValue } from '../../entities/definitions/asset-ref';
 import { RunStatus } from '../../enumerations/run-status';
 import { RunProgressModel } from '../../pages/workflow/interfaces/run-progress-model';
 import { TraceProgressModel } from '../../pages/workflow/interfaces/trace-progress-model';
@@ -87,6 +88,10 @@ export class RunViewerDialogComponent implements OnInit {
         return '(expression)';
       case ContextEntryType.JSON:
         return '(json)';
+      case ContextEntryType.AssetRef:
+        return 'asset';
+      case ContextEntryType.AssetRefList:
+        return 'asset list';
       default:
         return ContextEntryType[type].toLowerCase();
     }
@@ -98,6 +103,18 @@ export class RunViewerDialogComponent implements OnInit {
     }
 
     return this.csharpViewerOptions;
+  }
+
+  public getAssetEntryDisplay(entry: ContextEntryEntity): string {
+    if (entry.entryType() === ContextEntryType.AssetRef) {
+      return parseAssetRefValue(entry.entryValue())?.name ?? '';
+    }
+
+    if (entry.entryType() === ContextEntryType.AssetRefList) {
+      return parseAssetRefListValue(entry.entryValue()).map(asset => asset.name).join(', ');
+    }
+
+    return entry.entryValue();
   }
 
   private loadInputEntries(): ContextEntryListEntity {

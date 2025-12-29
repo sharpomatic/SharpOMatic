@@ -1,9 +1,10 @@
 import { Component, EventEmitter, Inject, OnInit, Output, TemplateRef, ViewChild } from '@angular/core';
-import { DIALOG_DATA } from '../services/dialog.service';
+import { DIALOG_DATA, DialogService } from '../services/dialog.service';
 import { FormsModule } from '@angular/forms';
 import { EditNodeEntity } from '../../entities/definitions/edit-node.entity';
 import { ContextEntryEntity } from '../../entities/definitions/context-entry.entity';
 import { ContextEntryType } from '../../entities/enumerations/context-entry-type';
+import { AssetRef, buildAssetRefListValue, buildAssetRefValue, parseAssetRefListValue, parseAssetRefValue } from '../../entities/definitions/asset-ref';
 import { CommonModule } from '@angular/common';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { MonacoService } from '../../services/monaco.service';
@@ -11,6 +12,7 @@ import { ContextEntryPurpose } from '../../entities/enumerations/context-entry-p
 import { TabComponent, TabItem } from '../../components/tab/tab.component';
 import { TraceProgressModel } from '../../pages/workflow/interfaces/trace-progress-model';
 import { ContextViewerComponent } from '../../components/context-viewer/context-viewer.component';
+import { AssetPickerDialogComponent } from '../asset-picker/asset-picker-dialog.component';
 
 @Component({
   selector: 'app-edit-node-dialog',
@@ -39,7 +41,10 @@ export class EditNodeDialogComponent implements OnInit {
   public tabs: TabItem[] = [];
   public activeTabId = 'details';
 
-  constructor(@Inject(DIALOG_DATA) data: { node: EditNodeEntity, nodeTraces: TraceProgressModel[] }) {
+  constructor(
+    @Inject(DIALOG_DATA) data: { node: EditNodeEntity, nodeTraces: TraceProgressModel[] },
+    private readonly dialogService: DialogService
+  ) {
     this.node = data.node;
     this.inputTraces = (data.nodeTraces ?? []).map(trace => trace.inputContext).filter((context): context is string => context != null);
     this.outputTraces = (data.nodeTraces ?? []).map(trace => trace.outputContext).filter((context): context is string => context != null);  
@@ -63,11 +68,15 @@ export class EditNodeDialogComponent implements OnInit {
       case 'Expression':
         return '(expression)';
       case 'JSON':
-        return '(json)';  
+        return '(json)';
+      case 'AssetRef':
+        return 'asset';
+      case 'AssetRefList':
+        return 'asset list';
       default:
-        return key.toLowerCase();      
+        return key.toLowerCase();
     }
-  }  
+  }
 
   getEditorOptions(entry: ContextEntryEntity): any {
     if (entry.entryType() === ContextEntryType.JSON) {
@@ -112,6 +121,45 @@ export class EditNodeDialogComponent implements OnInit {
     this.close.emit();
   }
 
+  getSelectedAssetLabel(entry: ContextEntryEntity): string {
+    return parseAssetRefValue(entry.entryValue())?.name ?? '';
+  }
+
+  getSelectedAssetListLabel(entry: ContextEntryEntity): string {
+    const assets = parseAssetRefListValue(entry.entryValue());
+    if (assets.length === 0) {
+      return '';
+    }
+
+    if (assets.length <= 3) {
+      return assets.map(asset => asset.name).join(', ');
+    }
+
+    return `${assets.length} assets selected`;
+  }
+
+  openAssetPicker(entry: ContextEntryEntity, mode: 'single' | 'multi'): void {
+    const selected = parseAssetRefValue(entry.entryValue());
+    const initialSelection = mode === 'single'
+      ? (selected ? [selected] : [])
+      : parseAssetRefListValue(entry.entryValue());
+
+    this.dialogService.open(AssetPickerDialogComponent, {
+      allowStack: true,
+      mode,
+      title: mode === 'single' ? 'Select asset' : 'Select assets',
+      initialSelection,
+      onSelect: (assets: AssetRef[]) => {
+        if (mode === 'single') {
+          entry.entryValue.set(buildAssetRefValue(assets[0] ?? null));
+          return;
+        }
+
+        entry.entryValue.set(buildAssetRefListValue(assets));
+      }
+    });
+  }
+
   hasUpsertEntries(): boolean {
     return this.node.edits().entries().some(entry => entry.purpose() === ContextEntryPurpose.Upsert);
   }
@@ -138,4 +186,5 @@ export class EditNodeDialogComponent implements OnInit {
 
     return false;
   }
+
 }

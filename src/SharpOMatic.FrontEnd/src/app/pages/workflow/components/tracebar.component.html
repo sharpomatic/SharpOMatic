@@ -66,6 +66,24 @@
           <input type="number" class="form-control editValue" inputmode="decimal" step="any"
             [ngModel]="entry.entryValue() !== '' ? +entry.entryValue() : null"
             (ngModelChange)="entry.entryValue.set(($event ?? '').toString())" />
+          } @else if (entry.entryType() === contextEntryType.AssetRef) {
+          <div class="editValue asset-selection">
+            <button class="btn btn-outline-primary" type="button" (click)="openAssetPicker(entry, 'single')">Select</button>
+            <input type="text"
+                   class="form-control asset-selection-label"
+                   [value]="getSelectedAssetLabel(entry) || 'No asset selected'"
+                   [title]="getSelectedAssetLabel(entry)"
+                   readonly />
+          </div>
+          } @else if (entry.entryType() === contextEntryType.AssetRefList) {
+          <div class="editValue asset-selection">
+            <button class="btn btn-outline-primary" type="button" (click)="openAssetPicker(entry, 'multi')">Select</button>
+            <input type="text"
+                   class="form-control asset-selection-label"
+                   [value]="getSelectedAssetListLabel(entry) || 'No assets selected'"
+                   [title]="getSelectedAssetListLabel(entry)"
+                   readonly />
+          </div>
           } @else {
           <input type="text" class="form-control editValue" [ngModel]="entry.entryValue()"
             (ngModelChange)="entry.entryValue.set($event)" />

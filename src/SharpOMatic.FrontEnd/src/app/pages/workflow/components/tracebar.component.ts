@@ -6,10 +6,13 @@ import { ContextEntryType } from '../../../entities/enumerations/context-entry-t
 import { FormsModule } from '@angular/forms';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { ContextEntryEntity } from '../../../entities/definitions/context-entry.entity';
+import { AssetRef, buildAssetRefListValue, buildAssetRefValue, parseAssetRefListValue, parseAssetRefValue } from '../../../entities/definitions/asset-ref';
 import { MonacoService } from '../../../services/monaco.service';
 import { TabComponent, TabItem } from '../../../components/tab/tab.component';
 import { ContextViewerComponent } from '../../../components/context-viewer/context-viewer.component';
 import { TraceViewerComponent } from '../../../components/trace-viewer/trace-viewer.component';
+import { DialogService } from '../../../dialogs/services/dialog.service';
+import { AssetPickerDialogComponent } from '../../../dialogs/asset-picker/asset-picker-dialog.component';
 
 @Component({
   selector: 'app-tracebar',
@@ -25,6 +28,7 @@ export class TracebarComponent implements OnInit, OnDestroy {
   @Output() public tracebarWidthChange = new EventEmitter<number>();
 
   public readonly workflowService = inject(WorkflowService);
+  private readonly dialogService = inject(DialogService);
   public readonly contextEntryType = ContextEntryType;
   public readonly contextEntryTypeKeys = Object.keys(ContextEntryType).filter(k => isNaN(Number(k)));
   public readonly RunStatus = RunStatus;
@@ -65,6 +69,10 @@ export class TracebarComponent implements OnInit, OnDestroy {
         return '(expression)';
       case ContextEntryType.JSON:
         return '(json)';
+      case ContextEntryType.AssetRef:
+        return 'asset';
+      case ContextEntryType.AssetRefList:
+        return 'asset list';
       default:
         return ContextEntryType[type].toLowerCase();
     }
@@ -196,5 +204,44 @@ export class TracebarComponent implements OnInit, OnDestroy {
 
   private emitWidth(width: number = this.tracebarWidth): void {
     this.tracebarWidthChange.emit(width);
+  }
+
+  public getSelectedAssetLabel(entry: ContextEntryEntity): string {
+    return parseAssetRefValue(entry.entryValue())?.name ?? '';
+  }
+
+  public getSelectedAssetListLabel(entry: ContextEntryEntity): string {
+    const assets = parseAssetRefListValue(entry.entryValue());
+    if (assets.length === 0) {
+      return '';
+    }
+
+    if (assets.length <= 3) {
+      return assets.map(asset => asset.name).join(', ');
+    }
+
+    return `${assets.length} assets selected`;
+  }
+
+  public openAssetPicker(entry: ContextEntryEntity, mode: 'single' | 'multi'): void {
+    const selected = parseAssetRefValue(entry.entryValue());
+    const initialSelection = mode === 'single'
+      ? (selected ? [selected] : [])
+      : parseAssetRefListValue(entry.entryValue());
+
+    this.dialogService.open(AssetPickerDialogComponent, {
+      allowStack: true,
+      mode,
+      title: mode === 'single' ? 'Select asset' : 'Select assets',
+      initialSelection,
+      onSelect: (assets: AssetRef[]) => {
+        if (mode === 'single') {
+          entry.entryValue.set(buildAssetRefValue(assets[0] ?? null));
+          return;
+        }
+
+        entry.entryValue.set(buildAssetRefListValue(assets));
+      }
+    });
   }
 }
