@@ -186,7 +186,6 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         };
     }
 
-
     // ------------------------------------------------
     // Trace Operations
     // ------------------------------------------------
@@ -583,4 +582,79 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         await dbContext.SaveChangesAsync();
     }
+
+    // ------------------------------------------------
+    // Asset Operations
+    // ------------------------------------------------
+    public async Task<Asset> GetAsset(Guid assetId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var asset = await dbContext.Assets.AsNoTracking()
+            .FirstOrDefaultAsync(a => a.AssetId == assetId);
+
+        if (asset is null)
+            throw new SharpOMaticException($"Asset '{assetId}' cannot be found.");
+
+        return asset;
+    }
+
+    public async Task<List<Asset>> GetAssetsByScope(AssetScope scope, int skip, int take)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var assets = dbContext.Assets.AsNoTracking()
+            .Where(a => a.Scope == scope)
+            .OrderByDescending(a => a.Created);
+
+        if (skip > 0)
+            assets = (IOrderedQueryable<Asset>)assets.Skip(skip);
+
+        if (take > 0)
+            assets = (IOrderedQueryable<Asset>)assets.Take(take);
+
+        return await assets.ToListAsync();
+    }
+
+    public async Task<List<Asset>> GetRunAssets(Guid runId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        return await dbContext.Assets.AsNoTracking()
+            .Where(a => a.RunId == runId)
+            .OrderByDescending(a => a.Created)
+            .ToListAsync();
+    }
+
+    public async Task UpsertAsset(Asset asset)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var entity = await (from a in dbContext.Assets
+                            where a.AssetId == asset.AssetId
+                            select a).FirstOrDefaultAsync();
+
+        if (entity is null)
+            dbContext.Assets.Add(asset);
+        else
+            dbContext.Entry(entity).CurrentValues.SetValues(asset);
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsset(Guid assetId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var asset = await (from a in dbContext.Assets
+                           where a.AssetId == assetId
+                           select a).FirstOrDefaultAsync();
+
+        if (asset is null)
+            throw new SharpOMaticException($"Asset '{assetId}' cannot be found.");
+
+        dbContext.Remove(asset);
+        await dbContext.SaveChangesAsync();
+    }
+
 }

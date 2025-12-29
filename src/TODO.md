@@ -1,8 +1,11 @@
-## Images
+## Assets
 
-Supports In and Out Images
-Images Tab
-Images Output Path
+Assets table
+Assets service
+Assets file implementation
+Assets front end, list, search, add, rename, delete
+AssetRef, serialization
+Resolve AssetRef to DataContent
 
 ## LLM's
 

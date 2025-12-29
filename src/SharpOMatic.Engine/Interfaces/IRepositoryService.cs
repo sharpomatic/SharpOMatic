@@ -61,4 +61,13 @@ public interface IRepositoryService
     Task<List<Setting>> GetSettings();
     Task<Setting?> GetSetting(string name);
     Task UpsertSetting(Setting model);
+
+    // ------------------------------------------------
+    // Asset Operations
+    // ------------------------------------------------
+    Task<Asset> GetAsset(Guid assetId);
+    Task<List<Asset>> GetAssetsByScope(AssetScope scope, int skip, int take);
+    Task<List<Asset>> GetRunAssets(Guid runId);
+    Task UpsertAsset(Asset asset);
+    Task DeleteAsset(Guid assetId);
 }

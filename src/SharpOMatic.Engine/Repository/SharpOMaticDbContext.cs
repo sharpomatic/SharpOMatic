@@ -5,6 +5,7 @@ public class SharpOMaticDbContext : DbContext
     public DbSet<Workflow> Workflows { get; set; }
     public DbSet<Run> Runs { get; set; }
     public DbSet<Trace> Traces { get; set; }
+    public DbSet<Asset> Assets { get; set; }
     public DbSet<ConnectorConfigMetadata> ConnectorConfigMetadata { get; set; }
     public DbSet<ConnectorMetadata> ConnectorMetadata { get; set; }
     public DbSet<ModelConfigMetadata> ModelConfigMetadata { get; set; }
@@ -47,5 +48,13 @@ public class SharpOMaticDbContext : DbContext
             .WithMany()
             .HasForeignKey(t => t.RunId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Cascade delete: Deleting a Run deletes its Assets
+        modelBuilder.Entity<Asset>()
+            .HasOne<Run>()
+            .WithMany()
+            .HasForeignKey(a => a.RunId)
+            .OnDelete(DeleteBehavior.Cascade);
+
     }
 }
