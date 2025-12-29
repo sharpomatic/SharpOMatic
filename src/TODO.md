@@ -1,8 +1,23 @@
 ## Assets
 
-StartNode, context init, Assets, list of asset names but delete/add button. Pick from asset library.
-Run sidebar needs to allow the same assets capability.
+Convert from context entry into actual ContextObject entries, AssetRef and ContextList of AssetRef.
+Input and Output context should correct show the entries, maybe special case for better output.
 
+# Images
+
+Add Supports Image In and Image Out
+
+ModelCall
+
+What about pdf or other file types? Are any allowed? Should it be Data in and Out?
+
+Image In - define a list of input paths that contain images
+ - Only the ones with a type starting with image are processed, others ignored?
+Image Out, just a path for any output images to be placed into as assetref but with RunId and Run scope.
+	
+How to pass a new AssetRef into a workflow via code which is then treated as Runid/Run scope?
+
+	
 ## LLM's
 
 - Azure OpenAI - models
