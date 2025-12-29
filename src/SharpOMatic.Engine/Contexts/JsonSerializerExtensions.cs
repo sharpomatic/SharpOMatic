@@ -15,6 +15,7 @@ public static class JsonSerializerExtensions
         var tokenToType = new Dictionary<string, Type>();
 
         RegisterExternalType(typeToToken, tokenToType, typeof(ChatMessage));
+        RegisterExternalType(typeToToken, tokenToType, typeof(AssetRef));
 
         if (extraConverters != null)
         {
