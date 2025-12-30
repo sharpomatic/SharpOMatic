@@ -1,3 +1,4 @@
+global using Microsoft.AspNetCore.Mvc;
 global using Microsoft.EntityFrameworkCore;
 global using SharpOMatic.Editor;
 global using SharpOMatic.Engine.Contexts;

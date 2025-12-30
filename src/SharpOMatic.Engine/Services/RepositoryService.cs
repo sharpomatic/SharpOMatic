@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace SharpOMatic.Engine.Services;
 
-public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContextFactory) : IRepositoryService
+public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContextFactory, IAssetStore? assetStore = null) : IRepositoryService
 {
     private const string SECRET_OBFUSCATION = "********";
 
@@ -95,6 +95,13 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (workflow is null)
             throw new SharpOMaticException($"Workflow '{workflowId}' cannot be found.");
 
+        var runIds = await dbContext.Runs
+            .Where(r => r.WorkflowId == workflowId)
+            .Select(r => r.RunId)
+            .ToListAsync();
+
+        await DeleteAssetStorageForRuns(runIds);
+
         dbContext.Remove(workflow);
         await dbContext.SaveChangesAsync();
     }
@@ -102,6 +109,12 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     // ------------------------------------------------
     // Run Operations
     // ------------------------------------------------
+    public async Task<Run?> GetRun(Guid runId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        return await dbContext.Runs.AsNoTracking().FirstOrDefaultAsync(r => r.RunId == runId);
+    }
+
     public async Task<Run?> GetLatestRunForWorkflow(Guid workflowId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
@@ -162,11 +175,17 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var runIdsToDelete = dbContext.Runs
+        var runIdsToDelete = await dbContext.Runs
             .Where(r => r.WorkflowId == workflowId)
             .OrderByDescending(r => r.Created)
             .Skip(keepLatest)
-            .Select(r => r.RunId);
+            .Select(r => r.RunId)
+            .ToListAsync();
+
+        if (runIdsToDelete.Count == 0)
+            return;
+
+        await DeleteAssetStorageForRuns(runIdsToDelete);
 
         await dbContext.Runs
             .Where(r => runIdsToDelete.Contains(r.RunId))
@@ -702,4 +721,19 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
+    private async Task DeleteAssetStorageForRuns(IReadOnlyCollection<Guid> runIds)
+    {
+        if (assetStore is null || runIds.Count == 0)
+            return;
+
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var storageKeys = await dbContext.Assets.AsNoTracking()
+            .Where(a => a.RunId.HasValue && runIds.Contains(a.RunId.Value))
+            .Select(a => a.StorageKey)
+            .ToListAsync();
+
+        foreach (var storageKey in storageKeys)
+            await assetStore.DeleteAsync(storageKey);
+    }
 }

@@ -13,6 +13,7 @@ public interface IRepositoryService
     // ------------------------------------------------
     // Run Operations
     // ------------------------------------------------
+    Task<Run?> GetRun(Guid runId);
     Task<Run?> GetLatestRunForWorkflow(Guid workflowId);
     Task<int> GetWorkflowRunCount(Guid workflowId);
     Task<List<Run>> GetWorkflowRuns(Guid workflowId, RunSortField sortBy, SortDirection sortDirection, int skip, int take);

@@ -3,7 +3,9 @@ namespace SharpOMatic.Engine.Interfaces;
 public interface IEngineService
 {
     Task<Guid> TryGetWorkflowId(string workflowName);
-    Task<Guid> RunWorkflowAndNotify(Guid workflowId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null);
-    Task<Run> RunWorkflowAndWait(Guid workflowId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null);
-    Run RunWorkflowSynchronously(Guid workflowId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null);
+    Task<Guid> CreateWorkflowRun(Guid workflowId);
+    Task<Run> StartWorkflowRunAndWait(Guid runId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null);
+    Task StartWorkflowRunAndNotify(Guid runId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null);
+    Guid CreateWorkflowRunSynchronously(Guid workflowId);
+    Run StartWorkflowRunSynchronously(Guid runId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null);
 }
