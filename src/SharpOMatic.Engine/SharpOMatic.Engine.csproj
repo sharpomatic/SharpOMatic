@@ -4,7 +4,22 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <PackageId>SharpOMatic.Engine</PackageId>
+    <Description>SharpOMatic engine libraries and services.</Description>
+    <Authors>SharpOMatic Contributors</Authors>
+    <Company>SharpOMatic</Company>
+    <RepositoryUrl>https://github.com/sharpomatic/SharpOMatic</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/sharpomatic/SharpOMatic</PackageProjectUrl>
+    <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>sharpomatic;engine;workflow;ai;dotnet</PackageTags>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Metadata\Resources\ConnectorConfig\azureopenai.json" />

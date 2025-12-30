@@ -42,3 +42,21 @@ jobs:
       - name: Test
         working-directory: src
         run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: Pack Engine
+        working-directory: src
+        run: dotnet pack SharpOMatic.Engine/SharpOMatic.Engine.csproj --configuration Release --no-build /p:Version=$BUILD_VERSION /p:PackageVersion=$BUILD_VERSION -o ../artifacts
+
+      - name: Pack Editor
+        working-directory: src
+        run: dotnet pack SharpOMatic.Editor/SharpOMatic.Editor.csproj --configuration Release --no-build /p:Version=$BUILD_VERSION /p:PackageVersion=$BUILD_VERSION -o ../artifacts
+
+      - name: Publish NuGet packages
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        run: dotnet nuget push "artifacts/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Upload NuGet packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts/*.nupkg

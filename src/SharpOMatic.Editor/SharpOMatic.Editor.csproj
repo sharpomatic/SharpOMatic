@@ -7,13 +7,25 @@
     <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
     <IsPackable>true</IsPackable>
     <PackageId>SharpOMatic.Editor</PackageId>
-    <Description>SharpOMatic Editor assets and ASP.NET Core mapping extensions.</Description>
+    <Description>SharpOMatic Editor assets and ASP.NET mapping extensions.</Description>
+    <Authors>SharpOMatic Contributors</Authors>
+    <Company>SharpOMatic</Company>
+    <RepositoryUrl>https://github.com/sharpomatic/SharpOMatic</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/sharpomatic/SharpOMatic</PackageProjectUrl>
+    <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>sharpomatic;editor;aspnetcore;embedded;dotnet</PackageTags>
   </PropertyGroup>
 
   <PropertyGroup>
     <SpaRoot>$(MSBuildThisFileDirectory)..\SharpOMatic.FrontEnd\</SpaRoot>
     <EditorDistDir>$(SpaRoot)dist\SharpOMatic-Editor\browser\</EditorDistDir>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
