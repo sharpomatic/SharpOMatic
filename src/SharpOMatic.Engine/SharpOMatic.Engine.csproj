@@ -6,19 +6,19 @@
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
     <PackageId>SharpOMatic.Engine</PackageId>
-    <Description>SharpOMatic engine libraries and services.</Description>
+    <Description>SharpOMatic workflow engine for executing workflows.</Description>
     <Authors>SharpOMatic Contributors</Authors>
     <Company>SharpOMatic</Company>
     <RepositoryUrl>https://github.com/sharpomatic/SharpOMatic</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/sharpomatic/SharpOMatic</PackageProjectUrl>
-    <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>sharpomatic;engine;workflow;ai;dotnet</PackageTags>
+    <PackageTags>SharpOMatic;AspNet</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>

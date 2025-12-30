@@ -1,0 +1,1 @@
+﻿SharpOMatic extension adding a browser based editor for workflows.

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -7,15 +7,15 @@
     <GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
     <IsPackable>true</IsPackable>
     <PackageId>SharpOMatic.Editor</PackageId>
-    <Description>SharpOMatic Editor assets and ASP.NET mapping extensions.</Description>
+    <Description>SharpOMatic extension adding a browser based editor for workflows.</Description>
     <Authors>SharpOMatic Contributors</Authors>
     <Company>SharpOMatic</Company>
     <RepositoryUrl>https://github.com/sharpomatic/SharpOMatic</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/sharpomatic/SharpOMatic</PackageProjectUrl>
-    <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>sharpomatic;editor;aspnetcore;embedded;dotnet</PackageTags>
+    <PackageTags>SharpOMatic;AspNet</PackageTags>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -24,7 +24,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>

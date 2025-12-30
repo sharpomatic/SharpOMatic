@@ -11,23 +11,11 @@
 
  To zip file?
 	  
-## Process
+## GitHub
 
-- GitHub account
-  - Manual build (or tag) to create and publish a release
-  - Docusaurus setup for generated static pages site (auto build and publish on changes)
-
+- Docusaurus setup for generated static pages site (auto build and publish on changes)
+- Add a custom domain for the documentation site
 - Build first version of documentation
-
-## Implementation Details
-
-Output the editor and engine as nuget packages
-GitHub build pipeline to build/package and publish to nuget the two packages
-
-## Security
-
-How does the user add extra security that impacts the controllers that the hosting adds?
-
 
 
 
