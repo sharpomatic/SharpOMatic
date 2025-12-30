@@ -37,6 +37,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
   @ViewChild('inputsTab', { static: true }) inputsTab!: TemplateRef<unknown>;
   @ViewChild('outputsTab', { static: true }) outputsTab!: TemplateRef<unknown>;
   @ViewChild('textTab', { static: true }) textTab!: TemplateRef<unknown>;
+  @ViewChild('imageTab', { static: true }) imageTab!: TemplateRef<unknown>;
   @ViewChild('toolCallingTab', { static: true }) toolCallingTab!: TemplateRef<unknown>;
   @ViewChild('structuredTab', { static: true }) structuredTab!: TemplateRef<unknown>;
 
@@ -304,6 +305,14 @@ export class ModelCallNodeDialogComponent implements OnInit {
     return this.hasCapability('SupportsTextOut');
   }
 
+  public get supportsImageIn(): boolean {
+    return this.hasCapability('SupportsImageIn');
+  }
+
+  public get supportsImageOut(): boolean {
+    return this.hasCapability('SupportsImageOut');
+  }
+
   public get supportsToolCalling(): boolean {
     return this.hasCapability('SupportsToolCalling');
   }
@@ -395,12 +404,17 @@ export class ModelCallNodeDialogComponent implements OnInit {
   private refreshTabs(): void {
     const newTabs: TabItem[] = [
       { id: 'details', title: 'Details', content: this.detailsTab },
-      { id: 'chat', title: 'Chat', content: this.chatTab },
     ];
 
     if (this.supportsTextIn || this.supportsTextOut) {
       newTabs.push({ id: 'text', title: 'Text', content: this.textTab });
     }
+
+    if (this.supportsImageIn || this.supportsImageOut) {
+      newTabs.push({ id: 'image', title: 'Image', content: this.imageTab });
+    }
+
+    newTabs.push({ id: 'chat', title: 'Chat', content: this.chatTab });
 
     if (this.supportsToolCalling) {
       this.ensureToolDisplayNamesLoaded();

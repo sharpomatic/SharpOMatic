@@ -211,6 +211,47 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             chat.Add(new ChatMessage(ChatRole.User, [new TextContent(prompt)]));
         }
 
+        if (HasCapability("SupportsImageIn"))
+        {
+            if (!string.IsNullOrWhiteSpace(Node.ImageInputPath))
+            {
+                if (!ThreadContext.NodeContext.TryGet<object?>(Node.ImageInputPath, out var imageValue) || imageValue is null)
+                    throw new SharpOMaticException($"Image input path '{Node.ImageInputPath}' could not be resolved.");
+
+                List<AssetRef> assetRefs = [];
+                if (imageValue is AssetRef assetRef)
+                    assetRefs.Add(assetRef);
+                else if (imageValue is ContextList assetList)
+                {
+                    for (var i = 0; i < assetList.Count; i += 1)
+                    {
+                        var item = assetList[i];
+                        if (item is AssetRef listAssetRef)
+                            assetRefs.Add(listAssetRef);
+                        else
+                            throw new SharpOMaticException($"Image input path '{Node.ImageInputPath}' contains a non-asset entry at index {i}.");
+                    }
+                }
+                else
+                    throw new SharpOMaticException($"Image input path '{Node.ImageInputPath}' must be an asset or asset list.");
+
+                var assetStore = RunContext.ServiceScope.ServiceProvider.GetRequiredService<IAssetStore>();
+                foreach (var entry in assetRefs)
+                {
+                    var asset = await repository.GetAsset(entry.AssetId);
+                    if (!asset.MediaType.StartsWith("image/"))
+                        throw new SharpOMaticException($"Asset '{entry.Name}' is not an image.");
+
+                    await using var stream = await assetStore.OpenReadAsync(asset.StorageKey);
+                    using var buffer = new MemoryStream();
+                    await stream.CopyToAsync(buffer);
+
+                    var content = new DataContent(buffer.ToArray(), asset.MediaType) { Name = asset.Name };
+                    chat.Add(new ChatMessage(ChatRole.User, [content]));
+                }
+            }
+        }
+
         OpenAIClient client = new OpenAIClient(apiKey);
         var agentClient = client.GetOpenAIResponseClient(modelName);
 
@@ -241,9 +282,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         if (!string.IsNullOrWhiteSpace(Node.ChatOutputPath))
         {
             ContextList chatList = [];
-
-            if (!Node.ChatOnlyAnswer)
-                chatList.AddRange(chat);
+            chatList.AddRange(chat);
 
             foreach (var message in response.Messages)
                 chatList.Add(message);

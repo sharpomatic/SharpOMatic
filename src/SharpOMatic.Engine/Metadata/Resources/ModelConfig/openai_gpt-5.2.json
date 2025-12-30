@@ -15,6 +15,10 @@
       "DisplayName": "Supports Text Output"
     },
     {
+      "Name": "SupportsImageIn",
+      "DisplayName": "Supports Text Input"
+    },
+    {
       "Name": "SupportsMaxOutputTokens",
       "DisplayName": "Supports Max Output Tokens"
     },

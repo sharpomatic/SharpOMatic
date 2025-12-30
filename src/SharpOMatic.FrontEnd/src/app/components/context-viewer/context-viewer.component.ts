@@ -12,6 +12,7 @@ interface ContextNode {
 
 const CONTEXT_OBJECT = 'ContextObject';
 const CONTEXT_LIST = 'ContextList';
+const MAX_DISPLAY_LENGTH = 1000;
 
 @Component({
   selector: 'app-context-viewer',
@@ -173,13 +174,18 @@ export class ContextViewerComponent implements OnChanges {
   private formatValue(value: unknown): string {
     if (value === null) return 'null';
     if (value === undefined) return 'undefined';
-    if (typeof value === 'string') return value;
+    if (typeof value === 'string') return this.truncateValue(value);
     if (typeof value === 'number' || typeof value === 'boolean') return value.toString();
 
     try {
-      return JSON.stringify(value);
+      return this.truncateValue(JSON.stringify(value));
     } catch {
       return '[unserializable]';
     }
+  }
+
+  private truncateValue(value: string): string {
+    if (value.length <= MAX_DISPLAY_LENGTH) return value;
+    return value.substring(0, MAX_DISPLAY_LENGTH);
   }
 }

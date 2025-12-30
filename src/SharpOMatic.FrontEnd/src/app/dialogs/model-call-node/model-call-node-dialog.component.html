@@ -41,7 +41,7 @@
           [fields]="modelConfig?.parameterFields ?? []"
           [values]="node.parameterValues()"
           [capabilityContext]="capabilityContext"
-          [ignoredCapabilities]="['SupportsTextIn', 'SupportsTextOut', 'SupportsToolCalling', 'SupportsStructuredOutput']"
+          [ignoredCapabilities]="['SupportsTextIn', 'SupportsTextOut', 'SupportsImageIn', 'SupportsImageOut', 'SupportsToolCalling', 'SupportsStructuredOutput']"
           [includeNonCallDefined]="false"
           (valuesChange)="onParameterValuesChange($event)">
         </app-dynamic-fields>
@@ -73,24 +73,25 @@
           </div>
         </div>
 
-        <div class="mb-3 form-line">
-          <label for="model-call-chat-append" class="form-label field-label"></label>
-          <div class="flex-fill control-column short">
-            <div class="form-check form-switch">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                id="model-call-chat-append"
-                [ngModel]="node.chatOnlyAnswer()"
-                (ngModelChange)="node.chatOnlyAnswer.set($event)" />
-              <label class="form-check-label" for="model-call-chat-append">Output chat only has answer</label>
-            </div>
-          </div>
-        </div>
+        
       </div>
     </ng-template>
     <ng-template #textTab>
       <div class="bg-body-tertiary p-3">
+        @if (showTextOutFields) {
+          <div class="mb-3 form-line">
+            <label for="model-call-text-output" class="form-label field-label">Text Output Path</label>
+            <div class="flex-fill control-column short">
+              <input
+                type="text"
+                class="form-control w-100"
+                id="model-call-text-output"
+                [ngModel]="node.textOutputPath()"
+                (ngModelChange)="node.textOutputPath.set($event)" />
+            </div>
+          </div>
+        }
+
         @if (showTextInFields) {
           <div class="mb-3 form-line">
             <label for="model-call-instructions" class="form-label field-label align-top">Instructions</label>
@@ -107,16 +108,43 @@
           </div>
         }
 
-        @if (showTextOutFields) {
+        <app-dynamic-fields
+          [fields]="modelConfig?.parameterFields ?? []"
+          [values]="node.parameterValues()"
+          [capabilityContext]="capabilityContext"
+          [includeCallDefined]="true"
+          [includeNonCallDefined]="false"
+          [allowedCapabilities]="['SupportsTextIn', 'SupportsTextOut']"
+          (valuesChange)="onParameterValuesChange($event)">
+        </app-dynamic-fields>
+      </div>
+    </ng-template>
+    <ng-template #imageTab>
+      <div class="bg-body-tertiary p-3">
+        @if (supportsImageIn) {
           <div class="mb-3 form-line">
-            <label for="model-call-text-output" class="form-label field-label">Text Output Path</label>
+            <label for="model-call-image-input" class="form-label field-label">Image Input Path</label>
             <div class="flex-fill control-column short">
               <input
                 type="text"
                 class="form-control w-100"
-                id="model-call-text-output"
-                [ngModel]="node.textOutputPath()"
-                (ngModelChange)="node.textOutputPath.set($event)" />
+                id="model-call-image-input"
+                [ngModel]="node.imageInputPath()"
+                (ngModelChange)="node.imageInputPath.set($event)" />
+            </div>
+          </div>
+        }
+
+        @if (supportsImageOut) {
+          <div class="mb-3 form-line">
+            <label for="model-call-image-output" class="form-label field-label">Image Output Path</label>
+            <div class="flex-fill control-column short">
+              <input
+                type="text"
+                class="form-control w-100"
+                id="model-call-image-output"
+                [ngModel]="node.imageOutputPath()"
+                (ngModelChange)="node.imageOutputPath.set($event)" />
             </div>
           </div>
         }
@@ -127,7 +155,7 @@
           [capabilityContext]="capabilityContext"
           [includeCallDefined]="true"
           [includeNonCallDefined]="false"
-          [allowedCapabilities]="['SupportsTextIn', 'SupportsTextOut']"
+          [allowedCapabilities]="['SupportsImageIn', 'SupportsImageOut']"
           (valuesChange)="onParameterValuesChange($event)">
         </app-dynamic-fields>
       </div>

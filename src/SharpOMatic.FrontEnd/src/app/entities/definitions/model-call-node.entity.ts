@@ -9,8 +9,8 @@ export interface ModelCallNodeSnapshot extends NodeSnapshot {
   prompt: string;
   chatInputPath: string;
   chatOutputPath: string;
-  chatOnlyAnswer: boolean;
   textOutputPath: string;
+  imageInputPath: string;
   imageOutputPath: string;
   parameterValues: Record<string, string | null>;
 }
@@ -21,8 +21,8 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
   public prompt: WritableSignal<string>;
   public chatInputPath: WritableSignal<string>;
   public chatOutputPath: WritableSignal<string>;
-  public chatOnlyAnswer: WritableSignal<boolean>;
   public textOutputPath: WritableSignal<string>;
+  public imageInputPath: WritableSignal<string>;
   public imageOutputPath: WritableSignal<string>;
   public parameterValues: WritableSignal<Record<string, string | null>>;
 
@@ -34,8 +34,8 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
     this.prompt = signal(snapshot.prompt ?? '');
     this.chatInputPath = signal(snapshot.chatInputPath ?? '');
     this.chatOutputPath = signal(snapshot.chatOutputPath ?? '');
-    this.chatOnlyAnswer = signal(snapshot.chatOnlyAnswer ?? false);
     this.textOutputPath = signal(snapshot.textOutputPath ?? '');
+    this.imageInputPath = signal(snapshot.imageInputPath ?? '');
     this.imageOutputPath = signal(snapshot.imageOutputPath ?? '');
     this.parameterValues = signal({ ...(snapshot.parameterValues ?? {}) });
 
@@ -50,8 +50,8 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       const currentPrompt = this.prompt();
       const currentChatInputPath = this.chatInputPath();
       const currentChatOutputPath = this.chatOutputPath();
-      const currentChatOnlyAnswer = this.chatOnlyAnswer();
       const currentTextOutputPath = this.textOutputPath();
+      const currentImageInputPath = this.imageInputPath();
       const currentImageOutputPath = this.imageOutputPath();
       const currentParameterValues = this.parameterValues();
 
@@ -61,8 +61,8 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
         currentPrompt !== snapshot.prompt ||
         currentChatInputPath !== (snapshot.chatInputPath ?? '') ||
         currentChatOutputPath !== (snapshot.chatOutputPath ?? '') ||
-        currentChatOnlyAnswer !== (snapshot.chatOnlyAnswer ?? false) ||
         currentTextOutputPath !== snapshot.textOutputPath ||
+        currentImageInputPath !== snapshot.imageInputPath ||
         currentImageOutputPath !== snapshot.imageOutputPath ||
         !ModelCallNodeEntity.areParameterValuesEqual(currentParameterValues, snapshot.parameterValues);
     });
@@ -76,8 +76,8 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       prompt: this.prompt(),
       chatInputPath: this.chatInputPath(),
       chatOutputPath: this.chatOutputPath(),
-      chatOnlyAnswer: this.chatOnlyAnswer(),
       textOutputPath: this.textOutputPath(),
+      imageInputPath: this.imageInputPath(),
       imageOutputPath: this.imageOutputPath(),
       parameterValues: this.parameterValues(),
     };
@@ -99,8 +99,8 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       prompt: '',
       chatInputPath: '',
       chatOutputPath: '',
-      chatOnlyAnswer: false,
       textOutputPath: 'output.text',
+      imageInputPath: '',
       imageOutputPath: 'output.image',
       parameterValues: {},
     };
