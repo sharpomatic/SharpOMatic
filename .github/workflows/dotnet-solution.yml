@@ -4,14 +4,16 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - 'src/Sharp-O-Matic.Frontend/**'
+      - 'src/Sharp-O-Matic.Editor/**'
       - 'src/Sharp-O-Matic.Engine/**'
       - 'src/Sharp-O-Matic.Server/**'
-      - 'src/Sharp-O-Matic.Test/**'
   pull_request:
     paths:
+      - 'src/Sharp-O-Matic.Frontend/**'
+      - 'src/Sharp-O-Matic.Editor/**'
       - 'src/Sharp-O-Matic.Engine/**'
       - 'src/Sharp-O-Matic.Server/**'
-      - 'src/Sharp-O-Matic.Test/**'
 
 jobs:
   build-and-test:
