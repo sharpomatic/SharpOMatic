@@ -1,9 +1,6 @@
-# Images
-	
-How to pass a new AssetRef into a workflow via code which is then treated as Runid/Run scope?
-	
 ## LLM's
 
+- OpenAI - image generator
 - Azure OpenAI - models
 - Microsoft Foundry - models
 
@@ -33,13 +30,19 @@ GitHub build pipeline to build/package and publish to nuget the two packages
 How does the user add extra security that impacts the controllers that the hosting adds?
 
 
+
+
 # Futures
+
+Embeddings
 
 Usage - token usage counts
 
 Traces - show tool calls, reasoning and other details
 
-Images - input and output of images
+Assets - view them if they are images
+
+Engine - parallel batch processing of arrays, user interaction, suspend and save run, rehydrate and continue on user feedback
 
 ChatKit output integration
 User output, as there might be a stream of outputs

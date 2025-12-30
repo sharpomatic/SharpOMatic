@@ -1,5 +1,3 @@
-using SharpOMatic.Engine.Services;
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.WebHost.UseUrls("http://localhost:9001");

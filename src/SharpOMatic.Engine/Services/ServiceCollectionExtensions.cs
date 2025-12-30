@@ -11,6 +11,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<INodeQueueService, NodeQueueService>();
         services.TryAddSingleton<IRunNodeFactory, RunNodeFactory>();
         services.TryAddSingleton<IRunContextFactory, RunContextFactory>();
+        services.TryAddScoped<IAssetService, AssetService>();
         services.TryAddScoped<IRepositoryService, RepositoryService>();
         services.TryAddScoped<IEngineService, EngineService>();
         services.AddHostedService<NodeExecutionService>();

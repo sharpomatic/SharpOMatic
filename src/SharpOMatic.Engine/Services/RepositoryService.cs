@@ -628,7 +628,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (!string.IsNullOrWhiteSpace(search))
         {
             var normalizedSearch = search.Trim();
-            assets = assets.Where(a => a.Name.Contains(normalizedSearch));
+            var searchLower = normalizedSearch.ToLower();
+            assets = assets.Where(a => a.Name.ToLower().Contains(searchLower));
         }
 
         return await assets.CountAsync();
@@ -644,7 +645,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (!string.IsNullOrWhiteSpace(search))
         {
             var normalizedSearch = search.Trim();
-            assets = assets.Where(a => a.Name.Contains(normalizedSearch));
+            var searchLower = normalizedSearch.ToLower();
+            assets = assets.Where(a => a.Name.ToLower().Contains(searchLower));
         }
 
         var sortedAssets = GetSortedAssets(assets, sortBy, sortDirection);

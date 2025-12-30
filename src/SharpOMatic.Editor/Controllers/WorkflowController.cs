@@ -40,13 +40,13 @@ public class WorkflowController : ControllerBase
 
 
     [HttpPost("run/{id}")]
-    public async Task<ActionResult<Guid>> Run(IEngineService engineService, Guid workflowId)
+    public async Task<ActionResult<Guid>> Run(IEngineService engineService, Guid id)
     {
         // Parse the incoming ContextEntryListEntity data
         using var reader = new StreamReader(Request.Body);
         var contextEntryListEntity = JsonSerializer.Deserialize<ContextEntryListEntity>(await reader.ReadToEndAsync(), _options);
 
-        var runId = await engineService.CreateWorkflowRun(workflowId);
+        var runId = await engineService.CreateWorkflowRun(id);
         await engineService.StartWorkflowRunAndNotify(runId, inputEntries: contextEntryListEntity);
         return runId;
     }

@@ -7,9 +7,7 @@ public sealed class FileSystemAssetStore : IAssetStore
     public FileSystemAssetStore(IOptions<FileSystemAssetStoreOptions> options)
     {
         var configuredRoot = options.Value?.RootPath;
-        var rootPath = string.IsNullOrWhiteSpace(configuredRoot)
-            ? FileSystemAssetStoreOptions.DefaultRootPath
-            : configuredRoot;
+        var rootPath = string.IsNullOrWhiteSpace(configuredRoot) ? FileSystemAssetStoreOptions.DefaultRootPath : configuredRoot;
         _rootPath = Path.GetFullPath(rootPath);
     }
 
