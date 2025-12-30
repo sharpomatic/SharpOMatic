@@ -1,6 +1,5 @@
 ## LLM's
 
-- OpenAI - image generator
 - Azure OpenAI - models
 - Microsoft Foundry - models
 
@@ -33,6 +32,8 @@ How does the user add extra security that impacts the controllers that the hosti
 
 
 # Futures
+
+OpenAI - image generator
 
 Embeddings
 
