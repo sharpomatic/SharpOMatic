@@ -5,9 +5,9 @@ public interface IRepositoryService
     // ------------------------------------------------
     // Workflow Operations
     // ------------------------------------------------
-    Task<List<WorkflowEditSummary>> GetWorkflowEditSummaries();
-    Task<int> GetWorkflowEditSummaryCount(string? search);
-    Task<List<WorkflowEditSummary>> GetWorkflowEditSummaries(string? search, WorkflowSortField sortBy, SortDirection sortDirection, int skip, int take);
+    Task<List<WorkflowSummary>> GetWorkflowSummaries();
+    Task<int> GetWorkflowSummaryCount(string? search);
+    Task<List<WorkflowSummary>> GetWorkflowSummaries(string? search, WorkflowSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task<WorkflowEntity> GetWorkflow(Guid workflowId);
     Task UpsertWorkflow(WorkflowEntity workflow);
     Task DeleteWorkflow(Guid workflowId);

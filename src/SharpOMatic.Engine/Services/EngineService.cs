@@ -13,7 +13,7 @@ public class EngineService(INodeQueueService QueueService,
         if (string.IsNullOrWhiteSpace(workflowName))
             throw new SharpOMaticException("Workflow name cannot be empty or whitespace.");
 
-        var summaries = await RepositoryService.GetWorkflowEditSummaries();
+        var summaries = await RepositoryService.GetWorkflowSummaries();
         var matches = summaries.Where(w => w.Name == workflowName).Take(2).ToList();
 
         if (matches.Count == 0)

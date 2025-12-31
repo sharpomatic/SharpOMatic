@@ -17,19 +17,19 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     // ------------------------------------------------
     // Workflow Operations
     // ------------------------------------------------
-    public async Task<List<WorkflowEditSummary>> GetWorkflowEditSummaries()
+    public async Task<List<WorkflowSummary>> GetWorkflowSummaries()
     {
-        return await GetWorkflowEditSummaries(null, WorkflowSortField.Name, SortDirection.Ascending, 0, 0);
+        return await GetWorkflowSummaries(null, WorkflowSortField.Name, SortDirection.Ascending, 0, 0);
     }
 
-    public async Task<int> GetWorkflowEditSummaryCount(string? search)
+    public async Task<int> GetWorkflowSummaryCount(string? search)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
         var workflows = ApplyWorkflowSearch(dbContext.Workflows.AsNoTracking(), search);
         return await workflows.CountAsync();
     }
 
-    public async Task<List<WorkflowEditSummary>> GetWorkflowEditSummaries(
+    public async Task<List<WorkflowSummary>> GetWorkflowSummaries(
         string? search,
         WorkflowSortField sortBy,
         SortDirection sortDirection,
@@ -47,7 +47,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (take > 0)
             sorted = sorted.Take(take);
 
-        return await sorted.Select(workflow => new WorkflowEditSummary
+        return await sorted.Select(workflow => new WorkflowSummary
         {
             Version = workflow.Version,
             Id = workflow.WorkflowId,

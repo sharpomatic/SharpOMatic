@@ -11,7 +11,7 @@ public class WorkflowController : ControllerBase
     };
 
     [HttpGet]
-    public Task<List<WorkflowEditSummary>> GetWorkflowEditSummaries(
+    public Task<List<WorkflowSummary>> GetWorkflowSummaries(
         IRepositoryService repository,
         [FromQuery] string? search = null,
         [FromQuery] WorkflowSortField sortBy = WorkflowSortField.Name,
@@ -26,14 +26,14 @@ public class WorkflowController : ControllerBase
             take = 0;
 
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
-        return repository.GetWorkflowEditSummaries(normalizedSearch, sortBy, sortDirection, skip, take);
+        return repository.GetWorkflowSummaries(normalizedSearch, sortBy, sortDirection, skip, take);
     }
 
     [HttpGet("count")]
-    public Task<int> GetWorkflowEditSummaryCount(IRepositoryService repository, [FromQuery] string? search = null)
+    public Task<int> GetWorkflowSummaryCount(IRepositoryService repository, [FromQuery] string? search = null)
     {
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
-        return repository.GetWorkflowEditSummaryCount(normalizedSearch);
+        return repository.GetWorkflowSummaryCount(normalizedSearch);
     }
 
     [HttpGet("{id}")]

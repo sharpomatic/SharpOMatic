@@ -23,7 +23,7 @@ public sealed class TransferService(IRepositoryService repositoryService, IAsset
 
         var workflowIds = await ResolveSelectionAsync(request.Workflows, async () =>
         {
-            var summaries = await repositoryService.GetWorkflowEditSummaries();
+            var summaries = await repositoryService.GetWorkflowSummaries();
             return summaries.Select(summary => summary.Id);
         });
 

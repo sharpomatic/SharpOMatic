@@ -1,18 +1,14 @@
-## Export and Import to move between dev/staging/prod
+Bugs
 
-- Workflows
-- Connections
-- Models
+Provide a search bar on the workflow / connectors / models and use the new search methods, add pageing details at bottom of page and vertical scroll.
+Connector and models briefly show the empty message until the data arrives, lets wait until the reply comes before showing it to prevent blinking
 
- To zip file?
-	  
+  
 ## GitHub
 
 - Docusaurus setup for generated static pages site (auto build and publish on changes)
 - Add a custom domain for the documentation site
 - Build first version of documentation
-
-
 
 # Futures
 
@@ -28,9 +24,9 @@ Assets - view them if they are images
 
 Engine - parallel batch processing of arrays, user interaction, suspend and save run, rehydrate and continue on user feedback
 
-ChatKit output integration
-User output, as there might be a stream of outputs
-User input request, for LLM or any other part of a process
+Possible ChatKit integration
+   need to handle domain lookup issue
+   would need to see openai python library to see protocol, including initial get session call
 
 MCP Server
 
