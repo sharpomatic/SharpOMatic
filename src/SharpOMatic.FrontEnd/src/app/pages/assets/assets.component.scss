@@ -37,6 +37,13 @@
   width: 100%;
 }
 
+.assets-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bs-body-tertiary);
+}
+
 .assets-pagination {
   margin-top: 0.5rem;
   padding-top: 0.5rem;

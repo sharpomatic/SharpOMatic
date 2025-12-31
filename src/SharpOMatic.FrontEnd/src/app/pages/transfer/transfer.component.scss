@@ -1,0 +1,160 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.transfer-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tab-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+.transfer-panel {
+  max-width: 900px;
+}
+
+.export-panel {
+  max-width: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.export-tabs {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.export-tabs app-tab {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.icon-sm {
+  font-size: 1.5rem;
+}
+
+.transfer-section {
+  padding: 1rem;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.selection-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: nowrap;
+}
+
+.selection-modes {
+  align-self: flex-start;
+}
+
+.export-table {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.export-search {
+  max-width: 360px;
+  width: 100%;
+  flex: 0 1 360px;
+}
+
+.export-table .table {
+  table-layout: fixed;
+  min-width: 760px;
+  width: 100%;
+}
+
+.export-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bs-body-bg);
+}
+
+.export-pagination {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--bs-border-color);
+  flex: 0 0 auto;
+}
+
+.export-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.export-sort:hover,
+.export-sort:focus {
+  text-decoration: underline;
+}
+
+.col-select {
+  width: 36px;
+  min-width: 36px;
+  max-width: 36px;
+}
+
+.col-name {
+  min-width: 200px;
+}
+
+.col-description {
+  min-width: 240px;
+  width: 50%;
+}
+
+.col-type {
+  min-width: 200px;
+  max-width: 320px;
+  width: 25%;
+}
+
+.col-size {
+  width: 90px;
+  min-width: 90px;
+  max-width: 90px;
+}
+
+.col-created {
+  width: 160px;
+  min-width: 160px;
+  max-width: 160px;
+}

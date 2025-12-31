@@ -6,6 +6,8 @@ public interface IRepositoryService
     // Workflow Operations
     // ------------------------------------------------
     Task<List<WorkflowEditSummary>> GetWorkflowEditSummaries();
+    Task<int> GetWorkflowEditSummaryCount(string? search);
+    Task<List<WorkflowEditSummary>> GetWorkflowEditSummaries(string? search, WorkflowSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task<WorkflowEntity> GetWorkflow(Guid workflowId);
     Task UpsertWorkflow(WorkflowEntity workflow);
     Task DeleteWorkflow(Guid workflowId);
@@ -37,6 +39,8 @@ public interface IRepositoryService
     // Connector Operations
     // ------------------------------------------------
     Task<List<ConnectorSummary>> GetConnectorSummaries();
+    Task<int> GetConnectorSummaryCount(string? search);
+    Task<List<ConnectorSummary>> GetConnectorSummaries(string? search, ConnectorSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task<Connector> GetConnector(Guid connectionId, bool hideSecrets = true);
     Task UpsertConnector(Connector connection, bool hideSecrets = true);
     Task DeleteConnector(Guid connectionId);
@@ -52,6 +56,8 @@ public interface IRepositoryService
     // Model Operations
     // ------------------------------------------------
     Task<List<ModelSummary>> GetModelSummaries();
+    Task<int> GetModelSummaryCount(string? search);
+    Task<List<ModelSummary>> GetModelSummaries(string? search, ModelSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task<Model> GetModel(Guid modelId, bool hideSecrets = true);
     Task UpsertModel(Model model);
     Task DeleteModel(Guid modelId);

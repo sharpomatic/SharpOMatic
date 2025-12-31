@@ -29,6 +29,7 @@ export class TabComponent implements OnInit, OnChanges {
   @Input() tabs: TabItem[] = [];
   @Input() activeTabId?: string;
   @Input() preventOverflow = false;
+  @Input() contentClass = 'bg-body-tertiary';
   @Output() activeTabChange = new EventEmitter<TabItem>();
   @Output() activeTabIdChange = new EventEmitter<string>();
 

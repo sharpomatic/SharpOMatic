@@ -12,7 +12,7 @@
     </button>
   </div>
 
-  <div class="tab-content bg-body-tertiary" *ngIf="activeTab as tab" [class.prevent-overflow]="preventOverflow">
+  <div class="tab-content" [ngClass]="contentClass" *ngIf="activeTab as tab" [class.prevent-overflow]="preventOverflow">
     <ng-container *ngIf="tab.content as content">
       <ng-container *ngIf="isTemplateRef(content); else textContent" [ngTemplateOutlet]="content"></ng-container>
       <ng-template #textContent>{{ content }}</ng-template>

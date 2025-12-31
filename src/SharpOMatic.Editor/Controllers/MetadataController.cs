@@ -11,9 +11,29 @@ public class MetadataController(IRepositoryService repositoryService) : Controll
     }
 
     [HttpGet("connectors")]
-    public Task<List<ConnectorSummary>> GetConnectorSummaries(IRepositoryService repositoryService)
+    public Task<List<ConnectorSummary>> GetConnectorSummaries(
+        IRepositoryService repositoryService,
+        [FromQuery] string? search = null,
+        [FromQuery] ConnectorSortField sortBy = ConnectorSortField.Name,
+        [FromQuery] SortDirection sortDirection = SortDirection.Ascending,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 0)
     {
-        return repositoryService.GetConnectorSummaries();
+        if (skip < 0)
+            skip = 0;
+
+        if (take < 0)
+            take = 0;
+
+        var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        return repositoryService.GetConnectorSummaries(normalizedSearch, sortBy, sortDirection, skip, take);
+    }
+
+    [HttpGet("connectors/count")]
+    public Task<int> GetConnectorSummaryCount(IRepositoryService repositoryService, [FromQuery] string? search = null)
+    {
+        var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        return repositoryService.GetConnectorSummaryCount(normalizedSearch);
     }
 
     [HttpGet("connectors/{id}")]
@@ -41,9 +61,29 @@ public class MetadataController(IRepositoryService repositoryService) : Controll
     }
 
     [HttpGet("models")]
-    public Task<List<ModelSummary>> GetModelSummaries(IRepositoryService repositoryService)
+    public Task<List<ModelSummary>> GetModelSummaries(
+        IRepositoryService repositoryService,
+        [FromQuery] string? search = null,
+        [FromQuery] ModelSortField sortBy = ModelSortField.Name,
+        [FromQuery] SortDirection sortDirection = SortDirection.Ascending,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 0)
     {
-        return repositoryService.GetModelSummaries();
+        if (skip < 0)
+            skip = 0;
+
+        if (take < 0)
+            take = 0;
+
+        var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        return repositoryService.GetModelSummaries(normalizedSearch, sortBy, sortDirection, skip, take);
+    }
+
+    [HttpGet("models/count")]
+    public Task<int> GetModelSummaryCount(IRepositoryService repositoryService, [FromQuery] string? search = null)
+    {
+        var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        return repositoryService.GetModelSummaryCount(normalizedSearch);
     }
 
     [HttpGet("models/{id}")]

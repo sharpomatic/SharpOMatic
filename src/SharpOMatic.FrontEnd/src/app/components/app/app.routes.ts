@@ -7,6 +7,7 @@ import { ConnectorComponent } from '../../pages/connector/connectorcomponent';
 import { ModelsComponent } from '../../pages/models/models.component';
 import { ModelComponent } from '../../pages/model/model.component';
 import { AssetsComponent } from '../../pages/assets/assets.component';
+import { TransferComponent } from '../../pages/transfer/transfer.component';
 import { unsavedChangesGuard } from '../../helper/unsaved-changes.guard';
 
 export const routes: Routes = [
@@ -18,5 +19,6 @@ export const routes: Routes = [
   { path: 'connectors/:id', component: ConnectorComponent, canDeactivate: [unsavedChangesGuard] },
   { path: 'connectors', component: ConnectorsComponent },
   { path: 'assets', component: AssetsComponent },
+  { path: 'transfer', component: TransferComponent },
   { path: 'settings', component: SettingsComponent },
 ];

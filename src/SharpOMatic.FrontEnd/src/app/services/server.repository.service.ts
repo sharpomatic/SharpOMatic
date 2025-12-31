@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { catchError, map, Observable, of } from 'rxjs';
 import { Connector, ConnectorSnapshot } from '../metadata/definitions/connector';
@@ -20,7 +20,12 @@ import { RunSortField } from '../enumerations/run-sort-field';
 import { SortDirection } from '../enumerations/sort-direction';
 import { AssetScope } from '../enumerations/asset-scope';
 import { AssetSortField } from '../enumerations/asset-sort-field';
+import { WorkflowSortField } from '../enumerations/workflow-sort-field';
+import { ConnectorSortField } from '../enumerations/connector-sort-field';
+import { ModelSortField } from '../enumerations/model-sort-field';
 import { AssetSummary } from '../pages/assets/interfaces/asset-summary';
+import { TransferImportResult } from '../pages/transfer/interfaces/transfer-import-result';
+import { TransferExportRequest } from '../pages/transfer/interfaces/transfer-export-request';
 
 @Injectable({
   providedIn: 'root',
@@ -30,13 +35,43 @@ export class ServerRepositoryService {
   private readonly toastService = inject(ToastService);
   private readonly settingsService = inject(SettingsService);
 
-  public getWorkflows(): Observable<WorkflowSummaryEntity[]> {
+  public getWorkflows(
+    search = '',
+    skip = 0,
+    take = 0,
+    sortBy: WorkflowSortField = WorkflowSortField.Name,
+    sortDirection: SortDirection = SortDirection.Ascending
+  ): Observable<WorkflowSummaryEntity[]> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<WorkflowSummarySnapshot[]>(`${apiUrl}/api/workflow`).pipe(
+    let params = new HttpParams()
+      .set('skip', skip)
+      .set('take', take)
+      .set('sortBy', sortBy)
+      .set('sortDirection', sortDirection);
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http.get<WorkflowSummarySnapshot[]>(`${apiUrl}/api/workflow`, { params }).pipe(
       map(snapshots => snapshots.map(WorkflowSummaryEntity.fromSnapshot)),
       catchError((error) => {
         this.notifyError('Loading workflows', error);
         return of([]);
+      })
+    );
+  }
+
+  public getWorkflowCount(search = ''): Observable<number> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams();
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http.get<number>(`${apiUrl}/api/workflow/count`, { params }).pipe(
+      catchError((error) => {
+        this.notifyError('Loading workflow count', error);
+        return of(0);
       })
     );
   }
@@ -152,13 +187,43 @@ export class ServerRepositoryService {
     );
   }
 
-  public getConnectorSummaries(): Observable<ConnectorSummary[]> {
+  public getConnectorSummaries(
+    search = '',
+    skip = 0,
+    take = 0,
+    sortBy: ConnectorSortField = ConnectorSortField.Name,
+    sortDirection: SortDirection = SortDirection.Ascending
+  ): Observable<ConnectorSummary[]> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<ConnectorSummarySnapshot[]>(`${apiUrl}/api/metadata/connectors`).pipe(
+    let params = new HttpParams()
+      .set('skip', skip)
+      .set('take', take)
+      .set('sortBy', sortBy)
+      .set('sortDirection', sortDirection);
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http.get<ConnectorSummarySnapshot[]>(`${apiUrl}/api/metadata/connectors`, { params }).pipe(
       map(snapshots => snapshots.map(ConnectorSummary.fromSnapshot)),
       catchError((error) => {
         this.notifyError('Loading connectors', error);
         return of([]);
+      })
+    );
+  }
+
+  public getConnectorCount(search = ''): Observable<number> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams();
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http.get<number>(`${apiUrl}/api/metadata/connectors/count`, { params }).pipe(
+      catchError((error) => {
+        this.notifyError('Loading connector count', error);
+        return of(0);
       })
     );
   }
@@ -205,13 +270,43 @@ export class ServerRepositoryService {
     );
   }
 
-  public getModelSummaries(): Observable<ModelSummary[]> {
+  public getModelSummaries(
+    search = '',
+    skip = 0,
+    take = 0,
+    sortBy: ModelSortField = ModelSortField.Name,
+    sortDirection: SortDirection = SortDirection.Ascending
+  ): Observable<ModelSummary[]> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<ModelSummarySnapshot[]>(`${apiUrl}/api/metadata/models`).pipe(
+    let params = new HttpParams()
+      .set('skip', skip)
+      .set('take', take)
+      .set('sortBy', sortBy)
+      .set('sortDirection', sortDirection);
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http.get<ModelSummarySnapshot[]>(`${apiUrl}/api/metadata/models`, { params }).pipe(
       map(snapshots => snapshots.map(ModelSummary.fromSnapshot)),
       catchError((error) => {
         this.notifyError('Loading models', error);
         return of([]);
+      })
+    );
+  }
+
+  public getModelCount(search = ''): Observable<number> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams();
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http.get<number>(`${apiUrl}/api/metadata/models/count`, { params }).pipe(
+      catchError((error) => {
+        this.notifyError('Loading model count', error);
+        return of(0);
       })
     );
   }
@@ -343,6 +438,22 @@ export class ServerRepositoryService {
         return of(undefined);
       })
     );
+  }
+
+  public importTransfer(file: File): Observable<TransferImportResult> {
+    const apiUrl = this.settingsService.apiUrl();
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.http.post<TransferImportResult>(`${apiUrl}/api/transfer/import`, formData);
+  }
+
+  public exportTransfer(request: TransferExportRequest): Observable<HttpResponse<Blob>> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.post(`${apiUrl}/api/transfer/export`, request, {
+      observe: 'response',
+      responseType: 'blob',
+    });
   }
 
   private notifyError(operation: string, error: unknown): void {

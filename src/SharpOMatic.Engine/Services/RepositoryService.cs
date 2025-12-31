@@ -19,17 +19,41 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     // ------------------------------------------------
     public async Task<List<WorkflowEditSummary>> GetWorkflowEditSummaries()
     {
+        return await GetWorkflowEditSummaries(null, WorkflowSortField.Name, SortDirection.Ascending, 0, 0);
+    }
+
+    public async Task<int> GetWorkflowEditSummaryCount(string? search)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var workflows = ApplyWorkflowSearch(dbContext.Workflows.AsNoTracking(), search);
+        return await workflows.CountAsync();
+    }
+
+    public async Task<List<WorkflowEditSummary>> GetWorkflowEditSummaries(
+        string? search,
+        WorkflowSortField sortBy,
+        SortDirection sortDirection,
+        int skip,
+        int take)
+    {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await (from w in dbContext.Workflows.AsNoTracking()
-                      orderby w.Named
-                      select new WorkflowEditSummary()
-                      {
-                          Version = w.Version,
-                          Id = w.WorkflowId,
-                          Name = w.Named,
-                          Description = w.Description,
-                      }).ToListAsync();
+        var workflows = ApplyWorkflowSearch(dbContext.Workflows.AsNoTracking(), search);
+        var sorted = GetSortedWorkflows(workflows, sortBy, sortDirection);
+
+        if (skip > 0)
+            sorted = sorted.Skip(skip);
+
+        if (take > 0)
+            sorted = sorted.Take(take);
+
+        return await sorted.Select(workflow => new WorkflowEditSummary
+        {
+            Version = workflow.Version,
+            Id = workflow.WorkflowId,
+            Name = workflow.Named,
+            Description = workflow.Description,
+        }).ToListAsync();
     }
 
     public async Task<WorkflowEntity> GetWorkflow(Guid workflowId)
@@ -104,6 +128,33 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         dbContext.Remove(workflow);
         await dbContext.SaveChangesAsync();
+    }
+
+    private static IQueryable<Workflow> ApplyWorkflowSearch(IQueryable<Workflow> workflows, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+            return workflows;
+
+        var normalizedSearch = search.Trim().ToLower();
+        return workflows.Where(workflow =>
+            workflow.Named.ToLower().Contains(normalizedSearch) ||
+            workflow.Description.ToLower().Contains(normalizedSearch));
+    }
+
+    private static IQueryable<Workflow> GetSortedWorkflows(
+        IQueryable<Workflow> workflows,
+        WorkflowSortField sortBy,
+        SortDirection sortDirection)
+    {
+        return sortBy switch
+        {
+            WorkflowSortField.Description => sortDirection == SortDirection.Ascending
+                ? workflows.OrderBy(workflow => workflow.Description).ThenBy(workflow => workflow.Named)
+                : workflows.OrderByDescending(workflow => workflow.Description).ThenByDescending(workflow => workflow.Named),
+            _ => sortDirection == SortDirection.Ascending
+                ? workflows.OrderBy(workflow => workflow.Named).ThenBy(workflow => workflow.Description)
+                : workflows.OrderByDescending(workflow => workflow.Named).ThenByDescending(workflow => workflow.Description),
+        };
     }
 
     // ------------------------------------------------
@@ -298,16 +349,40 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     // ------------------------------------------------
     public async Task<List<ConnectorSummary>> GetConnectorSummaries()
     {
+        return await GetConnectorSummaries(null, ConnectorSortField.Name, SortDirection.Ascending, 0, 0);
+    }
+
+    public async Task<int> GetConnectorSummaryCount(string? search)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var connectors = ApplyConnectorSearch(dbContext.ConnectorMetadata.AsNoTracking(), search);
+        return await connectors.CountAsync();
+    }
+
+    public async Task<List<ConnectorSummary>> GetConnectorSummaries(
+        string? search,
+        ConnectorSortField sortBy,
+        SortDirection sortDirection,
+        int skip,
+        int take)
+    {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await (from c in dbContext.ConnectorMetadata.AsNoTracking()
-                      orderby c.Name
-                      select new ConnectorSummary()
-                      {
-                          ConnectorId = c.ConnectorId,
-                          Name = c.Name,
-                          Description = c.Description,
-                      }).ToListAsync();
+        var connectors = ApplyConnectorSearch(dbContext.ConnectorMetadata.AsNoTracking(), search);
+        var sorted = GetSortedConnectors(connectors, sortBy, sortDirection);
+
+        if (skip > 0)
+            sorted = sorted.Skip(skip);
+
+        if (take > 0)
+            sorted = sorted.Take(take);
+
+        return await sorted.Select(connector => new ConnectorSummary
+        {
+            ConnectorId = connector.ConnectorId,
+            Name = connector.Name,
+            Description = connector.Description,
+        }).ToListAsync();
     }
 
     public async Task<Connector> GetConnector(Guid connectorId, bool hideSecrets = true)
@@ -413,6 +488,33 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
+    private static IQueryable<ConnectorMetadata> ApplyConnectorSearch(IQueryable<ConnectorMetadata> connectors, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+            return connectors;
+
+        var normalizedSearch = search.Trim().ToLower();
+        return connectors.Where(connector =>
+            connector.Name.ToLower().Contains(normalizedSearch) ||
+            connector.Description.ToLower().Contains(normalizedSearch));
+    }
+
+    private static IQueryable<ConnectorMetadata> GetSortedConnectors(
+        IQueryable<ConnectorMetadata> connectors,
+        ConnectorSortField sortBy,
+        SortDirection sortDirection)
+    {
+        return sortBy switch
+        {
+            ConnectorSortField.Description => sortDirection == SortDirection.Ascending
+                ? connectors.OrderBy(connector => connector.Description).ThenBy(connector => connector.Name)
+                : connectors.OrderByDescending(connector => connector.Description).ThenByDescending(connector => connector.Name),
+            _ => sortDirection == SortDirection.Ascending
+                ? connectors.OrderBy(connector => connector.Name).ThenBy(connector => connector.Description)
+                : connectors.OrderByDescending(connector => connector.Name).ThenByDescending(connector => connector.Description),
+        };
+    }
+
     // ------------------------------------------------
     // ModelConfig Operations
     // ------------------------------------------------
@@ -477,16 +579,40 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     // ------------------------------------------------
     public async Task<List<ModelSummary>> GetModelSummaries()
     {
+        return await GetModelSummaries(null, ModelSortField.Name, SortDirection.Ascending, 0, 0);
+    }
+
+    public async Task<int> GetModelSummaryCount(string? search)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var models = ApplyModelSearch(dbContext.ModelMetadata.AsNoTracking(), search);
+        return await models.CountAsync();
+    }
+
+    public async Task<List<ModelSummary>> GetModelSummaries(
+        string? search,
+        ModelSortField sortBy,
+        SortDirection sortDirection,
+        int skip,
+        int take)
+    {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await (from m in dbContext.ModelMetadata.AsNoTracking()
-                      orderby m.Name
-                      select new ModelSummary()
-                      {
-                          ModelId = m.ModelId,
-                          Name = m.Name,
-                          Description = m.Description,
-                      }).ToListAsync();
+        var models = ApplyModelSearch(dbContext.ModelMetadata.AsNoTracking(), search);
+        var sorted = GetSortedModels(models, sortBy, sortDirection);
+
+        if (skip > 0)
+            sorted = sorted.Skip(skip);
+
+        if (take > 0)
+            sorted = sorted.Take(take);
+
+        return await sorted.Select(model => new ModelSummary
+        {
+            ModelId = model.ModelId,
+            Name = model.Name,
+            Description = model.Description,
+        }).ToListAsync();
     }
 
     public async Task<Model> GetModel(Guid modelId, bool hideSecrets = true)
@@ -562,6 +688,33 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         dbContext.Remove(metadata);
         await dbContext.SaveChangesAsync();
+    }
+
+    private static IQueryable<ModelMetadata> ApplyModelSearch(IQueryable<ModelMetadata> models, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+            return models;
+
+        var normalizedSearch = search.Trim().ToLower();
+        return models.Where(model =>
+            model.Name.ToLower().Contains(normalizedSearch) ||
+            model.Description.ToLower().Contains(normalizedSearch));
+    }
+
+    private static IQueryable<ModelMetadata> GetSortedModels(
+        IQueryable<ModelMetadata> models,
+        ModelSortField sortBy,
+        SortDirection sortDirection)
+    {
+        return sortBy switch
+        {
+            ModelSortField.Description => sortDirection == SortDirection.Ascending
+                ? models.OrderBy(model => model.Description).ThenBy(model => model.Name)
+                : models.OrderByDescending(model => model.Description).ThenByDescending(model => model.Name),
+            _ => sortDirection == SortDirection.Ascending
+                ? models.OrderBy(model => model.Name).ThenBy(model => model.Description)
+                : models.OrderByDescending(model => model.Name).ThenByDescending(model => model.Description),
+        };
     }
 
     // ------------------------------------------------
