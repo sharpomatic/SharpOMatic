@@ -1,7 +1,3 @@
-## LLM's
-
-- Microsoft Foundry - models
-
 ## Export and Import to move between dev/staging/prod
 
 - Workflows
