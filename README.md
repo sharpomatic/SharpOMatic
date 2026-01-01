@@ -6,7 +6,7 @@
 
 ## Under Construction
 
-SharpOMatic is an AI workflow designer and evaluator with deep integration into .NET projects.
+SharpOMatic is an AI workflow designer with deep integration into .NET projects.
 Design using a drag and drop editor.
 Perform evaluations against datasets.
 Deep integration into .NET projects as nuget packages.
