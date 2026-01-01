@@ -1,5 +1,8 @@
-[![Build](https://github.com/sharpomatic/sharpomatic/actions/workflows/dotnet-build.yml/badge.svg)](https://github.com/sharpomatic/sharpomatic/actions/workflows/dotnet-build.yml)
-[![NuGet](https://img.shields.io/nuget/v/SharpOMatic.Engine)](https://www.nuget.org/profiles/sharpomatic/)
+[![Development](https://github.com/sharpomatic/SharpOMatic/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sharpomatic/SharpOMatic/actions/workflows/ci.yml)
+[![Prerelease](https://img.shields.io/nuget/vpre/SharpOMatic.Engine?label=prerelease)](https://www.nuget.org/packages/SharpOMatic.Engine/)
+[![Stable](https://img.shields.io/nuget/v/SharpOMatic.Engine?label=stable)](https://www.nuget.org/packages/SharpOMatic.Engine/)
+[![Downloads](https://img.shields.io/nuget/dt/SharpOMatic.Engine?label=downloads)](https://www.nuget.org/packages/SharpOMatic.Engine/)
+[![TargetFramework](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 
 ## Under Construction
 

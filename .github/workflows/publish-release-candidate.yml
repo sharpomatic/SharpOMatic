@@ -1,0 +1,67 @@
+name: Publish Release Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      versionPrefix:
+        description: "Version prefix (e.g., 1.3.0)"
+        required: true
+      versionSuffix:
+        description: "Version suffix (e.g., rc.1). Leave blank for rc.<run_number>."
+        required: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Resolve version
+        run: |
+          VERSION_PREFIX="${{ inputs.versionPrefix }}"
+          VERSION_SUFFIX="${{ inputs.versionSuffix }}"
+          if [ -z "$VERSION_PREFIX" ]; then
+            echo "versionPrefix is required."
+            exit 1
+          fi
+          if [ -z "$VERSION_SUFFIX" ]; then
+            VERSION_SUFFIX="rc.${GITHUB_RUN_NUMBER}"
+          fi
+          echo "VERSION_PREFIX=$VERSION_PREFIX" >> "$GITHUB_ENV"
+          echo "VERSION_SUFFIX=$VERSION_SUFFIX" >> "$GITHUB_ENV"
+
+      - name: Restore dependencies
+        working-directory: src
+        run: dotnet restore
+
+      - name: Build
+        working-directory: src
+        run: dotnet build --configuration Release --no-restore /p:VersionPrefix=$VERSION_PREFIX /p:VersionSuffix=$VERSION_SUFFIX /p:AssemblyVersion=$VERSION_PREFIX /p:FileVersion=$VERSION_PREFIX
+
+      - name: Test
+        working-directory: src
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: Pack Engine
+        working-directory: src
+        run: dotnet pack SharpOMatic.Engine/SharpOMatic.Engine.csproj --configuration Release --no-build /p:VersionPrefix=$VERSION_PREFIX /p:VersionSuffix=$VERSION_SUFFIX -o ../artifacts
+
+      - name: Pack Editor
+        working-directory: src
+        run: dotnet pack SharpOMatic.Editor/SharpOMatic.Editor.csproj --configuration Release --no-build /p:VersionPrefix=$VERSION_PREFIX /p:VersionSuffix=$VERSION_SUFFIX -o ../artifacts
+
+      - name: Publish NuGet packages
+        run: dotnet nuget push "artifacts/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Upload NuGet packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts/*.nupkg

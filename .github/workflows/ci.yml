@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/SharpOMatic.FrontEnd/**'
+      - 'src/SharpOMatic.Editor/**'
+      - 'src/SharpOMatic.Engine/**'
+      - 'src/SharpOMatic.Server/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/SharpOMatic.FrontEnd/**'
+      - 'src/SharpOMatic.Editor/**'
+      - 'src/SharpOMatic.Engine/**'
+      - 'src/SharpOMatic.Server/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        working-directory: src
+        run: dotnet restore
+
+      - name: Build
+        working-directory: src
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        working-directory: src
+        run: dotnet test --configuration Release --no-build --verbosity normal

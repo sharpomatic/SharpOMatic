@@ -1,0 +1,57 @@
+name: Publish Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Resolve version
+        run: |
+          VERSION_PREFIX="${GITHUB_REF_NAME#v}"
+          if [ -z "$VERSION_PREFIX" ]; then
+            echo "Tag name must be in the form vX.Y.Z."
+            exit 1
+          fi
+          echo "VERSION_PREFIX=$VERSION_PREFIX" >> "$GITHUB_ENV"
+
+      - name: Restore dependencies
+        working-directory: src
+        run: dotnet restore
+
+      - name: Build
+        working-directory: src
+        run: dotnet build --configuration Release --no-restore /p:VersionPrefix=$VERSION_PREFIX /p:AssemblyVersion=$VERSION_PREFIX /p:FileVersion=$VERSION_PREFIX
+
+      - name: Test
+        working-directory: src
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: Pack Engine
+        working-directory: src
+        run: dotnet pack SharpOMatic.Engine/SharpOMatic.Engine.csproj --configuration Release --no-build /p:VersionPrefix=$VERSION_PREFIX -o ../artifacts
+
+      - name: Pack Editor
+        working-directory: src
+        run: dotnet pack SharpOMatic.Editor/SharpOMatic.Editor.csproj --configuration Release --no-build /p:VersionPrefix=$VERSION_PREFIX -o ../artifacts
+
+      - name: Publish NuGet packages
+        run: dotnet nuget push "artifacts/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Upload NuGet packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: artifacts/*.nupkg
