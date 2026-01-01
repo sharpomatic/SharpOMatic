@@ -1,4 +1,4 @@
-[![Build](https://github.com/sharpomatic/sharpomatic/actions/workflows/dotnet-solution.yml/badge.svg)](https://github.com/sharpomatic/sharpomatic/actions/workflows/dotnet-solution.yml)
+[![Build](https://github.com/sharpomatic/sharpomatic/actions/workflows/dotnet-build.yml/badge.svg)](https://github.com/sharpomatic/sharpomatic/actions/workflows/dotnet-build.yml)
 [![NuGet](https://img.shields.io/nuget/v/SharpOMatic.Engine)](https://www.nuget.org/profiles/sharpomatic/)
 
 ## Under Construction
