@@ -33,6 +33,12 @@
     <ProjectReference Include="..\SharpOMatic.Engine\SharpOMatic.Engine.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="README.md">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
   <Target Name="PrepareEditorAssets" BeforeTargets="_CalculateEmbeddedFilesManifestInputs" Condition="'$(DesignTimeBuild)' != 'true'">
     <Exec WorkingDirectory="$(SpaRoot)" Command="npm ci" Condition="!Exists('$(SpaRoot)node_modules')" />
     <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build -- --configuration production" />
