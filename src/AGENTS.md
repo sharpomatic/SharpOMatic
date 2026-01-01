@@ -1,129 +1,117 @@
 ﻿# Repository Project
 
 SharpOMatic is an open-source project on GitHub that allows a user to build and execute workflows with an emphasis on AI-related tasks.
-The frontend is an Angular and TypeScript browser-based application contained in the `SharpOMatic.Editor/` directory.
-The backend is .NET/C#-based and consists of Engine, Server, and Test projects.
+The frontend is an Angular and TypeScript browser-based application contained in the `SharpOMatic.Frontend/` directory.
+The backend is .NET/C#-based and consists of Editor, Engine and Server.
 
 ## Project Structure & Module Organization
-- `SharpOMatic.sln` is the root .NET solution file for the backend.
-    It points to the project files for the Engine, Server, and Test projects.
-    It does not include the Editor, which is built and run separately.
+- `SharpOMatic.sln` is the .NET solution used by Visual Studio and CLI builds to load the backend projects (Engine, Editor, Server) plus solution items like `DEV.md` and `TODO.md`. The Angular frontend is not included as a project in the solution; instead, the Editor project runs the frontend build and embeds the output during its own build.
 
-- `SharpOMatic.FrontEnd/` is an Angular and TypeScript frontend that communicates with a server backend.
-- `SharpOMatic.Editor/` is a .NET 10 class library that packages the output of the FrontEnd along with controllers and signalR for use by a ASP.NET project.
-- `SharpOMatic.Engine/` is a .NET 10 class library with the core implementation of workflows for the backend.
-- `SharpOMatic.Server/` is a .NET 10 ASP.NET project used to test that the Engine and Editor work together correctly when added as project references.
+- `SharpOMatic.FrontEnd/` is the Angular + TypeScript SPA for the workflow designer/editor UI, including pages, components, and services that call the backend APIs and SignalR endpoints. Its production build output (`dist/SharpOMatic-Editor/browser`) is consumed by the Editor project and embedded into the .NET package, so UI changes here affect the hosted editor experience.
+
+- `SharpOMatic.Editor/` is a .NET 10 class library that hosts the editor UI and supporting endpoints; it embeds the built Angular assets as resources and exposes ASP.NET controllers and SignalR hubs for the editor and transfer flows. It depends on the Engine project and provides extension methods to plug the editor into an ASP.NET Core app, so changes here affect server-side hosting, routing, and API contracts for the UI.
+
+- `SharpOMatic.Engine/` is the .NET 10 core workflow engine that defines the runtime model (nodes, contexts, metadata), persistence (EF Core models/migrations), and services used to execute workflows and manage assets, runs, and repository state. It is the main backend library consumed by both the Editor package and the Server host, so changes here typically impact execution behavior and API DTOs.
+
+- `SharpOMatic.Server/` is a .NET 10 ASP.NET Core host application that wires Engine and Editor together for local running, testing, and sample configuration (routing, database setup, asset storage). It serves as the integration harness where you can validate end-to-end editor + engine behavior before packaging or deploying elsewhere. This is used during developing to test changes but end users are expected to create there are own server or integer the Editor and Engine into their own existing project.
 
 ### Project Structure Engine
 
+- `SharpOMatic.Engine/bin`
+    Build outputs produced by local or CI builds (compiled assemblies, temporary artifacts). These files are generated and should not be edited; delete the folder if you need a clean rebuild.
+
 - `SharpOMatic.Engine/Contexts`
-    ContextObject allows name/value pairs of data to be accessed during execution of nodes in a workflow and is implemented like a C# dictionary type.
-    ContextList acts as a list of values. Both of these can hold scalar values as well as references to objects.
-    Combining use of these two context types allows complex hierarchies of data to be read, added, removed, and updated by workflow nodes.
-    To allow a workflow to be suspended and saved to a database, all the values in this hierarchy must be serializable to JSON.
-    This directory contains some built-in converters but any other types must be registered via the JsonConverterService.
+    Runtime context data structures (ContextObject/ContextList) plus RunContext/ThreadContext that carry state through workflow execution. Values must be JSON-serializable to persist runs, and custom converters are registered through the JSON conversion services.
 
-    RunContext and ThreadContext are used to group data together when executing a workflow.
-    There is a single RunContext for a workflow execution but one ThreadContext for each thread of execution, because nodes can run in parallel.
-
-- `SharpOMatic.Engine/DataTransferObjects`
-    Classes that end in Request are incoming payloads from the frontend and those ending in Result are responses.
-    These are only needed for special-purpose calls because most REST calls use Entities or Metadata, which are defined in their specific directories.
+- `SharpOMatic.Engine/DTO`
+    Request/response payload models used by editor and transfer APIs (typically Request/Result naming). These DTOs are used for API-specific contracts that are not represented by core entities or metadata.
 
 - `SharpOMatic.Engine/Entities`
-    Contains definitions of the workflow nodes along with helper entities that the nodes use.
-    All entities end with the word Entity in the name. They store all the user-defined settings for operation of that node.
-    Each entity has an instance ID so they can be referenced from elsewhere by ID.
-    They have a version number so that they can be upgraded in the future automatically as new releases of the project are made.
+    Domain entities for workflows, nodes, and supporting data, including versioned configuration that is persisted to the repository. Editing these models usually affects serialization, migrations, and runtime behavior.
 
 - `SharpOMatic.Engine/Enumerations`
-    Shared enumerations that are used across more than one directory.
-    Enumerations needed in only a single directory will usually be placed in that directory.
+    Shared enums used across multiple engine areas (runs, nodes, metadata, services), keeping cross-cutting state flags centralized.
 
 - `SharpOMatic.Engine/Exceptions`
-    Domain-specific exception types for the engine, including syntax errors and base engine exceptions, so failures can be reported with meaningful detail.
+    Engine-specific exception types that provide domain context for validation, parsing, and execution failures; these surface to API responses and logs.
 
 - `SharpOMatic.Engine/FastSerializer`
-    Custom JSON tokenizer/deserializer used by the engine to parse serialized data efficiently while keeping accurate line and column error locations.
-    It is a fast serializer that goes from JSON text to the ContextObject and ContextList instances.
-    This makes it appropriate to use when putting data into a workflow context and saving that context to text.
+    Custom JSON tokenizer/deserializer used for fast, location-aware parsing of context data and other engine JSON, which is critical for precise error reporting in user-authored inputs.
 
 - `SharpOMatic.Engine/Helpers`
-    Small utility types and helpers used across the engine, including identifier validation, context helpers, and shared location metadata.
-    This is the place to put extension methods for base types or helper classes/extensions that cut across multiple directories.
+    Utility classes, validators, and extension methods shared across the engine. Place cross-cutting helpers here when multiple modules depend on the same logic.
 
 - `SharpOMatic.Engine/Interfaces`
-    Service contracts and engine abstractions (queueing, execution, repository, converters, schema types) that define DI boundaries and make testing easier.
-    Any new service should have an interface that is placed here.
+    DI contracts and abstractions for engine services (execution, repository, converters, schemas, queues). New services should define their interface here to keep boundaries testable.
 
 - `SharpOMatic.Engine/Metadata`
-    Metadata is used to define connectors and models.
-    A connector config represents a possible connection target for operations, such as OpenAI services, Azure services, or other third-party APIs.
-    Connector configs can be presented to the user for selection.
-    The connector instance references a connector config and stores the user-entered details about the connection, such as URL and authentication details.
-    A model config defines an LLM model and its capabilities, such as tooling and image generation.
-    A model instance comes from a selected model config and allows the user to specify details like structured output.
+    Connector and model metadata definitions (plus embedded JSON resources) that describe configurable integrations like OpenAI/Azure models. These definitions drive editor UI fields and runtime validation for connectors/models.
 
 - `SharpOMatic.Engine/Migrations`
-    Entity Framework Core migrations and snapshots that define the persisted schema for workflows, runs, and other database tables.
+    EF Core migrations and snapshots for the engine database schema (workflows, runs, assets). Any entity changes that affect persistence need matching migrations here.
 
 - `SharpOMatic.Engine/Nodes`
-    Runtime implementations of workflow nodes (start, end, fan-in/out, switch, code, model call, etc.) plus shared node helpers and attributes.
-    Each node implementation has a class name ending in the word Node. It implements validation checking as well as runtime operation.
+    Workflow node runtime implementations and validation logic (start/end, switch, fan-in/out, code/model call, etc.). This is where execution semantics live, including Roslyn-backed C# scripting for user code nodes.
+
+- `SharpOMatic.Engine/obj`
+    Intermediate build outputs and generated files used by the compiler and tooling. Treat as generated artifacts; safe to delete for clean builds.
 
 - `SharpOMatic.Engine/Repository`
-    EF Core DbContext and persistence models for workflows, runs, and other database tables.
+    EF Core DbContext, entity configurations, and repository implementations used by services to read/write workflow and run data.
 
 - `SharpOMatic.Engine/Services`
-    Core engine services for node execution, queue management, repository access, JSON conversion, schema typing, and engine configuration.
-    A service is here because it can be added to the services collection for dependency injection.
-    It also has extension methods to help with correct setup of the services.
-    The NodeExecutionService is a hosted background service that pulls nodes from a queue for processing.
-    NodeQueueService is a queue of nodes that need to be processed by the NodeExecutionService.
-    The RepositoryService is used by other services to get and set information in the backing database.
+    Core DI services for execution, queues, asset storage, repository access, JSON conversion, and configuration. This includes the node execution background service and queue logic that drive runtime workflow processing.
 
-- Notes: The backend uses the Roslyn compiler services to validate and run C# code snippets. The ability to run C# code entered by the user is
-  crucial for giving the user flexibility when building a workflow.
+### Project Structure Editor
+
+- `SharpOMatic.Editor/bin`
+    Build outputs produced by local or CI builds (compiled assemblies, temporary artifacts). These files are generated and should not be edited; delete the folder if you need a clean rebuild.
+
+- `SharpOMatic.Editor/Controllers`
+    ASP.NET Core API controllers that expose editor and asset endpoints, backing the Angular UI and transfer flows. Changes here affect HTTP routing, request validation, and the contracts the frontend relies on.
+
+- `SharpOMatic.Editor/DTO`
+    Request/response payload models used by editor-specific endpoints. Keep these aligned with the frontend DTOs when changing API contracts.
+
+- `SharpOMatic.Editor/Helpers`
+    Utility classes and helpers used by the editor host (routing helpers, embedded asset helpers, or shared logic across controllers/services).
+
+- `SharpOMatic.Editor/obj`
+    Intermediate build outputs and generated files used by the compiler and tooling. Treat as generated artifacts; safe to delete for clean builds.
+
+- `SharpOMatic.Editor/Services`
+    Services that encapsulate editor host behavior (asset transfer, hub integration, and editor setup). This is the DI boundary for editor-specific logic that can be reused by host applications.
 
 ### Project Structure FrontEnd
 
-- `SharpOMatic.FrontEnd/src/app`
-    Root Angular application structure, containing the feature folders and app bootstrapping assets that wire routing, configuration, and shared state together.
-
 - `SharpOMatic.FrontEnd/src/app/components`
-    Reusable UI components (designer, context viewer, tabs, dynamic fields, etc.).
-    These components are embedded within other components such as dialogs and pages.
-
-- `SharpOMatic.FrontEnd/src/app/data-transfer-objects`
-    Client-side DTO shapes for API payloads such as code-check requests/results, mirroring the backend's DTO contracts.
+    Reusable UI components used by pages and dialogs (designer canvas, viewers, tabs, shared form widgets). Start here when you need a visual element used across multiple screens.
 
 - `SharpOMatic.FrontEnd/src/app/dialogs`
-    Modal dialog components for editing nodes, confirming actions, and showing informative or blocking messages in the editor.
-    Most of the dialogs are shown when a user double-clicks a workflow node so they can edit the properties of that node.
+    Modal dialog components for editing node properties, confirmations, and blocking info. These are typically opened from pages/components and often map to backend validation flows.
+
+- `SharpOMatic.FrontEnd/src/app/dto`
+    Client-side DTOs that mirror backend request/response payloads for editor and transfer APIs. Changes here should stay aligned with `SharpOMatic.Engine/DTO`.
 
 - `SharpOMatic.FrontEnd/src/app/entities`
-    Client-side entity models that mirror the engine's workflow entities, plus helpers like factories for creating node instances.
+    Client-side workflow entities and helpers for building or mutating node graphs in the UI. This mirrors engine entities but adds UI-specific conveniences and factories.
 
 - `SharpOMatic.FrontEnd/src/app/enumerations`
-    UI enums for node/run status and other state flags used across components, services, and templates.
+    UI enums for node status, run status, and view state flags referenced by templates and services across the app.
 
-- `SharpOMatic.FrontEnd/src/app/guards`
-    Route guards that protect navigation (for example, warning about unsaved changes) and enforce editor flow rules.
-    When the user navigates away from a page that has been changed, it gives the user a chance to save or cancel the navigation.
+- `SharpOMatic.FrontEnd/src/app/helper`
+    UI helper utilities (formatters, mappers, or small shared functions) used across components and services.
 
 - `SharpOMatic.FrontEnd/src/app/metadata`
-    Metadata definitions and enums for connector/model configuration so the editor can render dynamic fields and validation.
-    Using field configuration from metadata is essential for making it fast and easy to define the fields presented to a user.
+    Connector/model metadata definitions and helpers used to render dynamic forms for LLM integrations and validate UI inputs before sending to the backend.
 
 - `SharpOMatic.FrontEnd/src/app/pages`
-    Routed pages for core editor experiences like workflows, workflow editing, connectors, models, and settings, with page-scoped services where needed.
-    The UI sidebar lists the pages, and clicking one navigates to that page.
+    Routed feature pages (workflow list, workflow editor, connectors, models, settings). Page components own layout and coordinate services and dialogs.
 
 - `SharpOMatic.FrontEnd/src/app/services`
-    Angular services for API access, SignalR communication, metadata loading, Monaco integration, settings persistence, and toasts.
+    Angular services for API access, SignalR hubs, metadata loading, Monaco integration, settings persistence, and notifications. Any API changes usually flow through these services.
 
-- Notes: The user interface uses the Monaco editor that is also used in Visual Studio Code to display and allow editing
-  of JSON and C# code snippets. This provides a good experience for the user. It calls the backend to validate the C# snippets.
+- Notes: The UI uses Monaco for JSON/C# editing and relies on backend validation; keep DTOs and metadata in sync with engine changes to avoid runtime errors.
 
 ## Coding Style & Naming Conventions
 - C#: 4-space indentation; nullable is enabled; follow .NET conventions (PascalCase types/methods/properties, camelCase locals/parameters, `I` prefix for interfaces).
