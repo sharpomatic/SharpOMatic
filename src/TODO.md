@@ -1,8 +1,6 @@
 ## GitHub
 
 - Build first version of documentation
-- Create sample workflows for different features with Server setup to help
-- Add mechanism for user to add a sample workflow (embedded in a directory then frontend can create from them)
 - Pull in text library assets in a prompt templating
 - Code to write from context into the asset library again
 

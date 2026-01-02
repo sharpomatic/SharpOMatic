@@ -6,13 +6,16 @@ import { BsModalService, BsModalRef } from 'ngx-bootstrap/modal';
 import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
 import { WorkflowEntity } from '../../entities/definitions/workflow.entity';
 import { WorkflowSummaryEntity } from '../../entities/definitions/workflow.summary.entity';
+import { SamplesService } from '../../services/samples.service';
+import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
 
 @Component({
   selector: 'app-workflows',
   standalone: true,
   imports: [
     CommonModule,
-    RouterLink
+    RouterLink,
+    BsDropdownModule
   ],
   templateUrl: './workflows.component.html',
   styleUrls: ['./workflows.component.scss'],
@@ -22,6 +25,7 @@ export class WorkflowsComponent implements OnInit, AfterViewInit {
   private readonly serverWorkflow = inject(ServerRepositoryService);
   private readonly modalService = inject(BsModalService);
   private readonly router = inject(Router);
+  private readonly samplesService = inject(SamplesService);
   private bsModalRef: BsModalRef<ConfirmDialogComponent> | undefined;
   @ViewChild('searchInput') private searchInput?: ElementRef<HTMLInputElement>;
 
@@ -31,6 +35,7 @@ export class WorkflowsComponent implements OnInit, AfterViewInit {
   public readonly workflowsPageSize = 50;
   public isLoading = true;
   public searchText = '';
+  public readonly sampleNames = this.samplesService.sampleNames;
   private searchDebounceId: ReturnType<typeof setTimeout> | undefined;
 
   ngOnInit(): void {
@@ -45,6 +50,18 @@ export class WorkflowsComponent implements OnInit, AfterViewInit {
     const newWorkflow = WorkflowEntity.create('Untitled', 'New workflow needs a description.');
     this.serverWorkflow.upsertWorkflow(newWorkflow).subscribe(() => {
       this.router.navigate(['/workflows', newWorkflow.id]);
+    });
+  }
+
+  createWorkflowFromSample(sampleName: string): void {
+    if (!sampleName) {
+      return;
+    }
+
+    this.serverWorkflow.createWorkflowFromSample(sampleName).subscribe(newWorkflowId => {
+      if (newWorkflowId) {
+        this.router.navigate(['/workflows', newWorkflowId]);
+      }
     });
   }
 

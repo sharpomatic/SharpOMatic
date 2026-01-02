@@ -127,6 +127,27 @@ export class ServerRepositoryService {
     );
   }
 
+  public getSampleWorkflowNames(): Observable<string[]> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.get<string[]>(`${apiUrl}/api/samples`).pipe(
+      catchError((error) => {
+        this.notifyError('Loading workflow samples', error);
+        return of([]);
+      })
+    );
+  }
+
+  public createWorkflowFromSample(sampleName: string): Observable<string | undefined> {
+    const apiUrl = this.settingsService.apiUrl();
+    const encodedSampleName = encodeURIComponent(sampleName);
+    return this.http.post<string>(`${apiUrl}/api/samples/${encodedSampleName}`, null).pipe(
+      catchError((error) => {
+        this.notifyError('Creating workflow from sample', error);
+        return of(undefined);
+      })
+    );
+  }
+
   public getLatestWorkflowRun(id: string): Observable<RunProgressModel | null> {
     const apiUrl = this.settingsService.apiUrl();
     return this.http.get<RunProgressModel>(`${apiUrl}/api/run/latestforworkflow/${id}`).pipe(

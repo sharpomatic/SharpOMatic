@@ -1,7 +1,24 @@
 <div class="container-fluid p-0 workflows-page">
   <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary">
     <h2 class=""><i class="bi bi-share pe-3 icon-sm"></i>Workflows ({{ workflowsTotal || workflows.length }})</h2>
-    <button class="btn btn-primary" (click)="newWorkflow()">New</button>
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-primary" (click)="newWorkflow()">New</button>
+      @if (sampleNames().length > 0) {
+        <div class="dropdown" dropdown>
+          <button class="btn btn-primary dropdown-toggle" type="button"
+            id="samples-dropdown" aria-expanded="false" dropdownToggle>
+            Samples
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="samples-dropdown" *dropdownMenu>
+            @for (sampleName of sampleNames(); track sampleName) {
+              <li>
+                <a class="dropdown-item" (click)="createWorkflowFromSample(sampleName)">{{ sampleName }}</a>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
   </div>
   <hr class="m-0"/>
   <div class="p-3 bg-body-tertiary h-100 d-flex flex-column workflows-body">
@@ -91,4 +108,3 @@
     }
   </div>
 </div>
-

@@ -18,6 +18,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Samples\Workflows\*.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
@@ -47,34 +51,10 @@
   </ItemGroup>
 
   <ItemGroup>
-	<EmbeddedResource Include="Metadata\Resources\ConnectorConfig\azure_openai.json" />
-	<EmbeddedResource Include="Metadata\Resources\ConnectorConfig\openai.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\azure_openai_custom.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\openai_custom.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\azure_openai_gpt-4.1.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\openai_gpt-4.1.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\azure_openai_gpt-5.1-codex-max.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\azure_openai_gpt-5.1-codex.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\azure_openai_gpt-5.1.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\azure_openai_gpt-5.2-chat.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\azure_openai_gpt-5.2-pro.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\azure_openai_gpt-5.2.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\azure_openai_gpt-5.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\azure_openai_gpt-5-codex.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\openai_gpt-5-codex.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\azure_openai_gpt-5-mini.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\azure_openai_gpt-5-nano.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\azure_openai_gpt-5-pro.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\openai_gpt-5.1-codex.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\openai_gpt-5.1-codex-max.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\openai_gpt-5-pro.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\openai_gpt-5.1.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\openai_gpt-5.2-pro.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\openai_gpt-5-mini.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\openai_gpt-5.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\openai_gpt-5-nano.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\openai_gpt-5.2.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\openai_gpt-5.2-chat-latest.json" />
+	<EmbeddedResource Include="Metadata\Resources\ConnectorConfig\*.json" />
+	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\*.json" />
+	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\*.json" />
+	<EmbeddedResource Include="Samples\Workflows\*.json" />
   </ItemGroup>
 
   <ItemGroup>
