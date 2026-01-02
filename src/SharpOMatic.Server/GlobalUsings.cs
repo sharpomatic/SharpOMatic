@@ -8,4 +8,5 @@ global using SharpOMatic.Engine.Interfaces;
 global using SharpOMatic.Engine.Services;
 global using SharpOMatic.Server;
 global using System.ComponentModel;
-
+global using System.Text.Json;
+global using System.Text.Json.Serialization;

@@ -19,9 +19,10 @@ builder.Services.AddSingleton<IAssetStore, FileSystemAssetStore>();
 
 // Setup the engine and its capabilties
 builder.Services.AddSharpOMaticEngine()
-    .AddSchemaTypes(typeof(AnswerSchema))
+    .AddSchemaTypes(typeof(SchemaExample))
     .AddToolMethods(ToolCalling.GetGreeting, ToolCalling.GetTime)
     .AddScriptOptions([typeof(CodeExample).Assembly], ["SharpOMatic.Server"])
+    .AddJsonConverters(typeof(ClassExampleConverter))
     .AddRepository((optionBuilder) =>
     {
         // We are using SQLite as the Entity Framework target database

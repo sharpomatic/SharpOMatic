@@ -7,10 +7,7 @@ public class TestController : ControllerBase
 {
     [HttpPost]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> Test(
-        [FromForm] List<IFormFile>? images,
-        IEngineService engine,
-        IAssetService assetService)
+    public async Task<IActionResult> Test([FromForm] List<IFormFile>? images, IEngineService engine, IAssetService assetService)
     {
         try
         {
