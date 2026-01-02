@@ -54,7 +54,7 @@ const config: Config = {
     // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
     colorMode: {
-      defaultMode: 'dark',
+      defaultMode: 'light',
       disableSwitch: true,
       respectPrefersColorScheme: false,
     },
@@ -66,7 +66,7 @@ const config: Config = {
       },
       items: [
         {
-          to: '/docs/intro',
+          to: '/docs/',
           position: 'right',
           label: 'Docs',
         },
@@ -85,7 +85,7 @@ const config: Config = {
           items: [
             {
               label: 'Intro',
-              to: '/docs/intro',
+              to: '/docs/',
             },
           ],
         },
@@ -102,8 +102,9 @@ const config: Config = {
       copyright: `Copyright (c) ${new Date().getFullYear()} Phil Wright. Built with Docusaurus.`,
     },
     prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
+      theme: prismThemes.vsDark,
+      darkTheme: prismThemes.vsDark,
+      additionalLanguages: ['csharp'],
     },
   } satisfies Preset.ThemeConfig,
 };

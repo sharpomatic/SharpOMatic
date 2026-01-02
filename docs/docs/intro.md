@@ -1,17 +1,25 @@
-# Intro
+---
+title: Introduction
+slug: /
+sidebar_position: 1
+---
 
-## What is SharpOMatic?
-Introduce SharpOMatic as an open-source workflow editor and execution engine with .NET integration and AI-oriented tasks, and describe the primary audiences and scenarios it serves.
+SharpOMatic is an open-source workflow builder focused on AI-driven tasks. It combines a browser-based editor with a .NET runtime so you can design workflows visually, run them locally or in your own host, and extend behavior with C# code nodes.
 
-## Architecture at a glance
-Summarize the Editor, Engine, Server, and FrontEnd roles and how they interact during design time and runtime.
+## What you can do
 
-## Core concepts snapshot
-Provide a quick glossary-style overview of workflows, nodes, runs, contexts, assets, and metadata to orient new readers.
+- Build workflows with nodes for models, code, branching, and orchestration.
+- Run and debug workflows with rich run state and persisted history.
+- Embed the editor into your own ASP.NET Core host.
+- Extend the engine with new nodes, metadata, and services.
 
-## Where to start
-Point readers to the Getting Started path and highlight the fastest route to a first successful workflow run.
+## Project layout
 
-## Documentation map and support
-Explain how the docs are organized and list entry points for API references, troubleshooting, and community support.
+- Frontend UI: `src/SharpOMatic.FrontEnd`
+- Editor host: `src/SharpOMatic.Editor`
+- Workflow engine: `src/SharpOMatic.Engine`
+- Sample host: `src/SharpOMatic.Server`
 
+## How this documentation is organized
+
+Start with Core Concepts to understand the runtime model and data flow. From there, move into editor and engine guides as they become available.
