@@ -1,6 +1,6 @@
 ﻿namespace SharpOMatic.Server;
 
-public class CodeCalling(int num)
+public class CodeExample(int num)
 {
     private readonly int _num = num;
 
