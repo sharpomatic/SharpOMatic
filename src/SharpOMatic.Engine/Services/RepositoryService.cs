@@ -130,7 +130,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task<Guid> DuplicateWorkflow(Guid workflowId)
+    public async Task<Guid> CopyWorkflow(Guid workflowId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 

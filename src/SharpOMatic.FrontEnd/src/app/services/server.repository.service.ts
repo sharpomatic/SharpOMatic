@@ -117,11 +117,11 @@ export class ServerRepositoryService {
     );
   }
 
-  public duplicateWorkflow(id: string): Observable<string | undefined> {
+  public copyWorkflow(id: string): Observable<string | undefined> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.post<string>(`${apiUrl}/api/workflow/duplicate/${id}`, null).pipe(
+    return this.http.post<string>(`${apiUrl}/api/workflow/copy/${id}`, null).pipe(
       catchError((error) => {
-        this.notifyError('Duplicating workflow', error);
+        this.notifyError('Copying workflow', error);
         return of(undefined);
       })
     );

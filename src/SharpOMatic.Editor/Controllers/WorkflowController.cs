@@ -58,10 +58,10 @@ public class WorkflowController : ControllerBase
         await repository.DeleteWorkflow(id);
     }
 
-    [HttpPost("duplicate/{id}")]
-    public async Task<ActionResult<Guid>> DuplicateWorkflow(IRepositoryService repository, Guid id)
+    [HttpPost("copy/{id}")]
+    public async Task<ActionResult<Guid>> CopyWorkflow(IRepositoryService repository, Guid id)
     {
-        return await repository.DuplicateWorkflow(id);
+        return await repository.CopyWorkflow(id);
     }
 
     [HttpPost("run/{id}")]

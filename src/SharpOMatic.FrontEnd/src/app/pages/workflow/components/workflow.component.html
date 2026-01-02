@@ -64,6 +64,12 @@
   <ng-template #detailsTab>
     <div class="p-3 details bg-body-tertiary h-100">
       <div class="mb-3 form-line">
+        <label for="workflow-id" class="form-label field-label">Id</label>
+        <div class="flex-fill control-column title">
+          <input type="text" class="form-control w-100" id="workflow-id" [ngModel]="workflowService.workflow().id" readonly />
+        </div>
+      </div>
+      <div class="mb-3 form-line">
         <label for="workflow-title" class="form-label field-label">Title</label>
         <div class="flex-fill control-column title">
           <input type="text" class="form-control w-100" id="workflow-title" [ngModel]="workflowService.workflow().name()"

@@ -20,7 +20,7 @@
           <div class="card-body">
             <p class="card-text">{{ workflow.description() }}</p>
             <button class="btn btn-primary" [routerLink]="['/workflows', workflow.id]" [queryParams]="{ tab: 'design' }">Open</button>
-            <button class="btn btn-secondary ms-2" (click)="duplicateWorkflow(workflow)">Duplicate</button>
+            <button class="btn btn-secondary ms-2" (click)="copyWorkflow(workflow)">Copy</button>
             <button class="btn btn-outline-danger ms-2" (click)="deleteWorkflow(workflow)">Delete</button>
           </div>
         </div>

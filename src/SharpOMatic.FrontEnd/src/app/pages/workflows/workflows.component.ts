@@ -68,8 +68,8 @@ export class WorkflowsComponent implements OnInit {
     });
   }
 
-  duplicateWorkflow(workflow: WorkflowSummaryEntity): void {
-    this.serverWorkflow.duplicateWorkflow(workflow.id).subscribe((newWorkflowId) => {
+  copyWorkflow(workflow: WorkflowSummaryEntity): void {
+    this.serverWorkflow.copyWorkflow(workflow.id).subscribe((newWorkflowId) => {
       if (newWorkflowId) {
         this.loadWorkflows();
       }
