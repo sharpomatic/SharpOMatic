@@ -29,13 +29,6 @@ builder.Services.AddSharpOMaticEngine()
         var path = Environment.GetFolderPath(folder);
         var dbPath = Path.Join(path, "sharpomatic.db");
         optionBuilder.UseSqlite($"Data Source={dbPath}");
-    }, (dbOptions) =>
-    {
-        // Customize the database tables added for SharpOMatic
-        dbOptions.TablePrefix = "SOM_";
-        //dbOptions.DefaultSchema = "SharpOMatic";
-        dbOptions.CommandTimeout = 120;
-        dbOptions.ApplyMigrationsOnStartup = true;
     });
 //
 // --------- SharpOMatic Specific End --------------------------

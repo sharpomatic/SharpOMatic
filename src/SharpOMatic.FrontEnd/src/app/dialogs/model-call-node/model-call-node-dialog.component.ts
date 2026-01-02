@@ -96,8 +96,8 @@ export class ModelCallNodeDialogComponent implements OnInit {
     this.showTextInFields = false;
     this.showTextOutFields = false;
 
-    if (!modelId) {
-      this.node.modelId.set('');
+    if (!modelId || modelId === "") {
+      this.node.modelId.set(null);
       return;
     }
 
@@ -128,7 +128,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
     this.modelConfig = null;
     this.showTextInFields = false;
     this.showTextOutFields = false;
-    this.node.modelId.set('');
+    this.node.modelId.set(null);
     this.refreshTabs();
   }
 

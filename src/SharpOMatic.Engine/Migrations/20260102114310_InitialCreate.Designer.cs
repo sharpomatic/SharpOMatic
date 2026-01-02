@@ -11,14 +11,16 @@ using SharpOMatic.Engine.Repository;
 namespace SharpOMatic.Engine.Migrations
 {
     [DbContext(typeof(SharpOMaticDbContext))]
-    [Migration("20260102112605_InitialCreate")]
+    [Migration("20260102114310_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
+            modelBuilder
+                .HasDefaultSchema("SharpOMatic")
+                .HasAnnotation("ProductVersion", "10.0.0");
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Asset", b =>
                 {
@@ -58,7 +60,7 @@ namespace SharpOMatic.Engine.Migrations
 
                     b.HasIndex("Scope", "Created");
 
-                    b.ToTable("Assets");
+                    b.ToTable("Assets", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.ConnectorConfigMetadata", b =>
@@ -75,7 +77,7 @@ namespace SharpOMatic.Engine.Migrations
 
                     b.HasKey("ConfigId");
 
-                    b.ToTable("ConnectorConfigMetadata");
+                    b.ToTable("ConnectorConfigMetadata", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.ConnectorMetadata", b =>
@@ -101,7 +103,7 @@ namespace SharpOMatic.Engine.Migrations
 
                     b.HasKey("ConnectorId");
 
-                    b.ToTable("ConnectorMetadata");
+                    b.ToTable("ConnectorMetadata", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.ModelConfigMetadata", b =>
@@ -118,7 +120,7 @@ namespace SharpOMatic.Engine.Migrations
 
                     b.HasKey("ConfigId");
 
-                    b.ToTable("ModelConfigMetadata");
+                    b.ToTable("ModelConfigMetadata", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.ModelMetadata", b =>
@@ -144,7 +146,7 @@ namespace SharpOMatic.Engine.Migrations
 
                     b.HasKey("ModelId");
 
-                    b.ToTable("ModelMetadata");
+                    b.ToTable("ModelMetadata", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Run", b =>
@@ -192,7 +194,7 @@ namespace SharpOMatic.Engine.Migrations
 
                     b.HasIndex("WorkflowId", "RunStatus");
 
-                    b.ToTable("Runs");
+                    b.ToTable("Runs", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Setting", b =>
@@ -229,7 +231,7 @@ namespace SharpOMatic.Engine.Migrations
 
                     b.HasKey("SettingId");
 
-                    b.ToTable("Settings");
+                    b.ToTable("Settings", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Trace", b =>
@@ -282,7 +284,7 @@ namespace SharpOMatic.Engine.Migrations
 
                     b.HasIndex("RunId", "Created");
 
-                    b.ToTable("Traces");
+                    b.ToTable("Traces", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Workflow", b =>
@@ -312,7 +314,7 @@ namespace SharpOMatic.Engine.Migrations
 
                     b.HasKey("WorkflowId");
 
-                    b.ToTable("Workflows");
+                    b.ToTable("Workflows", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Asset", b =>

@@ -11,8 +11,12 @@ namespace SharpOMatic.Engine.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.EnsureSchema(
+                name: "SharpOMatic");
+
             migrationBuilder.CreateTable(
                 name: "ConnectorConfigMetadata",
+                schema: "SharpOMatic",
                 columns: table => new
                 {
                     ConfigId = table.Column<string>(type: "TEXT", nullable: false),
@@ -26,6 +30,7 @@ namespace SharpOMatic.Engine.Migrations
 
             migrationBuilder.CreateTable(
                 name: "ConnectorMetadata",
+                schema: "SharpOMatic",
                 columns: table => new
                 {
                     ConnectorId = table.Column<Guid>(type: "TEXT", nullable: false),
@@ -41,6 +46,7 @@ namespace SharpOMatic.Engine.Migrations
 
             migrationBuilder.CreateTable(
                 name: "ModelConfigMetadata",
+                schema: "SharpOMatic",
                 columns: table => new
                 {
                     ConfigId = table.Column<string>(type: "TEXT", nullable: false),
@@ -54,6 +60,7 @@ namespace SharpOMatic.Engine.Migrations
 
             migrationBuilder.CreateTable(
                 name: "ModelMetadata",
+                schema: "SharpOMatic",
                 columns: table => new
                 {
                     ModelId = table.Column<Guid>(type: "TEXT", nullable: false),
@@ -69,6 +76,7 @@ namespace SharpOMatic.Engine.Migrations
 
             migrationBuilder.CreateTable(
                 name: "Settings",
+                schema: "SharpOMatic",
                 columns: table => new
                 {
                     SettingId = table.Column<Guid>(type: "TEXT", nullable: false),
@@ -88,6 +96,7 @@ namespace SharpOMatic.Engine.Migrations
 
             migrationBuilder.CreateTable(
                 name: "Workflows",
+                schema: "SharpOMatic",
                 columns: table => new
                 {
                     WorkflowId = table.Column<Guid>(type: "TEXT", nullable: false),
@@ -104,6 +113,7 @@ namespace SharpOMatic.Engine.Migrations
 
             migrationBuilder.CreateTable(
                 name: "Runs",
+                schema: "SharpOMatic",
                 columns: table => new
                 {
                     RunId = table.Column<Guid>(type: "TEXT", nullable: false),
@@ -125,6 +135,7 @@ namespace SharpOMatic.Engine.Migrations
                     table.ForeignKey(
                         name: "FK_Runs_Workflows_WorkflowId",
                         column: x => x.WorkflowId,
+                        principalSchema: "SharpOMatic",
                         principalTable: "Workflows",
                         principalColumn: "WorkflowId",
                         onDelete: ReferentialAction.Cascade);
@@ -132,6 +143,7 @@ namespace SharpOMatic.Engine.Migrations
 
             migrationBuilder.CreateTable(
                 name: "Assets",
+                schema: "SharpOMatic",
                 columns: table => new
                 {
                     AssetId = table.Column<Guid>(type: "TEXT", nullable: false),
@@ -149,6 +161,7 @@ namespace SharpOMatic.Engine.Migrations
                     table.ForeignKey(
                         name: "FK_Assets_Runs_RunId",
                         column: x => x.RunId,
+                        principalSchema: "SharpOMatic",
                         principalTable: "Runs",
                         principalColumn: "RunId",
                         onDelete: ReferentialAction.Cascade);
@@ -156,6 +169,7 @@ namespace SharpOMatic.Engine.Migrations
 
             migrationBuilder.CreateTable(
                 name: "Traces",
+                schema: "SharpOMatic",
                 columns: table => new
                 {
                     TraceId = table.Column<Guid>(type: "TEXT", nullable: false),
@@ -179,6 +193,7 @@ namespace SharpOMatic.Engine.Migrations
                     table.ForeignKey(
                         name: "FK_Traces_Runs_RunId",
                         column: x => x.RunId,
+                        principalSchema: "SharpOMatic",
                         principalTable: "Runs",
                         principalColumn: "RunId",
                         onDelete: ReferentialAction.Cascade);
@@ -186,31 +201,37 @@ namespace SharpOMatic.Engine.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_Assets_Name",
+                schema: "SharpOMatic",
                 table: "Assets",
                 column: "Name");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Assets_RunId",
+                schema: "SharpOMatic",
                 table: "Assets",
                 column: "RunId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Assets_Scope_Created",
+                schema: "SharpOMatic",
                 table: "Assets",
                 columns: new[] { "Scope", "Created" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Runs_WorkflowId_Created",
+                schema: "SharpOMatic",
                 table: "Runs",
                 columns: new[] { "WorkflowId", "Created" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Runs_WorkflowId_RunStatus",
+                schema: "SharpOMatic",
                 table: "Runs",
                 columns: new[] { "WorkflowId", "RunStatus" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Traces_RunId_Created",
+                schema: "SharpOMatic",
                 table: "Traces",
                 columns: new[] { "RunId", "Created" });
         }
@@ -219,31 +240,40 @@ namespace SharpOMatic.Engine.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Assets");
+                name: "Assets",
+                schema: "SharpOMatic");
 
             migrationBuilder.DropTable(
-                name: "ConnectorConfigMetadata");
+                name: "ConnectorConfigMetadata",
+                schema: "SharpOMatic");
 
             migrationBuilder.DropTable(
-                name: "ConnectorMetadata");
+                name: "ConnectorMetadata",
+                schema: "SharpOMatic");
 
             migrationBuilder.DropTable(
-                name: "ModelConfigMetadata");
+                name: "ModelConfigMetadata",
+                schema: "SharpOMatic");
 
             migrationBuilder.DropTable(
-                name: "ModelMetadata");
+                name: "ModelMetadata",
+                schema: "SharpOMatic");
 
             migrationBuilder.DropTable(
-                name: "Settings");
+                name: "Settings",
+                schema: "SharpOMatic");
 
             migrationBuilder.DropTable(
-                name: "Traces");
+                name: "Traces",
+                schema: "SharpOMatic");
 
             migrationBuilder.DropTable(
-                name: "Runs");
+                name: "Runs",
+                schema: "SharpOMatic");
 
             migrationBuilder.DropTable(
-                name: "Workflows");
+                name: "Workflows",
+                schema: "SharpOMatic");
         }
     }
 }

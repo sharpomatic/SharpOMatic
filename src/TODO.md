@@ -1,8 +1,3 @@
-## Bugs
-
-ModelCall with an empty mode selected cannot be reloaded
-table prefix
-default schema
 
 ## GitHub
 

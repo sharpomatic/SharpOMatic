@@ -25,15 +25,7 @@ public class SharpOMaticDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
-        if (!string.IsNullOrWhiteSpace(_options.DefaultSchema))
-            modelBuilder.HasDefaultSchema(_options.DefaultSchema);
-
-        if (!string.IsNullOrWhiteSpace(_options.TablePrefix))
-        {
-            foreach (var entity in modelBuilder.Model.GetEntityTypes())
-                entity.SetTableName($"{_options.TablePrefix}{entity.GetTableName()}");
-        }
+        modelBuilder.HasDefaultSchema("SharpOMatic");
 
         // Cascade delete: Deleting a Workflow deletes its Runs
         modelBuilder.Entity<Run>()
