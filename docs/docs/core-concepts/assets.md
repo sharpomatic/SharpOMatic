@@ -29,12 +29,18 @@ Library assets allow for reuse and are not tied to a specific workflow or workfl
 They are typically added via the editor where you can list, add, and delete them.
 Programmatic changes are also possible, as well as importing from a previous export.
 
+### Run Assets
+
+Run assets are scoped to a specific workflow run; when that run is deleted, the linked assets are deleted as well.
+You cannot view run assets in the editor asset library; instead, navigate to the workflow run.
+These assets are typically used when you want to provide a one-off asset for a single run or for images created as part of the run.
+
 ## Programmatic Examples
 
 You can create and resolve **AssetRef** instances in code, then place them into a context for workflow input.
-These examples assume you have resolved `IAssetService` and `IRepositoryService` from dependency injection.
+These examples assume you have resolved **IAssetService** and **IRepositoryService** from dependency injection.
 
-### Use an existing library asset
+### Use library asset
 
 ```csharp
   var asset = await repositoryService.GetLibraryAssetByName("document.png");
@@ -47,7 +53,7 @@ These examples assume you have resolved `IAssetService` and `IRepositoryService`
   context.Set("input.image", assetRef);
 ```
 
-### Add a library asset and use its reference
+### Add library asset
 
 ```csharp
   var data = await File.ReadAllBytesAsync("document.png");
@@ -62,9 +68,7 @@ These examples assume you have resolved `IAssetService` and `IRepositoryService`
   context.Set("input.image", libraryAssetRef);
 ```
 
-### Add a run-scoped asset and use its reference
-
-This example assumes you have the current `runId`.
+### Add run-scoped asset
 
 ```csharp
   var data = await File.ReadAllBytesAsync("document.png");
@@ -73,18 +77,11 @@ This example assumes you have the current `runId`.
       data,
       "document.png",
       "image/png",
-      AssetScope.Run,
-      runId);
+      AssetScope.Run);
 
   var context = new ContextObject();
   context.Set("input.image", runAssetRef);
 ```
-
-### Run Assets
-
-Run assets are scoped to a specific workflow run; when that run is deleted, the linked assets are deleted as well.
-You cannot view run assets in the editor asset library; instead, navigate to the workflow run.
-These assets are typically used when you want to provide a one-off asset for a single run or for images created as part of the run.
 
 ## Storage
 
