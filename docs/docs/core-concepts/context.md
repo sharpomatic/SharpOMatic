@@ -12,12 +12,12 @@ When a workflow run completes, it returns a context so you can access the result
 
 SharpOMatic uses a small set of JSON-serializable context containers:
 
-- **`ContextObject`**: a dictionary of property names to values.
-- **`ContextList`**: a dynamic list of values.
+- **ContextObject**: a dictionary of property names to values.
+- **ContextList**: a dynamic list of values.
 
-The context is always an instance of **`ContextObject`**.
-You can add **`ContextObject`** and **`ContextList`** instances as values, allowing the creation of arbitrary hierarchies.
-Values can also be any of the standard scalar types in C# such as **`string`**, **`bool`**, **`int`**, **`DateTimeOffset`**, and so forth.
+The context is always an instance of **ContextObject**.
+You can add **ContextObject** and **ContextList** instances as values, allowing the creation of arbitrary hierarchies.
+Values can also be any of the standard scalar types in C# such as **string**, **bool**, **int**, **DateTimeOffset**, and so forth.
 
 ```csharp
   var context = new ContextObject
@@ -40,9 +40,9 @@ Values can also be any of the standard scalar types in C# such as **`string`**, 
 
 ## Dictionary and List
 
-A **`ContextObject`** is just a **`Dictionary`** with some extra checks added.
-Likewise, the **`ContextList`** is just a **`List`** with additional checks.
-So you can use all the usual **`Dictionary`** and **`List`** methods and properties.
+A **ContextObject** is just a **Dictionary** with some extra checks added.
+Likewise, the **ContextList** is just a **List** with additional checks.
+So you can use all the usual **Dictionary** and **List** methods and properties.
 
 ```csharp
   var list = new ContextList();
@@ -59,15 +59,15 @@ So you can use all the usual **`Dictionary`** and **`List`** methods and propert
 
 There are some additional helper methods appropriate for handling nested values.
 
-Use **`Set`** with a path to traverse down objects and lists to set values.
+Use **Set** with a path to traverse down objects and lists to set values.
 It has the useful logic that if an intermediate object is missing, it will create it for you.
 For example, in the code below, the path _second.third_ refers to a _second_ property that does not yet exist.
-It will automatically be created as a **`ContextObject`** and then the _third_ property added inside it with the _FooBar_ value.
+It will automatically be created as a **ContextObject** and then the _third_ property added inside it with the _FooBar_ value.
 
-**`ContextList`** values can be traversed using the standard index notation, e.g. _[4]_.
+**ContextList** values can be traversed using the standard index notation, e.g. _[4]_.
 Note that for the list, it does not automatically create instances, so the referenced index must exist.
 
-Use **`Get`** to recover values using a path.
+Use **Get** to recover values using a path.
 Both methods take a type so that the provided or returned value is strongly typed.
 
 ```csharp
@@ -83,7 +83,7 @@ Both methods take a type so that the provided or returned value is strongly type
   var pi = context.Get<double>("second.fourth[0]");
 ```
 
-There are also **`TrySet`** and **`TryGet`** variations for scenarios where you do not know if they will succeed.
+There are also **TrySet** and **TryGet** variations for scenarios where you do not know if they will succeed.
 
 ```csharp
   var context = new ContextObject();
@@ -94,7 +94,7 @@ There are also **`TrySet`** and **`TryGet`** variations for scenarios where you 
 
 ## Property Names
 
-One of the additional checks enforced by the **`ContextObject`** is that property names (the dictionary keys) must be valid C# identifier names.
+One of the additional checks enforced by the **ContextObject** is that property names (the dictionary keys) must be valid C# identifier names.
 You cannot have a property name of an empty string or a name starting with a number. It must have the same format as regular C# variable names.
 
 ## JSON Serialization
@@ -116,7 +116,7 @@ Here is a trivial class definition.
   }
 ```
 
-Now you need to implement a **`JsonConverter`** for it.
+Now you need to implement a **JsonConverter** for it.
 
 ```csharp
   public sealed class ClassExampleConverter : JsonConverter<ClassExample>
