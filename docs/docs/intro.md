@@ -4,7 +4,7 @@ slug: /
 sidebar_position: 1
 ---
 
-SharpOMatic is an open-source workflow builder focused on AI-driven tasks. It combines a browser-based editor with a .NET runtime so you can design workflows visually, run them locally or in your own host, and extend behavior with C# code nodes.
+SharpOMatic is an open-source workflow builder focused on AI-driven tasks. It combines a browser-based editor with a .NET runtime so you can design workflows visually, run them locally or in your own ASP.NET Core host, and extend behavior with C# code nodes.
 
 ## What you can do
 
@@ -22,4 +22,4 @@ SharpOMatic is an open-source workflow builder focused on AI-driven tasks. It co
 
 ## How this documentation is organized
 
-Start with Core Concepts to understand the runtime model and data flow. From there, move into editor and engine guides as they become available.
+Use the getting starting guides to be up and running in a few minutes are run some of the sample workflows. Or read the Core Concepts to understand the runtime model and data flow. 
