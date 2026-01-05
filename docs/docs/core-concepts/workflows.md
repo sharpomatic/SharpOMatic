@@ -1,5 +1,5 @@
 ---
-title: Workflow
+title: Workflows
 sidebar_position: 1
 ---
 
