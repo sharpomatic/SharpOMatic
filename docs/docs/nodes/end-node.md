@@ -22,4 +22,4 @@ This allows you to keep the output clean and focused on the result while hiding 
 If a specified input path does not exist, the mapping is ignored and no error is raised.
 When mapping is disabled the full context is passed as the workflow output.
 
-<img src="/img/end_mapping.png" alt="End node mapping" width="700" style={{ maxWidth: '100%', height: 'auto' }} />
+<img src="/img/end_mapping.png" alt="End node mapping" width="800" style={{ maxWidth: '100%', height: 'auto' }} />
