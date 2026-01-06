@@ -1,6 +1,6 @@
 ---
 title: FanOut / FanIn Nodes
-sidebar_position: 102
+sidebar_position: 103
 ---
 
 **FanOut** and **FanIn** nodes are used together to run multiple branches in parallel and then merge the results.
@@ -68,4 +68,3 @@ If the second branch arrives last at the **FanIn** node, the output would be:
     "second": 3.14
   }
 ```
-
