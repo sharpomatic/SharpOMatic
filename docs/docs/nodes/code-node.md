@@ -61,14 +61,14 @@ Here we have the namespace of the demo server.
     .AddScriptOptions([typeof(ClassExample).Assembly], ["SharpOMatic.DemoServer"])
 ```
 
-## Code Compilation
+## Code compilation
 
 Your code will automatically be checked to ensure it is valid.
 The familiar red error line will appear in the place the code has a problem.
 Do not ignore these because it indicates the code will fail at runtime.
 As noted above, you can add access to additional assemblies and types if you want to access backend-specific code.
 
-## Custom Types and JsonConverter
+## Custom types and JsonConverter
 
 The context must be serializable to and from JSON so that it can be saved to the database. 
 This restriction allows a workflow to be suspended and restarted and allows intermediate states to be recorded to help with debugging.

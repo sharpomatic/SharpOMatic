@@ -18,7 +18,7 @@ If you specify image context via the image tab, then those images are turned int
 
 
 
-## Input Messages
+## Input messages
 
 Use the **Chat Input Path** to specify a **ChatMessage** instance or a list of **ChatMessage** entries to initialize the content.
 After this, it adds instructions, prompts, and images if they are defined in the text and/or image tabs.
@@ -64,7 +64,7 @@ This is then referenced by the **Chat Input Path**.
 
 <img src="/img/modelcall-chat-paths.png" alt="Chat Paths" width="600" style={{ maxWidth: '100%', height: 'auto' }} />
 
-## Output Messages
+## Output messages
 
 If defined, the **Chat Output Path** specifies the context location to output the full message history.
 This includes all original entries sent to the model along with all the replies from the model.

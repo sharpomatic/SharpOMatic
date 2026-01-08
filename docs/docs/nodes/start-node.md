@@ -6,13 +6,13 @@ sidebar_position: 1
 The start node is the entry point for every workflow.
 Each workflow must have exactly one start node.
 
-## Input Context
+## Input context
 
 The start node receives the initial context that is supplied via the editor or programmatic invocation.
 If you do not supply a context, an empty context is created automatically.
 If your workflow does not need to enforce inputs, leave the node unchanged.
 
-## Mandatory Values
+## Mandatory values
 
 You can choose to initialize the context.
 This allows you to enforce mandatory entries.
@@ -21,7 +21,7 @@ Note that it does not check the type, only the presence of a value.
 
 <img src="/img/start_mandatory.png" alt="Mandatory paths" width="900" style={{ maxWidth: '100%', height: 'auto' }} />
 
-## Optional Values
+## Optional values
 
 If you specify a default value, the value becomes optional.
 When a value is provided it will always be used; otherwise, the defined default value is applied.
@@ -31,7 +31,7 @@ Other type options are described below.
 
 <img src="/img/start_optional.png" alt="Optional paths" width="900" style={{ maxWidth: '100%', height: 'auto' }} />
 
-## Default Assets
+## Default assets
 
 You can specify a single asset or a list of assets from the asset library.
 In both cases, these come only from the asset library and are the same each time you run the workflow.
@@ -60,7 +60,7 @@ The above block will be parsed and inserted into the context as if the following
     Context.Set("input.json.list[2]", "foobar");
 ```
 
-## Default Expressions
+## Default expressions
 
 If one of the listed types is not appropriate, you can use a C# expression to return a value.
 In the following example, the expression returns the current date and time.

@@ -19,7 +19,7 @@ Ensure you return a value from all possible code paths.
 
 <img src="/img/switch_example.png" alt="Switch expressions" width="900" style={{ maxWidth: '100%', height: 'auto' }} />
 
-## Default Branch
+## Default branch
 
 The last entry is the default branch.
 It has no expression, cannot be removed, and always runs if no earlier expression matches.

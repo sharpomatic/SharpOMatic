@@ -34,7 +34,7 @@ Check the documentation of your model provider to ensure your schema conforms to
 
 <img src="/img/modelcall-output-schema.png" alt="Asset Substitution" width="800" style={{ maxWidth: '100%', height: 'auto' }} />
 
-## Configured Type
+## Configured type
 
 To ease integration with your backend code, you can select an actual C# type from your backend project.
 The C# type will be automatically converted into a matching JSON schema.

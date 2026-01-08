@@ -22,7 +22,7 @@ All incoming connections must originate from the same **FanOut** node.
 
 <img src="/img/fan_editor.png" alt="FanIn/Out Editor" width="500" style={{ maxWidth: '100%', height: 'auto' }} />
 
-## Result Merging
+## Result merging
 
 :::danger Important
 Only values under **output** are merged from branches into the final result.

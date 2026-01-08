@@ -28,6 +28,6 @@ dotnet run --project src/SharpOMatic.DemoServer
 - Set the configuration to `Release`
 - Run
 
-## Open Visual Editor
+## Open visual editor
 
 Use your favorite browser to open http://localhost:9001/editor

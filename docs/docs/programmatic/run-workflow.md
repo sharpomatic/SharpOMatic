@@ -5,7 +5,7 @@ sidebar_position: 1
 
 This section covers how to run workflows programmatically from your own code. 
 
-## Create a New Run
+## Create a new Run
 
 You need a reference to the **IEngineService** interface from your service provider.
 Call the **CreateWorkflowRun** method to create a new run instance and get back its run identifier.
@@ -34,7 +34,7 @@ When there is no match, or more than one match, it will throw an exception.
 
 There are multiple engine methods for starting the workflow, to match different requirements.
 
-### Await Result
+### Await result
 
 When inside an async method you can start the run and wait for the workflow to finish by using the **StartWorkflowRunAndWait** method.
 The workflow will actually execute on background threads, but once it finishes your await will complete.
@@ -71,7 +71,7 @@ As long as your workflow is expected to finish before the timeout of the REST ca
 If you cannot guarantee completion within the timeout period then this approach will not be reliable.
 In that case consider using the next option.
 
-### Notify Result
+### Notify result
 
 Instead of waiting for the result, you can start the workflow executing and then return immediately.
 In this scenario the completion will notify you by using the **IProgressService** that you must implement and register.
@@ -167,7 +167,7 @@ Potentially this can result in thread starvation if you have many parallel workf
   }
 ```
 
-## Initializing the Context
+## Initializing the context
 
 Most real-world workflows are going to have inputs that are used to parameterize the workflow operation.
 All of the above methods for starting a workflow have a second parameter of type **ContextObject**.

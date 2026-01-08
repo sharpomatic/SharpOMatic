@@ -13,7 +13,7 @@ dotnet add package SharpOMatic.Engine
 dotnet add package SharpOMatic.Editor
 ```
 
-## Register Services
+## Register services
 
 Update `Program.cs` to add the required services.
 The following example stores library assets and a SQLite database in your user profile.
@@ -57,6 +57,6 @@ For simplicity we use SQLite, it will create the database automatically on first
 You only need a single mapping call which specifies the url path for exposing the editor.
 If you already use this path for other purposes then you can update this to something more appropriate.
 
-## Open Visual Editor
+## Open visual editor
 
 Use your favorite browser to open http://localhost:9001/editor

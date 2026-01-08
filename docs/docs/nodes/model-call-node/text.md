@@ -13,7 +13,7 @@ You can leave this field blank to ignore the output. Text output is still genera
 
 <img src="/img/modelcall-text.png" alt="Text Settings" width="800" style={{ maxWidth: '100%', height: 'auto' }} />
 
-## Context Substitution **\{\{\$path\}\}**
+## Context substitution **\{\{\$path\}\}**
 
 The **Instructions** and **Prompt** fields can use template substitution to insert parameterized content.
 
@@ -24,7 +24,7 @@ This allows you to insert integers, floats, booleans, and other types because th
 
 <img src="/img/modelcall-text-context.png" alt="Context Substitution" width="800" style={{ maxWidth: '100%', height: 'auto' }} />
 
-## Asset Substitution **&lt;&lt;$name&gt;&gt;**
+## Asset substitution **&lt;&lt;$name&gt;&gt;**
 
 You can also substitute text assets by using the **&lt;&lt;$name&gt;&gt;** pattern, where the **name** is the library asset or run asset name.
 If no matching asset is found, nothing is inserted and no runtime error occurs.

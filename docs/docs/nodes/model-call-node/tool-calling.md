@@ -7,7 +7,7 @@ If the model supports tool calling, this tab is available.
 
 <img src="/img/modelcall-tools.png" alt="Asset Substitution" width="600" style={{ maxWidth: '100%', height: 'auto' }} />
 
-## Available Tools
+## Available tools
 
 During program setup, you can use the **AddToolMethods** extension to specify a list of C# static methods available for calling.
 Use a comma-separated list if you need to specify more than one method.
@@ -50,13 +50,13 @@ This allows you to get required data from the service provider.
 This example demonstrates how the workflow context for the model node can be accessed and modified.
 You could also request other interfaces relating to your own backend services.
 
-## Parallel Tool Calls
+## Parallel tool calls
 
 Some model providers can make multiple tool call requests in a single model reply.
 This is called parallel tool calling and is more efficient than round-tripping for each individual tool call.
 Models offering this capability allow you to use this checkbox to turn it on or off.
 
-## Tool Choice
+## Tool choice
 
 There are only two options for this dropdown.
 

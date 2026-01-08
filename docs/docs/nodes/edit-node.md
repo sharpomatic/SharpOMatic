@@ -17,7 +17,7 @@ Other type options are described below.
 
 <img src="/img/edit_scalar.png" alt="Mandatory paths" width="900" style={{ maxWidth: '100%', height: 'auto' }} />
 
-## Default Assets
+## Default assets
 
 You can specify a single asset or a list of assets from the asset library.
 In both cases, these come only from the asset library and are the same each time you run the workflow.
@@ -46,7 +46,7 @@ The above block will be parsed and inserted into the context as if the following
     Context.Set("input.json.list[2]", "foorbar");
 ```
 
-## Default Expressions
+## Default expressions
 
 If one of the listed types is not appropriate, you can use a C# expression to return a value.
 In the following example, the expression returns the current date and time.
