@@ -12,6 +12,8 @@ Build first version of documentation
 
 # Futures
 
+Controllers - allow path to be changed, specified, to prevent clashes, need to provide it to editor?
+
 OpenAI - image generator, Embeddings
 
 Usage - token usage counts
