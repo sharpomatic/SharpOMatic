@@ -126,6 +126,7 @@ Here is a simple implementation of the interface to duplicate the previous logic
   }
 ```
 
+Note that you can add more than one **IProgressService** implementation if you need to split up functionality, in that case they are called in sequence.
 There are multiple advantages to processing results using the interface based approach.
 You can centralize processing for all your different workflows into a single location.
 Long-running workflow runs do not time out the caller's HTTP request; they complete very quickly because they only need to start the workflow.
