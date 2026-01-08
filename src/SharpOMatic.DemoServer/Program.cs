@@ -21,7 +21,7 @@ builder.Services.AddSharpOMaticTransfer();
 builder.Services.AddSharpOMaticEngine()
     .AddSchemaTypes(typeof(SchemaExample))
     .AddToolMethods(ToolCalling.GetGreeting, ToolCalling.GetTime)
-    .AddScriptOptions([typeof(CodeExample).Assembly], ["SharpOMatic.Server"])
+    .AddScriptOptions([typeof(CodeExample).Assembly], ["SharpOMatic.DemoServer"])
     .AddJsonConverters(typeof(ClassExampleConverter))
     .AddRepository((optionBuilder) =>
     {

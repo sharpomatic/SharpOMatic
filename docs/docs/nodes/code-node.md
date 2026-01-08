@@ -58,7 +58,7 @@ Here we have the namespace of the demo server.
 
 ```csharp
   builder.Services.AddSharpOMaticEngine()
-    .AddScriptOptions([typeof(ClassExample).Assembly], ["SharpOMatic.Server"])
+    .AddScriptOptions([typeof(ClassExample).Assembly], ["SharpOMatic.DemoServer"])
 ```
 
 ## Code Compilation
@@ -116,7 +116,7 @@ Provide the implementation type in the SharpOMatic setup and ensure the assembly
 ```csharp
   builder.Services.AddSharpOMaticEngine()
     .AddJsonConverters(typeof(ClassExampleConverter))
-    .AddScriptOptions([typeof(ClassExample).Assembly], ["SharpOMatic.Server"])
+    .AddScriptOptions([typeof(ClassExample).Assembly], ["SharpOMatic.DemoServer"])
 ```
 
 Now we can access the class and add it to a context inside the **Code** node.

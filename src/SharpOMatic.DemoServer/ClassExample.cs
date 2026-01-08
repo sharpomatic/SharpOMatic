@@ -1,4 +1,4 @@
-﻿namespace SharpOMatic.Server;
+﻿namespace SharpOMatic.DemoServer;
 
 public class ClassExample
 {

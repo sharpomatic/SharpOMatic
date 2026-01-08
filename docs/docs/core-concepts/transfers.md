@@ -32,3 +32,33 @@ This allows you to manually set a secret in the staging or production environmen
 Transfers only include library assets.
 Run-scoped assets are excluded.
 Asset binaries are included in the package.
+
+## Program Setup
+
+You must add the **AddSharpOMaticTransfer** call into your program setup for the transfer operations to work.
+If you forget this line then the editor will show the transfer option but all attempts to import or export will fail.
+In production you can add this transfer capability without the editor.
+You can then invoke the controller endpoints directly. 
+For example, to import the latest versions of your workflows, models, assets etc.
+
+```csharp
+builder.Services.AddSharpOMaticTransfer();
+```
+
+## Controller
+
+### Import
+
+You can use a utility such as **POSTMAN** to invoke the import end point. <br/>
+The demo server has a url of **http://localhost:9001/api/transfer/import**, you will to update this for your on domain.
+
+<img src="/img/transfer_import_postman.png" alt="POSTMAN import" width="700" style={{ maxWidth: '100%', height: 'auto' }} />
+
+### Export
+
+You can use a utility such as **POSTMAN** to invoke the export end point. <br/>
+The body needs to be JSON that specifies the identifiers of the instances wanted, or set the **all** property to true.
+
+<img src="/img/transfer_export_postman.png" alt="POSTMAN export" width="700" style={{ maxWidth: '100%', height: 'auto' }} />
+
+

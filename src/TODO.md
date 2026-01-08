@@ -1,9 +1,3 @@
-## Server
-
-Rename to DemoServer
-Update namespace, project name
-Update docs for demo server instead of just server
-
 ## Assets
 
 Allow view of view assets.
@@ -26,7 +20,7 @@ Traces - show tool calls, reasoning and other details
 
 Assets - view them if they are images, view and edit text assets
 
-Engine - parallel batch processing of arrays, user interaction, suspend and save run, rehydrate and continue on user feedback
+Engine - parallel batch processing of arrays, user interaction, suspend and resume run
 
 Possible ChatKit integration
    need to handle domain lookup issue

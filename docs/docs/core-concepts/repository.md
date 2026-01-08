@@ -22,7 +22,7 @@ Repository operations are exposed through **IRepositoryService**, which handles 
 
 ## Configuration
 
-The sample server uses SQLite, but you can point to any supported provider.
+The demo server uses SQLite, but you can point to any supported provider.
 
 ```csharp
   builder.Services.AddSharpOMaticEngine()

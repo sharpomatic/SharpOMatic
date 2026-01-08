@@ -1,5 +1,5 @@
 ﻿
-namespace SharpOMatic.Server;
+namespace SharpOMatic.DemoServer;
 
 [Route("api/[controller]")]
 [ApiController]

@@ -21,7 +21,7 @@ You do not have to provide all the tools for every call. Use the checkboxes to s
 Example tool call implementations.
 
 ```csharp
-    namespace SharpOMatic.Server;
+    namespace SharpOMatic.DemoServer;
 
     public static class ToolCalling
     {

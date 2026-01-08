@@ -36,7 +36,7 @@ Expose your C# types for structured outputs and C# functions for tool calling.
 - Frontend UI: `src/SharpOMatic.FrontEnd`
 - Editor host: `src/SharpOMatic.Editor`
 - Workflow engine: `src/SharpOMatic.Engine`
-- Sample host: `src/SharpOMatic.Server`
+- Sample host: `src/SharpOMatic.DemoServer`
 
 ## What next?
 

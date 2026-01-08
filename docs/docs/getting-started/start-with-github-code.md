@@ -5,7 +5,7 @@ sidebar_position: 1
 
 Use these steps if you want to work directly from source.
 This is the fastest way to get up and running and start experimenting with SharpOMatic.
-It includes the sample server, editor host, and workflow engine projects.
+It includes the demo server, editor host, and workflow engine projects.
 
 ## Clone the repo
 
@@ -18,16 +18,15 @@ cd SharpOMatic
 
 ```powershell
 dotnet build src/SharpOMatic.sln
-dotnet run --project src/SharpOMatic.Server
+dotnet run --project src/SharpOMatic.DemoServer
 ```
 
 ## Build and run via Visual Studio
 
 - Use Visual Studio to open `src/SharpOMatic.sln`
-- Ensure `SharpOMatic.Server` is the startup project
+- Ensure `SharpOMatic.DemoServer` is the startup project
 - Set the configuration to `Release`
 - Run
-
 
 ## Open Visual Editor
 
