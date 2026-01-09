@@ -157,7 +157,7 @@ public class ContextObject : IDictionary<string, object?>
         return Serialize(jsonConverters);
     }
 
-    public string Serialize(IEnumerable<JsonConverter>? jsonConverters)
+    public string Serialize(IEnumerable<JsonConverter>? jsonConverters = null)
     {
         return JsonSerializer.Serialize(this, new JsonSerializerOptions().BuildOptions(jsonConverters));
     }
@@ -174,7 +174,7 @@ public class ContextObject : IDictionary<string, object?>
         return Deserialize(json, jsonConverters);
     }
 
-    public static ContextObject Deserialize(string? json, IEnumerable<JsonConverter>? jsonConverters)
+    public static ContextObject Deserialize(string? json, IEnumerable<JsonConverter>? jsonConverters = null)
     {
         if (string.IsNullOrWhiteSpace(json))
             return [];

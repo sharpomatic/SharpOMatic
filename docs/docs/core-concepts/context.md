@@ -95,11 +95,10 @@ For example, they cannot be an empty string, cannot start with a number or conta
 
 The context must be serializable to and from JSON so that it can be saved to the database.
 This restriction allows a workflow to be suspended and restarted and allows intermediate states to be recorded to help with debugging.
+Standard scalar types have been setup to work automatically.
+You can register additional types from your project so they can be added to the context and persisted.
 
-- Scalar values persist automatically with standard JSON serialization.
-- Classes require a converter. You can register additional types from your project so they can be added to the context and persisted.
-
-Here is a trivial class definition.
+Here is an example class definition.
 
 ```csharp
   public class ClassExample
@@ -110,7 +109,7 @@ Here is a trivial class definition.
   }
 ```
 
-Now you need to implement a **JsonConverter** for it.
+Now you need to implement a **IJsonConverter** for it.
 
 ```csharp
   public sealed class ClassExampleConverter : JsonConverter<ClassExample>
@@ -140,3 +139,5 @@ Provide the implementation type in the SharpOMatic setup.
   builder.Services.AddSharpOMaticEngine()
     .AddJsonConverters(typeof(ClassExampleConverter))
 ```
+
+For additional information, see the [JSON Serialization](../programmatic/JSON-serialization.md) section.
