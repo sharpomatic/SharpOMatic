@@ -43,6 +43,14 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         return ToSummary(asset);
     }
 
+    [HttpGet("{id}/content")]
+    public async Task<IActionResult> GetAssetContent(Guid id)
+    {
+        var asset = await repositoryService.GetAsset(id);
+        var stream = await assetStore.OpenReadAsync(asset.StorageKey, HttpContext.RequestAborted);
+        return File(stream, asset.MediaType, enableRangeProcessing: true);
+    }
+
     [HttpPost]
     public async Task<ActionResult<AssetSummary>> UploadAsset([FromForm] AssetUploadRequest request)
     {

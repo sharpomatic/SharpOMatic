@@ -471,6 +471,11 @@ export class ServerRepositoryService {
     );
   }
 
+  public getAssetContentUrl(assetId: string): string {
+    const apiUrl = this.settingsService.apiUrl();
+    return `${apiUrl}/api/assets/${encodeURIComponent(assetId)}/content`;
+  }
+
   public importTransfer(file: File): Observable<TransferImportResult> {
     const apiUrl = this.settingsService.apiUrl();
     const formData = new FormData();

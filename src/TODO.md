@@ -18,11 +18,12 @@ add documentation about the sample
 
 ## Assets
 
-Allow view of view assets.
-Allow view and edit of text assets.
 View assets for a particular run
 Cannot delete or add them
 Can view but cannot edit
+
+Allow view of view assets.
+Allow view and edit of text assets.
 
 ## GitHub
 

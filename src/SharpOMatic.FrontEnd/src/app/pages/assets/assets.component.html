@@ -92,7 +92,12 @@
                 <td class="col-size">{{ formatSize(asset.sizeBytes) }}</td>
                 <td class="col-created">{{ asset.created | date:'short' }}</td>
                 <td class="col-actions text-end">
-                  <button class="btn btn-sm btn-outline-danger" (click)="deleteAsset(asset)">Delete</button>
+                  <div class="d-inline-flex gap-2">
+                    @if (isImageAsset(asset)) {
+                      <button class="btn btn-sm btn-outline-primary" (click)="openAssetPreview(asset)">View</button>
+                    }
+                    <button class="btn btn-sm btn-outline-danger" (click)="deleteAsset(asset)">Delete</button>
+                  </div>
                 </td>
               </tr>
             }

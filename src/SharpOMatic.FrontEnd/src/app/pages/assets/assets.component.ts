@@ -2,6 +2,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, ViewChild, inject } from '@angular/core';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { forkJoin } from 'rxjs';
+import { AssetPreviewDialogComponent } from '../../dialogs/asset-preview/asset-preview-dialog.component';
 import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
 import { AssetScope } from '../../enumerations/asset-scope';
 import { AssetSortField } from '../../enumerations/asset-sort-field';
@@ -88,6 +89,25 @@ export class AssetsComponent implements AfterViewInit {
         });
       }
     });
+  }
+
+  openAssetPreview(asset: AssetSummary): void {
+    if (!this.isImageAsset(asset)) {
+      return;
+    }
+
+    this.modalService.show(AssetPreviewDialogComponent, {
+      initialState: {
+        title: asset.name,
+        imageUrl: this.serverRepository.getAssetContentUrl(asset.assetId),
+        altText: asset.name,
+      },
+      class: 'modal-fullscreen asset-preview-modal',
+    });
+  }
+
+  isImageAsset(asset: AssetSummary): boolean {
+    return asset.mediaType?.toLowerCase().startsWith('image') ?? false;
   }
 
   formatSize(bytes: number): string {
