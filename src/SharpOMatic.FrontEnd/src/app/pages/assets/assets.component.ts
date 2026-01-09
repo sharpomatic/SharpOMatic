@@ -98,7 +98,9 @@ export class AssetsComponent implements AfterViewInit {
 
     this.modalService.show(AssetPreviewDialogComponent, {
       initialState: {
+        assetId: asset.assetId,
         title: asset.name,
+        fileName: asset.name,
         imageUrl: this.serverRepository.getAssetContentUrl(asset.assetId),
         altText: asset.name,
       },

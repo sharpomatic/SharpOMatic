@@ -471,6 +471,16 @@ export class ServerRepositoryService {
     );
   }
 
+  public getAssetContent(assetId: string): Observable<Blob | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.get(`${apiUrl}/api/assets/${assetId}/content`, { responseType: 'blob' }).pipe(
+      catchError((error) => {
+        this.notifyError('Downloading asset', error);
+        return of(null);
+      })
+    );
+  }
+
   public getAssetContentUrl(assetId: string): string {
     const apiUrl = this.settingsService.apiUrl();
     return `${apiUrl}/api/assets/${encodeURIComponent(assetId)}/content`;

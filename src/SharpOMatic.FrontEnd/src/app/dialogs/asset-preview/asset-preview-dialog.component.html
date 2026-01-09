@@ -1,8 +1,9 @@
-<div class="modal-header">
+<div class="modal-header d-flex justify-content-between align-items-center">
   <h4 class="modal-title">{{ title }}</h4>
-  <button type="button" class="btn-close" aria-label="Close" (click)="close()">
-    <span aria-hidden="true" class="visually-hidden">&times;</span>
-  </button>
+  <div class="d-flex align-items-center gap-2">
+    <button type="button" class="btn btn-primary" (click)="download()">Download</button>
+    <button type="button" class="btn btn-primary" (click)="close()">Close</button>
+  </div>
 </div>
 <div class="modal-body asset-preview-body">
   <img [src]="imageUrl" [alt]="altText" />
