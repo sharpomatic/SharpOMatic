@@ -1,41 +1,62 @@
-# Futures
+# Release 1
 
-## Sample Projects
+Improve ModelCall using a couple of classes
+Update intro page of docs
+Check that new asp.net with nuget packages works as described
+Update the readme page on github
+announce release to relevant people blogs
 
-chat bot style interface
-auto add the workflow on startup
-add documentation about the sample
+# vNext
 
-## Assets
+## Major Features
 
-View assets for a particular run
-Cannot delete or add them
-Can view but cannot edit
+### MCP Servers 
 
-Controllers - allow path to be changed, specified, to prevent clashes, need to provide it to editor?
+- Add MCP Server as new sidebar page
+- ModelCall should allow them to be provided in calls
 
-OpenAI - image generator, Embeddings
+### Evaluations
+
+- Add new sidebar area for evaluations
+- Import of existing data using csv
+- Run an evaluation using workflow as the judge
+
+### Connectors
+
+- Gemini connector
+- Anthropic connector
+
+### Engine
+
+- Parallel batch processing of arrays
+- User interaction node, suspend workflow and allow resume
+- Integrate use of OmniSharp for full intellisense in code nodes
+- Add workflow node to call another workflow as sub-task
+
+### Editor
+
+- Allow run assets to be viewed in current run and historic run display
+- Cut, copy and paste of workflow nodes/connectors
+
+### ChatClient
+
+- Create chat bot UI that calls workflow and shows results
+- Or investigate using OpenAI ChatKit to route to our backend
+- Need to handle domain lookup issue for ChatKit
+- Would need to see OpenAI Python library to see protocol, including initial get session call
+
+## Minor Features
 
 Usage - token usage counts
+Traces - show tool calls, reasoning and other details within a node trace
+OpenAI - allow calling of image generator
+OpenAI - allow calling embeddings
 
-Traces - show tool calls, reasoning and other details
 
-Assets - view them if they are images, view and edit text assets
 
-Engine - parallel batch processing of arrays, user interaction, suspend and resume run
 
-Possible ChatKit integration
-   need to handle domain lookup issue
-   would need to see openai python library to see protocol, including initial get session call
 
-MCP Servers
 
-Server
-	Integrate use of OmniSharp for full intellisense
-
-Designer, copy and paste
-
-Evaluations
 
 
 
