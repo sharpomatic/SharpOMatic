@@ -1,5 +1,7 @@
 # Release 1
 
+Fix designer bug where connectors do not show when zoomed in and trace bar shows
+Fix switcher and fanout not aligned for connectors
 Improve ModelCall using a couple of classes
 Update intro page of docs
 Check that new asp.net with nuget packages works as described
