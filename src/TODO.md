@@ -12,10 +12,17 @@ announce release to relevant people blogs
 
 ## Major Features
 
-### MCP Servers 
+### Engine
 
-- Add MCP Server as new sidebar page
-- ModelCall should allow them to be provided in calls
+- Parallel batch processing of arrays
+- User interaction node, suspend workflow and allow resume
+- Integrate use of OmniSharp for full intellisense in code nodes
+- Add workflow node to call another workflow as sub-task
+
+### Connectors
+
+- Gemini connector
+- Anthropic connector
 
 ### Evaluations
 
@@ -23,17 +30,10 @@ announce release to relevant people blogs
 - Import of existing data using csv
 - Run an evaluation using workflow as the judge
 
-### Connectors
+### MCP Servers 
 
-- Gemini connector
-- Anthropic connector
-
-### Engine
-
-- Parallel batch processing of arrays
-- User interaction node, suspend workflow and allow resume
-- Integrate use of OmniSharp for full intellisense in code nodes
-- Add workflow node to call another workflow as sub-task
+- Add MCP Server as new sidebar page
+- ModelCall should allow them to be provided in calls
 
 ### Editor
 
