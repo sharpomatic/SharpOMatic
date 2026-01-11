@@ -15,6 +15,8 @@ Constantly changing code to try new ideas slows you down.
 AI is notorious for needing lots of experiments to find the right combination of model, prompts, tool calls, and glue logic to get the outcome you need. 
 Using SharpOMatic, you can prefer configuration over code, which lets you iterate on ideas much faster.
 
+<img width="1048" height="481" alt="hero" src="https://github.com/user-attachments/assets/4494018b-90b8-4a8f-a815-93c7afd3e0ee" />
+
 # Host your own execution
 
 The execution engine is hosted in your project so you retain complete control over the environment and storage of all data. 
@@ -29,9 +31,6 @@ Expose your C# types for structured outputs and C# functions for tool calling.
 # Documentation
 
 Use the getting started guides to be up and running in just a few minutes.
-
-
-<img width="1048" height="481" alt="hero" src="https://github.com/user-attachments/assets/4494018b-90b8-4a8f-a815-93c7afd3e0ee" />
 
 ## Affiliation
 
