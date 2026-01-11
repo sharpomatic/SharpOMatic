@@ -382,9 +382,9 @@ export class DesignerComponent {
       }
 
       startX = (fromNode.left() + fromNode.width()) + 6;
-      startY = (fromNode.top() + fromConnector.boxOffset() + ConnectorEntity.DISPLAY_SIZE - 4);
+      startY = (fromNode.top() + fromConnector.boxOffset() + ConnectorEntity.DISPLAY_SIZE / 2) + 2;
       endX = toNode.left() - 25;
-      endY = (toNode.top() + toConnector.boxOffset() + ConnectorEntity.DISPLAY_SIZE - 5);
+      endY = (toNode.top() + toConnector.boxOffset() + ConnectorEntity.DISPLAY_SIZE / 2) + 2;
     } else {
       const fromNode = workflow.getNodeById(connection.from.nodeId);
 
@@ -393,7 +393,7 @@ export class DesignerComponent {
       }
 
       startX = (fromNode.left() + fromNode.width()) + 10;
-      startY = (fromNode.top() + connection.from.boxOffset() + ConnectorEntity.DISPLAY_SIZE - 4);
+      startY = (fromNode.top() + connection.from.boxOffset() + ConnectorEntity.DISPLAY_SIZE / 2) + 2;
       endX = connection.targetPoint.x - 25;
       endY = connection.targetPoint.y + 2;
     }

@@ -112,8 +112,8 @@ export abstract class NodeEntity<T extends NodeSnapshot> extends Entity<T> {
       title: '',
       top: 0,
       left: 0,
-      width: 80,
-      height: 80,
+      width: (ConnectorEntity.DISPLAY_SIZE * 4),
+      height: (ConnectorEntity.DISPLAY_SIZE * 4),
       inputs: [],
       outputs: []
     }
@@ -135,15 +135,17 @@ export abstract class NodeEntity<T extends NodeSnapshot> extends Entity<T> {
 
     if (connectors.length > 0) {
       const minHeight = (connectors.length + 1) * allocateHeight;
+
       if (this.height() < minHeight) {
         this.height.set(minHeight);
         this.calculateConnectors();
         return;
       }
 
-      const topOffset = (this.height() - minHeight + allocateHeight) / 2 - 3;
+      const topOffset = ConnectorEntity.DISPLAY_SIZE + allocateOffset - 3;
       connectors.forEach((output, index) => {
-        output.boxOffset.set(topOffset + allocateOffset + (index * allocateHeight) - 1);
+        output.boxOffset.set(topOffset + (index * allocateHeight));
+        console.log(`Connector: ${output.name} offset:${output.boxOffset()}`);
         output.labelOffsetV.set(output.boxOffset() - 7);
         output.labelOffsetH.set(this.width() + ConnectorEntity.DISPLAY_SIZE);
       });

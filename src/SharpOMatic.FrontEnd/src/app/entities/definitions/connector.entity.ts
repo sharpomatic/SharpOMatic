@@ -9,7 +9,7 @@ export interface ConnectorSnapshot extends EntitySnapshot {
 }
 
 export class ConnectorEntity extends Entity<ConnectorSnapshot> {
-  public static readonly DISPLAY_SIZE = 16;
+  public static readonly DISPLAY_SIZE = 20;
 
   public nodeId: string = '';
   public name: WritableSignal<string>;

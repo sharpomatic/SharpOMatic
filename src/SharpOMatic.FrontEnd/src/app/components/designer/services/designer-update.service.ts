@@ -19,7 +19,7 @@ import { ModelCallNodeEntity } from '../../../entities/definitions/model-call-no
   providedIn: 'root',
 })
 export class DesignerUpdateService {
-  public static readonly GRID_SIZE = 16;
+  public static readonly GRID_SIZE = 20;
 
   private readonly selectionService = inject(DesignerSelectionService);
 
