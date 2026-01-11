@@ -4,17 +4,33 @@
 [![Downloads](https://img.shields.io/nuget/dt/SharpOMatic.Engine?label=downloads)](https://www.nuget.org/packages/SharpOMatic.Engine/)
 [![TargetFramework](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 
-## Under Construction
+# SharpOMatic
 
-SharpOMatic is an AI workflow designer with deep integration into .NET projects.
-Design using a drag and drop editor.
-Perform evaluations against datasets.
-Deep integration into .NET projects as nuget packages.
-Currently under construction but with an intended first release in early 2026.
+SharpOMatic is an open-source workflow builder focused on AI-driven tasks.
 
-## Editor Screenshot
+# Configuration over code
 
-<img width="2245" height="888" alt="image" src="https://github.com/user-attachments/assets/5b7b57e4-0218-4819-ac56-c1b62b958122" />
+One of the biggest challenges when building an AI-focused workflow is cycle time. 
+Constantly changing code to try new ideas slows you down. 
+AI is notorious for needing lots of experiments to find the right combination of model, prompts, tool calls, and glue logic to get the outcome you need. 
+Using SharpOMatic, you can prefer configuration over code, which lets you iterate on ideas much faster.
+
+<img width="1048" height="481" alt="hero" src="https://github.com/user-attachments/assets/4494018b-90b8-4a8f-a815-93c7afd3e0ee" />
+
+# Host your own execution
+
+The execution engine is hosted in your project so you retain complete control over the environment and storage of all data. 
+There is no reliance on other providers, so you control access, permissions, uptime, and scaling.
+
+# Deep integration
+
+SharpOMatic is a .NET native project, so you can use familiar C# for glue logic in workflow code nodes. 
+You can call from code nodes directly into your backend code for fast, simple integration. 
+Expose your C# types for structured outputs and C# functions for tool calling.
+
+# Documentation
+
+Use the getting started guides to be up and running in just a few minutes.
 
 ## Affiliation
 
