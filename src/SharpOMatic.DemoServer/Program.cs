@@ -28,7 +28,7 @@ builder.Services.AddSharpOMaticEngine()
         // SQLite database in current users profile
         var folder = Environment.SpecialFolder.LocalApplicationData;
         var path = Environment.GetFolderPath(folder);
-        var dbPath = Path.Join(path, "SharpOMatic", "sharpomatic.db");
+        var dbPath = Path.Join(path, "sharpomatic.db");
         optionBuilder.UseSqlite($"Data Source={dbPath}");
     });
 

@@ -36,7 +36,7 @@ For example, if your username is JohnDoe, then the files will be at:<br />
       // SQLite database in current user's profile
       var folder = Environment.SpecialFolder.LocalApplicationData;
       var path = Environment.GetFolderPath(folder);
-      var dbPath = Path.Join(path, "SharpOMatic", "sharpomatic.db");
+      var dbPath = Path.Join(path, "sharpomatic.db");
       optionBuilder.UseSqlite($"Data Source={dbPath}");
     });
 ```
@@ -59,4 +59,5 @@ If you already use this path for other purposes then you can update this to some
 
 ## Open visual editor
 
-Use your favorite browser to open http://localhost:9001/editor
+Check the generated port number for new project in the `launchSettings.json`.
+Use your favorite browser to open http://localhost:<portNumer>/editor
