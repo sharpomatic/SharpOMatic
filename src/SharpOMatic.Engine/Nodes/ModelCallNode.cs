@@ -316,8 +316,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         {
             try
             {
-                var deserializer = new FastJsonDeserializer(response.Text);
-                var objects = deserializer.Deserialize();
+                var objects = FastDeserializeString(response.Text);
                 tempContext.Set(textPath, objects);
             }
             catch
@@ -342,6 +341,12 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         }
 
         return ($"Model {_model.Name ?? "(empty)"} called", new List<NextNodeData> { new(ThreadContext, RunContext.ResolveSingleOutput(Node)) });
+    }
+
+    private static object? FastDeserializeString(string json)
+    {
+        var deserializer = new FastJsonDeserializer(json);
+        return deserializer.Deserialize();
     }
 
     private bool HasCapability(string capability)

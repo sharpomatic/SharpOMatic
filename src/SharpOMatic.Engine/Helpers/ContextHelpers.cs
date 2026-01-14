@@ -1,4 +1,6 @@
-﻿namespace SharpOMatic.Engine.Helpers;
+﻿using SharpOMatic.Engine.Entities.Definitions;
+
+namespace SharpOMatic.Engine.Helpers;
 
 public static class ContextHelpers
 {
@@ -42,8 +44,7 @@ public static class ContextHelpers
             case ContextEntryType.JSON:
                 try
                 {
-                    var deserializer = new FastJsonDeserializer(entry.EntryValue);
-                    entryValue = deserializer.Deserialize();
+                    entryValue = FastDeserializeString(entry.EntryValue);
                 }
                 catch
                 {
@@ -89,6 +90,12 @@ public static class ContextHelpers
         }
 
         return entryValue;
+    }
+
+    private static object? FastDeserializeString(string json)
+    {
+        var deserializer = new FastJsonDeserializer(json);
+        return deserializer.Deserialize();
     }
 
     private static AssetRef ParseAssetRef(string rawValue, string inputPath)
