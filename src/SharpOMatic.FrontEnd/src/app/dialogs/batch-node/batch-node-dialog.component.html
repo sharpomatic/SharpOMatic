@@ -18,23 +18,25 @@
         </div>
         <div class="mb-3 form-line">
           <label for="batch-input-array-path" class="form-label field-label">Input Array Path</label>
-          <div class="flex-fill control-column">
+          <div class="flex-fill control-column path">
             <input type="text" class="form-control w-100" id="batch-input-array-path" [ngModel]="node.inputArrayPath()"
               (ngModelChange)="node.inputArrayPath.set($event)" />
           </div>
         </div>
         <div class="mb-3 form-line">
           <label for="batch-size" class="form-label field-label">Batch Size</label>
-          <div class="flex-fill control-column">
-            <input type="number" class="form-control w-100" id="batch-size" [ngModel]="node.batchSize()"
-              (ngModelChange)="onBatchSizeChange($event)" />
+          <div class="flex-fill control-column tiny">
+            <input type="number" class="form-control w-100" id="batch-size" min="0" step="1"
+              [ngModel]="node.batchSize()" (ngModelChange)="onBatchSizeChange($event)"
+              (blur)="onBatchSizeBlur($any($event.target).value)" />
           </div>
         </div>
         <div class="mb-3 form-line">
           <label for="parallel-batches" class="form-label field-label">Parallel Batches</label>
-          <div class="flex-fill control-column">
-            <input type="number" class="form-control w-100" id="parallel-batches" [ngModel]="node.parallelBatches()"
-              (ngModelChange)="onParallelBatchesChange($event)" />
+          <div class="flex-fill control-column tiny">
+            <input type="number" class="form-control w-100" id="parallel-batches" min="1" step="1"
+              [ngModel]="node.parallelBatches()" (ngModelChange)="onParallelBatchesChange($event)"
+              (blur)="onParallelBatchesBlur($any($event.target).value)" />
           </div>
         </div>
       </div>

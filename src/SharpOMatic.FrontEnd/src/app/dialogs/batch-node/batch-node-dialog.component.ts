@@ -51,6 +51,10 @@ export class BatchNodeDialogComponent implements OnInit {
     }
   }
 
+  onBatchSizeBlur(rawValue: string | null): void {
+    this.node.batchSize.set(this.coerceInteger(rawValue, 0, 10));
+  }
+
   onParallelBatchesChange(value: string | number): void {
     const parsed = Number(value);
     if (Number.isFinite(parsed)) {
@@ -58,7 +62,29 @@ export class BatchNodeDialogComponent implements OnInit {
     }
   }
 
+  onParallelBatchesBlur(rawValue: string | null): void {
+    this.node.parallelBatches.set(this.coerceInteger(rawValue, 1, 3));
+  }
+
   onClose(): void {
     this.close.emit();
+  }
+
+  private coerceInteger(rawValue: string | null, min: number, fallback: number): number {
+    if (rawValue === null || rawValue === '') {
+      return fallback;
+    }
+
+    let numeric = Number(rawValue);
+    if (!Number.isFinite(numeric)) {
+      return fallback;
+    }
+
+    numeric = Math.trunc(numeric);
+    if (numeric < min) {
+      numeric = min;
+    }
+
+    return numeric;
   }
 }

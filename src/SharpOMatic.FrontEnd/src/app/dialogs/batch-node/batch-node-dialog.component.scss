@@ -29,30 +29,42 @@
   min-height: 0;
 }
 
-.form-line {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-}
-
-.field-label {
-  margin-bottom: 0;
-  text-align: right;
-}
-
-.control-column {
-  flex: 1;
-  min-width: 0;
-}
-
-.control-column .form-control {
-  width: 100%;
-}
-
 .details {
+  .form-line {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+  }
+
+  .field-label {
+    width: 150px;
+    flex: 0 0 150px;
+    margin-bottom: 0;
+    text-align: right;
+  }
+
+  .control-column {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .control-column .form-control {
+    width: 100%;
+  }
+
   .title {
     max-width: 350px;
+    width: 100%;
+  }
+
+  .path {
+    max-width: 500px;
+    width: 100%;
+  }
+
+  .tiny {
+    max-width: 200px;
     width: 100%;
   }
 }
