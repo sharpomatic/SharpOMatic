@@ -1,8 +1,9 @@
 [![Development](https://github.com/sharpomatic/SharpOMatic/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sharpomatic/SharpOMatic/actions/workflows/ci.yml)
 [![Prerelease](https://img.shields.io/nuget/vpre/SharpOMatic.Engine?label=prerelease)](https://www.nuget.org/packages/SharpOMatic.Engine/)
 [![Stable](https://img.shields.io/nuget/v/SharpOMatic.Engine?label=stable)](https://www.nuget.org/packages/SharpOMatic.Engine/)
+![Target Frameworks](https://img.shields.io/badge/Target%20Frameworks-net8.0%20|%20net9.0%20|%20net10.0-512BD4?logo=dotnet)
 [![Downloads](https://img.shields.io/nuget/dt/SharpOMatic.Engine?label=downloads)](https://www.nuget.org/packages/SharpOMatic.Engine/)
-[![TargetFramework](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
+![Lines of Code](https://img.shields.io/tokei/lines/github/sharpomatic/SharpOMatic)
 
 # SharpOMatic
 
