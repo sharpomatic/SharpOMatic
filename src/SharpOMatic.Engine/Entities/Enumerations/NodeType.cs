@@ -9,5 +9,6 @@ public enum NodeType
     Switch = 4,
     FanIn = 5,
     FanOut = 6,
-    ModelCall = 7
+    ModelCall = 7,
+    Batch = 8
 }

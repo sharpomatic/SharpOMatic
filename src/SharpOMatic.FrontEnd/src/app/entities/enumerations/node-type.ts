@@ -7,6 +7,7 @@ export enum NodeType {
   FanIn = 5,
   FanOut = 6,
   ModelCall = 7,
+  Batch = 8,
 }
 
 export function getNodeSymbol(nodeType: NodeType): string {
@@ -27,6 +28,8 @@ export function getNodeSymbol(nodeType: NodeType): string {
       return 'bi-filetype-cs';
     case NodeType.ModelCall:
       return 'bi-chat-text';
+    case NodeType.Batch:
+      return 'bi-layers';
     default:
       return '';
   }

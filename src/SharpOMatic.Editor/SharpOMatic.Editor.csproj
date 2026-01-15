@@ -53,7 +53,7 @@
 
   <Target Name="PrepareEditorAssets" BeforeTargets="_CalculateEmbeddedFilesManifestInputs" Condition="'$(DesignTimeBuild)' != 'true'">
     <Exec WorkingDirectory="$(SpaRoot)" Command="npm ci" Condition="!Exists('$(SpaRoot)node_modules')" />
-    <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build -- --configuration production" Condition="!Exists('$(EditorDistDir)index.html')" />
+    <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build -- --configuration production" />
     <ItemGroup>
       <_EditorFiles Include="$(EditorDistDir)**\*" />
       <_EditorFiles Remove="@(_EditorFiles)" Condition="$([System.IO.Directory]::Exists('%(FullPath)'))" />

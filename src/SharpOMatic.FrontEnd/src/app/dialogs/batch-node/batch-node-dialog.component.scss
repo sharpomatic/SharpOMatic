@@ -1,0 +1,64 @@
+:host {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: stretch;
+  align-items: stretch;
+  z-index: 1000;
+}
+
+.dialog-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: stretch;
+  align-items: stretch;
+}
+
+.dialog-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.form-line {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.field-label {
+  margin-bottom: 0;
+  text-align: right;
+}
+
+.control-column {
+  flex: 1;
+  min-width: 0;
+}
+
+.control-column .form-control {
+  width: 100%;
+}
+
+.details {
+  .title {
+    max-width: 350px;
+    width: 100%;
+  }
+}
+
+.tab-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}

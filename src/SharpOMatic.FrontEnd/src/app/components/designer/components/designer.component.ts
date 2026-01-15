@@ -29,6 +29,8 @@ import { FanOutNodeDialogComponent } from '../../../dialogs/fan-out-node/fan-out
 import { FanInNodeEntity } from '../../../entities/definitions/fan-in-node.entity';
 import { FanOutNodeEntity } from '../../../entities/definitions/fan-out-node.entity';
 import { TraceProgressModel } from '../../../pages/workflow/interfaces/trace-progress-model';
+import { BatchNodeEntity } from '../../../entities/definitions/batch-node.entity';
+import { BatchNodeDialogComponent } from '../../../dialogs/batch-node/batch-node-dialog.component';
 
 @Component({
   selector: 'app-designer',
@@ -305,6 +307,8 @@ export class DesignerComponent {
       this.dialogService.open(FanInNodeDialogComponent, { node, nodeTraces });
     } else if (node instanceof FanOutNodeEntity) {
       this.dialogService.open(FanOutNodeDialogComponent, { node, nodeTraces });
+    } else if (node instanceof BatchNodeEntity) {
+      this.dialogService.open(BatchNodeDialogComponent, { node, nodeTraces });
     }
   }
 
