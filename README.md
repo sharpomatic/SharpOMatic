@@ -4,6 +4,7 @@
 ![Target Frameworks](https://img.shields.io/badge/Target%20Frameworks-net8.0%20|%20net9.0%20|%20net10.0-512BD4?logo=dotnet)
 ![Languages](https://img.shields.io/badge/Languages-C%23%20(.NET)%20|%20TypeScript-512BD4?logo=dotnet)
 [![Downloads](https://img.shields.io/nuget/dt/SharpOMatic.Engine?label=downloads)](https://www.nuget.org/packages/SharpOMatic.Engine/)
+![License](https://img.shields.io/github/license/sharpomatic/SharpOMatic)
 
 # SharpOMatic
 
