@@ -10,13 +10,14 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<ICodeCheck, CodeCheckService>();
         services.TryAddSingleton<INodeQueueService, NodeQueueService>();
         services.TryAddSingleton<IRunNodeFactory, RunNodeFactory>();
+        services.TryAddSingleton<INodeExecutionService, NodeExecutionService>();
         services.TryAddSingleton<IRunContextFactory, RunContextFactory>();
         services.TryAddScoped<IAssetService, AssetService>();
         services.TryAddScoped<IRepositoryService, RepositoryService>();
         services.TryAddScoped<IEngineService, EngineService>();
         services.TryAddScoped<ITransferService, TransferService>();
         services.TryAddScoped<ISamplesService, SamplesService>();
-        services.AddHostedService<NodeExecutionService>();
+        services.AddHostedService<HostedNodeExecutionService>();
 
         // Add empty versions of optional services
         services.TryAddSingleton<ISchemaTypeRegistry>(_ => new SchemaTypeRegistry([]));
