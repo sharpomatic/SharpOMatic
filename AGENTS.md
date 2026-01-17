@@ -3,11 +3,11 @@
 SharpOMatic is an open-source project on GitHub that allows a user to build and execute workflows with an emphasis on AI-related tasks. It has deep integration with .NET by allowing users to add C# code snippets and call direclty into backend code.
 
 The frontend is an Angular and TypeScript browser-based application..
-The backend is .NET/C#-based and consists of Editor, Engine and Server.
+The backend is .NET/C#-based and consists of Editor, Engine and DemoServer.
 The 'docs' directory defines the static website and uses docusaurus.
 
 ## Project Structure & Module Organization
-- `src/SharpOMatic.sln` is the .NET solution used by Visual Studio and CLI builds to load the backend projects (Engine, Editor, Server) plus solution items like `DEV.md` and `TODO.md`. The Angular frontend is not included as a project in the solution; instead, the Editor project runs the frontend build and embeds the output during its own build.
+- `src/SharpOMatic.sln` is the .NET solution used by Visual Studio and CLI builds to load the backend projects (Engine, Editor, DemoServer) plus solution items like `DEV.md` and `TODO.md`. The Angular frontend is not included as a project in the solution; instead, the Editor project runs the frontend build and embeds the output during its own build.
 
 - `src/SharpOMatic.FrontEnd/` is the Angular + TypeScript SPA for the workflow designer/editor UI, including pages, components, and services that call the backend APIs and SignalR endpoints. Its production build output (`dist/SharpOMatic-Editor/browser`) is consumed by the Editor project and embedded into the .NET package, so UI changes here affect the hosted editor experience.
 
@@ -15,7 +15,7 @@ The 'docs' directory defines the static website and uses docusaurus.
 
 - `src/SharpOMatic.Engine/` is the .NET 10 core workflow engine that defines the runtime model (nodes, contexts, metadata), persistence (EF Core models/migrations), and services used to execute workflows and manage assets, runs, and repository state. It is the main backend library consumed by both the Editor package and the Server host, so changes here typically impact execution behavior and API DTOs.
 
-- `src/SharpOMatic.Server/` is a .NET 10 ASP.NET Core host application that wires Engine and Editor together for local running, testing, and sample configuration (routing, database setup, asset storage). It serves as the integration harness where you can validate end-to-end editor + engine behavior before packaging or deploying elsewhere. This is used during developing to test changes but end users are expected to create there are own server or integer the Editor and Engine into their own existing project.
+- `src/SharpOMatic.DemoServer/` is a .NET 10 ASP.NET Core host application that wires Engine and Editor together for local running, testing, and sample configuration (routing, database setup, asset storage). It serves as the integration harness where you can validate end-to-end editor + engine behavior before packaging or deploying elsewhere. This is used during developing to test changes but end users are expected to create there are own server or integer the Editor and Engine into their own existing project.
 
 ### Project Structure Engine
 
@@ -61,8 +61,14 @@ The 'docs' directory defines the static website and uses docusaurus.
 - `SharpOMatic.Engine/Repository`
     EF Core DbContext, entity configurations, and repository implementations used by services to read/write workflow and run data.
 
+- `SharpOMatic.Engine/Samples`
+    Contains sample workflows that are then exposed by the editor so that users can quickly create a new workflow from a sample.
+
 - `SharpOMatic.Engine/Services`
     Core DI services for execution, queues, asset storage, repository access, JSON conversion, and configuration. This includes the node execution background service and queue logic that drive runtime workflow processing.
+
+- `SharpOMatic.Engine/GlobalUsings.cs`
+    All required C# using statements are placed here as global using statements. This prevents the need for source files to have using statements which is the preferred method required for this project.
 
 ### Project Structure Editor
 
@@ -73,16 +79,22 @@ The 'docs' directory defines the static website and uses docusaurus.
     ASP.NET Core API controllers that expose editor and asset endpoints, backing the Angular UI and transfer flows. Changes here affect HTTP routing, request validation, and the contracts the frontend relies on.
 
 - `SharpOMatic.Editor/DTO`
-    Request/response payload models used by editor-specific endpoints. Keep these aligned with the frontend DTOs when changing API contracts.
+    Request/response payload models used by editor-specific endpoints. Keep these aligned with the frontend DTOs when changing API contracts. Ones placed here are required for communication with the Editor only. The Engine has DTO classes when the data needs to be forward from the controllers into the Engine itself.
 
 - `SharpOMatic.Editor/Helpers`
-    Utility classes and helpers used by the editor host (routing helpers, embedded asset helpers, or shared logic across controllers/services).
+    Utility classes and helpers used by the editor host.
 
 - `SharpOMatic.Editor/obj`
     Intermediate build outputs and generated files used by the compiler and tooling. Treat as generated artifacts; safe to delete for clean builds.
 
 - `SharpOMatic.Editor/Services`
     Services that encapsulate editor host behavior (asset transfer, hub integration, and editor setup). This is the DI boundary for editor-specific logic that can be reused by host applications.
+
+- `SharpOMatic.Editor/GlobalUsings.cs`
+    All required C# using statements are placed here as global using statements. This prevents the need for source files to have using statements which is the preferred method required for this project.
+
+- `SharpOMatic.Editor/`
+    Additional files are placed in the root directory of the Editor. These are relating to making us of the Editor in client projects.
 
 ### Project Structure FrontEnd
 
@@ -93,7 +105,7 @@ The 'docs' directory defines the static website and uses docusaurus.
     Modal dialog components for editing node properties, confirmations, and blocking info. These are typically opened from pages/components and often map to backend validation flows.
 
 - `SharpOMatic.FrontEnd/src/app/dto`
-    Client-side DTOs that mirror backend request/response payloads for editor and transfer APIs. Changes here should stay aligned with `SharpOMatic.Engine/DTO`.
+    Client-side DTOs that mirror backend request/response payloads for editor and transfer APIs. Changes here should stay aligned with `SharpOMatic.Engine/DTO` and/or `SharpOMatic.Editor/DTO` as appropriate.
 
 - `SharpOMatic.FrontEnd/src/app/entities`
     Client-side workflow entities and helpers for building or mutating node graphs in the UI. This mirrors engine entities but adds UI-specific conveniences and factories.
@@ -108,7 +120,7 @@ The 'docs' directory defines the static website and uses docusaurus.
     Connector/model metadata definitions and helpers used to render dynamic forms for LLM integrations and validate UI inputs before sending to the backend.
 
 - `SharpOMatic.FrontEnd/src/app/pages`
-    Routed feature pages (workflow list, workflow editor, connectors, models, settings). Page components own layout and coordinate services and dialogs.
+    Routed feature pages (workflow, connectors, models, assets, transfers, settings). Page components own layout and coordinate services and dialogs.
 
 - `SharpOMatic.FrontEnd/src/app/services`
     Angular services for API access, SignalR hubs, metadata loading, Monaco integration, settings persistence, and notifications. Any API changes usually flow through these services.
@@ -121,9 +133,9 @@ The 'docs' directory defines the static website and uses docusaurus.
 - File naming: Angular uses kebab-case (`my-widget.component.ts`); tests use `*.spec.ts`; C# tests typically end with `*UnitTest(s).cs`.
 
 ## Commit & Pull Request Guidelines
-- Recent commits are short, descriptive, and prefix-free; keep messages to a single line (e.g., "OpenAI parameters").
+- Commits are short, descriptive, and prefix-free; keep messages to a single line (e.g., "OpenAI parameters").
 - PRs should describe intent and scope, link any related issues/TODOs, include screenshots/GIFs for editor UI changes, and state tests run.
 
 ## Security & Configuration Tips
-- The server stores SQLite data under the user's LocalApplicationData path; do not commit local `.db` files.
-- `SharpOMatic.Server/appsettings.json` is the place for environment configuration; keep secrets out of the repo.
+- The DemoServer stores SQLite data under the user's LocalApplicationData path; do not commit local `.db` files.
+- `SharpOMatic.DemoServer/appsettings.json` is the place for environment configuration; keep secrets out of the repo.
