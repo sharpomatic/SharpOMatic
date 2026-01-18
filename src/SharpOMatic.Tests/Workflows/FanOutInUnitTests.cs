@@ -133,7 +133,7 @@ public sealed class FanOutInUnitTests
     }
 
     [Fact]
-    public async Task FanOut_requires_all_outputs_connected()
+    public async Task FanOut_ignores_unconnected_outputs()
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
@@ -143,11 +143,41 @@ public sealed class FanOutInUnitTests
             .Connect("fanout.first", "first")
             .Build();
 
-        var run = await WorkflowRunner.RunWorkflow([], workflow);
+        ContextObject ctx = [];
+        ctx.Set<int>("input.value", 10);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Failed, run.RunStatus);
-        Assert.Equal("Cannot traverse output because it is not connected to another node.", run.Error);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        Assert.Equal(10, outCtx.Get<int>("input.value"));
+        Assert.Equal(1, outCtx.Get<int>("output"));
+    }
+
+    [Fact]
+    public async Task FanOut_with_no_connected_outputs_finishes_immediately()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddFanOut("fanout", ["first", "second"])
+            .Connect("start", "fanout")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set<int>("input.value", 10);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        Assert.Equal(10, outCtx.Get<int>("input.value"));
+        Assert.False(outCtx.TryGet<int>("output", out var _));
     }
 
     [Fact]

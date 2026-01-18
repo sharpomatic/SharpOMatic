@@ -11,7 +11,7 @@ Use **FanOut** to split execution into multiple threads, and **FanIn** to wait f
 **FanOut** creates a new thread of execution for each defined output connection.
 Each branch starts with a cloned copy of the incoming context, so changes in one branch do not affect the others.
 Define the output names in the node details to keep branches organized and readable in the editor.
-All FanOut outputs must be connected to another node; an unconnected output causes the run to fail.
+Unconnected outputs are ignored. If none are connected, the FanOut completes immediately and the current context becomes the workflow result unless a later **End** node overrides it.
 
 <img src="/img/fanout_editor.png" alt="FanOut Threads" width="400" style={{ maxWidth: '100%', height: 'auto' }} />
 
@@ -77,3 +77,4 @@ If the second branch arrives last at the **FanIn** node, the output would be:
 
 If you fan out without a **FanIn**, each branch runs independently.
 The workflow output will be taken from the last branch to finish unless an **End** node sets the output earlier.
+Only connected outputs start branches.
