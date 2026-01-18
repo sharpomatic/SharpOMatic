@@ -37,7 +37,7 @@ public sealed class StartNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
 
         // Final context is the one passed into the start node
         Assert.NotNull(run.OutputContext);
@@ -60,7 +60,7 @@ public sealed class StartNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
 
         // Final context is new with only input.boolean copied into it
         Assert.NotNull(run.OutputContext);
@@ -115,7 +115,7 @@ public sealed class StartNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
         Assert.True(outCtx.Get<bool>("input.boolean"));
@@ -131,7 +131,7 @@ public sealed class StartNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
         Assert.Equal(42, outCtx.Get<int>("input.json[0]"));
@@ -149,7 +149,7 @@ public sealed class StartNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
         Assert.Equal(4, outCtx.Get<int>("input.expr"));
@@ -299,7 +299,7 @@ public sealed class StartNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
         var hasValue = outCtx.TryGet<object?>("input.nullValue", out var value);
@@ -320,7 +320,7 @@ public sealed class StartNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
         Assert.Empty(outCtx);

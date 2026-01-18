@@ -17,7 +17,7 @@ public sealed class CodeNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
 
         // Code leaves input context unchanged
         Assert.NotNull(run.OutputContext);
@@ -38,7 +38,7 @@ public sealed class CodeNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
@@ -60,7 +60,7 @@ public sealed class CodeNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
@@ -79,7 +79,7 @@ public sealed class CodeNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public sealed class CodeNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
@@ -121,7 +121,7 @@ public sealed class CodeNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
         Assert.NotNull(run.OutputContext);
 
         var services = new ServiceCollection();

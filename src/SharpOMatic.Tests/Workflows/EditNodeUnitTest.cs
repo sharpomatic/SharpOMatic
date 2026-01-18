@@ -17,7 +17,7 @@ public sealed class EditNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
 
         // Edit leaves input context unchanged
         Assert.NotNull(run.OutputContext);
@@ -42,7 +42,7 @@ public sealed class EditNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
@@ -63,7 +63,7 @@ public sealed class EditNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
@@ -89,7 +89,7 @@ public sealed class EditNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
@@ -114,7 +114,7 @@ public sealed class EditNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
@@ -319,7 +319,7 @@ public sealed class EditNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);

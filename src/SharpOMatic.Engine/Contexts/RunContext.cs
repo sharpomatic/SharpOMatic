@@ -155,9 +155,13 @@ public class RunContext
                 {
                     MergeContexts(targetObject, sourceObject);
                 }
-                else if (targetValue is ContextList targetList && sourceValue is not ContextList)
+                else if (targetValue is ContextList targetList1 && sourceValue is ContextList sourceList)
                 {
-                    targetList.Add(sourceValue);
+                    targetList1.AddRange(sourceList);
+                }
+                else if (targetValue is ContextList targetList2 && sourceValue is not ContextList)
+                {
+                    targetList2.Add(sourceValue);
                 }
                 else
                 {

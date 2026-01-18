@@ -25,6 +25,7 @@ public class WorkflowRunner
             var engine = scope.ServiceProvider.GetRequiredService<IEngineService>();
             var runId = await engine.CreateWorkflowRun(workflows[0].Id);
             var run = await engine.StartWorkflowRunAndWait(runId, ctx);
+            await Task.Delay(100);
             return run;
 
         }

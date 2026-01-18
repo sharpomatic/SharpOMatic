@@ -1,11 +1,13 @@
+using System.Collections.Concurrent;
+
 namespace SharpOMatic.Tests.Services;
 
 public sealed class TestRepositoryService : IRepositoryService
 {
-    private readonly Dictionary<string, Setting> _settings = [];
-    private readonly Dictionary<Guid, WorkflowEntity> _workflows = [];
-    private readonly Dictionary<Guid, Run> _runs = [];
-    private readonly Dictionary<Guid, Trace> _traces = [];
+    private readonly ConcurrentDictionary<string, Setting> _settings = new();
+    private readonly ConcurrentDictionary<Guid, WorkflowEntity> _workflows = new();
+    private readonly ConcurrentDictionary<Guid, Run> _runs = new();
+    private readonly ConcurrentDictionary<Guid, Trace> _traces = new();
 
     public Task<List<WorkflowSummary>> GetWorkflowSummaries()
         => throw new NotImplementedException();
@@ -26,8 +28,7 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task UpsertWorkflow(WorkflowEntity workflow)
     {
-        _workflows.Remove(workflow.Id);
-        _workflows.Add(workflow.Id, workflow);
+        _workflows[workflow.Id] = workflow;
         return Task.CompletedTask;
     }
 
@@ -54,8 +55,7 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task UpsertRun(Run run)
     {
-        _runs.Remove(run.RunId);
-        _runs.Add(run.RunId, run);
+        _runs[run.RunId] = run;
         return Task.CompletedTask;
     }
 
@@ -67,8 +67,7 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task UpsertTrace(Trace trace)
     {
-        _traces.Remove(trace.TraceId);
-        _traces.Add(trace.TraceId, trace);
+        _traces[trace.TraceId] = trace;
         return Task.CompletedTask;
     }
 
@@ -137,8 +136,7 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task UpsertSetting(Setting model)
     {
-        _settings.Remove(model.Name);
-        _settings.Add(model.Name, model);
+        _settings[model.Name] = model;
         return Task.CompletedTask;
     }
 

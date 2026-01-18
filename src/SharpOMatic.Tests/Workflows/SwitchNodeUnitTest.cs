@@ -17,7 +17,7 @@ public sealed class SwitchNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
 
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
@@ -43,7 +43,7 @@ public sealed class SwitchNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
 
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
@@ -69,7 +69,7 @@ public sealed class SwitchNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
 
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
@@ -100,7 +100,7 @@ public sealed class SwitchNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
 
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
@@ -131,7 +131,7 @@ public sealed class SwitchNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
 
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
@@ -162,7 +162,7 @@ public sealed class SwitchNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
 
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
@@ -288,7 +288,7 @@ public sealed class SwitchNodeUnitTest
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.NotNull(run);
-        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
 
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
