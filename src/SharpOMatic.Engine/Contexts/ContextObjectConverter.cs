@@ -29,7 +29,7 @@ public class ContextObjectConverter : JsonConverter<ContextObject>
     {
         writer.WriteStartObject();
 
-        foreach (var kv in value)
+        foreach (var kv in value.Snapshot())
         {
             writer.WritePropertyName(kv.Key);
             ContextTypedValueConverter.WriteTypedValue(writer, kv.Value, options);

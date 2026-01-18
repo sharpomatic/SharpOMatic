@@ -2,6 +2,7 @@
 
 public class ContextList : IList<object?>
 {
+    private readonly object _sync = new();
     private readonly List<object?> _list = [];
 
     public ContextList()
@@ -21,7 +22,11 @@ public class ContextList : IList<object?>
         if (items is null) 
             return;
 
-        foreach (var it in items) _list.Add(it);
+        lock (_sync)
+        {
+            foreach (var it in items)
+                _list.Add(it);
+        }
     }
 
     public void InsertRange(int index, IEnumerable<object?> items)
@@ -29,67 +34,97 @@ public class ContextList : IList<object?>
         if (items is null) 
             return;
 
-        _list.InsertRange(index, items);
+        lock (_sync)
+            _list.InsertRange(index, items);
     }
 
     public object? this[int index] 
     { 
-        get => _list[index];
-        set => _list[index] = value;
+        get
+        {
+            lock (_sync)
+                return _list[index];
+        }
+        set
+        {
+            lock (_sync)
+                _list[index] = value;
+        }
     }
 
-    public int Count => _list.Count;
+    public int Count
+    {
+        get
+        {
+            lock (_sync)
+                return _list.Count;
+        }
+    }
 
     public bool IsReadOnly => false;
 
     public void Add(object? item)
     {
-        _list.Add(item);
+        lock (_sync)
+            _list.Add(item);
     }
 
     public void Clear()
     {
-        _list.Clear();
+        lock (_sync)
+            _list.Clear();
     }
 
     public bool Contains(object? item)
     {
-        return _list.Contains(item);
+        lock (_sync)
+            return _list.Contains(item);
     }
 
     public void CopyTo(object?[] array, int arrayIndex)
     {
-        _list.CopyTo(array, arrayIndex);
+        lock (_sync)
+            _list.CopyTo(array, arrayIndex);
     }
 
     public IEnumerator<object?> GetEnumerator()
     {
-        return _list.GetEnumerator();
+        return Snapshot().GetEnumerator();
     }
 
     public int IndexOf(object? item)
     {
-        return _list.IndexOf(item);
+        lock (_sync)
+            return _list.IndexOf(item);
     }
 
     public void Insert(int index, object? item)
     {
-        _list.Insert(index, item);
+        lock (_sync)
+            _list.Insert(index, item);
     }
 
     public bool Remove(object? item)
     {
-        return _list.Remove(item);
+        lock (_sync)
+            return _list.Remove(item);
     }
 
     public void RemoveAt(int index)
     {
-        _list.RemoveAt(index);
+        lock (_sync)
+            _list.RemoveAt(index);
     }
 
     IEnumerator IEnumerable.GetEnumerator()
     {
         return GetEnumerator();
+    }
+
+    internal List<object?> Snapshot()
+    {
+        lock (_sync)
+            return new List<object?>(_list);
     }
 
     public T Get<T>(string path)

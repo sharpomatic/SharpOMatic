@@ -66,6 +66,10 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
                 if (runContext.Run.RunStatus == RunStatus.Failed)
                     return;
 
+                // When a FanIn completes and there is no next thread, continue with parent and not the last child to arrive
+                if (node is FanInNodeEntity)
+                    threadContext = threadContext.Parent ?? threadContext;
+
                 await RunCompleted(threadContext, RunStatus.Success, "Success");
             }
             else

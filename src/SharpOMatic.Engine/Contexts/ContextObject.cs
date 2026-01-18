@@ -2,77 +2,122 @@
 
 public class ContextObject : IDictionary<string, object?>
 {
+    private readonly object _sync = new();
     private readonly Dictionary<string, object?> _dict = [];
 
     public object? this[string key] 
     {
-        get => _dict[key];
-        set => _dict[key] = value;    
+        get
+        {
+            lock (_sync)
+                return _dict[key];
+        }
+        set
+        {
+            lock (_sync)
+                _dict[key] = value;
+        }
     }
 
-    public ICollection<string> Keys => _dict.Keys;
+    public ICollection<string> Keys
+    {
+        get
+        {
+            lock (_sync)
+                return new List<string>(_dict.Keys);
+        }
+    }
 
-    public ICollection<object?> Values => _dict.Values;
+    public ICollection<object?> Values
+    {
+        get
+        {
+            lock (_sync)
+                return new List<object?>(_dict.Values);
+        }
+    }
 
     public void Add(string key, object? value)
     {
         IdentifierValidator.ValidateIdentifier(key);
-        _dict.Add(key, value);
+        lock (_sync)
+            _dict.Add(key, value);
     }
 
     public bool ContainsKey(string key)
     {
-        return _dict.ContainsKey(key);
+        lock (_sync)
+            return _dict.ContainsKey(key);
     }
 
     public bool Remove(string key)
     {
-        return _dict.Remove(key);
+        lock (_sync)
+            return _dict.Remove(key);
     }
 
     public bool TryGetValue(string key, [MaybeNullWhen(false)] out object? value)
     {
-        return _dict.TryGetValue(key, out value);
+        lock (_sync)
+            return _dict.TryGetValue(key, out value);
     }
 
-    public int Count => _dict.Count;
+    public int Count
+    {
+        get
+        {
+            lock (_sync)
+                return _dict.Count;
+        }
+    }
 
     public bool IsReadOnly => false;
 
     public void Add(KeyValuePair<string, object?> item)
     {
         IdentifierValidator.ValidateIdentifier(item.Key);
-        ((ICollection<KeyValuePair<string, object?>>)_dict).Add(item);
+        lock (_sync)
+            ((ICollection<KeyValuePair<string, object?>>)_dict).Add(item);
     }
 
     public void Clear()
     {
-        _dict.Clear();
+        lock (_sync)
+            _dict.Clear();
     }
 
     public bool Contains(KeyValuePair<string, object?> item)
     {
-        return ((ICollection<KeyValuePair<string, object?>>)_dict).Contains(item);
+        lock (_sync)
+            return ((ICollection<KeyValuePair<string, object?>>)_dict).Contains(item);
     }
 
     public void CopyTo(KeyValuePair<string, object?>[] array, int arrayIndex)
     {
-        ((ICollection<KeyValuePair<string, object?>>)_dict).CopyTo(array, arrayIndex);
+        lock (_sync)
+            ((ICollection<KeyValuePair<string, object?>>)_dict).CopyTo(array, arrayIndex);
     }
 
     public bool Remove(KeyValuePair<string, object?> item)
     {
-        return ((ICollection<KeyValuePair<string, object?>>)_dict).Remove(item);
+        lock (_sync)
+            return ((ICollection<KeyValuePair<string, object?>>)_dict).Remove(item);
     }
 
     public IEnumerator<KeyValuePair<string, object?>> GetEnumerator()
     {
-        return _dict.GetEnumerator();
+        return Snapshot().GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator()
     {
-        return _dict.GetEnumerator();
+        return GetEnumerator();
+    }
+
+    internal List<KeyValuePair<string, object?>> Snapshot()
+    {
+        lock (_sync)
+            return new List<KeyValuePair<string, object?>>(_dict);
     }
 
     public T Get<T>(string path)

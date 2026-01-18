@@ -63,7 +63,10 @@ public sealed class TestRepositoryService : IRepositoryService
         => throw new NotImplementedException();
 
     public Task<List<Trace>> GetRunTraces(Guid runId)
-        => throw new NotImplementedException();
+    {
+        var traces = _traces.Where(t => t.Value.RunId == runId).OrderBy(t => t.Value.Created).Select(t => t.Value).ToList();
+        return Task.FromResult(traces);
+    }
 
     public Task UpsertTrace(Trace trace)
     {

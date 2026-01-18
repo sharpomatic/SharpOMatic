@@ -24,7 +24,7 @@ public class ContextListConverter : JsonConverter<ContextList>
     {
         writer.WriteStartArray();
 
-        foreach (var item in value)
+        foreach (var item in value.Snapshot())
             ContextTypedValueConverter.WriteTypedValue(writer, item, options);
 
         writer.WriteEndArray();
