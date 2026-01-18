@@ -151,6 +151,33 @@ public sealed class FanOutInUnitTests
     }
 
     [Fact]
+    public async Task FanOut_without_fanin_uses_last_branch_context()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddFanOut("fanout", ["first", "second"])
+            .AddCode("first", "Context.Set<string>(\"output.winner\", \"first\");")
+            .AddCode("second", "await Task.Delay(200); Context.Set<string>(\"output.winner\", \"second\");")
+            .Connect("start", "fanout")
+            .Connect("fanout.first", "first")
+            .Connect("fanout.second", "second")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set<int>("input.value", 10);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        Assert.Equal(10, outCtx.Get<int>("input.value"));
+        Assert.Equal("second", outCtx.Get<string>("output.winner"));
+    }
+
+    [Fact]
     public async Task FanOutIn_merges_nested_objects()
     {
         var workflow = new WorkflowBuilder()

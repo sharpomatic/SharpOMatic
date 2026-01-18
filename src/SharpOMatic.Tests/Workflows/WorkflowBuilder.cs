@@ -413,6 +413,11 @@ public sealed class WorkflowBuilder
         return CreateEntry(ContextEntryPurpose.Delete, inputPath, optional: false, ContextEntryType.String, entryValue: string.Empty);
     }
 
+    public static ContextEntryEntity CreateOutputEntry(string inputPath, string outputPath)
+    {
+        return CreateEntry(ContextEntryPurpose.Output, inputPath, optional: false, ContextEntryType.String, entryValue: string.Empty, outputPath: outputPath);
+    }
+
     public static ContextEntryEntity CreateInputEntry(string inputPath, bool optional, ContextEntryType entryType, string entryValue)
     {
         return CreateEntry(ContextEntryPurpose.Input, inputPath, optional, entryType, entryValue);
@@ -423,7 +428,8 @@ public sealed class WorkflowBuilder
         string inputPath,
         bool optional,
         ContextEntryType entryType,
-        string entryValue)
+        string entryValue,
+        string outputPath = "")
     {
         return new ContextEntryEntity
         {
@@ -431,7 +437,7 @@ public sealed class WorkflowBuilder
             Version = 1,
             Purpose = purpose,
             InputPath = inputPath,
-            OutputPath = string.Empty,
+            OutputPath = outputPath,
             Optional = optional,
             EntryType = entryType,
             EntryValue = entryValue
