@@ -116,10 +116,10 @@ public sealed class WorkflowBuilder
 
     public record class SwitchChoice(string Name, string Code);
 
-    public WorkflowBuilder AddSwitch(string title = "switch", IEnumerable<SwitchChoice>? switchChoices = null)
+    public WorkflowBuilder AddSwitch(string title = "switch", params SwitchChoice[] switchChoices)
     {
-        var choices = switchChoices is null ? [] : switchChoices.ToArray();
-        if (choices.Length < 2)
+        var choices = switchChoices ?? [];
+        if (choices.Length < 1)
             throw new ArgumentException("AddSwitch must have at least one switch choice");
 
         var switches = new SwitchEntryEntity[choices.Length];
