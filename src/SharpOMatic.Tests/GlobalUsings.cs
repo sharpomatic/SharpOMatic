@@ -1,4 +1,5 @@
 ﻿global using Microsoft.Extensions.DependencyInjection;
+global using SharpOMatic.Engine.Contexts;
 global using SharpOMatic.Engine.Entities.Definitions;
 global using SharpOMatic.Engine.Entities.Enumerations;
 global using SharpOMatic.Engine.Enumerations;

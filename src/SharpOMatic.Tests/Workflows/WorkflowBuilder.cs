@@ -373,13 +373,63 @@ public sealed class WorkflowBuilder
         return CreateInputEntry(inputPath, optional, ContextEntryType.Expression, code);
     }
 
+    public static ContextEntryEntity CreateBoolUpsert(string inputPath, bool entryValue = false)
+    {
+        return CreateUpsertEntry(inputPath, ContextEntryType.Bool, entryValue.ToString());
+    }
+
+    public static ContextEntryEntity CreateIntUpsert(string inputPath, int entryValue = 0)
+    {
+        return CreateUpsertEntry(inputPath, ContextEntryType.Int, entryValue.ToString());
+    }
+
+    public static ContextEntryEntity CreateDoubleUpsert(string inputPath, double entryValue = 0)
+    {
+        return CreateUpsertEntry(inputPath, ContextEntryType.Double, entryValue.ToString());
+    }
+
+    public static ContextEntryEntity CreateStringUpsert(string inputPath, string entryValue = "")
+    {
+        return CreateUpsertEntry(inputPath, ContextEntryType.String, entryValue);
+    }
+
+    public static ContextEntryEntity CreateJsonUpsert(string inputPath, string json = "")
+    {
+        return CreateUpsertEntry(inputPath, ContextEntryType.JSON, json);
+    }
+
+    public static ContextEntryEntity CreateExpressionUpsert(string inputPath, string code = "")
+    {
+        return CreateUpsertEntry(inputPath, ContextEntryType.Expression, code);
+    }
+
+    public static ContextEntryEntity CreateUpsertEntry(string inputPath, ContextEntryType entryType, string entryValue, bool optional = false)
+    {
+        return CreateEntry(ContextEntryPurpose.Upsert, inputPath, optional, entryType, entryValue);
+    }
+
+    public static ContextEntryEntity CreateDeleteEntry(string inputPath)
+    {
+        return CreateEntry(ContextEntryPurpose.Delete, inputPath, optional: false, ContextEntryType.String, entryValue: string.Empty);
+    }
+
     public static ContextEntryEntity CreateInputEntry(string inputPath, bool optional, ContextEntryType entryType, string entryValue)
+    {
+        return CreateEntry(ContextEntryPurpose.Input, inputPath, optional, entryType, entryValue);
+    }
+
+    private static ContextEntryEntity CreateEntry(
+        ContextEntryPurpose purpose,
+        string inputPath,
+        bool optional,
+        ContextEntryType entryType,
+        string entryValue)
     {
         return new ContextEntryEntity
         {
             Id = Guid.NewGuid(),
             Version = 1,
-            Purpose = ContextEntryPurpose.Input,
+            Purpose = purpose,
             InputPath = inputPath,
             OutputPath = string.Empty,
             Optional = optional,
