@@ -6,14 +6,7 @@ public class WorkflowRunner
 {
     public static async Task<Run> RunWorkflow(ContextObject ctx, params WorkflowEntity[] workflows)
     {
-        // Create full set of engine services
-        var services = new ServiceCollection();
-        services.AddSharpOMaticEngine();
-
-        // Override the repository with a simple in memory test version
-        services.AddSingleton<IRepositoryService, TestRepositoryService>();
-
-        await using var provider = services.BuildServiceProvider();
+        await using var provider = BuildProvider();
 
         // Add all provided workflows to the database
         var repositoryService = provider.GetRequiredService<IRepositoryService>();
@@ -42,4 +35,19 @@ public class WorkflowRunner
             await queueTask;
         }
     }
+
+    public static ServiceProvider BuildProvider()
+    {
+        var services = new ServiceCollection();
+        services.AddSharpOMaticEngine()
+                .AddScriptOptions([typeof(WorkflowRunner).Assembly], ["SharpOMatic.Tests.Workflows"])
+                .AddJsonConverters(typeof(ClassExampleConverter));
+
+        // Override the repository with a simple in memory test version
+        services.AddSingleton<IRepositoryService, TestRepositoryService>();
+
+        return services.BuildServiceProvider();
+    }
+
+    public static int Double(int value) => value * 2;
 }

@@ -9,3 +9,5 @@ global using SharpOMatic.Engine.Metadata.Definitions;
 global using SharpOMatic.Engine.Repository;
 global using SharpOMatic.Engine.Services;
 global using SharpOMatic.Tests.Services;
+global using System.Text.Json;
+global using System.Text.Json.Serialization;
