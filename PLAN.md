@@ -8,6 +8,7 @@
 
 ## Scope and constraints
 - Preserve current engine semantics (Start/End, tracing, node limits, merge behavior, failure handling).
+- Preserve node behaviors validated by unit tests (Start init handling and validation, Edit ordering/validation, Switch default/skip semantics, End mappings and last-writer-wins, FanOut merge and unconnected output behavior).
 - Keep global execution concurrency limits (current semaphore) for runnable nodes only.
 - Treat input as a run-level barrier and serialize input prompts.
 - Persist enough state to resume exactly where execution paused.
@@ -52,6 +53,9 @@
 - Each child thread references the group context; parent thread becomes the group owner.
 - FanIn uses the group context to merge `output` values and release the parent only after all branches arrive.
 - Merge strategy stays "merge output only" to match existing behavior.
+- Ignore unconnected fan-out outputs; if none are connected, the fan-out completes immediately.
+- If a fan-out has no downstream fan-in, the last completed branch context wins.
+- Preserve current output merge rules (single scalar stays scalar, multiple outputs aggregate into a list, list + scalar merges into a list, nested `output.*` keys merge by object path).
 
 ### Batch
 - Batch creates a `ThreadGroupContext` with `ProcessNode` and `ContinueNode`.

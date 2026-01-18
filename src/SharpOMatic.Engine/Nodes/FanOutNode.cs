@@ -22,10 +22,7 @@ public class FanOutNode(ThreadContext threadContext, FanOutNodeEntity node) : Ru
         ThreadContext.FanOutCount = nextNodes.Count;
         ThreadContext.FanInArrived = 0;
 
-        var message = nextNodes.Count == 0
-            ? "No outputs connected"
-            : $"{nextNodes.Count} threads started";
-
+        var message = nextNodes.Count == 0 ? "No outputs connected" : $"{nextNodes.Count} threads started";
         return (message, nextNodes);
     }
 }
