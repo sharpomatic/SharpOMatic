@@ -373,7 +373,7 @@ public sealed class WorkflowBuilder
         return CreateInputEntry(inputPath, optional, ContextEntryType.Expression, code);
     }
 
-    private static ContextEntryEntity CreateInputEntry(string inputPath, bool optional, ContextEntryType entryType, string entryValue)
+    public static ContextEntryEntity CreateInputEntry(string inputPath, bool optional, ContextEntryType entryType, string entryValue)
     {
         return new ContextEntryEntity
         {
@@ -388,7 +388,7 @@ public sealed class WorkflowBuilder
         };
     }
 
-    private NodeEntity GetNodeByTitle(string title)
+    public NodeEntity GetNodeByTitle(string title)
     {
         var node = _nodes.FirstOrDefault(n => string.Equals(n.Title, title, StringComparison.Ordinal));
         if (node is null)

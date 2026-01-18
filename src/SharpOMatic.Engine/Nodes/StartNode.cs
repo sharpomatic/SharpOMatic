@@ -6,6 +6,7 @@ public class StartNode(ThreadContext threadContext, StartNodeEntity node)
 {
     protected override async Task<(string, List<NextNodeData>)> RunInternal()
     {
+        // Record when the workflow is running because the start node is processing
         RunContext.Run.RunStatus = RunStatus.Running;
         RunContext.Run.Message = "Running";
         RunContext.Run.Started = DateTime.Now;
@@ -24,7 +25,9 @@ public class StartNode(ThreadContext threadContext, StartNodeEntity node)
 
                 if (ThreadContext.NodeContext.TryGet<object?>(entry.InputPath, out var mapValue))
                 {
-                    outputContext.TrySet(entry.InputPath, mapValue);
+                    if (!outputContext.TrySet(entry.InputPath, mapValue))
+                        throw new SharpOMaticException($"Start node cannot set '{entry.InputPath}' into context.");
+
                     provided++;
                 }
                 else
@@ -34,7 +37,7 @@ public class StartNode(ThreadContext threadContext, StartNodeEntity node)
 
                     var entryValue = await EvaluateContextEntryValue(entry);
 
-                    if (!ThreadContext.NodeContext.TrySet(entry.InputPath, entryValue))
+                    if (!outputContext.TrySet(entry.InputPath, entryValue))
                         throw new SharpOMaticException($"Start node entry '{entry.InputPath}' could not be assigned the value.");
 
                     defaulted++;
