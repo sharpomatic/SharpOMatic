@@ -116,15 +116,6 @@ public class RunContext
         return ResolveOutput(node.Outputs[0]);
     }
 
-    public List<NodeEntity> ResolveMultipleOutputs(NodeEntity node)
-    {
-        var nodes = new List<NodeEntity>();
-        foreach (var connector in node.Outputs)
-            nodes.Add(ResolveOutput(connector));
-
-        return nodes;
-    }
-
     public NodeEntity ResolveOutput(ConnectorEntity connector)
     {
         if (!_fromToConnection.TryGetValue(connector.Id, out var connection) ||
