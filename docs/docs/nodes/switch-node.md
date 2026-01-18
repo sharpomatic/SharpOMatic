@@ -27,3 +27,8 @@ This guarantees that the node always selects a path, even when all conditions ar
 Each switch branch has a name so you can distinguish between them in the editor.
 
 <img src="/img/switch_editor.png" alt="Switch editor" width="500" style={{ maxWidth: '100%', height: 'auto' }} />
+
+## Output connectivity
+
+The default (last) output must be connected or the run fails.
+If a matched non-default output is not connected, the switch skips it and continues evaluating later entries, falling back to the default if needed.

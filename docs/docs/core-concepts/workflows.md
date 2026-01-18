@@ -57,6 +57,8 @@ A workflow completes when either:
 Without end nodes, the context from the last node executed becomes the workflow result.
 If there are multiple paths, particularly if they run in parallel, then the order in which paths are completed can vary.
 This means different nodes may finish last, producing different results.
+If an **End** node runs, its output becomes the workflow result and later non-end paths do not override it.
+When multiple **End** nodes run (for example, after parallel paths), the one that finishes last sets the final result.
 
 The **End** node can select which context entries are output as the workflow result.
 This lets you exclude intermediate values that are not relevant to the outcome, producing a smaller and cleaner result.

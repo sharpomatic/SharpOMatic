@@ -11,6 +11,8 @@ Each workflow must have exactly one start node.
 The start node receives the initial context that is supplied via the editor or programmatic invocation.
 If you do not supply a context, an empty context is created automatically.
 If your workflow does not need to enforce inputs, leave the node unchanged.
+When initialization is enabled, the context is rebuilt from the listed entries and any unlisted values are dropped.
+If the list is empty, the resulting context is empty.
 
 ## Mandatory values
 
@@ -18,6 +20,8 @@ You can choose to initialize the context.
 This allows you to enforce mandatory entries.
 Simply turn on the **Initialize the context** checkbox and then add a list of paths that must be present.
 Note that it does not check the type, only the presence of a value.
+Paths must be non-empty and valid context paths.
+List index targets (for example, `input.list[0]`) cannot be created during initialization because lists are not auto-created.
 
 <img src="/img/start_mandatory.png" alt="Mandatory paths" width="900" style={{ maxWidth: '100%', height: 'auto' }} />
 
@@ -25,6 +29,8 @@ Note that it does not check the type, only the presence of a value.
 
 If you specify a default value, the value becomes optional.
 When a value is provided it will always be used; otherwise, the defined default value is applied.
+Default values are parsed and validated based on the selected type, and invalid values fail the run.
+A **null** value counts as provided and does not trigger the default.
 
 You can choose from **bool**, **int**, **double**, and **string** as basic scalar types.
 Other type options are described below.

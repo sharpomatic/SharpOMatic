@@ -14,8 +14,14 @@ Upserts add a new value or replace an existing one at the specified path.
 Each upsert entry requires a path and a value.
 You can choose from **bool**, **int**, **double**, and **string** as basic scalar types.
 Other type options are described below.
+Invalid paths or values (for example, bad JSON or an invalid list index) cause the run to fail.
 
 <img src="/img/edit_scalar.png" alt="Mandatory paths" width="900" style={{ maxWidth: '100%', height: 'auto' }} />
+
+## Deletes
+
+Deletes remove the value at the specified path if it exists.
+Missing or invalid paths are ignored, but an empty path causes the run to fail.
 
 ## Default assets
 
@@ -54,4 +60,3 @@ This works because the returned type **DateTimeOffset** is a scalar and all scal
 Returning a class would require you to add an appropriate **JsonConverter** to the SharpOMatic setup during program setup.
 
 <img src="/img/edit_expression.png" alt="Expression value" width="900" style={{ maxWidth: '100%', height: 'auto' }} />
-
