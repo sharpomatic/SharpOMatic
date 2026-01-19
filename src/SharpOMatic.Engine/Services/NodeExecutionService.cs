@@ -73,6 +73,9 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             if (processContext.Run.RunStatus == RunStatus.Failed)
                 return;
 
+            if (nextNodes.Count == 0 && TryHandleBatchCompletion(threadContext, out var batchNextNodes))
+                nextNodes = batchNextNodes;
+
             var continues = nextNodes.Any(nextNode => ReferenceEquals(nextNode.ThreadContext, threadContext));
             if (!continues)
                 processContext.RemoveThread(threadContext);
@@ -134,6 +137,87 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
     {
         var runner = runNodeFactory.Create(threadContext, node);
         return runner.Run();
+    }
+
+    private bool TryHandleBatchCompletion(ThreadContext threadContext, out List<NextNodeData> nextNodes)
+    {
+        nextNodes = [];
+
+        if (threadContext.CurrentContext is not BatchContext batchContext)
+            return false;
+
+        if (batchContext.ProcessNode is null || batchContext.BaseContextJson is null)
+            return false;
+
+        lock (batchContext)
+        {
+            if (threadContext.BatchIndex is null)
+                throw new SharpOMaticException("Batch thread is missing a batch index.");
+
+            if (threadContext.NodeContext.TryGetValue("output", out var outputValue))
+                batchContext.BatchOutputs[threadContext.BatchIndex.Value] = new ContextObject { { "output", outputValue } };
+
+            batchContext.CompletedBatches++;
+            batchContext.InFlightBatches--;
+
+            if (batchContext.NextItemIndex < batchContext.BatchItems.Count)
+            {
+                var batchSlice = CreateBatchSlice(batchContext.BatchItems, batchContext.NextItemIndex, batchContext.BatchSize);
+                if (batchSlice.Count > 0)
+                {
+                    var batchIndex = batchContext.NextBatchIndex++;
+                    batchContext.NextItemIndex += batchSlice.Count;
+                    batchContext.InFlightBatches++;
+
+                    threadContext.NodeContext = CreateBatchContextObject(batchContext, batchSlice, threadContext.ProcessContext.JsonConverters);
+                    threadContext.BatchIndex = batchIndex;
+                    nextNodes = [new NextNodeData(threadContext, batchContext.ProcessNode)];
+                    return true;
+                }
+            }
+
+            if (batchContext.InFlightBatches == 0)
+            {
+                var mergedContext = ContextObject.Deserialize(batchContext.BaseContextJson, threadContext.ProcessContext.JsonConverters);
+                for (var index = 0; index < batchContext.NextBatchIndex; index++)
+                {
+                    if (batchContext.BatchOutputs.TryGetValue(index, out var outputContext))
+                        threadContext.ProcessContext.MergeContexts(mergedContext, outputContext);
+                }
+
+                batchContext.MergedContext = mergedContext;
+                threadContext.NodeContext = mergedContext;
+                threadContext.BatchIndex = null;
+
+                if (batchContext.ContinueNode is null)
+                    return true;
+
+                nextNodes = [new NextNodeData(threadContext, batchContext.ContinueNode)];
+                return true;
+            }
+        }
+
+        threadContext.BatchIndex = null;
+        return true;
+    }
+
+    private static ContextObject CreateBatchContextObject(BatchContext batchContext, ContextList slice, IEnumerable<JsonConverter> jsonConverters)
+    {
+        var context = ContextObject.Deserialize(batchContext.BaseContextJson, jsonConverters);
+        if (!context.TrySet(batchContext.InputArrayPath, slice))
+            throw new SharpOMaticException($"Batch node cannot set '{batchContext.InputArrayPath}' into context.");
+
+        return context;
+    }
+
+    private static ContextList CreateBatchSlice(ContextList items, int startIndex, int batchSize)
+    {
+        var slice = new ContextList();
+        var endIndex = Math.Min(items.Count, startIndex + batchSize);
+        for (var index = startIndex; index < endIndex; index++)
+            slice.Add(items[index]);
+
+        return slice;
     }
 
     private async Task PruneRunHistory(ProcessContext processContext)

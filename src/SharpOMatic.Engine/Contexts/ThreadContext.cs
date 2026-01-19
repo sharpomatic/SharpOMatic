@@ -16,5 +16,6 @@ public class ThreadContext
     public ContextObject NodeContext { get; set; }
     public int ThreadId { get; }
     public Guid NodeId { get; set; }
+    public int? BatchIndex { get; set; }
     public WorkflowContext WorkflowContext => CurrentContext.GetWorkflowContext();
 }

@@ -6,7 +6,7 @@
 
 - Parallel batch processing of arrays
 - User interaction node, suspend workflow and allow resume
-- Integrate use of OmniSharp for full intellisense in code nodes
+- Integrate use of LSP/OmniSharp for full intellisense in code nodes
 - Add workflow node to call another workflow as sub-task
 
 ### Connectors

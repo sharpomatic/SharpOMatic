@@ -26,6 +26,7 @@ public class FanOutNode(ThreadContext threadContext, FanOutNodeEntity node)
             var resolveNode = WorkflowContext.ResolveOutput(connector);
             var newContext = ContextObject.Deserialize(json, ProcessContext.JsonConverters);
             var newThreadContext = ProcessContext.CreateThread(newContext, fanOutContext);
+            newThreadContext.BatchIndex = ThreadContext.BatchIndex;
             nextNodes.Add(new NextNodeData(newThreadContext, resolveNode));
         }
 
