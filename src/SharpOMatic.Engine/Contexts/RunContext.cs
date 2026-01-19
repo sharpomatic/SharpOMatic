@@ -2,7 +2,6 @@
 
 public class RunContext
 {
-    private readonly Dictionary<Guid, NodeEntity> _ouputConnectorToNode = [];
     private readonly Dictionary<Guid, NodeEntity> _inputConnectorToNode = [];
     private readonly Dictionary<Guid, ConnectionEntity> _fromToConnection = [];
     private TaskCompletionSource<Run>? _completionSource;
@@ -46,9 +45,6 @@ public class RunContext
 
         foreach (var node in workflow.Nodes)
         {
-            foreach (var connector in node.Outputs)
-                _ouputConnectorToNode.Add(connector.Id, node);
-
             foreach (var connector in node.Inputs)
                 _inputConnectorToNode.Add(connector.Id, node);
         }
