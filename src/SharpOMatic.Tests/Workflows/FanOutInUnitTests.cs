@@ -205,6 +205,9 @@ public sealed class FanOutInUnitTests
         Assert.NotNull(outCtx);
         Assert.Equal(10, outCtx.Get<int>("input.value"));
         Assert.Equal("second", outCtx.Get<string>("output.winner"));
+
+        // NOTE: The returned context is from the last path to finish because
+        // it did not have FanIn. No FanIn so no merging of multiple paths
     }
 
     [Fact]
