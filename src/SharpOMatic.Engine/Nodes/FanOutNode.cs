@@ -1,28 +1,35 @@
 ﻿namespace SharpOMatic.Engine.Nodes;
 
 [RunNode(NodeType.FanOut)]
-public class FanOutNode(ThreadContext threadContext, FanOutNodeEntity node) : RunNode<FanOutNodeEntity>(threadContext, node)
+public class FanOutNode(ThreadContext threadContext, FanOutNodeEntity node) 
+    : RunNode<FanOutNodeEntity>(threadContext, node)
 {
     protected override async Task<(string, List<NextNodeData>)> RunInternal()
     {
-        var json = ThreadContext.NodeContext.Serialize(RunContext.JsonConverters);
+        var json = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters);
+
+        var connectedOutputs = Node.Outputs.Where(IsOutputConnected).ToList();
+        if (connectedOutputs.Count == 0)
+            return ("No outputs connected", []);
+
+        var fanOutContext = new FanOutInContext(ThreadContext.CurrentContext)
+        {
+            FanOutCount = connectedOutputs.Count,
+            FanInArrived = 0,
+            FanInId = null,
+            MergedContext = ContextObject.Deserialize(json, ProcessContext.JsonConverters)
+        };
 
         List<NextNodeData> nextNodes = [];
-        foreach (var connector in Node.Outputs)
+        foreach (var connector in connectedOutputs)
         {
-            if (!IsOutputConnected(connector))
-                continue;
-
-            var resolveNode = RunContext.ResolveOutput(connector);
-            var newContext = ContextObject.Deserialize(json, RunContext.JsonConverters);
-            var newThreadContext = new ThreadContext(RunContext, newContext, ThreadContext);
+            var resolveNode = WorkflowContext.ResolveOutput(connector);
+            var newContext = ContextObject.Deserialize(json, ProcessContext.JsonConverters);
+            var newThreadContext = ProcessContext.CreateThread(newContext, fanOutContext);
             nextNodes.Add(new NextNodeData(newThreadContext, resolveNode));
         }
 
-        ThreadContext.FanOutCount = nextNodes.Count;
-        ThreadContext.FanInArrived = 0;
-
-        var message = nextNodes.Count == 0 ? "No outputs connected" : $"{nextNodes.Count} threads started";
+        var message = $"{nextNodes.Count} threads started";
         return (message, nextNodes);
     }
 }

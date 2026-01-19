@@ -7,7 +7,8 @@ public abstract class RunNode<T> : IRunNode where T : NodeEntity
     protected ThreadContext ThreadContext { get; set; }
     protected T Node { get; init; }
     protected Trace Trace { get; init; }
-    protected RunContext RunContext => ThreadContext.RunContext;
+    protected ProcessContext ProcessContext => ThreadContext.ProcessContext;
+    protected WorkflowContext WorkflowContext => ThreadContext.WorkflowContext;
 
     public RunNode(ThreadContext threadContext, NodeEntity node)
     {
@@ -16,8 +17,8 @@ public abstract class RunNode<T> : IRunNode where T : NodeEntity
 
         Trace = new Trace()
         {
-            WorkflowId = RunContext.Workflow.Id,
-            RunId = RunContext.Run.RunId,
+            WorkflowId = WorkflowContext.WorkflowId,
+            RunId = ProcessContext.Run.RunId,
             TraceId = Guid.NewGuid(),
             NodeEntityId = node.Id,
             Created = DateTime.Now,
@@ -25,7 +26,7 @@ public abstract class RunNode<T> : IRunNode where T : NodeEntity
             NodeStatus = NodeStatus.Running,
             Title = node.Title,
             Message = "Running",
-            InputContext = ThreadContext.NodeContext.Serialize(RunContext.JsonConverters)
+            InputContext = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters)
         };
     }
 
@@ -50,8 +51,8 @@ public abstract class RunNode<T> : IRunNode where T : NodeEntity
 
     protected async Task NodeRunning()
     {
-        await RunContext.RepositoryService.UpsertTrace(Trace);
-        foreach (var progressService in RunContext.ProgressServices)
+        await ProcessContext.RepositoryService.UpsertTrace(Trace);
+        foreach (var progressService in ProcessContext.ProgressServices)
             await progressService.TraceProgress(Trace);
     }
 
@@ -72,9 +73,9 @@ public abstract class RunNode<T> : IRunNode where T : NodeEntity
     {
         Trace.Finished = DateTime.Now;
         Trace.Message = message;
-        Trace.OutputContext = ThreadContext.NodeContext.Serialize(RunContext.JsonConverters);
-        await RunContext.RepositoryService.UpsertTrace(Trace);
-        foreach (var progressService in RunContext.ProgressServices)
+        Trace.OutputContext = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters);
+        await ProcessContext.RepositoryService.UpsertTrace(Trace);
+        foreach (var progressService in ProcessContext.ProgressServices)
             await progressService.TraceProgress(Trace);
     }
 
@@ -89,16 +90,16 @@ public abstract class RunNode<T> : IRunNode where T : NodeEntity
         if (!IsOutputConnected(Node.Outputs[0]))
             return [];
 
-        return [new NextNodeData(nextThreadContext, RunContext.ResolveSingleOutput(Node))];
+        return [new NextNodeData(nextThreadContext, WorkflowContext.ResolveSingleOutput(Node))];
     }
 
     protected bool IsOutputConnected(ConnectorEntity connector)
     {
-        return RunContext.Workflow.Connections.Any(connection => connection.From == connector.Id);
+        return WorkflowContext.IsOutputConnected(connector);
     }
 
     protected Task<object?> EvaluateContextEntryValue(ContextEntryEntity entry)
     {
-        return ContextHelpers.ResolveContextEntryValue(RunContext.ServiceScope.ServiceProvider, ThreadContext.NodeContext, entry, RunContext.ScriptOptionsService);
+        return ContextHelpers.ResolveContextEntryValue(ProcessContext.ServiceScope.ServiceProvider, ThreadContext.NodeContext, entry, ProcessContext.ScriptOptionsService);
     }
 }

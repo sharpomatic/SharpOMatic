@@ -120,9 +120,10 @@ public class EngineService(IServiceScopeFactory scopeFactory,
             var nodeRunLimitSetting = await RepositoryService.GetSetting("RunNodeLimit");
             var nodeRunLimit = nodeRunLimitSetting?.ValueInteger ?? NodeExecutionService.DEFAULT_NODE_RUN_LIMIT;
 
-            var runContext = new RunContext(serviceScope, workflow, run, nodeRunLimit, completionSource);
-            var threadContext = new ThreadContext(runContext, nodeContext);
-            await runContext.RunUpdated();
+            var processContext = new ProcessContext(serviceScope, run, nodeRunLimit, completionSource);
+            var workflowContext = new WorkflowContext(processContext, workflow);
+            var threadContext = processContext.CreateThread(nodeContext, workflowContext);
+            await processContext.RunUpdated();
             QueueService.Enqueue(threadContext, currentNodes[0]);
         }
         catch

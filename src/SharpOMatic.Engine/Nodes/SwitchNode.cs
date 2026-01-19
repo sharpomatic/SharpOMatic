@@ -17,11 +17,11 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node)
 
             if (!string.IsNullOrWhiteSpace(switcher.Code))
             {
-                var options = RunContext.ScriptOptionsService.GetScriptOptions();
+                var options = ProcessContext.ScriptOptionsService.GetScriptOptions();
 
                 try
                 {
-                    var result = await CSharpScript.EvaluateAsync(switcher.Code, options, new ScriptCodeContext() { Context = ThreadContext.NodeContext, ServiceProvider = RunContext.ServiceScope.ServiceProvider }, typeof(ScriptCodeContext));
+                    var result = await CSharpScript.EvaluateAsync(switcher.Code, options, new ScriptCodeContext() { Context = ThreadContext.NodeContext, ServiceProvider = ProcessContext.ServiceScope.ServiceProvider }, typeof(ScriptCodeContext));
                     if (result is null)
                         throw new SharpOMaticException($"Switch node entry '{switcher.Name}' returned null instead of a boolean value.");
 
@@ -33,7 +33,7 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node)
                         if (!IsOutputConnected(Node.Outputs[i]))
                             continue;
 
-                        return ($"Switched to {switcher.Name}", [new NextNodeData(ThreadContext, RunContext.ResolveOutput(Node.Outputs[i]))]);
+                        return ($"Switched to {switcher.Name}", [new NextNodeData(ThreadContext, WorkflowContext.ResolveOutput(Node.Outputs[i]))]);
                     }
                 }
                 catch (CompilationErrorException e1)
@@ -56,6 +56,6 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node)
             }
         }
 
-        return ($"Switched to {Node.Switches[lastIndex].Name}", [new NextNodeData(ThreadContext, RunContext.ResolveOutput(Node.Outputs[lastIndex]))]);
+        return ($"Switched to {Node.Switches[lastIndex].Name}", [new NextNodeData(ThreadContext, WorkflowContext.ResolveOutput(Node.Outputs[lastIndex]))]);
     }
 }

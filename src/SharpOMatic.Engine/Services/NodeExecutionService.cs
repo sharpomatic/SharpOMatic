@@ -21,7 +21,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
                     try
                     {
                         // If the workflow has already been failed, then ignore the node execution
-                        if (threadContext.RunContext.Run.RunStatus != RunStatus.Failed)
+                        if (threadContext.ProcessContext.Run.RunStatus != RunStatus.Failed)
                             await ProcessNode(threadContext, node);
                     }
                     finally
@@ -47,28 +47,40 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
 
     private async Task ProcessNode(ThreadContext threadContext, NodeEntity node)
     {
-        var runContext = threadContext.RunContext;
+        var processContext = threadContext.ProcessContext;
 
         try
         {
-            if (runContext.Run.RunStatus == RunStatus.Failed)
+            threadContext.NodeId = node.Id;
+
+            if (threadContext.CurrentContext is BatchContext batchContext &&
+                batchContext.ContinueNodeId == node.Id)
+            {
+                if (batchContext.Parent is null)
+                    throw new SharpOMaticException("Batch context is missing a parent execution context.");
+
+                threadContext.CurrentContext = batchContext.Parent;
+                processContext.UntrackContext(batchContext);
+            }
+
+            if (processContext.Run.RunStatus == RunStatus.Failed)
                 return;
 
-            if (!runContext.TryIncrementNodesRun(out _))
-                throw new SharpOMaticException($"Hit run node limit of {runContext.RunNodeLimit}");
+            if (!processContext.TryIncrementNodesRun(out _))
+                throw new SharpOMaticException($"Hit run node limit of {processContext.RunNodeLimit}");
 
             var nextNodes = await RunNode(threadContext, node);
-            if (runContext.Run.RunStatus == RunStatus.Failed)
+            if (processContext.Run.RunStatus == RunStatus.Failed)
                 return;
 
-            if (runContext.UpdateThreadCount(nextNodes.Count - 1) == 0)
-            {
-                if (runContext.Run.RunStatus == RunStatus.Failed)
-                    return;
+            var continues = nextNodes.Any(nextNode => ReferenceEquals(nextNode.ThreadContext, threadContext));
+            if (!continues)
+                processContext.RemoveThread(threadContext);
 
-                // When a FanIn completes and there is no next thread, continue with parent and not the last child to arrive
-                if (node is FanInNodeEntity)
-                    threadContext = threadContext.Parent ?? threadContext;
+            if (processContext.UpdateThreadCount(nextNodes.Count - 1) == 0)
+            {
+                if (processContext.Run.RunStatus == RunStatus.Failed)
+                    return;
 
                 await RunCompleted(threadContext, RunStatus.Success, "Success");
             }
@@ -86,37 +98,36 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
 
     private async Task RunCompleted(ThreadContext threadContext, RunStatus runStatus, string message, string? error = "")
     {
-        var runContext = threadContext.RunContext;
+        var processContext = threadContext.ProcessContext;
 
-        runContext.Run.RunStatus = runStatus;
-        runContext.Run.Message = message;
-        runContext.Run.Error = error;
-        runContext.Run.Stopped = DateTime.Now;
+        processContext.Run.RunStatus = runStatus;
+        processContext.Run.Message = message;
+        processContext.Run.Error = error;
+        processContext.Run.Stopped = DateTime.Now;
 
         // If no EndNode was encountered then use the output of the last run node
-        if (threadContext.RunContext.Run.OutputContext is null)
-            runContext.Run.OutputContext = threadContext.NodeContext.Serialize(threadContext.RunContext.JsonConverters);
+        if (processContext.Run.OutputContext is null)
+            processContext.Run.OutputContext = threadContext.NodeContext.Serialize(processContext.JsonConverters);
 
-        await runContext.RunUpdated();
+        await processContext.RunUpdated();
 
-        if (runContext.CompletionSource is not null)
-            runContext.CompletionSource.SetResult(runContext.Run);
+        processContext.CompletionSource?.TrySetResult(processContext.Run);
 
-        await PruneRunHistory(runContext);
+        await PruneRunHistory(processContext);
 
-        var notifications = runContext.ServiceScope.ServiceProvider.GetServices<IEngineNotification>();
+        var notifications = processContext.ServiceScope.ServiceProvider.GetServices<IEngineNotification>();
         foreach (var notification in notifications)
         {
             // Notify in separate task in case called instance perform a long running action
             _ = Task.Run(async () =>
             {
-                await notification.RunCompleted(runContext.Run.RunId, runContext.Run.WorkflowId, runContext.Run.RunStatus,
-                                                runContext.Run.OutputContext, runContext.Run.Error);
+                await notification.RunCompleted(processContext.Run.RunId, processContext.Run.WorkflowId, processContext.Run.RunStatus,
+                                                processContext.Run.OutputContext, processContext.Run.Error);
 
             });
         }
 
-        runContext.ServiceScope.Dispose();
+        processContext.ServiceScope.Dispose();
     }
 
     private Task<List<NextNodeData>> RunNode(ThreadContext threadContext, NodeEntity node)
@@ -125,21 +136,21 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         return runner.Run();
     }
 
-    private async Task PruneRunHistory(RunContext runContext)
+    private async Task PruneRunHistory(ProcessContext processContext)
     {
         try
         {
-            var runHistoryLimitSetting = await runContext.RepositoryService.GetSetting("RunHistoryLimit");
+            var runHistoryLimitSetting = await processContext.RepositoryService.GetSetting("RunHistoryLimit");
 
             var runHistoryLimit = runHistoryLimitSetting?.ValueInteger ?? DEFAULT_RUN_HISTORY_LIMIT;
             if (runHistoryLimit < 0)
                 runHistoryLimit = 0;
 
-            await runContext.RepositoryService.PruneWorkflowRuns(runContext.Run.WorkflowId, runHistoryLimit);
+            await processContext.RepositoryService.PruneWorkflowRuns(processContext.Run.WorkflowId, runHistoryLimit);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to prune run history for workflow '{runContext.Run.WorkflowId}': {ex.Message}");
+            Console.WriteLine($"Failed to prune run history for workflow '{processContext.Run.WorkflowId}': {ex.Message}");
         }
     }
 }

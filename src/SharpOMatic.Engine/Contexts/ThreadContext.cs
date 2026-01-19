@@ -1,14 +1,20 @@
 ﻿
 namespace SharpOMatic.Engine.Contexts;
 
-public class ThreadContext(RunContext runContext, ContextObject nodeContext, ThreadContext? parent = null)
+public class ThreadContext
 {
-    public RunContext RunContext { get; init; } = runContext;
-    public ContextObject NodeContext { get; set; } = nodeContext;
-    public ThreadContext? Parent { get; init; } = parent;
-    public int ThreadId { get; init; } = runContext.GetNextThreadId();
-    public int FanOutCount { get; set; }
-    public Guid FanInId { get; set; }
-    public int FanInArrived { get; set; }
-    public ContextObject? FanInMergedContext { get; set; }
+    public ThreadContext(ProcessContext processContext, ExecutionContext currentContext, ContextObject nodeContext)
+    {
+        ProcessContext = processContext;
+        CurrentContext = currentContext;
+        NodeContext = nodeContext;
+        ThreadId = processContext.GetNextThreadId();
+    }
+
+    public ProcessContext ProcessContext { get; }
+    public ExecutionContext CurrentContext { get; set; }
+    public ContextObject NodeContext { get; set; }
+    public int ThreadId { get; }
+    public Guid NodeId { get; set; }
+    public WorkflowContext WorkflowContext => CurrentContext.GetWorkflowContext();
 }

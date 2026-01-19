@@ -1,7 +1,8 @@
 namespace SharpOMatic.Engine.Nodes;
 
 [RunNode(NodeType.Batch)]
-public class BatchNode(ThreadContext threadContext, BatchNodeEntity node) : RunNode<BatchNodeEntity>(threadContext, node)
+public class BatchNode(ThreadContext threadContext, BatchNodeEntity node) 
+    : RunNode<BatchNodeEntity>(threadContext, node)
 {
     protected override async Task<(string, List<NextNodeData>)> RunInternal()
     {
@@ -23,7 +24,20 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node) : RunN
         if (arrayValue is not ContextList)
             throw new SharpOMaticException($"Batch node input array path '{Node.InputArrayPath}' must be a context list.");
 
-        var nextNode = RunContext.ResolveOutput(Node.Outputs[0]);
+        var nextNode = WorkflowContext.ResolveOutput(Node.Outputs[0]);
+        var batchContext = new BatchContext(ThreadContext.CurrentContext)
+        {
+            BatchItems = (ContextList)arrayValue,
+            BatchSize = Node.BatchSize,
+            ParallelBatches = Node.ParallelBatches,
+            NextItemIndex = 0,
+            InFlightBatches = 0,
+            CompletedBatches = 0,
+            BatchNodeId = Node.Id,
+            ContinueNodeId = nextNode.Id
+        };
+
+        ThreadContext.CurrentContext = batchContext;
         return ("continue", [new NextNodeData(ThreadContext, nextNode)]);
     }
 }

@@ -1,19 +1,17 @@
 #pragma warning disable OPENAI001
-using Azure.Core;
-using System.ClientModel;
-
 namespace SharpOMatic.Engine.Nodes;
 
 [RunNode(NodeType.ModelCall)]
-public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node) : RunNode<ModelCallNodeEntity>(threadContext, node)
+public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node) 
+    : RunNode<ModelCallNodeEntity>(threadContext, node)
 {
     private Model? _model;
     private ModelConfig? _modelConfig;
 
     protected override async Task<(string, List<NextNodeData>)> RunInternal()
     {
-        var repository = ThreadContext.RunContext.RepositoryService;
-        var assetStore = ThreadContext.RunContext.ServiceScope.ServiceProvider.GetRequiredService<IAssetStore>();
+        var repository = ProcessContext.RepositoryService;
+        var assetStore = ProcessContext.ServiceScope.ServiceProvider.GetRequiredService<IAssetStore>();
 
         if (Node.ModelId is null)
             throw new SharpOMaticException("No model selected");
@@ -48,9 +46,9 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                 connectionFields.Add(field.Name, fieldValue);
 
         // Allow the user notifications to customize the field values
-        var notifications = ThreadContext.RunContext.ServiceScope.ServiceProvider.GetServices<IEngineNotification>();
+        var notifications = ProcessContext.ServiceScope.ServiceProvider.GetServices<IEngineNotification>();
         foreach (var notification in notifications)
-            notification.ConnectionOverride(ThreadContext.RunContext.Run.RunId, ThreadContext.RunContext.Run.WorkflowId, connector.ConfigId, selectedAuthenticationModel, connectionFields);
+            notification.ConnectionOverride(ProcessContext.Run.RunId, ProcessContext.Run.WorkflowId, connector.ConfigId, selectedAuthenticationModel, connectionFields);
 
         if (!HasCapability("SupportsTextIn"))
             throw new SharpOMaticException("Model does not support text input.");
@@ -113,7 +111,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                         Node.ParameterValues.TryGetValue("structured_output_schema_name", out var schemaName);
                         Node.ParameterValues.TryGetValue("structured_output_schema_description", out var schemaDescription);
 
-                        var configuredSchema = RunContext.SchemaTypeRegistry.GetSchema(configuredType);
+                        var configuredSchema = ProcessContext.SchemaTypeRegistry.GetSchema(configuredType);
                         if (string.IsNullOrWhiteSpace(configuredSchema))
                             throw new SharpOMaticException($"Configured type '{configuredType}' not found, check it is specified in the AddSchemaTypes setup.");
 
@@ -128,7 +126,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             }
         }
 
-        var agentServiceProvider = RunContext.ServiceScope.ServiceProvider;
+        var agentServiceProvider = ProcessContext.ServiceScope.ServiceProvider;
         if (HasCapability("SupportsToolCalling"))
         {
             if (GetCapabilityBool("SupportsToolCalling", "parallel_tool_calls", out bool parallelToolCalls))
@@ -142,7 +140,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                 List<AITool> tools = [];
                 foreach (var toolName in toolNames)
                 {
-                    var toolDelegate = RunContext.ToolMethodRegistry.GetToolFromDisplayName(toolName.Trim());
+                    var toolDelegate = ProcessContext.ToolMethodRegistry.GetToolFromDisplayName(toolName.Trim());
                     if (toolDelegate is null)
                         throw new SharpOMaticException($"Tool '{toolName.Trim()}' not found, check it is specified in the AddToolMethods setup.");
 
@@ -192,7 +190,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                 ThreadContext.NodeContext,
                 repository,
                 assetStore,
-                ThreadContext.RunContext.Run.RunId);
+                ProcessContext.Run.RunId);
 
         if (!string.IsNullOrWhiteSpace(Node.Prompt))
         {
@@ -201,7 +199,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                 ThreadContext.NodeContext,
                 repository,
                 assetStore,
-                ThreadContext.RunContext.Run.RunId);
+                ProcessContext.Run.RunId);
             chat.Add(new ChatMessage(ChatRole.User, [new TextContent(prompt)]));
         }
 
@@ -327,7 +325,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         else
             tempContext.Set(textPath, response.Text);
 
-        RunContext.MergeContexts(ThreadContext.NodeContext, tempContext);
+        ProcessContext.MergeContexts(ThreadContext.NodeContext, tempContext);
 
         if (!string.IsNullOrWhiteSpace(Node.ChatOutputPath))
         {

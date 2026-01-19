@@ -19,7 +19,7 @@ public class RunNodeFactory : IRunNodeFactory
             throw new SharpOMaticException($"Unrecognized node type '{node.NodeType}'");
 
         return (IRunNode)ActivatorUtilities.CreateInstance(
-            threadContext.RunContext.ServiceScope.ServiceProvider,
+            threadContext.ProcessContext.ServiceScope.ServiceProvider,
             runnerType,
             threadContext,
             node);

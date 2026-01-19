@@ -22,7 +22,7 @@ public class NodeQueueService : INodeQueueService
         while (true)
         {
             var item = await _queue.Reader.ReadAsync(cancellationToken);
-            if (!_blockedRuns.ContainsKey(item.threadContext.RunContext.Run.RunId))
+            if (!_blockedRuns.ContainsKey(item.threadContext.ProcessContext.Run.RunId))
             {
                 if (_queue.Reader.Count == 0)
                     _blockedRuns.Clear();

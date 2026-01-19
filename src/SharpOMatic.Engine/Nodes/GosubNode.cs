@@ -1,7 +1,9 @@
 namespace SharpOMatic.Engine.Nodes;
 
 [RunNode(NodeType.Gosub)]
-public class GosubNode(ThreadContext threadContext, GosubNodeEntity node) : RunNode<GosubNodeEntity>(threadContext, node)
+public class GosubNode(ThreadContext threadContext, GosubNodeEntity node) 
+    
+    : RunNode<GosubNodeEntity>(threadContext, node)
 {
     protected override async Task<(string, List<NextNodeData>)> RunInternal()
     {

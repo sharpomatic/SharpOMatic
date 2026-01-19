@@ -8,8 +8,8 @@ public class CodeNode(ThreadContext threadContext, CodeNodeEntity node)
     {
         if (!string.IsNullOrWhiteSpace(Node.Code))
         {
-            var options = ThreadContext.RunContext.ScriptOptionsService.GetScriptOptions();
-            var globals = new ScriptCodeContext() { Context = ThreadContext.NodeContext, ServiceProvider = RunContext.ServiceScope.ServiceProvider };
+            var options = ProcessContext.ScriptOptionsService.GetScriptOptions();
+            var globals = new ScriptCodeContext() { Context = ThreadContext.NodeContext, ServiceProvider = ProcessContext.ServiceScope.ServiceProvider };
 
             try
             {
