@@ -24,7 +24,10 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node)
         if (arrayValue is not ContextList)
             throw new SharpOMaticException($"Batch node input array path '{Node.InputArrayPath}' must be a context list.");
 
-        var nextNode = WorkflowContext.ResolveOutput(Node.Outputs[0]);
+        NodeEntity? nextNode = null;
+        if (Node.Outputs.Length > 0 && IsOutputConnected(Node.Outputs[0]))
+            nextNode = WorkflowContext.ResolveOutput(Node.Outputs[0]);
+
         var batchContext = new BatchContext(ThreadContext.CurrentContext)
         {
             BatchItems = (ContextList)arrayValue,
@@ -34,10 +37,13 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node)
             InFlightBatches = 0,
             CompletedBatches = 0,
             BatchNodeId = Node.Id,
-            ContinueNodeId = nextNode.Id
+            ContinueNodeId = nextNode?.Id
         };
 
         ThreadContext.CurrentContext = batchContext;
-        return ("continue", [new NextNodeData(ThreadContext, nextNode)]);
+        if (nextNode is null)
+            return ("continue", []);
+        else
+            return ("continue", [new NextNodeData(ThreadContext, nextNode)]);
     }
 }

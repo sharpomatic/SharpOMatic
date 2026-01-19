@@ -18,8 +18,6 @@ public sealed class EditNodeUnitTest
 
         Assert.NotNull(run);
         Assert.True(run.RunStatus == RunStatus.Success, run.Error);
-
-        // Edit leaves input context unchanged
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);

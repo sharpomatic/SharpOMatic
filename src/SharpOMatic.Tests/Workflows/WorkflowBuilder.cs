@@ -228,7 +228,7 @@ public sealed class WorkflowBuilder
         return this;
     }
 
-    public WorkflowBuilder AddBatch(string title = "batch", int batchSize = 10, int parallelBatches = 3)
+    public WorkflowBuilder AddBatch(string title = "batch", int batchSize = 10, int parallelBatches = 3, string inputPath = "")
     {
         var node = new BatchNodeEntity
         {
@@ -242,7 +242,7 @@ public sealed class WorkflowBuilder
             Height = 80f,
             Inputs = [CreateConnector()],
             Outputs = CreateConnectors("continue", "process"),
-            InputArrayPath = string.Empty,
+            InputArrayPath = inputPath,
             BatchSize = batchSize,
             ParallelBatches = parallelBatches
         };
