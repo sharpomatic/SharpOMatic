@@ -1,13 +1,13 @@
 # vNext
 
+- Check that trace works well for gosub workflows.
+
 ## Major Features
 
 ### Engine
 
-- Parallel batch processing of arrays
 - User interaction node, suspend workflow and allow resume
 - Integrate use of LSP/OmniSharp for full intellisense in code nodes
-- Add workflow node to call another workflow as sub-task
 
 ### Connectors
 
