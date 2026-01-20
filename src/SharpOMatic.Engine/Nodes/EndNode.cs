@@ -37,6 +37,33 @@ public class EndNode(ThreadContext threadContext, EndNodeEntity node)
         else
             Trace.Message = "Exited workflow";
 
+        var gosubContext = GosubContext.Find(ThreadContext.CurrentContext);
+        if (gosubContext is not null)
+        {
+            if (gosubContext.Parent is null)
+                throw new SharpOMaticException("Gosub context is missing a parent execution context.");
+
+            lock (gosubContext.MergeLock)
+            {
+                ProcessContext.MergeContextsOverwrite(gosubContext.ParentContext, ThreadContext.NodeContext);
+            }
+
+            ThreadContext.NodeContext = gosubContext.ParentContext;
+            ThreadContext.CurrentContext = gosubContext.Parent;
+
+            if (gosubContext.DecrementThreads() == 0)
+            {
+                ProcessContext.UntrackContext(gosubContext);
+                if (gosubContext.ChildWorkflowContext is not null)
+                    ProcessContext.UntrackContext(gosubContext.ChildWorkflowContext);
+            }
+
+            if (gosubContext.ReturnNode is null)
+                return (Trace.Message, []);
+
+            return (Trace.Message, [new NextNodeData(ThreadContext, gosubContext.ReturnNode)]);
+        }
+
         // Last run EndNode has its output used as the output of the workflow
         ProcessContext.Run.OutputContext = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters);
 

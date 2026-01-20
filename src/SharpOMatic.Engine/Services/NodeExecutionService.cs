@@ -78,7 +78,17 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
 
             var continues = nextNodes.Any(nextNode => ReferenceEquals(nextNode.ThreadContext, threadContext));
             if (!continues)
+            {
+                var gosubContext = GosubContext.Find(threadContext.CurrentContext);
+                if (gosubContext is not null && gosubContext.DecrementThreads() == 0)
+                {
+                    processContext.UntrackContext(gosubContext);
+                    if (gosubContext.ChildWorkflowContext is not null)
+                        processContext.UntrackContext(gosubContext.ChildWorkflowContext);
+                }
+
                 processContext.RemoveThread(threadContext);
+            }
 
             if (processContext.UpdateThreadCount(nextNodes.Count - 1) == 0)
             {

@@ -50,6 +50,8 @@ public class ProcessContext : ExecutionContext
     {
         var threadContext = new ThreadContext(this, currentContext, nodeContext);
         _threads.TryAdd(threadContext.ThreadId, threadContext);
+        var gosubContext = GosubContext.Find(currentContext);
+        gosubContext?.IncrementThreads();
         return threadContext;
     }
 
@@ -136,6 +138,29 @@ public class ProcessContext : ExecutionContext
                     };
                     target[key] = newList;
                 }
+            }
+        }
+    }
+
+    public void MergeContextsOverwrite(ContextObject target, ContextObject source)
+    {
+        foreach (var key in source.Keys)
+        {
+            if (!target.TryGetValue(key, out var targetValue))
+            {
+                target[key] = source[key];
+                continue;
+            }
+
+            var sourceValue = source[key];
+
+            if (targetValue is ContextObject targetObject && sourceValue is ContextObject sourceObject)
+            {
+                MergeContextsOverwrite(targetObject, sourceObject);
+            }
+            else
+            {
+                target[key] = sourceValue;
             }
         }
     }

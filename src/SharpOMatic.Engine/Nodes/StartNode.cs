@@ -7,10 +7,13 @@ public class StartNode(ThreadContext threadContext, StartNodeEntity node)
     protected override async Task<(string, List<NextNodeData>)> RunInternal()
     {
         // Record when the workflow is running because the start node is processing
-        ProcessContext.Run.RunStatus = RunStatus.Running;
-        ProcessContext.Run.Message = "Running";
-        ProcessContext.Run.Started = DateTime.Now;
-        await ProcessContext.RunUpdated();
+        if (ProcessContext.Run.RunStatus == RunStatus.Created)
+        {
+            ProcessContext.Run.RunStatus = RunStatus.Running;
+            ProcessContext.Run.Message = "Running";
+            ProcessContext.Run.Started = DateTime.Now;
+            await ProcessContext.RunUpdated();
+        }
 
         if (Node.ApplyInitialization)
         {
