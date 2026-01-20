@@ -608,39 +608,40 @@ public sealed class GosubNodeUnitTest
             .WithId(Guid.NewGuid())
             .AddStart()
             .AddCode("seed", "Context.Set<string>(\"input.name\", \"Ada\"); Context.Set<string>(\"parentOnly\", \"nope\");")
-            .AddGosub("gosub", childId)
+            .AddGosub(
+                "gosub",
+                childId,
+                applyInputMappings: true,
+                inputMappings:
+                [
+                    new ContextEntryEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        Version = 1,
+                        Purpose = ContextEntryPurpose.Input,
+                        InputPath = "input.name",
+                        OutputPath = "child.name",
+                        Optional = false,
+                        EntryType = ContextEntryType.String,
+                        EntryValue = string.Empty
+                    },
+                    new ContextEntryEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        Version = 1,
+                        Purpose = ContextEntryPurpose.Input,
+                        InputPath = "input.mode",
+                        OutputPath = "child.mode",
+                        Optional = true,
+                        EntryType = ContextEntryType.String,
+                        EntryValue = "auto"
+                    }
+                ])
             .AddEnd()
             .Connect("start", "seed")
             .Connect("seed", "gosub")
             .Connect("gosub", "end")
             .Build();
-
-        var gosubNode = parentWorkflow.Nodes.OfType<GosubNodeEntity>().Single();
-        gosubNode.ApplyInputMappings = true;
-        gosubNode.InputMappings = WorkflowBuilder.CreateContextEntryList(
-            new ContextEntryEntity
-            {
-                Id = Guid.NewGuid(),
-                Version = 1,
-                Purpose = ContextEntryPurpose.Input,
-                InputPath = "input.name",
-                OutputPath = "child.name",
-                Optional = false,
-                EntryType = ContextEntryType.String,
-                EntryValue = string.Empty
-            },
-            new ContextEntryEntity
-            {
-                Id = Guid.NewGuid(),
-                Version = 1,
-                Purpose = ContextEntryPurpose.Input,
-                InputPath = "input.mode",
-                OutputPath = "child.mode",
-                Optional = true,
-                EntryType = ContextEntryType.String,
-                EntryValue = "auto"
-            }
-        );
 
         var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
 
@@ -670,27 +671,28 @@ public sealed class GosubNodeUnitTest
         var parentWorkflow = new WorkflowBuilder()
             .WithId(Guid.NewGuid())
             .AddStart()
-            .AddGosub("gosub", childId)
+            .AddGosub(
+                "gosub",
+                childId,
+                applyOutputMappings: true,
+                outputMappings:
+                [
+                    new ContextEntryEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        Version = 1,
+                        Purpose = ContextEntryPurpose.Output,
+                        InputPath = "publicValue",
+                        OutputPath = "result.publicValue",
+                        Optional = false,
+                        EntryType = ContextEntryType.String,
+                        EntryValue = string.Empty
+                    }
+                ])
             .AddEnd()
             .Connect("start", "gosub")
             .Connect("gosub", "end")
             .Build();
-
-        var gosubNode = parentWorkflow.Nodes.OfType<GosubNodeEntity>().Single();
-        gosubNode.ApplyOutputMappings = true;
-        gosubNode.OutputMappings = WorkflowBuilder.CreateContextEntryList(
-            new ContextEntryEntity
-            {
-                Id = Guid.NewGuid(),
-                Version = 1,
-                Purpose = ContextEntryPurpose.Output,
-                InputPath = "publicValue",
-                OutputPath = "result.publicValue",
-                Optional = false,
-                EntryType = ContextEntryType.String,
-                EntryValue = string.Empty
-            }
-        );
 
         var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
 
@@ -718,29 +720,30 @@ public sealed class GosubNodeUnitTest
         var parentWorkflow = new WorkflowBuilder()
             .WithId(Guid.NewGuid())
             .AddStart()
-            .AddGosub("gosub", childId)
+            .AddGosub(
+                "gosub",
+                childId,
+                applyOutputMappings: true,
+                outputMappings:
+                [
+                    new ContextEntryEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        Version = 1,
+                        Purpose = ContextEntryPurpose.Output,
+                        InputPath = "child.value",
+                        OutputPath = "output.value",
+                        Optional = false,
+                        EntryType = ContextEntryType.String,
+                        EntryValue = string.Empty
+                    }
+                ])
             .AddCode("after", "Context.Set<string>(\"result\", Context.Get<string>(\"output.value\"));")
             .AddEnd()
             .Connect("start", "gosub")
             .Connect("gosub", "after")
             .Connect("after", "end")
             .Build();
-
-        var gosubNode = parentWorkflow.Nodes.OfType<GosubNodeEntity>().Single();
-        gosubNode.ApplyOutputMappings = true;
-        gosubNode.OutputMappings = WorkflowBuilder.CreateContextEntryList(
-            new ContextEntryEntity
-            {
-                Id = Guid.NewGuid(),
-                Version = 1,
-                Purpose = ContextEntryPurpose.Output,
-                InputPath = "child.value",
-                OutputPath = "output.value",
-                Optional = false,
-                EntryType = ContextEntryType.String,
-                EntryValue = string.Empty
-            }
-        );
 
         var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
 
@@ -769,27 +772,28 @@ public sealed class GosubNodeUnitTest
         var parentWorkflow = new WorkflowBuilder()
             .WithId(Guid.NewGuid())
             .AddStart()
-            .AddGosub("gosub", childId)
+            .AddGosub(
+                "gosub",
+                childId,
+                applyInputMappings: true,
+                inputMappings:
+                [
+                    new ContextEntryEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        Version = 1,
+                        Purpose = ContextEntryPurpose.Input,
+                        InputPath = string.Empty,
+                        OutputPath = "child.fixedValue",
+                        Optional = true,
+                        EntryType = ContextEntryType.String,
+                        EntryValue = "fixed"
+                    }
+                ])
             .AddEnd()
             .Connect("start", "gosub")
             .Connect("gosub", "end")
             .Build();
-
-        var gosubNode = parentWorkflow.Nodes.OfType<GosubNodeEntity>().Single();
-        gosubNode.ApplyInputMappings = true;
-        gosubNode.InputMappings = WorkflowBuilder.CreateContextEntryList(
-            new ContextEntryEntity
-            {
-                Id = Guid.NewGuid(),
-                Version = 1,
-                Purpose = ContextEntryPurpose.Input,
-                InputPath = string.Empty,
-                OutputPath = "child.fixedValue",
-                Optional = true,
-                EntryType = ContextEntryType.String,
-                EntryValue = "fixed"
-            }
-        );
 
         var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
 

@@ -251,7 +251,13 @@ public sealed class WorkflowBuilder
         return this;
     }
 
-    public WorkflowBuilder AddGosub(string title = "gosub", Guid? workflowId = null)
+    public WorkflowBuilder AddGosub(
+        string title = "gosub",
+        Guid? workflowId = null,
+        bool applyInputMappings = false,
+        ContextEntryEntity[]? inputMappings = null,
+        bool applyOutputMappings = false,
+        ContextEntryEntity[]? outputMappings = null)
     {
         var node = new GosubNodeEntity
         {
@@ -266,10 +272,10 @@ public sealed class WorkflowBuilder
             Inputs = [CreateConnector()],
             Outputs = [CreateConnector()],
             WorkflowId = workflowId,
-            ApplyInputMappings = false,
-            InputMappings = CreateContextEntryList(),
-            ApplyOutputMappings = false,
-            OutputMappings = CreateContextEntryList()
+            ApplyInputMappings = applyInputMappings,
+            InputMappings = CreateContextEntryList(inputMappings ?? []),
+            ApplyOutputMappings = applyOutputMappings,
+            OutputMappings = CreateContextEntryList(outputMappings ?? [])
         };
 
         _nodes.Add(node);
