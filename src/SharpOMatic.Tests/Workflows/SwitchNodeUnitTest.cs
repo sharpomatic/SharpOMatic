@@ -295,4 +295,78 @@ public sealed class SwitchNodeUnitTest
         Assert.NotNull(outCtx);
         Assert.Equal("default", outCtx.Get<string>("result"));
     }
+
+    [Fact]
+    public async Task Switch_skips_unconnected_match_and_takes_next_connected()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddSwitch("switch",
+                new WorkflowBuilder.SwitchChoice("first", "true"),
+                new WorkflowBuilder.SwitchChoice("second", "true"),
+                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddCode("second", "Context.Set<string>(\"result\", \"second\");")
+            .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
+            .Connect("start", "switch")
+            .Connect("switch.second", "second")
+            .Connect("switch.default", "default")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        Assert.Equal("second", outCtx.Get<string>("result"));
+    }
+
+    [Fact]
+    public async Task Switch_ignores_whitespace_entry_code()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddSwitch("switch",
+                new WorkflowBuilder.SwitchChoice("first", "   "),
+                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
+            .Connect("start", "switch")
+            .Connect("switch.default", "default")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        Assert.Equal("default", outCtx.Get<string>("result"));
+    }
+
+    [Fact]
+    public async Task Switch_compile_error_truncates_diagnostics()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddSwitch("switch",
+                new WorkflowBuilder.SwitchChoice("first", "return missing1 + missing2 + missing3 + missing4;"),
+                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
+            .Connect("start", "switch")
+            .Connect("switch.default", "default")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.StartsWith("Switch node entry 'first' failed compilation.", run.Error);
+        var errorText = run.Error ?? string.Empty;
+        var matches = System.Text.RegularExpressions.Regex.Matches(errorText, "error CS");
+        Assert.True(matches.Count <= 3, $"Expected <= 3 diagnostics, got {matches.Count}.");
+    }
 }

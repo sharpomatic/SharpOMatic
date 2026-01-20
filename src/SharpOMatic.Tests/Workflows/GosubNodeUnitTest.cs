@@ -805,4 +805,385 @@ public sealed class GosubNodeUnitTest
         Assert.Equal("fixed", outCtx.Get<string>("child.fixedValue"));
         Assert.Equal("fixed", outCtx.Get<string>("result"));
     }
+
+    [Fact]
+    public async Task Gosub_output_mapping_skips_missing_input_path()
+    {
+        var childId = Guid.NewGuid();
+        var childWorkflow = new WorkflowBuilder()
+            .WithId(childId)
+            .AddStart()
+            .AddCode("produce", "Context.Set<string>(\"child.value\", \"ok\");")
+            .AddEnd()
+            .Connect("start", "produce")
+            .Connect("produce", "end")
+            .Build();
+
+        var parentWorkflow = new WorkflowBuilder()
+            .WithId(Guid.NewGuid())
+            .AddStart()
+            .AddGosub(
+                "gosub",
+                childId,
+                applyOutputMappings: true,
+                outputMappings:
+                [
+                    new ContextEntryEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        Version = 1,
+                        Purpose = ContextEntryPurpose.Output,
+                        InputPath = "missing.value",
+                        OutputPath = "output.value",
+                        Optional = false,
+                        EntryType = ContextEntryType.String,
+                        EntryValue = string.Empty
+                    }
+                ])
+            .AddEnd()
+            .Connect("start", "gosub")
+            .Connect("gosub", "end")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.False(outCtx.TryGet<string>("output.value", out _));
+    }
+
+    [Fact]
+    public async Task Gosub_output_mapping_fails_on_empty_input_path()
+    {
+        var childId = Guid.NewGuid();
+        var childWorkflow = new WorkflowBuilder()
+            .WithId(childId)
+            .AddStart()
+            .AddEnd()
+            .Connect("start", "end")
+            .Build();
+
+        var parentWorkflow = new WorkflowBuilder()
+            .WithId(Guid.NewGuid())
+            .AddStart()
+            .AddGosub(
+                "gosub",
+                childId,
+                applyOutputMappings: true,
+                outputMappings:
+                [
+                    new ContextEntryEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        Version = 1,
+                        Purpose = ContextEntryPurpose.Output,
+                        InputPath = string.Empty,
+                        OutputPath = "output.value",
+                        Optional = false,
+                        EntryType = ContextEntryType.String,
+                        EntryValue = string.Empty
+                    }
+                ])
+            .AddEnd()
+            .Connect("start", "gosub")
+            .Connect("gosub", "end")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Equal("Gosub output mapping input path cannot be empty.", run.Error);
+    }
+
+    [Fact]
+    public async Task Gosub_output_mapping_fails_on_empty_output_path()
+    {
+        var childId = Guid.NewGuid();
+        var childWorkflow = new WorkflowBuilder()
+            .WithId(childId)
+            .AddStart()
+            .AddCode("produce", "Context.Set<string>(\"child.value\", \"ok\");")
+            .AddEnd()
+            .Connect("start", "produce")
+            .Connect("produce", "end")
+            .Build();
+
+        var parentWorkflow = new WorkflowBuilder()
+            .WithId(Guid.NewGuid())
+            .AddStart()
+            .AddGosub(
+                "gosub",
+                childId,
+                applyOutputMappings: true,
+                outputMappings:
+                [
+                    new ContextEntryEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        Version = 1,
+                        Purpose = ContextEntryPurpose.Output,
+                        InputPath = "child.value",
+                        OutputPath = string.Empty,
+                        Optional = false,
+                        EntryType = ContextEntryType.String,
+                        EntryValue = string.Empty
+                    }
+                ])
+            .AddEnd()
+            .Connect("start", "gosub")
+            .Connect("gosub", "end")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Equal("Gosub output mapping output path cannot be empty.", run.Error);
+    }
+
+    [Fact]
+    public async Task Gosub_input_mapping_fails_on_empty_input_path_when_required()
+    {
+        var childId = Guid.NewGuid();
+        var childWorkflow = new WorkflowBuilder()
+            .WithId(childId)
+            .AddStart()
+            .AddEnd()
+            .Connect("start", "end")
+            .Build();
+
+        var parentWorkflow = new WorkflowBuilder()
+            .WithId(Guid.NewGuid())
+            .AddStart()
+            .AddGosub(
+                "gosub",
+                childId,
+                applyInputMappings: true,
+                inputMappings:
+                [
+                    new ContextEntryEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        Version = 1,
+                        Purpose = ContextEntryPurpose.Input,
+                        InputPath = string.Empty,
+                        OutputPath = "child.value",
+                        Optional = false,
+                        EntryType = ContextEntryType.String,
+                        EntryValue = string.Empty
+                    }
+                ])
+            .AddEnd()
+            .Connect("start", "gosub")
+            .Connect("gosub", "end")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Equal("Gosub node input path cannot be empty.", run.Error);
+    }
+
+    [Fact]
+    public async Task Gosub_input_mapping_fails_on_invalid_output_path()
+    {
+        var childId = Guid.NewGuid();
+        var childWorkflow = new WorkflowBuilder()
+            .WithId(childId)
+            .AddStart()
+            .AddEnd()
+            .Connect("start", "end")
+            .Build();
+
+        var parentWorkflow = new WorkflowBuilder()
+            .WithId(Guid.NewGuid())
+            .AddStart()
+            .AddCode("seed", "Context.Set<string>(\"input.value\", \"ok\");")
+            .AddGosub(
+                "gosub",
+                childId,
+                applyInputMappings: true,
+                inputMappings:
+                [
+                    new ContextEntryEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        Version = 1,
+                        Purpose = ContextEntryPurpose.Input,
+                        InputPath = "input.value",
+                        OutputPath = "child.bad-key",
+                        Optional = false,
+                        EntryType = ContextEntryType.String,
+                        EntryValue = string.Empty
+                    }
+                ])
+            .AddEnd()
+            .Connect("start", "seed")
+            .Connect("seed", "gosub")
+            .Connect("gosub", "end")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Equal("Gosub node input mapping could not set 'child.bad-key' into context.", run.Error);
+    }
+
+    [Fact]
+    public async Task Gosub_output_mapping_applies_without_output_connection()
+    {
+        var childId = Guid.NewGuid();
+        var childWorkflow = new WorkflowBuilder()
+            .WithId(childId)
+            .AddStart()
+            .AddCode("produce", "Context.Set<string>(\"child.value\", \"done\");")
+            .AddEnd()
+            .Connect("start", "produce")
+            .Connect("produce", "end")
+            .Build();
+
+        var parentWorkflow = new WorkflowBuilder()
+            .WithId(Guid.NewGuid())
+            .AddStart()
+            .AddGosub(
+                "gosub",
+                childId,
+                applyOutputMappings: true,
+                outputMappings:
+                [
+                    new ContextEntryEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        Version = 1,
+                        Purpose = ContextEntryPurpose.Output,
+                        InputPath = "child.value",
+                        OutputPath = "output.value",
+                        Optional = false,
+                        EntryType = ContextEntryType.String,
+                        EntryValue = string.Empty
+                    }
+                ])
+            .Connect("start", "gosub")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.Equal("done", outCtx.Get<string>("output.value"));
+    }
+
+    [Fact]
+    public async Task Gosub_output_mapping_uses_last_fanout_result()
+    {
+        var childId = Guid.NewGuid();
+        var childWorkflow = new WorkflowBuilder()
+            .WithId(childId)
+            .AddStart()
+            .AddFanOut("fanout", ["left", "right"])
+            .AddCode("left", "System.Threading.Thread.Sleep(200); Context.Set<string>(\"result\", \"left\");")
+            .AddEnd("left-end")
+            .AddCode("right", "System.Threading.Thread.Sleep(10); Context.Set<string>(\"result\", \"right\");")
+            .AddEnd("right-end")
+            .Connect("start", "fanout")
+            .Connect("fanout.left", "left")
+            .Connect("left", "left-end")
+            .Connect("fanout.right", "right")
+            .Connect("right", "right-end")
+            .Build();
+
+        var parentWorkflow = new WorkflowBuilder()
+            .WithId(Guid.NewGuid())
+            .AddStart()
+            .AddGosub(
+                "gosub",
+                childId,
+                applyOutputMappings: true,
+                outputMappings:
+                [
+                    new ContextEntryEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        Version = 1,
+                        Purpose = ContextEntryPurpose.Output,
+                        InputPath = "result",
+                        OutputPath = "output.result",
+                        Optional = false,
+                        EntryType = ContextEntryType.String,
+                        EntryValue = string.Empty
+                    }
+                ])
+            .AddEnd()
+            .Connect("start", "gosub")
+            .Connect("gosub", "end")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.Equal("left", outCtx.Get<string>("output.result"));
+    }
+
+    [Fact]
+    public async Task Gosub_does_not_apply_output_mapping_when_child_fails()
+    {
+        var childId = Guid.NewGuid();
+        var childWorkflow = new WorkflowBuilder()
+            .WithId(childId)
+            .AddStart()
+            .AddCode("explode", "Context.Set<string>(\"child.value\", \"done\"); throw new System.InvalidOperationException(\"Boom\");")
+            .AddEnd()
+            .Connect("start", "explode")
+            .Connect("explode", "end")
+            .Build();
+
+        var parentWorkflow = new WorkflowBuilder()
+            .WithId(Guid.NewGuid())
+            .AddStart()
+            .AddGosub(
+                "gosub",
+                childId,
+                applyOutputMappings: true,
+                outputMappings:
+                [
+                    new ContextEntryEntity
+                    {
+                        Id = Guid.NewGuid(),
+                        Version = 1,
+                        Purpose = ContextEntryPurpose.Output,
+                        InputPath = "child.value",
+                        OutputPath = "output.value",
+                        Optional = false,
+                        EntryType = ContextEntryType.String,
+                        EntryValue = string.Empty
+                    }
+                ])
+            .AddEnd()
+            .Connect("start", "gosub")
+            .Connect("gosub", "end")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Contains("Boom", run.Error);
+        Assert.NotNull(run.OutputContext);
+
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.False(outCtx.TryGet<string>("output.value", out _));
+    }
 }

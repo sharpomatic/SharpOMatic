@@ -209,4 +209,202 @@ public sealed class BatchNodeUnitTest
         // NOTE: The returned context is from the last path to finish because
         // it did not have FanIn. No FanIn so no merging of multiple paths
     }
+
+    [Fact]
+    public async Task Batch_fails_when_batch_size_invalid()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddBatch(batchSize: 0, parallelBatches: 1, inputPath: "list")
+            .Connect("start", "batch")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set<ContextList>("list", [1, 2, 3]);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Equal("Batch node batch size must be greater than or equal to 1.", run.Error);
+    }
+
+    [Fact]
+    public async Task Batch_fails_when_parallel_batches_invalid()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddBatch(batchSize: 1, parallelBatches: 0, inputPath: "list")
+            .Connect("start", "batch")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set<ContextList>("list", [1, 2, 3]);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Equal("Batch node parallel batches must be greater than or equal to 1.", run.Error);
+    }
+
+    [Fact]
+    public async Task Batch_fails_when_input_path_empty()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddBatch(batchSize: 1, parallelBatches: 1, inputPath: "")
+            .Connect("start", "batch")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set<ContextList>("list", [1, 2, 3]);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Equal("Batch node input array path cannot be empty.", run.Error);
+    }
+
+    [Fact]
+    public async Task Batch_fails_when_input_path_missing()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddBatch(batchSize: 1, parallelBatches: 1, inputPath: "list")
+            .Connect("start", "batch")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Equal("Batch node input array path 'list' could not be resolved.", run.Error);
+    }
+
+    [Fact]
+    public async Task Batch_fails_when_input_path_not_list()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddBatch(batchSize: 1, parallelBatches: 1, inputPath: "value")
+            .Connect("start", "batch")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set("value", 123);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Equal("Batch node input array path 'value' must be a context list.", run.Error);
+    }
+
+    [Fact]
+    public async Task Batch_empty_list_runs_continue_only()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddBatch(batchSize: 2, parallelBatches: 1, inputPath: "list")
+            .AddCode("continue", "Context.Set<bool>(\"after.hit\", true);")
+            .AddCode("process", "Context.Set<bool>(\"process.hit\", true);")
+            .Connect("start", "batch")
+            .Connect("batch.continue", "continue")
+            .Connect("batch.process", "process")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set<ContextList>("list", []);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.True(outCtx.Get<bool>("after.hit"));
+        Assert.False(outCtx.TryGet<bool>("process.hit", out _));
+    }
+
+    [Fact]
+    public async Task Batch_continue_runs_after_processing()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddBatch(batchSize: 2, parallelBatches: 2, inputPath: "list")
+            .AddCode("process", "var list = Context.Get<ContextList>(\"list\"); Context.Set(\"output\", list);")
+            .AddCode("continue", "var output = Context.Get<ContextList>(\"output\"); Context.Set<int>(\"after.count\", output.Count);")
+            .Connect("start", "batch")
+            .Connect("batch.process", "process")
+            .Connect("batch.continue", "continue")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set<ContextList>("list", [1, 2, 3, 4, 5]);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        var output = outCtx.Get<ContextList>("output");
+        Assert.Equal(5, output.Count);
+        Assert.Equal(5, outCtx.Get<int>("after.count"));
+    }
+
+    [Fact]
+    public async Task Batch_process_without_output_does_not_merge_output()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddBatch(batchSize: 2, parallelBatches: 2, inputPath: "list")
+            .AddCode("process", "Context.Set<bool>(\"processed\", true);")
+            .Connect("start", "batch")
+            .Connect("batch.process", "process")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set<ContextList>("list", [1, 2, 3, 4]);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.False(outCtx.TryGetList("output", out _));
+        Assert.False(outCtx.TryGet<bool>("processed", out _));
+    }
+
+    [Fact]
+    public async Task Batch_process_failure_does_not_merge_output()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddBatch(batchSize: 1, parallelBatches: 1, inputPath: "list")
+            .AddCode("process", "throw new System.InvalidOperationException(\"Boom\");")
+            .Connect("start", "batch")
+            .Connect("batch.process", "process")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set<ContextList>("list", ["boom", "other"]);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Contains("Code node failed during execution.", run.Error);
+        Assert.Contains("Boom", run.Error);
+        Assert.NotNull(run.OutputContext);
+
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.False(outCtx.TryGetList("output", out _));
+    }
 }
