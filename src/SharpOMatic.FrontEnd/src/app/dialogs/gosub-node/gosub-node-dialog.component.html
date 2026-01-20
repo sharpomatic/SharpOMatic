@@ -30,6 +30,193 @@
             </select>
           </div>
         </div>
+
+        <hr/>
+
+        <div class="mb-3">
+          <h4 class="form-label mb-4">Input Mapping</h4>
+          <div class="form-check form-switch mb-4">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="apply-input-mappings"
+              [ngModel]="node.applyInputMappings()"
+              (ngModelChange)="node.applyInputMappings.set($event)"/>
+            <label class="form-check-label" for="apply-input-mappings">Map parent context into child</label>
+          </div>
+          @if (node.applyInputMappings()) {
+            <div class="d-flex align-items-start gap-2 mb-2">
+              <label class="editPath">Input Path</label>
+              <label class="editPath">Output Path</label>
+              <label class="editOptional">Optional</label>
+              <label class="editType">Type</label>
+              <label class="editValue">Default Value</label>
+            </div>
+            @if (!node.inputMappings().entries().length) {
+              <div class="text-muted fst-italic mb-2">(empty)</div>
+            }
+            @for (entry of node.inputMappings().entries(); track entry.id) {
+              <div class="d-flex align-items-start gap-2 mb-2">
+                <input type="text"
+                       class="form-control editPath"
+                       [ngModel]="entry.inputPath()"
+                       (ngModelChange)="entry.inputPath.set($event)"/>
+                <input type="text"
+                       class="form-control editPath"
+                       [ngModel]="entry.outputPath()"
+                       (ngModelChange)="entry.outputPath.set($event)"/>
+                <select class="form-select editOptional"
+                        [ngModel]="entry.optional()"
+                        (ngModelChange)="entry.optional.set($event)">
+                  <option [ngValue]="false">Mandatory</option>
+                  <option [ngValue]="true">Optional</option>
+                </select>
+                @if (entry.optional()) {
+                  <select class="flex-skrink-0 flex-grow-0 form-select editType"
+                          [ngModel]="entry.entryType()"
+                          (ngModelChange)="entry.entryType.set(+$event)">
+                    @for (key of contextEntryTypeKeys; track key) {
+                      <option [value]="getEnumValue(key)">{{ getEnumDisplay(key) }}</option>
+                    }
+                  </select>
+                  @if (entry.entryType() === contextEntryType.JSON) {
+                    <div class="editValue">
+                      <ngx-monaco-editor class="editJson"
+                                         [options]="getEditorOptions(entry)"
+                                         [ngModel]="entry.entryValue()"
+                                         (ngModelChange)="entry.entryValue.set($event)"/>
+                    </div>
+                  } @else if (entry.entryType() === contextEntryType.Expression) {
+                    <div class="editValue editExpression">
+                      <ngx-monaco-editor class="editExpression"
+                                         [options]="getEditorOptions(entry)"
+                                         [ngModel]="entry.entryValue()"
+                                         (ngModelChange)="entry.entryValue.set($event)"/>
+                    </div>
+                  } @else if (entry.entryType() === contextEntryType.Bool) {
+                    <div class="d-flex editValue">
+                      <div class="editBoolValue">
+                        <select class="form-select"
+                                [ngModel]="entry.entryValue() || 'False'"
+                                (ngModelChange)="entry.entryValue.set(($event ?? 'False').toString())">
+                          <option value="True">True</option>
+                          <option value="False">False</option>
+                        </select>
+                      </div>
+                    </div>
+                  } @else if (entry.entryType() === contextEntryType.Int) {
+                    <div class="editValue">
+                      <input type="number"
+                            class="form-control editValue"
+                            inputmode="numeric"
+                            pattern="[0-9]*"
+                            step="1"
+                            [ngModel]="entry.entryValue() !== '' ? +entry.entryValue() : null"
+                            (ngModelChange)="entry.entryValue.set(($event ?? '').toString())"/>
+                    </div>
+                  } @else if (entry.entryType() === contextEntryType.Double) {
+                    <div class="editValue">
+                      <input type="number"
+                            class="form-control editValue"
+                            inputmode="decimal"
+                            step="any"
+                            [ngModel]="entry.entryValue() !== '' ? +entry.entryValue() : null"
+                            (ngModelChange)="entry.entryValue.set(($event ?? '').toString())"/>
+                    </div>
+                  } @else if (entry.entryType() === contextEntryType.AssetRef) {
+                    <div class="editValue asset-selection">
+                      <button class="btn btn-outline-primary" type="button" (click)="openAssetPicker(entry, 'single')">Select</button>
+                      <input type="text"
+                             class="form-control asset-selection-label"
+                             [value]="getSelectedAssetLabel(entry) || 'No asset selected'"
+                             [title]="getSelectedAssetLabel(entry)"
+                             readonly />
+                    </div>
+                  } @else if (entry.entryType() === contextEntryType.AssetRefList) {
+                    <div class="editValue asset-selection">
+                      <button class="btn btn-outline-primary" type="button" (click)="openAssetPicker(entry, 'multi')">Select</button>
+                      <input type="text"
+                             class="form-control asset-selection-label"
+                             [value]="getSelectedAssetListLabel(entry) || 'No assets selected'"
+                             [title]="getSelectedAssetListLabel(entry)"
+                             readonly />
+                    </div>
+                  } @else {
+                    <div class="editValue">
+                      <input type="text"
+                             class="form-control editValue"
+                             [ngModel]="entry.entryValue()"
+                             (ngModelChange)="entry.entryValue.set($event)"/>
+                    </div>
+                  }
+                } @else {
+                  <div class="editType"></div>
+                  <div class="editValue"></div>
+                }
+                <button class="btn btn-outline-primary"
+                        [disabled]="!canMoveInputEntryUp(entry)"
+                        (click)="onMoveInputEntryUp(entry)">
+                  <i class="bi bi-arrow-up"></i>
+                </button>
+                <button class="btn btn-outline-primary"
+                        [disabled]="!canMoveInputEntryDown(entry)"
+                        (click)="onMoveInputEntryDown(entry)">
+                  <i class="bi bi-arrow-down"></i>
+                </button>
+                <button class="btn btn-outline-danger" (click)="onDeleteInputEntry(entry.id)"><i class="bi bi-trash"></i></button>
+              </div>
+            }
+            <button class="btn btn-primary mt-2" (click)="onAppendInputEntry()">Add</button>
+          }
+        </div>
+
+        <hr/>
+
+        <div class="mb-3">
+          <h4 class="form-label mb-4">Output Mapping</h4>
+          <div class="form-check form-switch mb-4">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="apply-output-mappings"
+              [ngModel]="node.applyOutputMappings()"
+              (ngModelChange)="node.applyOutputMappings.set($event)"/>
+            <label class="form-check-label" for="apply-output-mappings">Map child context back to parent</label>
+          </div>
+          @if (node.applyOutputMappings()) {
+            <div class="d-flex align-items-start gap-2 mb-2">
+              <label class="editPath">Input Path</label>
+              <label class="editPath">Output Path</label>
+            </div>
+            @if (!node.outputMappings().entries().length) {
+              <div class="text-muted fst-italic mb-2">(empty)</div>
+            }
+            @for (entry of node.outputMappings().entries(); track entry.id) {
+              <div class="d-flex align-items-start gap-2 mb-2">
+                <input type="text"
+                       class="form-control editPath"
+                       [ngModel]="entry.inputPath()"
+                       (ngModelChange)="entry.inputPath.set($event)"/>
+                <input type="text"
+                       class="form-control editPath"
+                       [ngModel]="entry.outputPath()"
+                       (ngModelChange)="entry.outputPath.set($event)"/>
+                <button class="btn btn-outline-primary"
+                        [disabled]="!canMoveOutputEntryUp(entry)"
+                        (click)="onMoveOutputEntryUp(entry)">
+                  <i class="bi bi-arrow-up"></i>
+                </button>
+                <button class="btn btn-outline-primary"
+                        [disabled]="!canMoveOutputEntryDown(entry)"
+                        (click)="onMoveOutputEntryDown(entry)">
+                  <i class="bi bi-arrow-down"></i>
+                </button>
+                <button class="btn btn-outline-danger" (click)="onDeleteOutputEntry(entry.id)"><i class="bi bi-trash"></i></button>
+              </div>
+            }
+            <button class="btn btn-primary mt-2" (click)="onAppendOutputEntry()">Add</button>
+          }
+        </div>
       </div>
     </ng-template>
 

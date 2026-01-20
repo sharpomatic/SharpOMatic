@@ -1,19 +1,27 @@
 import { Component, EventEmitter, Inject, OnInit, Output, TemplateRef, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DIALOG_DATA } from '../services/dialog.service';
+import { DIALOG_DATA, DialogService } from '../services/dialog.service';
 import { TabComponent, TabItem } from '../../components/tab/tab.component';
 import { ContextViewerComponent } from '../../components/context-viewer/context-viewer.component';
 import { TraceProgressModel } from '../../pages/workflow/interfaces/trace-progress-model';
 import { GosubNodeEntity } from '../../entities/definitions/gosub-node.entity';
 import { ServerRepositoryService } from '../../services/server.repository.service';
 import { WorkflowSummaryEntity } from '../../entities/definitions/workflow.summary.entity';
+import { ContextEntryEntity } from '../../entities/definitions/context-entry.entity';
+import { ContextEntryPurpose } from '../../entities/enumerations/context-entry-purpose';
+import { ContextEntryType } from '../../entities/enumerations/context-entry-type';
+import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
+import { MonacoService } from '../../services/monaco.service';
+import { AssetPickerDialogComponent } from '../asset-picker/asset-picker-dialog.component';
+import { AssetRef, buildAssetRefListValue, buildAssetRefValue, parseAssetRefListValue, parseAssetRefValue } from '../../entities/definitions/asset-ref';
 
 @Component({
   selector: 'app-gosub-node-dialog',
   imports: [
     CommonModule,
     FormsModule,
+    MonacoEditorModule,
     TabComponent,
     ContextViewerComponent,
   ],
@@ -34,11 +42,18 @@ export class GosubNodeDialogComponent implements OnInit {
   public workflows: WorkflowSummaryEntity[] = [];
   public tabs: TabItem[] = [];
   public activeTabId = 'details';
+  public contextEntryType = ContextEntryType;
+  public contextEntryPurpose = ContextEntryPurpose;
+  public contextEntryTypeKeys: string[] = [];
 
-  constructor(@Inject(DIALOG_DATA) data: { node: GosubNodeEntity, nodeTraces: TraceProgressModel[] }) {
+  constructor(
+    @Inject(DIALOG_DATA) data: { node: GosubNodeEntity, nodeTraces: TraceProgressModel[] },
+    private readonly dialogService: DialogService
+  ) {
     this.node = data.node;
     this.inputTraces = (data.nodeTraces ?? []).map(trace => trace.inputContext).filter((context): context is string => context != null);
     this.outputTraces = (data.nodeTraces ?? []).map(trace => trace.outputContext).filter((context): context is string => context != null);
+    this.contextEntryTypeKeys = Object.keys(this.contextEntryType).filter(k => isNaN(Number(k)));
   }
 
   ngOnInit(): void {
@@ -60,5 +75,137 @@ export class GosubNodeDialogComponent implements OnInit {
   onWorkflowIdChange(value: string | null): void {
     const trimmed = value?.trim() ?? '';
     this.node.workflowId.set(trimmed.length > 0 ? trimmed : null);
+  }
+
+  getEnumValue(key: string): ContextEntryType {
+    return this.contextEntryType[key as keyof typeof ContextEntryType];
+  }
+
+  getEnumDisplay(key: string): string {
+    switch (key) {
+      case 'Expression':
+        return '(expression)';
+      case 'JSON':
+        return '(json)';
+      case 'AssetRef':
+        return 'asset';
+      case 'AssetRefList':
+        return 'asset list';
+      default:
+        return key.toLowerCase();
+    }
+  }
+
+  getEditorOptions(entry: ContextEntryEntity): any {
+    if (entry.entryType() === ContextEntryType.JSON) {
+      return MonacoService.editorOptionsJson;
+    }
+
+    return MonacoService.editorOptionsCSharp;
+  }
+
+  onAppendInputEntry(): void {
+    this.node.inputMappings().appendEntry({ purpose: ContextEntryPurpose.Input });
+  }
+
+  onDeleteInputEntry(entryId: string): void {
+    this.node.inputMappings().deleteEntry(entryId);
+  }
+
+  canMoveInputEntryUp(entry: ContextEntryEntity): boolean {
+    return this.hasSiblingEntry(this.node.inputMappings().entries(), entry, -1);
+  }
+
+  canMoveInputEntryDown(entry: ContextEntryEntity): boolean {
+    return this.hasSiblingEntry(this.node.inputMappings().entries(), entry, 1);
+  }
+
+  onMoveInputEntryUp(entry: ContextEntryEntity): void {
+    this.node.inputMappings().moveEntry(entry.id, 'up', entry.purpose());
+  }
+
+  onMoveInputEntryDown(entry: ContextEntryEntity): void {
+    this.node.inputMappings().moveEntry(entry.id, 'down', entry.purpose());
+  }
+
+  onAppendOutputEntry(): void {
+    this.node.outputMappings().appendEntry({ purpose: ContextEntryPurpose.Output });
+  }
+
+  onDeleteOutputEntry(entryId: string): void {
+    this.node.outputMappings().deleteEntry(entryId);
+  }
+
+  canMoveOutputEntryUp(entry: ContextEntryEntity): boolean {
+    return this.hasSiblingEntry(this.node.outputMappings().entries(), entry, -1);
+  }
+
+  canMoveOutputEntryDown(entry: ContextEntryEntity): boolean {
+    return this.hasSiblingEntry(this.node.outputMappings().entries(), entry, 1);
+  }
+
+  onMoveOutputEntryUp(entry: ContextEntryEntity): void {
+    this.node.outputMappings().moveEntry(entry.id, 'up', entry.purpose());
+  }
+
+  onMoveOutputEntryDown(entry: ContextEntryEntity): void {
+    this.node.outputMappings().moveEntry(entry.id, 'down', entry.purpose());
+  }
+
+  getSelectedAssetLabel(entry: ContextEntryEntity): string {
+    return parseAssetRefValue(entry.entryValue())?.name ?? '';
+  }
+
+  getSelectedAssetListLabel(entry: ContextEntryEntity): string {
+    const assets = parseAssetRefListValue(entry.entryValue());
+    if (assets.length === 0) {
+      return '';
+    }
+
+    if (assets.length <= 3) {
+      return assets.map(asset => asset.name).join(', ');
+    }
+
+    return `${assets.length} assets selected`;
+  }
+
+  openAssetPicker(entry: ContextEntryEntity, mode: 'single' | 'multi'): void {
+    const selected = parseAssetRefValue(entry.entryValue());
+    const initialSelection = mode === 'single'
+      ? (selected ? [selected] : [])
+      : parseAssetRefListValue(entry.entryValue());
+
+    this.dialogService.open(AssetPickerDialogComponent, {
+      allowStack: true,
+      mode,
+      title: mode === 'single' ? 'Select asset' : 'Select assets',
+      initialSelection,
+      onSelect: (assets: AssetRef[]) => {
+        if (mode === 'single') {
+          entry.entryValue.set(buildAssetRefValue(assets[0] ?? null));
+          return;
+        }
+
+        entry.entryValue.set(buildAssetRefListValue(assets));
+      }
+    });
+  }
+
+  private hasSiblingEntry(entries: ContextEntryEntity[], entry: ContextEntryEntity, step: number): boolean {
+    const index = entries.findIndex(e => e.id === entry.id);
+    if (index === -1) {
+      return false;
+    }
+
+    let targetIndex = index + step;
+    while (targetIndex >= 0 && targetIndex < entries.length) {
+      if (entries[targetIndex].purpose() === entry.purpose()) {
+        return true;
+      }
+
+      targetIndex += step;
+    }
+
+    return false;
   }
 }

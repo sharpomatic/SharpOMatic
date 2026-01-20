@@ -60,6 +60,60 @@
   }
 }
 
+.editPath {
+  min-width: 260px;
+  max-width: 260px;
+  width: 260px;
+}
+
+.editOptional {
+  min-width: 140px;
+  max-width: 140px;
+  width: 140px;
+}
+
+.editType {
+  min-width: 140px;
+  max-width: 140px;
+  width: 140px;
+}
+
+.editValue {
+  min-width: 300px;
+  max-width: 900px;
+  width: 100%;
+}
+
+.editJson {
+  height: 160px;
+}
+
+.editExpression {
+  height: 100px;
+}
+
+.editBoolValue {
+  width: 100px;
+  flex: 0 0 auto;
+}
+
+.asset-selection {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.asset-selection .btn {
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
+}
+
+.asset-selection-label {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .tab-shell {
   flex: 1 1 auto;
   min-height: 0;

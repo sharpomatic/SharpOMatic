@@ -45,7 +45,7 @@ public class EndNode(ThreadContext threadContext, EndNodeEntity node)
 
             lock (gosubContext.MergeLock)
             {
-                ProcessContext.MergeContextsOverwrite(gosubContext.ParentContext, ThreadContext.NodeContext);
+                gosubContext.MergeOutput(ProcessContext, ThreadContext.NodeContext);
             }
 
             ThreadContext.NodeContext = gosubContext.ParentContext;

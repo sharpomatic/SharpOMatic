@@ -265,7 +265,11 @@ public sealed class WorkflowBuilder
             Height = 80f,
             Inputs = [CreateConnector()],
             Outputs = [CreateConnector()],
-            WorkflowId = workflowId
+            WorkflowId = workflowId,
+            ApplyInputMappings = false,
+            InputMappings = CreateContextEntryList(),
+            ApplyOutputMappings = false,
+            OutputMappings = CreateContextEntryList()
         };
 
         _nodes.Add(node);

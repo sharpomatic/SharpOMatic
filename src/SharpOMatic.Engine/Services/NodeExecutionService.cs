@@ -69,7 +69,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             if (!processContext.TryIncrementNodesRun(out _))
                 throw new SharpOMaticException($"Hit run node limit of {processContext.RunNodeLimit}");
 
-            var nextNodes = await RunNode(threadContext, node);
+            List<NextNodeData> nextNodes = await RunNode(threadContext, node);
             if (processContext.Run.RunStatus == RunStatus.Failed)
                 return;
 
@@ -82,12 +82,28 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
                 var gosubContext = GosubContext.Find(threadContext.CurrentContext);
                 if (gosubContext is not null && gosubContext.DecrementThreads() == 0)
                 {
+                    if (gosubContext.Parent is null)
+                        throw new SharpOMaticException("Gosub context is missing a parent execution context.");
+
+                    gosubContext.MergeOutput(processContext, threadContext.NodeContext);
+                    threadContext.NodeContext = gosubContext.ParentContext;
+                    threadContext.CurrentContext = gosubContext.Parent;
+
+                    var returnNode = gosubContext.ReturnNode;
+
                     processContext.UntrackContext(gosubContext);
                     if (gosubContext.ChildWorkflowContext is not null)
                         processContext.UntrackContext(gosubContext.ChildWorkflowContext);
+
+                    if (returnNode is not null)
+                    {
+                        nextNodes = [new NextNodeData(threadContext, returnNode)];
+                        continues = true;
+                    }
                 }
 
-                processContext.RemoveThread(threadContext);
+                if (!continues)
+                    processContext.RemoveThread(threadContext);
             }
 
             if (processContext.UpdateThreadCount(nextNodes.Count - 1) == 0)

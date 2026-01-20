@@ -296,7 +296,7 @@ public sealed class GosubNodeUnitTest
     }
 
     [Fact]
-    public async Task Gosub_fails_when_child_start_requires_missing_input()
+    public async Task Gosub_fails_when_child_requires_missing_input()
     {
         var childId = Guid.NewGuid();
         var childWorkflow = new WorkflowBuilder()
@@ -323,7 +323,7 @@ public sealed class GosubNodeUnitTest
     }
 
     [Fact]
-    public async Task Gosub_allows_child_start_mandatory_input_when_provided()
+    public async Task Gosub_allows_child_mandatory_input_when_provided()
     {
         var childId = Guid.NewGuid();
         var childWorkflow = new WorkflowBuilder()
@@ -358,7 +358,7 @@ public sealed class GosubNodeUnitTest
     }
 
     [Fact]
-    public async Task Gosub_defaults_optional_child_start_input_when_missing()
+    public async Task Gosub_defaults_optional_child_input_when_missing()
     {
         var childId = Guid.NewGuid();
         var childWorkflow = new WorkflowBuilder()
@@ -589,5 +589,216 @@ public sealed class GosubNodeUnitTest
             cts.Cancel();
             await queueTask;
         }
+    }
+
+    [Fact]
+    public async Task Gosub_applies_input_mappings_without_parent()
+    {
+        var childId = Guid.NewGuid();
+        var childWorkflow = new WorkflowBuilder()
+            .WithId(childId)
+            .AddStart()
+            .AddCode("use", "if (Context.TryGet<string>(\"parentOnly\", out var _)) throw new System.InvalidOperationException(\"Parent leaked\"); Context.Set<string>(\"result\", Context.Get<string>(\"child.name\") + \":\" + Context.Get<string>(\"child.mode\"));")
+            .AddEnd()
+            .Connect("start", "use")
+            .Connect("use", "end")
+            .Build();
+
+        var parentWorkflow = new WorkflowBuilder()
+            .WithId(Guid.NewGuid())
+            .AddStart()
+            .AddCode("seed", "Context.Set<string>(\"input.name\", \"Ada\"); Context.Set<string>(\"parentOnly\", \"nope\");")
+            .AddGosub("gosub", childId)
+            .AddEnd()
+            .Connect("start", "seed")
+            .Connect("seed", "gosub")
+            .Connect("gosub", "end")
+            .Build();
+
+        var gosubNode = parentWorkflow.Nodes.OfType<GosubNodeEntity>().Single();
+        gosubNode.ApplyInputMappings = true;
+        gosubNode.InputMappings = WorkflowBuilder.CreateContextEntryList(
+            new ContextEntryEntity
+            {
+                Id = Guid.NewGuid(),
+                Version = 1,
+                Purpose = ContextEntryPurpose.Input,
+                InputPath = "input.name",
+                OutputPath = "child.name",
+                Optional = false,
+                EntryType = ContextEntryType.String,
+                EntryValue = string.Empty
+            },
+            new ContextEntryEntity
+            {
+                Id = Guid.NewGuid(),
+                Version = 1,
+                Purpose = ContextEntryPurpose.Input,
+                InputPath = "input.mode",
+                OutputPath = "child.mode",
+                Optional = true,
+                EntryType = ContextEntryType.String,
+                EntryValue = "auto"
+            }
+        );
+
+        var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.Equal("Ada", outCtx.Get<string>("child.name"));
+        Assert.Equal("auto", outCtx.Get<string>("child.mode"));
+        Assert.Equal("Ada:auto", outCtx.Get<string>("result"));
+    }
+
+    [Fact]
+    public async Task Gosub_applies_output_mappings_only()
+    {
+        var childId = Guid.NewGuid();
+        var childWorkflow = new WorkflowBuilder()
+            .WithId(childId)
+            .AddStart()
+            .AddCode("produce", "Context.Set<string>(\"publicValue\", \"ok\"); Context.Set<string>(\"secretValue\", \"hidden\");")
+            .AddEnd()
+            .Connect("start", "produce")
+            .Connect("produce", "end")
+            .Build();
+
+        var parentWorkflow = new WorkflowBuilder()
+            .WithId(Guid.NewGuid())
+            .AddStart()
+            .AddGosub("gosub", childId)
+            .AddEnd()
+            .Connect("start", "gosub")
+            .Connect("gosub", "end")
+            .Build();
+
+        var gosubNode = parentWorkflow.Nodes.OfType<GosubNodeEntity>().Single();
+        gosubNode.ApplyOutputMappings = true;
+        gosubNode.OutputMappings = WorkflowBuilder.CreateContextEntryList(
+            new ContextEntryEntity
+            {
+                Id = Guid.NewGuid(),
+                Version = 1,
+                Purpose = ContextEntryPurpose.Output,
+                InputPath = "publicValue",
+                OutputPath = "result.publicValue",
+                Optional = false,
+                EntryType = ContextEntryType.String,
+                EntryValue = string.Empty
+            }
+        );
+
+        var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.Equal("ok", outCtx.Get<string>("result.publicValue"));
+        Assert.False(outCtx.TryGet<string>("publicValue", out _));
+        Assert.False(outCtx.TryGet<string>("secretValue", out _));
+    }
+
+    [Fact]
+    public async Task Gosub_output_mapping_applies_without_end()
+    {
+        var childId = Guid.NewGuid();
+        var childWorkflow = new WorkflowBuilder()
+            .WithId(childId)
+            .AddStart()
+            .AddCode("produce", "Context.Set<string>(\"child.value\", \"done\");")
+            .Connect("start", "produce")
+            .Build();
+
+        var parentWorkflow = new WorkflowBuilder()
+            .WithId(Guid.NewGuid())
+            .AddStart()
+            .AddGosub("gosub", childId)
+            .AddCode("after", "Context.Set<string>(\"result\", Context.Get<string>(\"output.value\"));")
+            .AddEnd()
+            .Connect("start", "gosub")
+            .Connect("gosub", "after")
+            .Connect("after", "end")
+            .Build();
+
+        var gosubNode = parentWorkflow.Nodes.OfType<GosubNodeEntity>().Single();
+        gosubNode.ApplyOutputMappings = true;
+        gosubNode.OutputMappings = WorkflowBuilder.CreateContextEntryList(
+            new ContextEntryEntity
+            {
+                Id = Guid.NewGuid(),
+                Version = 1,
+                Purpose = ContextEntryPurpose.Output,
+                InputPath = "child.value",
+                OutputPath = "output.value",
+                Optional = false,
+                EntryType = ContextEntryType.String,
+                EntryValue = string.Empty
+            }
+        );
+
+        var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.Equal("done", outCtx.Get<string>("output.value"));
+        Assert.Equal("done", outCtx.Get<string>("result"));
+    }
+
+    [Fact]
+    public async Task Gosub_input_allows_empty_input_for_optional()
+    {
+        var childId = Guid.NewGuid();
+        var childWorkflow = new WorkflowBuilder()
+            .WithId(childId)
+            .AddStart()
+            .AddCode("use", "Context.Set<string>(\"result\", Context.Get<string>(\"child.fixedValue\"));")
+            .AddEnd()
+            .Connect("start", "use")
+            .Connect("use", "end")
+            .Build();
+
+        var parentWorkflow = new WorkflowBuilder()
+            .WithId(Guid.NewGuid())
+            .AddStart()
+            .AddGosub("gosub", childId)
+            .AddEnd()
+            .Connect("start", "gosub")
+            .Connect("gosub", "end")
+            .Build();
+
+        var gosubNode = parentWorkflow.Nodes.OfType<GosubNodeEntity>().Single();
+        gosubNode.ApplyInputMappings = true;
+        gosubNode.InputMappings = WorkflowBuilder.CreateContextEntryList(
+            new ContextEntryEntity
+            {
+                Id = Guid.NewGuid(),
+                Version = 1,
+                Purpose = ContextEntryPurpose.Input,
+                InputPath = string.Empty,
+                OutputPath = "child.fixedValue",
+                Optional = true,
+                EntryType = ContextEntryType.String,
+                EntryValue = "fixed"
+            }
+        );
+
+        var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.Equal("fixed", outCtx.Get<string>("child.fixedValue"));
+        Assert.Equal("fixed", outCtx.Get<string>("result"));
     }
 }

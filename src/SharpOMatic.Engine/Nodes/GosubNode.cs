@@ -26,10 +26,51 @@ public class GosubNode(ThreadContext threadContext, GosubNodeEntity node)
                 returnNode = callerWorkflowContext.ResolveSingleOutput(Node);
         }
 
-        var baseContextJson = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters);
-        var childContext = ContextObject.Deserialize(baseContextJson, ProcessContext.JsonConverters);
+        ContextObject childContext;
+        if (Node.ApplyInputMappings)
+        {
+            childContext = [];
+            var inputEntries = Node.InputMappings?.Entries ?? [];
+            foreach (var entry in inputEntries)
+            {
+                var inputPath = entry.InputPath;
+                var targetPath = string.IsNullOrWhiteSpace(entry.OutputPath) ? inputPath : entry.OutputPath;
+                if (string.IsNullOrWhiteSpace(targetPath))
+                    throw new SharpOMaticException("Gosub node output path cannot be empty.");
 
-        var gosubContext = new GosubContext(ThreadContext.CurrentContext, ThreadContext.NodeContext, returnNode);
+                if (!string.IsNullOrWhiteSpace(inputPath) &&
+                    ThreadContext.NodeContext.TryGet<object?>(inputPath, out var mapValue))
+                {
+                    if (!childContext.TrySet(targetPath, mapValue))
+                        throw new SharpOMaticException($"Gosub node input mapping could not set '{targetPath}' into context.");
+                }
+                else
+                {
+                    if (!entry.Optional)
+                    {
+                        if (string.IsNullOrWhiteSpace(inputPath))
+                            throw new SharpOMaticException("Gosub node input path cannot be empty.");
+
+                        throw new SharpOMaticException($"Gosub node mandatory path '{inputPath}' cannot be resolved.");
+                    }
+
+                    var entryValue = await EvaluateContextEntryValue(entry);
+                    if (!childContext.TrySet(targetPath, entryValue))
+                        throw new SharpOMaticException($"Gosub node input mapping could not set '{targetPath}' into context.");
+                }
+            }
+        }
+        else
+        {
+            var baseContextJson = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters);
+            childContext = ContextObject.Deserialize(baseContextJson, ProcessContext.JsonConverters);
+        }
+
+        var gosubContext = new GosubContext(ThreadContext.CurrentContext,
+                                            ThreadContext.NodeContext,
+                                            returnNode,
+                                            Node.ApplyOutputMappings,
+                                            Node.OutputMappings);
         gosubContext.IncrementThreads();
         var workflowContext = new WorkflowContext(gosubContext, workflow);
         gosubContext.ChildWorkflowContext = workflowContext;
