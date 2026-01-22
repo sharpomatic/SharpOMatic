@@ -1,5 +1,6 @@
 # vNext
 
+- Backward pointing outputs need to route up/down -> backwards -> up/down -> forward
 - Check that trace works well for gosub workflows.
 
 ## Major Features
