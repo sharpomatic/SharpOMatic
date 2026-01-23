@@ -163,6 +163,7 @@
   stroke: #DEE2E6;
   stroke-width: 2px;
   stroke-linecap: round;
+  stroke-linejoin: round;
   pointer-events: none;
 
   &.pending {
@@ -183,6 +184,7 @@
   stroke: transparent;
   stroke-width: 12px;
   stroke-linecap: round;
+  stroke-linejoin: round;
   pointer-events: stroke;
 }
 
@@ -191,6 +193,7 @@
   stroke: #DEE2E6;
   stroke-width: 2px;
   stroke-linecap: round;
+  stroke-linejoin: round;
   pointer-events: none; // Clicks are handled by the hit area
 
   &.pending {

@@ -375,6 +375,8 @@ export class DesignerComponent {
     let startY: number;
     let endX: number;
     let endY: number;
+    let sourceTop: number;
+    let sourceBottom: number;
 
     const workflow = this.workflow();
 
@@ -397,6 +399,8 @@ export class DesignerComponent {
       startY = (fromNode.top() + fromConnector.boxOffset() + ConnectorEntity.DISPLAY_SIZE / 2) + 2;
       endX = toNode.left() - 25;
       endY = (toNode.top() + toConnector.boxOffset() + ConnectorEntity.DISPLAY_SIZE / 2) + 2;
+      sourceTop = fromNode.top();
+      sourceBottom = fromNode.top() + fromNode.height();
     } else {
       const fromNode = workflow.getNodeById(connection.from.nodeId);
 
@@ -408,15 +412,100 @@ export class DesignerComponent {
       startY = (fromNode.top() + connection.from.boxOffset() + ConnectorEntity.DISPLAY_SIZE / 2) + 2;
       endX = connection.targetPoint.x - 25;
       endY = connection.targetPoint.y + 2;
+      sourceTop = fromNode.top();
+      sourceBottom = fromNode.top() + fromNode.height();
     }
 
-    const controlPointOffset = 20; // Adjust this value for more or less curve
+    if (endX < startX) {
+      const leftOffset = 20;
+      const rightOffset = 29;
+      const verticalOffset = 41;
+      const cornerRadius = 16;
+      const routeOutX = startX + rightOffset;
+      const routeInX = endX - leftOffset;
+
+      if (startY >= endY) {
+        const routeBottomY = sourceBottom + verticalOffset;
+        return this.buildRoundedPath([
+          { x: startX, y: startY },
+          { x: routeOutX, y: startY },
+          { x: routeOutX, y: routeBottomY },
+          { x: routeInX, y: routeBottomY },
+          { x: routeInX, y: endY },
+          { x: endX, y: endY },
+        ], cornerRadius);
+      }
+
+      const routeTopY = sourceTop - verticalOffset;
+      return this.buildRoundedPath([
+        { x: startX, y: startY },
+        { x: routeOutX, y: startY },
+        { x: routeOutX, y: routeTopY },
+        { x: routeInX, y: routeTopY },
+        { x: routeInX, y: endY },
+        { x: endX, y: endY },
+      ], cornerRadius);
+    }
+
+    const controlPointOffset = 25; // Adjust this value for more or less curve
     const controlX1 = startX + controlPointOffset;
     const controlY1 = startY;
     const controlX2 = endX - controlPointOffset;
     const controlY2 = endY;
 
     return `M${startX},${startY} C${controlX1},${controlY1} ${controlX2},${controlY2} ${endX},${endY}`;
+  }
+
+  private buildRoundedPath(points: Point[], cornerRadius: number): string {
+    if (points.length === 0) {
+      return '';
+    }
+
+    if (points.length === 1) {
+      return `M${points[0].x},${points[0].y}`;
+    }
+
+    let path = `M${points[0].x},${points[0].y}`;
+    const lastIndex = points.length - 1;
+
+    for (let i = 1; i < lastIndex; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+      const next = points[i + 1];
+      const dx1 = curr.x - prev.x;
+      const dy1 = curr.y - prev.y;
+      const dx2 = next.x - curr.x;
+      const dy2 = next.y - curr.y;
+      const len1 = Math.abs(dx1) + Math.abs(dy1);
+      const len2 = Math.abs(dx2) + Math.abs(dy2);
+
+      if (len1 === 0 || len2 === 0) {
+        continue;
+      }
+
+      const dir1x = Math.sign(dx1);
+      const dir1y = Math.sign(dy1);
+      const dir2x = Math.sign(dx2);
+      const dir2y = Math.sign(dy2);
+
+      if (dir1x === dir2x && dir1y === dir2y) {
+        path += ` L${curr.x},${curr.y}`;
+        continue;
+      }
+
+      const radius = Math.min(cornerRadius, len1 / 2, len2 / 2);
+      const entryX = curr.x - (dir1x * radius);
+      const entryY = curr.y - (dir1y * radius);
+      const exitX = curr.x + (dir2x * radius);
+      const exitY = curr.y + (dir2y * radius);
+
+      path += ` L${entryX},${entryY} Q${curr.x},${curr.y} ${exitX},${exitY}`;
+    }
+
+    const last = points[lastIndex];
+    path += ` L${last.x},${last.y}`;
+
+    return path;
   }
 
   @HostListener('window:keydown.delete', ['$event'])
