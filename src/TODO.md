@@ -8,7 +8,7 @@
 
 ### Connectors
 
-- Gemini connector
+- Gemini connector (thinking reponse, check structure output and check tool calling)
 - Anthropic connector
 
 ### Evaluations

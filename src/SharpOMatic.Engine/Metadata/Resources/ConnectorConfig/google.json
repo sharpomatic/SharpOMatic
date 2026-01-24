@@ -1,0 +1,24 @@
+{
+  "Version": 1,
+  "ConfigId": "google",
+  "DisplayName": "Google AI",
+  "Description": "Connector to Google Gen AI and Vertex AI",
+  "AuthModes": [
+    {
+      "Id": "gen_ai",
+      "DisplayName": "Gen AI",
+      "Kind": 0,
+      "IsDefault": true,
+      "Fields": [
+        {
+          "Name": "api_key",
+          "Label": "API key",
+          "Description": "",
+          "CallDefined": false,
+          "Type": 1,
+          "IsRequired": true
+        }
+      ]
+    }
+  ]
+}

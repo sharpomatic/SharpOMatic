@@ -1,0 +1,140 @@
+{
+  "Version": 1,
+  "ConfigId": "google_gemini-3-pro-preview",
+  "DisplayName": "gemini-3-pro-preview",
+  "Description": "Chat model",
+  "ConnectorConfigId": "google",
+  "IsCustom": false,
+  "Capabilities": [
+    {
+      "Name": "SupportsTextIn",
+      "DisplayName": "Supports Text Input"
+    },
+    {
+      "Name": "SupportsTextOut",
+      "DisplayName": "Supports Text Output"
+    },
+    {
+      "Name": "SupportsImageIn",
+      "DisplayName": "Supports Image Input"
+    },
+    {
+      "Name": "SupportsMaxOutputTokens",
+      "DisplayName": "Supports Max Output Tokens"
+    },
+    {
+      "Name": "SupportsThinkingLevel",
+      "DisplayName": "Supports Thinking Level"
+    },
+    {
+      "Name": "SupportsSampling",
+      "DisplayName": "Supports Sampling"
+    },
+    {
+      "Name": "SupportsStructuredOutput",
+      "DisplayName": "Supports Structured Output"
+    },
+    {
+      "Name": "SupportsToolCalling",
+      "DisplayName": "Supports Tool Calling"
+    }
+  ],
+  "ParameterFields": [
+    {
+      "Name": "max_output_tokens",
+      "Label": "Max Output Tokens",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 5,
+      "IsRequired": true,
+      "Capability": "SupportsMaxOutputTokens",
+      "DefaultValue": 65536,
+      "Min": 0,
+      "Max": 65536,
+      "Step": 1000
+    },
+    {
+      "Name": "thinking_level",
+      "Label": "Thinking Level",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsThinkingLevel",
+      "DefaultValue": "High",
+      "EnumOptions": [
+        "Low",
+        "High"
+      ]
+    },
+    {
+      "Name": "temperature",
+      "Description": "",
+      "Label": "Temperature",
+      "CallDefined": true,
+      "Type": 5,
+      "IsRequired": false,
+      "Capability": "SupportsSampling",
+      "DefaultValue": 1,
+      "Min": 0,
+      "Max": 2,
+      "Step": 0.1
+    },
+    {
+      "Name": "top_p",
+      "Description": "",
+      "Label": "Top P",
+      "CallDefined": true,
+      "IsRequired": false,
+      "Type": 5,
+      "Capability": "SupportsSampling",
+      "DefaultValue": 1,
+      "Min": 0,
+      "Max": 1,
+      "Step": 0.1
+    },
+    {
+      "Name": "top_k",
+      "Description": "",
+      "Label": "Top K",
+      "CallDefined": true,
+      "IsRequired": false,
+      "Type": 4,
+      "Capability": "SupportsSampling",
+      "DefaultValue": 40,
+      "Min": 0,
+      "Max": 1000,
+      "Step": 10
+    },
+    {
+      "Name": "structured_output",
+      "Label": "Structured Output",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsStructuredOutput",
+      "DefaultValue": "Text",
+      "EnumOptions": [
+        "Text",
+        "Json",
+        "Schema",
+        "Configured Type"
+      ]
+    },
+    {
+      "Name": "tool_choice",
+      "Label": "Tool Choice",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsToolCalling",
+      "DefaultValue": "Auto",
+      "EnumOptions": [
+        "None",
+        "Auto"
+      ]
+    }
+  ]
+}

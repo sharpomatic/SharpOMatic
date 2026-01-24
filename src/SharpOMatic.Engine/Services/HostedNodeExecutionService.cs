@@ -86,7 +86,10 @@ public class HostedNodeExecutionService(IServiceScopeFactory scopeFactory, INode
                 {
                     var config = await JsonSerializer.DeserializeAsync<T>(stream);
                     if (config != null)
+                    {
                         await upsertAction(repository, config);
+                        Console.WriteLine($"Loaded Metadata {resourceName}");
+                    }
                 }
             }
             catch (Exception ex)

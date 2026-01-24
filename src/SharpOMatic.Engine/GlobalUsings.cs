@@ -2,6 +2,7 @@
 global using Azure.AI.OpenAI;
 global using Azure.Identity;
 global using Azure.Storage.Blobs;
+global using Google.GenAI;
 global using Microsoft.Agents.AI;
 global using Microsoft.CodeAnalysis;
 global using Microsoft.CodeAnalysis.CSharp;
@@ -42,4 +43,5 @@ global using System.Text;
 global using System.Text.Json;
 global using System.Text.Json.Serialization;
 global using System.Threading.Channels;
+
 

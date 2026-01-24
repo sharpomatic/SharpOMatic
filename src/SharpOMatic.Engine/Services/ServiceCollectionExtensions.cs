@@ -17,7 +17,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ITransferService, TransferService>();
         services.TryAddKeyedScoped<IModelCaller, OpenAIModelCaller>("openai");
         services.TryAddKeyedScoped<IModelCaller, AzureOpenAIModelCaller>("azure_openai");
-        services.TryAddKeyedScoped<IModelCaller, GoogleModelCaller>("google");
+        services.TryAddKeyedScoped<IModelCaller, GoogleGenAIModelCaller>("google");
         services.TryAddScoped<ISamplesService, SamplesService>();
         services.AddHostedService<HostedNodeExecutionService>();
 
