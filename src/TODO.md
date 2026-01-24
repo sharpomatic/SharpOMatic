@@ -1,7 +1,5 @@
 # vNext
 
-- Check that trace works well for gosub workflows.
-
 ## Major Features
 
 ### Engine
@@ -36,8 +34,9 @@
 
 ## Minor Features
 
+Gosub - Check that trace works well for gosub workflows.
 Usage - token usage counts
-Traces - show tool calls, reasoning and other details within a node trace
+Debug - Add debug info below traces, for tool calling and reasoning information, etc.
 OpenAI - allow calling of image generator
 OpenAI - allow calling embeddings
 
