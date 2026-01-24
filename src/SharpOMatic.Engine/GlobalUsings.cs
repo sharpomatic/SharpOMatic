@@ -29,9 +29,9 @@ global using SharpOMatic.Engine.Metadata.Definitions;
 global using SharpOMatic.Engine.Metadata.Enumerations;
 global using SharpOMatic.Engine.Nodes;
 global using SharpOMatic.Engine.Repository;
-global using SharpOMatic.Engine.Services;
 global using System.ClientModel;
 global using System.Collections;
+global using System.Collections.Concurrent;
 global using System.Collections.Immutable;
 global using System.Collections.ObjectModel;
 global using System.ComponentModel.DataAnnotations;
@@ -42,3 +42,4 @@ global using System.Text;
 global using System.Text.Json;
 global using System.Text.Json.Serialization;
 global using System.Threading.Channels;
+

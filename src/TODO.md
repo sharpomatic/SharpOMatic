@@ -1,13 +1,11 @@
 # vNext
 
-- Backward pointing outputs need to route up/down -> backwards -> up/down -> forward
 - Check that trace works well for gosub workflows.
 
 ## Major Features
 
 ### Engine
 
-- User interaction node, suspend workflow and allow resume
 - Integrate use of LSP/OmniSharp for full intellisense in code nodes
 
 ### Connectors
@@ -19,7 +17,7 @@
 
 - Add new sidebar area for evaluations
 - Import of existing data using csv
-- Run an evaluation using workflow as the judge
+- Run an evaluation using designated workflow as the judge
 
 ### MCP Servers 
 
@@ -33,10 +31,8 @@
 
 ### ChatClient
 
-- Create chat bot UI that calls workflow and shows results
-- Or investigate using OpenAI ChatKit to route to our backend
-- Need to handle domain lookup issue for ChatKit
-- Would need to see OpenAI Python library to see protocol, including initial get session call
+- Investigate exposing a workflow as AG-UI
+- Investigate using CopilotKit as example client to workflow
 
 ## Minor Features
 

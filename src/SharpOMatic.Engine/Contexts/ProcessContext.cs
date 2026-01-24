@@ -2,8 +2,8 @@ namespace SharpOMatic.Engine.Contexts;
 
 public class ProcessContext : ExecutionContext
 {
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<ExecutionContext, byte> _activeContexts = new();
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, ThreadContext> _threads = new();
+    private readonly ConcurrentDictionary<ExecutionContext, byte> _activeContexts = new();
+    private readonly ConcurrentDictionary<int, ThreadContext> _threads = new();
     private TaskCompletionSource<Run>? _completionSource;
 
     private int _threadId = 1;
@@ -13,6 +13,7 @@ public class ProcessContext : ExecutionContext
 
     public IServiceScope ServiceScope { get; }
     public IRepositoryService RepositoryService { get; }
+    public IAssetStore AssetStore { get; }
     public IEnumerable<IProgressService> ProgressServices { get; }
     public IToolMethodRegistry ToolMethodRegistry { get; }
     public ISchemaTypeRegistry SchemaTypeRegistry { get; }
@@ -34,6 +35,7 @@ public class ProcessContext : ExecutionContext
         ServiceScope = serviceScope;
         Run = run;
         RepositoryService = serviceScope.ServiceProvider.GetRequiredService<IRepositoryService>();
+        AssetStore = serviceScope.ServiceProvider.GetRequiredService<IAssetStore>();
         ProgressServices = serviceScope.ServiceProvider.GetRequiredService<IEnumerable<IProgressService>>();
         ToolMethodRegistry = serviceScope.ServiceProvider.GetRequiredService<IToolMethodRegistry>();
         SchemaTypeRegistry = serviceScope.ServiceProvider.GetRequiredService<ISchemaTypeRegistry>();
