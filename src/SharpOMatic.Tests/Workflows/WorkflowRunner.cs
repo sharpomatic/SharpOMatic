@@ -1,4 +1,5 @@
-using SharpOMatic.Engine.Contexts;
+using Microsoft.Extensions.DependencyInjection;
+using Moq;
 
 namespace SharpOMatic.Tests.Workflows;
 
@@ -79,6 +80,9 @@ public class WorkflowRunner
 
         // Override the repository with a simple in memory test version
         services.AddSingleton<IRepositoryService, TestRepositoryService>();
+        
+        var assetStoreMock = new Mock<IAssetStore>();
+        services.AddSingleton(assetStoreMock.Object);
 
         return services.BuildServiceProvider();
     }

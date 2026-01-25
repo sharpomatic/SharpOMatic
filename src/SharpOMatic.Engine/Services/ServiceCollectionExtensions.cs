@@ -15,10 +15,10 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IRepositoryService, RepositoryService>();
         services.TryAddScoped<IEngineService, EngineService>();
         services.TryAddScoped<ITransferService, TransferService>();
+        services.TryAddScoped<ISamplesService, SamplesService>();
         services.TryAddKeyedScoped<IModelCaller, OpenAIModelCaller>("openai");
         services.TryAddKeyedScoped<IModelCaller, AzureOpenAIModelCaller>("azure_openai");
         services.TryAddKeyedScoped<IModelCaller, GoogleGenAIModelCaller>("google");
-        services.TryAddScoped<ISamplesService, SamplesService>();
         services.AddHostedService<HostedNodeExecutionService>();
 
         // Add empty versions of optional services
