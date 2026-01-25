@@ -60,7 +60,9 @@ public sealed class TestRepositoryService : IRepositoryService
     }
 
     public Task PruneWorkflowRuns(Guid workflowId, int keepLatest)
-        => throw new NotImplementedException();
+    {
+        return Task.CompletedTask;
+    }
 
     public Task<List<Trace>> GetRunTraces(Guid runId)
     {
