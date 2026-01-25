@@ -32,6 +32,10 @@
 - Investigate exposing a workflow as AG-UI
 - Investigate using CopilotKit as example client to workflow
 
+### Assets
+
+- Add two level structure, folders and then assets
+
 ## Minor Features
 
 Usage - token usage counts
