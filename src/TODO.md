@@ -8,7 +8,7 @@
 
 ### Connectors
 
-- Gemini connector (thinking reponse, check structure output and check tool calling)
+- Gemini connector (tool calling fails with: Duplicate function declaration found: GetTime)
 - Anthropic connector
 
 ### Evaluations

@@ -12,6 +12,35 @@ public abstract class BaseModelCaller : IModelCaller
         ThreadContext threadContext,
         ModelCallNodeEntity node);
 
+    protected virtual async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> CallAgent(
+        AIAgent agent,
+        List<ChatMessage> chat,
+        ChatOptions? chatOptions,
+        bool jsonOutput,
+        ModelCallNodeEntity node)
+    {
+        var response = await agent.RunAsync(chat, options: new ChatClientAgentRunOptions(chatOptions));
+        var tempContext = ResponseToContextObject(jsonOutput, response, node);
+        return (chat, response.Messages, tempContext);
+    }
+
+    protected virtual async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> CallStreamingAgent(
+        AIAgent agent,
+        List<ChatMessage> chat,
+        ChatOptions? chatOptions,
+        bool jsonOutput,
+        ModelCallNodeEntity node)
+    {
+        // Accumulate the streamed responses, but ignore messages that are empty
+        List<ChatMessage> responses = [];
+        await foreach (var message in agent.RunStreamingAsync(chat, options: new ChatClientAgentRunOptions(chatOptions)))
+            if ((message.Contents is not null) && (message.Contents.Count > 0))
+                responses.Add(new ChatMessage(message.Role ?? ChatRole.Assistant, message.Contents));
+
+        var tempContext = ResponseToContextObject(jsonOutput, new AgentRunResponse(responses), node);
+        return (chat, responses, tempContext);
+    }
+
     protected virtual ChatOptions SetupBasicCapabilities(
         Model model,
         ModelConfig modelConfig,
@@ -130,7 +159,7 @@ public abstract class BaseModelCaller : IModelCaller
                     if (toolDelegate is null)
                         throw new SharpOMaticException($"Tool '{toolName.Trim()}' not found, check it is specified in the AddToolMethods setup.");
 
-                    tools.Add(AIFunctionFactory.Create(toolDelegate));
+                    tools.Add(AIFunctionFactory.Create(toolDelegate, toolName));
                 }
 
                 if (tools.Count > 0)
@@ -424,11 +453,16 @@ public abstract class BaseModelCaller : IModelCaller
         var tempContext = new ContextObject();
         var textPath = !string.IsNullOrWhiteSpace(node.TextOutputPath) ? node.TextOutputPath : "output.text";
 
+        StringBuilder sb = new();
+        foreach(var message in response.Messages)
+            if (!string.IsNullOrEmpty(message.Text))
+                sb.Append(message.Text);
+
         if (jsonOutput)
         {
             try
             {
-                var objects = FastDeserializeString(response.Text);
+                var objects = FastDeserializeString(sb.ToString());
                 tempContext.Set(textPath, objects);
             }
             catch
@@ -437,7 +471,7 @@ public abstract class BaseModelCaller : IModelCaller
             }
         }
         else
-            tempContext.Set(textPath, response.Text);
+            tempContext.Set(textPath, sb.ToString());
 
         return tempContext;
     }

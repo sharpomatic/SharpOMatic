@@ -1,4 +1,9 @@
-﻿namespace SharpOMatic.Engine.Services;
+﻿using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+using System;
+using System.Xml.Linq;
+
+namespace SharpOMatic.Engine.Services;
 
 public class GoogleGenAIModelCaller : BaseModelCaller
 {
@@ -34,10 +39,7 @@ public class GoogleGenAIModelCaller : BaseModelCaller
 
         // Use the Microsoft Agent Framework by creating a chat client based agent
         var agent = new ChatClientAgent(chatClient, instructions: instructions, services: agentServiceProvider);
-        var response = await agent.RunAsync(chat, options: new ChatClientAgentRunOptions(chatOptions));
-        var tempContext = ResponseToContextObject(jsonOutput, response, node);
-
-        return (chat, response.Messages, tempContext);
+        return await CallAgent(agent, chat, chatOptions, jsonOutput, node);
     }
 
     protected virtual (AuthenticationModeConfig, Dictionary<string, string?>) GetAuthenticationFields(

@@ -34,11 +34,8 @@ public class OpenAIModelCaller : BaseModelCaller
         var agentClient = GetOpenAIResponseClient(model, modelConfig, authenticationModeConfig, connectionFields);
 
         // Use the Microsoft Agent Framework by creating an agent from the responses AI client, then run the agent call
-        AIAgent agent = agentClient.CreateAIAgent(instructions: instructions, services: agentServiceProvider);
-        var response = await agent.RunAsync(chat, options: new ChatClientAgentRunOptions(chatOptions));
-        var tempContext = ResponseToContextObject(jsonOutput, response, node);
-
-        return (chat, response.Messages, tempContext);
+        var agent = agentClient.CreateAIAgent(instructions: instructions, services: agentServiceProvider);
+        return await CallAgent(agent, chat, chatOptions, jsonOutput, node);
     }
 
     public virtual OpenAIResponseClient GetOpenAIResponseClient(
