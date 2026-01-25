@@ -270,7 +270,7 @@ namespace SharpOMatic.Engine.Migrations
                     b.Property<string>("OutputContext")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("ParentNodeEntityId")
+                    b.Property<Guid?>("ParentTraceId")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("RunId")

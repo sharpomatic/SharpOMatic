@@ -6,7 +6,7 @@ export interface TraceProgressModel {
   runId: string;
   workflowId: string;
   nodeEntityId: string;
-  parentNodeEntityId?: string | null;
+  parentTraceId?: string | null;
   threadId: number;
   nodeType: NodeType;
   nodeStatus: NodeStatus;

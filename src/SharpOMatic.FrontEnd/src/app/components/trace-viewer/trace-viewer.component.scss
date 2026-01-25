@@ -9,6 +9,7 @@
 
 .trace-line {
   margin: 4px;
+  align-items: center;
 }
 
 .trace-symbol {
@@ -16,11 +17,23 @@
   font-size: 17px;
 }
 
+.trace-toggle {
+  display: inline-flex;
+  align-items: center;
+  width: 16px;
+}
+
+.trace-toggle-spacer {
+  display: inline-block;
+  width: 16px;
+}
+
 .trace-thread {
   padding: 1px 6px;
-  display: inline-block;
+  font-size: 12px;
+  color: #6c757d;
   text-align: right;
-  width: 18px;
+  min-width: 24px;
 }
 
 .trace-title {
@@ -51,14 +64,4 @@
     color: white;
     background-color: #FF5454;
   }
-}
-
-.trace-meta {
-  padding: 1px 6px;
-  font-size: 12px;
-  color: #6c757d;
-}
-
-.trace-meta-sep {
-  margin: 0 6px;
 }

@@ -8,7 +8,7 @@ public class Trace
     public required Guid RunId { get; set; }
     public required Guid WorkflowId { get; set; }
     public required Guid NodeEntityId { get; set; }
-    public required Guid? ParentNodeEntityId { get; set; }
+    public required Guid? ParentTraceId { get; set; }
     public required int ThreadId { get; set; }
     public required DateTime Created { get; set; }
     public required NodeType NodeType { get; set; }

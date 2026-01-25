@@ -8,7 +8,7 @@
 
 ### Connectors
 
-- Gemini connector (tool calling fails with: Duplicate function declaration found: GetTime) images in needs testing
+- Gemini connector (tool calling fails with: Duplicate function declaration found: GetTime when using raw factory)
 - Anthropic connector
 
 ### Evaluations
@@ -34,11 +34,10 @@
 
 ## Minor Features
 
-Gosub - Check that trace works well for gosub workflows.
 Usage - token usage counts
-Debug - Add debug info below traces, for tool calling and reasoning information, etc.
-OpenAI - allow calling of image generator
-OpenAI - allow calling embeddings
+Trace - Child traces for model call, for thinking and tool calls
+Connectors - allow calling of image generator
+Connectors - allow calling embeddings
 
 
 

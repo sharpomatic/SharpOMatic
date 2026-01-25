@@ -7,20 +7,20 @@ public sealed class GosubContext : ExecutionContext
 
     public GosubContext(
         ExecutionContext parent,
-        Guid parentNodeEntityId,
+        Guid parentTraceId,
         ContextObject parentContext,
         NodeEntity? returnNode,
         bool applyOutputMappings,
         ContextEntryListEntity outputMappings) : base(parent)
     {
-        ParentNodeEntityId = parentNodeEntityId;
+        ParentTraceId = parentTraceId;
         ParentContext = parentContext;
         ReturnNode = returnNode;
         ApplyOutputMappings = applyOutputMappings;
         OutputMappings = outputMappings;
     }
 
-    public Guid ParentNodeEntityId { get; }
+    public Guid ParentTraceId { get; }
     public ContextObject ParentContext { get; }
     public NodeEntity? ReturnNode { get; }
     public WorkflowContext? ChildWorkflowContext { get; set; }

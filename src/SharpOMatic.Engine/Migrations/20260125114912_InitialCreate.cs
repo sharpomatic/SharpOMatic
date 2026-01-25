@@ -176,7 +176,7 @@ namespace SharpOMatic.Engine.Migrations
                     RunId = table.Column<Guid>(type: "TEXT", nullable: false),
                     WorkflowId = table.Column<Guid>(type: "TEXT", nullable: false),
                     NodeEntityId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    ParentNodeEntityId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    ParentTraceId = table.Column<Guid>(type: "TEXT", nullable: true),
                     ThreadId = table.Column<int>(type: "INTEGER", nullable: false),
                     Created = table.Column<DateTime>(type: "TEXT", nullable: false),
                     NodeType = table.Column<int>(type: "INTEGER", nullable: false),

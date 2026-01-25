@@ -20,7 +20,7 @@ public abstract class RunNode<T> : IRunNode where T : NodeEntity
             RunId = ProcessContext.Run.RunId,
             TraceId = Guid.NewGuid(),
             NodeEntityId = node.Id,
-            ParentNodeEntityId = gosubContext?.ParentNodeEntityId,
+            ParentTraceId = gosubContext?.ParentTraceId,
             ThreadId = threadContext.ThreadId,
             Created = DateTime.Now,
             NodeType = node.NodeType,
