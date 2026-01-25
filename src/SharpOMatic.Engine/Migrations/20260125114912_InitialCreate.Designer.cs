@@ -11,7 +11,7 @@ using SharpOMatic.Engine.Repository;
 namespace SharpOMatic.Engine.Migrations
 {
     [DbContext(typeof(SharpOMaticDbContext))]
-    [Migration("20260102114310_InitialCreate")]
+    [Migration("20260125114912_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -270,8 +270,14 @@ namespace SharpOMatic.Engine.Migrations
                     b.Property<string>("OutputContext")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("ParentNodeEntityId")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid>("RunId")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("ThreadId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Title")
                         .IsRequired()

@@ -1,6 +1,4 @@
-﻿using SharpOMatic.Engine.Interfaces;
-
-namespace SharpOMatic.Engine.Nodes;
+﻿namespace SharpOMatic.Engine.Nodes;
 
 public abstract class RunNode<T> : IRunNode where T : NodeEntity
 {
@@ -14,6 +12,7 @@ public abstract class RunNode<T> : IRunNode where T : NodeEntity
     {
         ThreadContext = threadContext;
         Node = (T)node;
+        var gosubContext = GosubContext.Find(ThreadContext.CurrentContext);
 
         Trace = new Trace()
         {
@@ -21,6 +20,8 @@ public abstract class RunNode<T> : IRunNode where T : NodeEntity
             RunId = ProcessContext.Run.RunId,
             TraceId = Guid.NewGuid(),
             NodeEntityId = node.Id,
+            ParentNodeEntityId = gosubContext?.ParentNodeEntityId,
+            ThreadId = threadContext.ThreadId,
             Created = DateTime.Now,
             NodeType = node.NodeType,
             NodeStatus = NodeStatus.Running,

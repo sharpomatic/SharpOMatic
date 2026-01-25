@@ -67,6 +67,7 @@ public class GosubNode(ThreadContext threadContext, GosubNodeEntity node)
         }
 
         var gosubContext = new GosubContext(ThreadContext.CurrentContext,
+                                            Node.Id,
                                             ThreadContext.NodeContext,
                                             returnNode,
                                             Node.ApplyOutputMappings,

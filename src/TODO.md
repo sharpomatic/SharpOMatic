@@ -8,7 +8,7 @@
 
 ### Connectors
 
-- Gemini connector (tool calling fails with: Duplicate function declaration found: GetTime)
+- Gemini connector (tool calling fails with: Duplicate function declaration found: GetTime) images in needs testing
 - Anthropic connector
 
 ### Evaluations

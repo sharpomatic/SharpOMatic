@@ -1,6 +1,7 @@
 <div class="trace-viewer bg-body-tertiary flex-grow-1 p-1 h-100">
   @for (trace of traces; track trace.traceId) {
   <div class="d-flex flex-row trace-line flex-grow-1">
+    <span class="trace-thread flex-shrink-0">{{ trace.threadId }}</span>
     <i class="bi trace-symbol flex-shrink-0" [class]="getNodeSymbol(trace.nodeType)"></i>
     <div class="trace-title flex-shrink-0">{{ trace.title }}</div>
     <div class="d-flex flex-column trace-message flex-grow-1 align-items-start">

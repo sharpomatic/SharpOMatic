@@ -16,6 +16,13 @@
   font-size: 17px;
 }
 
+.trace-thread {
+  padding: 1px 6px;
+  display: inline-block;
+  text-align: right;
+  width: 18px;
+}
+
 .trace-title {
   padding: 1px 6px;
   display: inline-block;
@@ -44,4 +51,14 @@
     color: white;
     background-color: #FF5454;
   }
+}
+
+.trace-meta {
+  padding: 1px 6px;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.trace-meta-sep {
+  margin: 0 6px;
 }

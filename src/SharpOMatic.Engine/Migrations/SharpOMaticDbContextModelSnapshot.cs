@@ -267,8 +267,14 @@ namespace SharpOMatic.Engine.Migrations
                     b.Property<string>("OutputContext")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("ParentNodeEntityId")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid>("RunId")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("ThreadId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Title")
                         .IsRequired()
