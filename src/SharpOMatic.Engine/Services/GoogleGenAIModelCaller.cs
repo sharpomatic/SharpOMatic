@@ -1,9 +1,4 @@
-﻿using Microsoft.Agents.AI;
-using Microsoft.Extensions.AI;
-using System;
-using System.Xml.Linq;
-
-namespace SharpOMatic.Engine.Services;
+﻿namespace SharpOMatic.Engine.Services;
 
 public class GoogleGenAIModelCaller : BaseModelCaller
 {
