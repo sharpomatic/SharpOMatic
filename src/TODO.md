@@ -1,7 +1,5 @@
 # vNext
 
-- Improve samples for switching, looping, fan out/in, gosub and code
-
 ## Major Features
 
 ### Engine
@@ -16,8 +14,14 @@
 ### Evaluations
 
 - Add new sidebar area for evaluations
-- Import of existing data using csv
-- Run an evaluation using designated workflow as the judge
+- Allow adding and deleting of a new evaluation
+- Details allow definition of target workflow and grader workflows
+- Manual creation of column definitions
+- Manual creation of data rows (add/edit/remove)
+- Start an evalaution run (full or sampled)
+- Cancel a running evaluation
+- List runs
+- Import/Merging of existing data using csv
 
 ### MCP Servers 
 
