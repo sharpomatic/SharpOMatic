@@ -1,8 +1,9 @@
 # Development Notes
 
 ## Entity Framework Core
+C:\Users\philw\AppData\Local
 
-### How to install EF dotnet tools4
+### How to install EF dotnet tools
 dotnet tool install --global dotnet-ef
 
 ### How to add a new migration
