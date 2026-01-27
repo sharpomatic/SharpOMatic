@@ -13,22 +13,32 @@ import { ContextViewerComponent } from '../../../components/context-viewer/conte
 import { TraceViewerComponent } from '../../../components/trace-viewer/trace-viewer.component';
 import { DialogService } from '../../../dialogs/services/dialog.service';
 import { AssetPickerDialogComponent } from '../../../dialogs/asset-picker/asset-picker-dialog.component';
+import { BsModalService } from 'ngx-bootstrap/modal';
+import { AssetPreviewDialogComponent } from '../../../dialogs/asset-preview/asset-preview-dialog.component';
+import { AssetTextDialogComponent } from '../../../dialogs/asset-text/asset-text-dialog.component';
+import { AssetSummary } from '../../assets/interfaces/asset-summary';
+import { formatByteSize } from '../../../helper/format-size';
+import { ServerRepositoryService } from '../../../services/server.repository.service';
 
 @Component({
   selector: 'app-tracebar',
   standalone: true,
   imports: [CommonModule, FormsModule, MonacoEditorModule, TabComponent, ContextViewerComponent, TraceViewerComponent],
   templateUrl: './tracebar.component.html',
-  styleUrl: './tracebar.component.scss'
+  styleUrl: './tracebar.component.scss',
+  providers: [BsModalService]
 })
 export class TracebarComponent implements OnInit, OnDestroy {
   @ViewChild('inputTab', { static: true }) inputTab!: TemplateRef<unknown>;
   @ViewChild('outputTab', { static: true }) outputTab!: TemplateRef<unknown>;
   @ViewChild('traceTab', { static: true }) traceTab!: TemplateRef<unknown>;
+  @ViewChild('assetsTab', { static: true }) assetsTab!: TemplateRef<unknown>;
   @Output() public tracebarWidthChange = new EventEmitter<number>();
 
   public readonly workflowService = inject(WorkflowService);
+  private readonly serverRepository = inject(ServerRepositoryService);
   private readonly dialogService = inject(DialogService);
+  private readonly modalService = inject(BsModalService);
   public readonly contextEntryType = ContextEntryType;
   public readonly contextEntryTypeKeys = Object.keys(ContextEntryType).filter(k => isNaN(Number(k)));
   public readonly RunStatus = RunStatus;
@@ -62,6 +72,19 @@ export class TracebarComponent implements OnInit, OnDestroy {
   private readonly mouseListenerOptions: AddEventListenerOptions = { capture: true };
   private readonly touchMoveListenerOptions: AddEventListenerOptions = { passive: false, capture: true };
   private readonly touchEndListenerOptions: AddEventListenerOptions = { capture: true };
+  private readonly viewableTextMediaTypes = new Set([
+    'text/plain',
+    'text/markdown',
+    'text/csv',
+    'text/html',
+    'text/xml',
+    'text/css',
+    'text/javascript',
+    'application/json',
+    'application/xml',
+    'application/x-yaml',
+    'application/javascript',
+  ]);
 
   public getEntryTypeDisplay(type: ContextEntryType): string {
     switch (type) {
@@ -94,6 +117,7 @@ export class TracebarComponent implements OnInit, OnDestroy {
     this.tabs = [
       { id: 'input', title: 'Input', content: this.inputTab },
       { id: 'output', title: 'Output', content: this.outputTab },
+      { id: 'assets', title: 'Assets', content: this.assetsTab },
       { id: 'trace', title: 'Trace', content: this.traceTab }
     ];
 
@@ -243,5 +267,59 @@ export class TracebarComponent implements OnInit, OnDestroy {
         entry.entryValue.set(buildAssetRefListValue(assets));
       }
     });
+  }
+
+  public formatSize(bytes: number): string {
+    return formatByteSize(bytes);
+  }
+
+  public isImageAsset(asset: AssetSummary): boolean {
+    const mediaType = this.normalizeMediaType(asset.mediaType);
+    return mediaType.startsWith('image/');
+  }
+
+  public isViewableTextAsset(asset: AssetSummary): boolean {
+    const mediaType = this.normalizeMediaType(asset.mediaType);
+    return this.viewableTextMediaTypes.has(mediaType);
+  }
+
+  public openAssetPreview(asset: AssetSummary): void {
+    if (!this.isImageAsset(asset)) {
+      return;
+    }
+
+    this.modalService.show(AssetPreviewDialogComponent, {
+      initialState: {
+        assetId: asset.assetId,
+        title: asset.name,
+        fileName: asset.name,
+        imageUrl: this.serverRepository.getAssetContentUrl(asset.assetId),
+        altText: asset.name,
+      },
+      class: 'modal-fullscreen asset-preview-modal',
+    });
+  }
+
+  public openAssetViewer(asset: AssetSummary): void {
+    if (!this.isViewableTextAsset(asset)) {
+      return;
+    }
+
+    this.modalService.show(AssetTextDialogComponent, {
+      initialState: {
+        assetId: asset.assetId,
+        title: asset.name,
+        readOnly: true,
+      },
+      class: 'modal-fullscreen asset-text-modal',
+    });
+  }
+
+  private normalizeMediaType(mediaType: string | undefined | null): string {
+    if (!mediaType) {
+      return '';
+    }
+
+    return mediaType.split(';', 2)[0].trim().toLowerCase();
   }
 }

@@ -248,7 +248,7 @@ public abstract class BaseModelCaller : IModelCaller
                     using var buffer = new MemoryStream();
                     await stream.CopyToAsync(buffer);
 
-                    var content = new DataContent(buffer.ToArray(), asset.MediaType) { Name = asset.Name };
+                    var content = new DataContent(buffer.ToArray(), asset.MediaType);
                     chat.Add(new ChatMessage(ChatRole.User, [content]));
                 }
             }

@@ -1,5 +1,6 @@
 ﻿global using Microsoft.Extensions.DependencyInjection;
 global using SharpOMatic.Engine.Contexts;
+global using SharpOMatic.Engine.DTO;
 global using SharpOMatic.Engine.Entities.Definitions;
 global using SharpOMatic.Engine.Entities.Enumerations;
 global using SharpOMatic.Engine.Enumerations;
@@ -9,5 +10,6 @@ global using SharpOMatic.Engine.Metadata.Definitions;
 global using SharpOMatic.Engine.Repository;
 global using SharpOMatic.Engine.Services;
 global using SharpOMatic.Tests.Services;
+global using System.Collections.Concurrent;
 global using System.Text.Json;
 global using System.Text.Json.Serialization;

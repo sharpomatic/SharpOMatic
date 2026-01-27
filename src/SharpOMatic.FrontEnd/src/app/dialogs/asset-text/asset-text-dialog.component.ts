@@ -14,6 +14,7 @@ export class AssetTextDialogComponent implements OnInit {
   public assetId = '';
   public title = '';
   public content = '';
+  public readOnly = false;
   public saved = false;
   public isLoading = true;
   public isSaving = false;
@@ -35,12 +36,16 @@ export class AssetTextDialogComponent implements OnInit {
   }
 
   onContentChange(event: Event): void {
+    if (this.readOnly) {
+      return;
+    }
+
     const input = event.target as HTMLTextAreaElement | null;
     this.content = input?.value ?? '';
   }
 
   canSave(): boolean {
-    return !this.isLoading && !this.isSaving && this.content !== this.originalContent;
+    return !this.readOnly && !this.isLoading && !this.isSaving && this.content !== this.originalContent;
   }
 
   save(): void {

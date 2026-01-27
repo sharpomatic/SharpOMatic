@@ -26,7 +26,8 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         [FromQuery] AssetSortField sortBy = AssetSortField.Name,
         [FromQuery] SortDirection sortDirection = SortDirection.Descending,
         [FromQuery] int skip = 0,
-        [FromQuery] int take = 0)
+        [FromQuery] int take = 0,
+        [FromQuery] Guid? runId = null)
     {
         if (skip < 0)
             skip = 0;
@@ -35,20 +36,21 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
             take = 0;
 
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
-        var assets = await repositoryService.GetAssetsByScope(scope, normalizedSearch, sortBy, sortDirection, skip, take);
+        var assets = await repositoryService.GetAssetsByScope(scope, normalizedSearch, sortBy, sortDirection, skip, take, runId);
         return [.. assets.Select(ToSummary)];
     }
 
     [HttpGet("count")]
     public async Task<ActionResult<int>> GetAssetCount(
         [FromQuery] AssetScope scope = AssetScope.Library,
-        [FromQuery] string? search = null)
+        [FromQuery] string? search = null,
+        [FromQuery] Guid? runId = null)
     {
         if (!Enum.IsDefined(typeof(AssetScope), scope))
             return BadRequest("Scope is invalid.");
 
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
-        return await repositoryService.GetAssetCount(scope, normalizedSearch);
+        return await repositoryService.GetAssetCount(scope, normalizedSearch, runId);
     }
 
     [HttpGet("{id}")]

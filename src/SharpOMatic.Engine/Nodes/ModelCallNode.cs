@@ -32,7 +32,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             ThreadContext.NodeContext.TrySet(Node.ChatOutputPath, chatList);
         }
 
-        return ($"Model {model.Name ?? "(empty)"} called", ResolveOptionalSingleOutput(ThreadContext));
+        return ($"{model.Name ?? "(empty)"}", ResolveOptionalSingleOutput(ThreadContext));
     }
 
     private async Task<(Model, ModelConfig, Connector, ConnectorConfig)> LoadModelAndConnector()

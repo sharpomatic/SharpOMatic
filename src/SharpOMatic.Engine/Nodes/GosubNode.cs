@@ -79,6 +79,6 @@ public class GosubNode(ThreadContext threadContext, GosubNodeEntity node)
         ThreadContext.CurrentContext = workflowContext;
         ThreadContext.NodeContext = childContext;
 
-        return ("Gosub started", [new NextNodeData(ThreadContext, startNodes[0])]);
+        return ($"{workflow.Name}", [new NextNodeData(ThreadContext, startNodes[0])]);
     }
 }

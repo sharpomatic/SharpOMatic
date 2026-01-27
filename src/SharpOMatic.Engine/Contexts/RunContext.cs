@@ -124,41 +124,4 @@ public class RunContext
 
         return nextNode;
     }
-
-    public void MergeContexts(ContextObject target, ContextObject source)
-    {
-        foreach (var key in source.Keys)
-        {
-            if (!target.TryGetValue(key, out var targetValue))
-            {
-                target[key] = source[key];
-            }
-            else
-            {
-                var sourceValue = source[key];
-
-                if (targetValue is ContextObject targetObject && sourceValue is ContextObject sourceObject)
-                {
-                    MergeContexts(targetObject, sourceObject);
-                }
-                else if (targetValue is ContextList targetList1 && sourceValue is ContextList sourceList)
-                {
-                    targetList1.AddRange(sourceList);
-                }
-                else if (targetValue is ContextList targetList2 && sourceValue is not ContextList)
-                {
-                    targetList2.Add(sourceValue);
-                }
-                else
-                {
-                    var newList = new ContextList
-                    {
-                        targetValue,
-                        sourceValue
-                    };
-                    target[key] = newList;
-                }
-            }
-        }
-    }
 }

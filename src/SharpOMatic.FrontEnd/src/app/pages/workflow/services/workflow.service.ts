@@ -13,6 +13,9 @@ import { StartNodeEntity } from '../../../entities/definitions/start-node.entity
 import { ToastService } from '../../../services/toast.service';
 import { RunSortField } from '../../../enumerations/run-sort-field';
 import { SortDirection } from '../../../enumerations/sort-direction';
+import { AssetSummary } from '../../assets/interfaces/asset-summary';
+import { AssetScope } from '../../../enumerations/asset-scope';
+import { AssetSortField } from '../../../enumerations/asset-sort-field';
 
 @Injectable({
   providedIn: 'root',
@@ -26,6 +29,7 @@ export class WorkflowService implements OnDestroy  {
   public workflow: WritableSignal<WorkflowEntity>;
   public runProgress: WritableSignal<RunProgressModel | undefined>;
   public traces: WritableSignal<TraceProgressModel[]>;
+  public runAssets: WritableSignal<AssetSummary[]>;
   public runs: WritableSignal<RunProgressModel[]>;
   public runsTotal: WritableSignal<number>;
   public runsPage: WritableSignal<number>;
@@ -43,6 +47,7 @@ export class WorkflowService implements OnDestroy  {
     this.workflow = signal(new WorkflowEntity(WorkflowEntity.defaultSnapshot()));
     this.runProgress = signal(undefined);
     this.traces = signal([]);
+    this.runAssets = signal([]);
     this.runs = signal([]);
     this.runsTotal = signal(0);
     this.runsPage = signal(1);
@@ -81,6 +86,7 @@ export class WorkflowService implements OnDestroy  {
       this.runsPage.set(1);
       this.runsSortField.set(RunSortField.Created);
       this.runsSortDirection.set(SortDirection.Descending);
+      this.runAssets.set([]);
       this.updateRunInputsFromWorkflow();
       this.workflow().markClean();
       this.loadRunsPageForWorkflow(id, 1);
@@ -100,7 +106,10 @@ export class WorkflowService implements OnDestroy  {
               })
             }
           });
+          this.updateRunAssetsForRun(run);
+          return;
         }
+        this.runAssets.set([]);
       });
     });
   };
@@ -142,6 +151,7 @@ export class WorkflowService implements OnDestroy  {
             workflow.nodes().forEach(nodeEntity => nodeEntity.displayState.set(NodeStatus.None));
             this.runProgress.set(data);
             this.traces.set([]);
+            this.runAssets.set([]);
             break;
         }
         case RunStatus.Running: {
@@ -154,6 +164,7 @@ export class WorkflowService implements OnDestroy  {
           const workflowName = workflow.name();
           const successMessage = `${workflowName} completed successfully.`;
           this.toastService.success(successMessage);
+          this.updateRunAssetsForRun(data);
           break;
         }
         case RunStatus.Failed: {
@@ -163,6 +174,7 @@ export class WorkflowService implements OnDestroy  {
           const errorMessage = (data.error ?? '').trim();
           const failureMessage = errorMessage ? `${workflowName} failed: ${errorMessage}` : `${workflowName} failed.`;
           this.toastService.error(failureMessage);
+          this.updateRunAssetsForRun(data);
           break;
         }
       }
@@ -403,5 +415,29 @@ export class WorkflowService implements OnDestroy  {
     }
 
     return changed;
+  }
+
+  private updateRunAssetsForRun(run?: RunProgressModel | null): void {
+    if (!run?.runId) {
+      this.runAssets.set([]);
+      return;
+    }
+
+    if (run.runStatus !== RunStatus.Success && run.runStatus !== RunStatus.Failed) {
+      this.runAssets.set([]);
+      return;
+    }
+
+    this.serverWorkflowService.getAssets(
+      AssetScope.Run,
+      0,
+      0,
+      AssetSortField.Created,
+      SortDirection.Descending,
+      '',
+      run.runId
+    ).subscribe(assets => {
+      this.runAssets.set(assets ?? []);
+    });
   }
 }

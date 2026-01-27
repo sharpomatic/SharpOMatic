@@ -23,7 +23,7 @@
           (keyup.enter)="applySearch()" />
       </div>
     </div>
-    @if (!isLoading && assetsTotal === 0 && assets.length === 0) {
+    @if (assetsTotal === 0 && assets.length === 0) {
       <div class="empty-state text-body-secondary">
         <div class="empty-icon"><i class="bi bi-images"></i></div>
         @if (searchText) {

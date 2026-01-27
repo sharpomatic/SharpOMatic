@@ -27,6 +27,26 @@ public sealed class GosubContext : ExecutionContext
     public bool ApplyOutputMappings { get; }
     public ContextEntryListEntity OutputMappings { get; }
     public object MergeLock => _mergeLock;
+    public int IncrementThreads() => Interlocked.Increment(ref _activeThreads);
+
+    public int DecrementThreads() => Interlocked.Decrement(ref _activeThreads);
+
+    public int ActiveThreads => Volatile.Read(ref _activeThreads);
+
+    public static GosubContext? Find(ExecutionContext context)
+    {
+        var current = context;
+        while (current is not null)
+        {
+            if (current is GosubContext gosubContext)
+                return gosubContext;
+
+            current = current.Parent;
+        }
+
+        return null;
+    }
+
     public void MergeOutput(ProcessContext processContext, ContextObject childContext)
     {
         lock (MergeLock)
@@ -50,32 +70,31 @@ public sealed class GosubContext : ExecutionContext
                     }
                 }
 
-                processContext.MergeContextsOverwrite(ParentContext, outputContext);
+                OverwriteContexts(ParentContext, outputContext);
             }
             else
             {
-                processContext.MergeContextsOverwrite(ParentContext, childContext);
+                OverwriteContexts(ParentContext, childContext);
             }
         }
     }
 
-    public int IncrementThreads() => Interlocked.Increment(ref _activeThreads);
-
-    public int DecrementThreads() => Interlocked.Decrement(ref _activeThreads);
-
-    public int ActiveThreads => Volatile.Read(ref _activeThreads);
-
-    public static GosubContext? Find(ExecutionContext context)
+    private void OverwriteContexts(ContextObject target, ContextObject source)
     {
-        var current = context;
-        while (current is not null)
+        foreach (var key in source.Keys)
         {
-            if (current is GosubContext gosubContext)
-                return gosubContext;
+            if (!target.TryGetValue(key, out var targetValue))
+            {
+                target[key] = source[key];
+                continue;
+            }
 
-            current = current.Parent;
+            var sourceValue = source[key];
+
+            if (targetValue is ContextObject targetObject && sourceValue is ContextObject sourceObject)
+                OverwriteContexts(targetObject, sourceObject);
+            else
+                target[key] = sourceValue;
         }
-
-        return null;
     }
 }

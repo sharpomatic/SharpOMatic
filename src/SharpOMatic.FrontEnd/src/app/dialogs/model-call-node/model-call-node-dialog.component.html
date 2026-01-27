@@ -96,14 +96,14 @@
           <div class="mb-3 form-line">
             <label for="model-call-instructions" class="form-label field-label align-top">Instructions</label>
             <div class="flex-fill control-column extra-long">
-              <textarea class="form-control w-100" id="model-call-instructions" rows="8" [ngModel]="node.instructions()" (ngModelChange)="node.instructions.set($event)"></textarea>
+              <textarea class="form-control w-100" id="model-call-instructions" rows="16" [ngModel]="node.instructions()" (ngModelChange)="node.instructions.set($event)"></textarea>
             </div>
           </div>
 
           <div class="mb-3 form-line">
             <label for="model-call-prompt" class="form-label field-label align-top">Prompt</label>
             <div class="flex-fill control-column extra-long">
-              <textarea class="form-control w-100" id="model-call-prompt" rows="16" [ngModel]="node.prompt()" (ngModelChange)="node.prompt.set($event)"></textarea>
+              <textarea class="form-control w-100" id="model-call-prompt" rows="30" [ngModel]="node.prompt()" (ngModelChange)="node.prompt.set($event)"></textarea>
             </div>
           </div>
         }
@@ -119,6 +119,7 @@
         </app-dynamic-fields>
       </div>
     </ng-template>
+
     <ng-template #imageTab>
       <div class="bg-body-tertiary p-3">
         @if (supportsImageIn) {
@@ -160,6 +161,7 @@
         </app-dynamic-fields>
       </div>
     </ng-template>
+
     <ng-template #toolCallingTab>
       <div class="bg-body-tertiary p-3">
         <div class="mb-3 form-line">
@@ -196,6 +198,7 @@
         </app-dynamic-fields>
       </div>
     </ng-template>
+
     <ng-template #structuredTab>
       <div class="bg-body-tertiary p-3">
         <app-dynamic-fields

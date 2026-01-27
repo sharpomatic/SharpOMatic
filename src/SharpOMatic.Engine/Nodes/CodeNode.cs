@@ -9,7 +9,12 @@ public class CodeNode(ThreadContext threadContext, CodeNodeEntity node)
         if (!string.IsNullOrWhiteSpace(Node.Code))
         {
             var options = ProcessContext.ScriptOptionsService.GetScriptOptions();
-            var globals = new ScriptCodeContext() { Context = ThreadContext.NodeContext, ServiceProvider = ProcessContext.ServiceScope.ServiceProvider };
+            var globals = new ScriptCodeContext()
+            {
+                Context = ThreadContext.NodeContext,
+                ServiceProvider = ProcessContext.ServiceScope.ServiceProvider,
+                Assets = new AssetHelper(ProcessContext.RepositoryService, ProcessContext.AssetStore, ProcessContext.Run.RunId)
+            };
 
             try
             {

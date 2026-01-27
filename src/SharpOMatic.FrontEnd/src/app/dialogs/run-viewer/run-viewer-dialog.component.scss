@@ -154,3 +154,80 @@
   width: 120px;
   flex: 0 0 auto;
 }
+
+.run-assets {
+  min-height: 0;
+}
+
+.run-assets-table {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.run-assets-table .table {
+  table-layout: fixed;
+  min-width: 940px;
+  width: 100%;
+}
+
+.run-assets-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bs-body-tertiary);
+}
+
+.col-name {
+  min-width: 200px;
+}
+
+.col-id {
+  width: 330px;
+  min-width: 330px;
+  max-width: 330px;
+}
+
+.col-type {
+  min-width: 200px;
+  max-width: 350px;
+  width: 20%;
+}
+
+.col-size {
+  width: 90px;
+  min-width: 90px;
+  max-width: 90px;
+}
+
+.col-created {
+  width: 160px;
+  min-width: 160px;
+  max-width: 160px;
+}
+
+.col-actions {
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+}
+
+.empty-state {
+  margin: 48px auto 0;
+  text-align: center;
+  max-width: 320px;
+}
+
+.empty-icon {
+  font-size: 2rem;
+  margin-bottom: 12px;
+}
+
+.empty-title {
+  font-weight: 600;
+}
+
+.empty-subtitle {
+  font-size: 0.9rem;
+}

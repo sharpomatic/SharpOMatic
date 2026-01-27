@@ -101,6 +101,53 @@
     </div>
   </ng-template>
 
+  <ng-template #assetsTab>
+    <div class="bg-body-tertiary flex-grow-1 d-flex flex-column p-3 h-100 run-assets">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="fw-semibold">Assets ({{ workflowService.runAssets().length }})</div>
+      </div>
+      @if (workflowService.runAssets().length === 0) {
+        <div class="empty-state text-body-secondary">
+          <div class="empty-icon"><i class="bi bi-images"></i></div>
+          <div class="empty-title">No run assets</div>
+          <div class="empty-subtitle">This run did not generate any assets.</div>
+        </div>
+      } @else {
+        <div class="table-responsive run-assets-table">
+          <table class="table table-sm table-striped table-hover align-middle">
+            <thead>
+              <tr>
+                <th scope="col" class="col-name">Name</th>
+                <th scope="col" class="col-type">Type</th>
+                <th scope="col" class="col-size">Size</th>
+                <th scope="col" class="col-actions text-end"></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (asset of workflowService.runAssets(); track asset.assetId) {
+                <tr>
+                  <td class="col-name text-truncate" title="{{ asset.name }}">{{ asset.name }}</td>
+                  <td class="col-type text-truncate" title="{{ asset.mediaType }}">{{ asset.mediaType }}</td>
+                  <td class="col-size">{{ formatSize(asset.sizeBytes) }}</td>
+                  <td class="col-actions text-end">
+                    <div class="d-inline-flex gap-2">
+                      @if (isImageAsset(asset)) {
+                        <button class="btn btn-sm btn-outline-primary" (click)="openAssetPreview(asset)">View</button>
+                      }
+                      @if (isViewableTextAsset(asset)) {
+                        <button class="btn btn-sm btn-outline-primary" (click)="openAssetViewer(asset)">View</button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  </ng-template>
+
   <ng-template #traceTab>
     <app-trace-viewer [traces]="workflowService.traces()"></app-trace-viewer>
   </ng-template>

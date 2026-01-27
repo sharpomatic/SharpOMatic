@@ -14,6 +14,8 @@ import { ConnectorSummary, ConnectorSummarySnapshot } from '../metadata/definiti
 import { ModelConfig, ModelConfigSnapshot } from '../metadata/definitions/model-config';
 import { ModelSummary, ModelSummarySnapshot } from '../metadata/definitions/model-summary';
 import { Model, ModelSnapshot } from '../metadata/definitions/model';
+import { EvalConfig, EvalConfigSnapshot } from '../eval/definitions/eval-config';
+import { EvalConfigSummary, EvalConfigSummarySnapshot } from '../eval/definitions/eval-config-summary';
 import { ToastService } from './toast.service';
 import { SettingsService } from './settings.service';
 import { RunSortField } from '../enumerations/run-sort-field';
@@ -23,6 +25,7 @@ import { AssetSortField } from '../enumerations/asset-sort-field';
 import { WorkflowSortField } from '../enumerations/workflow-sort-field';
 import { ConnectorSortField } from '../enumerations/connector-sort-field';
 import { ModelSortField } from '../enumerations/model-sort-field';
+import { EvalConfigSortField } from '../eval/enumerations/eval-config-sort-field';
 import { AssetSummary } from '../pages/assets/interfaces/asset-summary';
 import { AssetText } from '../pages/assets/interfaces/asset-text';
 import { TransferImportResult } from '../pages/transfer/interfaces/transfer-import-result';
@@ -374,6 +377,78 @@ export class ServerRepositoryService {
     );
   }
 
+  public getEvalConfigSummaries(
+    search = '',
+    skip = 0,
+    take = 0,
+    sortBy: EvalConfigSortField = EvalConfigSortField.Name,
+    sortDirection: SortDirection = SortDirection.Ascending
+  ): Observable<EvalConfigSummary[]> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams()
+      .set('skip', skip)
+      .set('take', take)
+      .set('sortBy', sortBy)
+      .set('sortDirection', sortDirection);
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http.get<EvalConfigSummarySnapshot[]>(`${apiUrl}/api/eval/configs`, { params }).pipe(
+      map(snapshots => snapshots.map(EvalConfigSummary.fromSnapshot)),
+      catchError((error) => {
+        this.notifyError('Loading eval configs', error);
+        return of([]);
+      })
+    );
+  }
+
+  public getEvalConfigCount(search = ''): Observable<number> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams();
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http.get<number>(`${apiUrl}/api/eval/configs/count`, { params }).pipe(
+      catchError((error) => {
+        this.notifyError('Loading eval config count', error);
+        return of(0);
+      })
+    );
+  }
+
+  public getEvalConfig(id: string): Observable<EvalConfig | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.get<EvalConfigSnapshot>(`${apiUrl}/api/eval/configs/${id}`).pipe(
+      map(EvalConfig.fromSnapshot),
+      catchError((error) => {
+        this.notifyError('Loading eval config', error);
+        return of(null);
+      })
+    );
+  }
+
+  public upsertEvalConfig(evalConfig: EvalConfig): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.post<void>(`${apiUrl}/api/eval/configs`, evalConfig.toSnapshot()).pipe(
+      catchError((error) => {
+        this.notifyError('Saving eval config', error);
+        return of(undefined);
+      })
+    );
+  }
+
+  public deleteEvalConfig(id: string): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.delete<void>(`${apiUrl}/api/eval/configs/${id}`).pipe(
+      catchError((error) => {
+        this.notifyError('Deleting eval config', error);
+        return of(undefined);
+      })
+    );
+  }
+
   public getSchemaTypeNames(): Observable<string[]> {
     const apiUrl = this.settingsService.apiUrl();
     return this.http.get<string[]>(`${apiUrl}/api/schematype`).pipe(
@@ -410,7 +485,8 @@ export class ServerRepositoryService {
     take = 0,
     sortBy = AssetSortField.Name,
     sortDirection = SortDirection.Descending,
-    search = ''
+    search = '',
+    runId?: string
   ): Observable<AssetSummary[]> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams()
@@ -422,6 +498,9 @@ export class ServerRepositoryService {
     if (search.trim().length > 0) {
       params = params.set('search', search.trim());
     }
+    if (runId) {
+      params = params.set('runId', runId);
+    }
     return this.http.get<AssetSummary[]>(`${apiUrl}/api/assets`, { params }).pipe(
       catchError((error) => {
         this.notifyError('Loading assets', error);
@@ -430,11 +509,14 @@ export class ServerRepositoryService {
     );
   }
 
-  public getAssetsCount(scope: AssetScope = AssetScope.Library, search = ''): Observable<number> {
+  public getAssetsCount(scope: AssetScope = AssetScope.Library, search = '', runId?: string): Observable<number> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams().set('scope', scope);
     if (search.trim().length > 0) {
       params = params.set('search', search.trim());
+    }
+    if (runId) {
+      params = params.set('runId', runId);
     }
     return this.http.get<number>(`${apiUrl}/api/assets/count`, { params }).pipe(
       catchError((error) => {

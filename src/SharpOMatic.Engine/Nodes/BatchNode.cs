@@ -6,9 +6,6 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node)
 {
     protected override async Task<(string, List<NextNodeData>)> RunInternal()
     {
-        // TEMP, until it does something async
-        await Task.Delay(1);
-
         if (Node.BatchSize < 1)
             throw new SharpOMaticException("Batch node batch size must be greater than or equal to 1.");
 
@@ -37,10 +34,10 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node)
         if (processNode is null || arrayList.Count == 0)
         {
             if (continueNode is null)
-                return ("continue", []);
+                return ("continue, no items", []);
 
             ThreadContext.NodeContext = ContextObject.Deserialize(baseContextJson, ProcessContext.JsonConverters);
-            return ("continue", [new NextNodeData(ThreadContext, continueNode)]);
+            return ("continue, no items", [new NextNodeData(ThreadContext, continueNode)]);
         }
 
         var batchContext = new BatchContext(ThreadContext.CurrentContext)
@@ -94,31 +91,31 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node)
         if (nextNodes.Count == 0)
         {
             if (continueNode is null)
-                return ("continue", []);
+                return ("continue, no items", []);
 
             ThreadContext.NodeContext = ContextObject.Deserialize(baseContextJson, ProcessContext.JsonConverters);
-            return ("continue", [new NextNodeData(ThreadContext, continueNode)]);
+            return ("continue, no items", [new NextNodeData(ThreadContext, continueNode)]);
         }
 
-        return ("continue", nextNodes);
+        return ($"process {batchContext.BatchItems.Count}", nextNodes);
+    }
 
-        ContextObject CreateBatchContextObject(string? contextJson, ContextList slice)
-        {
-            var context = ContextObject.Deserialize(contextJson, ProcessContext.JsonConverters);
-            if (!context.TrySet(Node.InputArrayPath, slice))
-                throw new SharpOMaticException($"Batch node cannot set '{Node.InputArrayPath}' into context.");
+    private ContextObject CreateBatchContextObject(string? contextJson, ContextList slice)
+    {
+        var context = ContextObject.Deserialize(contextJson, ProcessContext.JsonConverters);
+        if (!context.TrySet(Node.InputArrayPath, slice))
+            throw new SharpOMaticException($"Batch node cannot set '{Node.InputArrayPath}' into context.");
 
-            return context;
-        }
+        return context;
+    }
 
-        static ContextList CreateBatchSlice(ContextList items, int startIndex, int batchSize)
-        {
-            var slice = new ContextList();
-            var endIndex = Math.Min(items.Count, startIndex + batchSize);
-            for (var index = startIndex; index < endIndex; index++)
-                slice.Add(items[index]);
+    private static ContextList CreateBatchSlice(ContextList items, int startIndex, int batchSize)
+    {
+        var slice = new ContextList();
+        var endIndex = Math.Min(items.Count, startIndex + batchSize);
+        for (var index = startIndex; index < endIndex; index++)
+            slice.Add(items[index]);
 
-            return slice;
-        }
+        return slice;
     }
 }

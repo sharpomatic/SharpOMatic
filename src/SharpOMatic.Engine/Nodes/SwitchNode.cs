@@ -10,6 +10,13 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node)
         if (!IsOutputConnected(Node.Outputs[lastIndex]))
             throw new SharpOMaticException("Switch node must have an output connection on the last output connector.");
 
+        var globals = new ScriptCodeContext()
+        {
+            Context = ThreadContext.NodeContext,
+            ServiceProvider = ProcessContext.ServiceScope.ServiceProvider,
+            Assets = new AssetHelper(ProcessContext.RepositoryService, ProcessContext.AssetStore, ProcessContext.Run.RunId)
+        };
+
         // Check each switch that has linked code
         for (int i = 0; i < Node.Switches.Length; i++)
         {
@@ -21,7 +28,7 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node)
 
                 try
                 {
-                    var result = await CSharpScript.EvaluateAsync(switcher.Code, options, new ScriptCodeContext() { Context = ThreadContext.NodeContext, ServiceProvider = ProcessContext.ServiceScope.ServiceProvider }, typeof(ScriptCodeContext));
+                    var result = await CSharpScript.EvaluateAsync(switcher.Code, options, globals, typeof(ScriptCodeContext));
                     if (result is null)
                         throw new SharpOMaticException($"Switch node entry '{switcher.Name}' returned null instead of a boolean value.");
 

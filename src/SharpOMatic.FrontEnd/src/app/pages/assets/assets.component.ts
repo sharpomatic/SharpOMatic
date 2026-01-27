@@ -48,7 +48,6 @@ export class AssetsComponent implements AfterViewInit {
   public assetsTotal = 0;
   public readonly assetsPageSize = 50;
   public isUploading = false;
-  public isLoading = false;
   public readonly AssetSortField = AssetSortField;
   public readonly SortDirection = SortDirection;
   public assetsSortField: AssetSortField = AssetSortField.Name;
@@ -242,7 +241,6 @@ export class AssetsComponent implements AfterViewInit {
   }
 
   private refreshAssets(): void {
-    this.isLoading = true;
     const search = this.searchText.trim();
     this.serverRepository.getAssetsCount(AssetScope.Library, search).subscribe(total => {
       this.assetsTotal = total;
@@ -253,7 +251,6 @@ export class AssetsComponent implements AfterViewInit {
   }
 
   private loadAssetsPage(page: number): void {
-    this.isLoading = true;
     const skip = (page - 1) * this.assetsPageSize;
     const search = this.searchText.trim();
     this.serverRepository.getAssets(
@@ -266,7 +263,6 @@ export class AssetsComponent implements AfterViewInit {
     ).subscribe(assets => {
       this.assets = assets;
       this.assetsPage = page;
-      this.isLoading = false;
     });
   }
 

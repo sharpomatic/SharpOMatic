@@ -13,8 +13,6 @@
 
 ### Evaluations
 
-- Add new sidebar area for evaluations
-- Allow adding and deleting of a new evaluation
 - Details allow definition of target workflow and grader workflows
 - Manual creation of column definitions
 - Manual creation of data rows (add/edit/remove)
@@ -30,7 +28,7 @@
 
 ### Editor
 
-- Allow run assets to be viewed in current run and historic run display
+- EditNode, copy section. So it can upsert, copy then delete
 - Cut, copy and paste of workflow nodes/connectors
 
 ### ChatClient

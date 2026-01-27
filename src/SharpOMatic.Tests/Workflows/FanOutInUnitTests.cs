@@ -216,8 +216,8 @@ public sealed class FanOutInUnitTests
         var workflow = new WorkflowBuilder()
             .AddStart()
             .AddFanOut("fanout", ["first", "second"])
-            .AddCode("first", "Context.Set<int>(\"output.a\", 1);")
-            .AddCode("second", "Context.Set<int>(\"output.b\", 2);")
+            .AddCode("first", "Context.Set<int>(\"output\", 1);")
+            .AddCode("second", "Context.Set<int>(\"output\", 2);")
             .AddFanIn("fanin")
             .Connect("start", "fanout")
             .Connect("fanout.first", "first")
@@ -233,10 +233,11 @@ public sealed class FanOutInUnitTests
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
-        Assert.True(outCtx.TryGetObject("output", out var output));
+        Assert.True(outCtx.TryGetList("output", out var output));
         Assert.NotNull(output);
-        Assert.Equal(1, output.Get<int>("a"));
-        Assert.Equal(2, output.Get<int>("b"));
+        Assert.Equal(2, output.Count);
+        Assert.Contains(1, output);
+        Assert.Contains(2, output);
     }
 
     [Fact]
@@ -246,7 +247,7 @@ public sealed class FanOutInUnitTests
             .AddStart()
             .AddFanOut("fanout", ["first", "second"])
             .AddCode("first", "Context.Set<ContextList>(\"output\", new ContextList { 1, 2 });")
-            .AddCode("second", "await Task.Delay(50); Context.Set<int>(\"output\", 3);")
+            .AddCode("second", "Context.Set<int>(\"output\", 3);")
             .AddFanIn("fanin")
             .Connect("start", "fanout")
             .Connect("fanout.first", "first")
@@ -391,10 +392,10 @@ public sealed class FanOutInUnitTests
             .AddFanOut("root", ["left", "right"])
             .AddFanOut("leftOut", ["left1", "left2"])
             .AddFanOut("rightOut", ["right1", "right2"])
-            .AddCode("left1", "Context.Set<int>(\"output.left\", 1);")
-            .AddCode("left2", "Context.Set<int>(\"output.left\", 2);")
-            .AddCode("right1", "Context.Set<int>(\"output.right\", 3);")
-            .AddCode("right2", "Context.Set<int>(\"output.right\", 4);")
+            .AddCode("left1", "Context.Set<int>(\"output\", 1);")
+            .AddCode("left2", "Context.Set<int>(\"output\", 2);")
+            .AddCode("right1", "Context.Set<int>(\"output\", 3);")
+            .AddCode("right2", "Context.Set<int>(\"output\", 4);")
             .AddFanIn("leftIn")
             .AddFanIn("rightIn")
             .AddFanIn("finalIn")
@@ -420,18 +421,13 @@ public sealed class FanOutInUnitTests
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
-        Assert.True(outCtx.TryGetObject("output", out var output));
+        Assert.True(outCtx.TryGetList("output", out var output));
         Assert.NotNull(output);
-        Assert.True(output.TryGetList("left", out var leftList));
-        Assert.True(output.TryGetList("right", out var rightList));
-        Assert.NotNull(leftList);
-        Assert.NotNull(rightList);
-        Assert.Equal(2, leftList.Count);
-        Assert.Equal(2, rightList.Count);
-        Assert.Contains(1, leftList);
-        Assert.Contains(2, leftList);
-        Assert.Contains(3, rightList);
-        Assert.Contains(4, rightList);
+        Assert.Equal(4, output.Count);
+        Assert.Contains(1, output);
+        Assert.Contains(2, output);
+        Assert.Contains(3, output);
+        Assert.Contains(4, output);
     }
 
     [Fact]

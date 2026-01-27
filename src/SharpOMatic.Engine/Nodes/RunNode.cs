@@ -101,6 +101,6 @@ public abstract class RunNode<T> : IRunNode where T : NodeEntity
 
     protected Task<object?> EvaluateContextEntryValue(ContextEntryEntity entry)
     {
-        return ContextHelpers.ResolveContextEntryValue(ProcessContext.ServiceScope.ServiceProvider, ThreadContext.NodeContext, entry, ProcessContext.ScriptOptionsService);
+        return ContextHelpers.ResolveContextEntryValue(ProcessContext.ServiceScope.ServiceProvider, ThreadContext.NodeContext, entry, ProcessContext.ScriptOptionsService, ProcessContext.Run.RunId);
     }
 }

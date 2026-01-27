@@ -106,7 +106,7 @@ public class EngineService(IServiceScopeFactory scopeFactory,
 
         try
         {
-            var inputJson = await ApplyInputEntries(serviceScope.ServiceProvider, nodeContext, inputEntries);
+            var inputJson = await ApplyInputEntries(serviceScope.ServiceProvider, nodeContext, inputEntries, run.RunId);
 
             var workflow = await RepositoryService.GetWorkflow(run.WorkflowId) ?? throw new SharpOMaticException($"Could not load workflow {run.WorkflowId}.");
             var currentNodes = workflow.Nodes.Where(n => n.NodeType == NodeType.Start).ToList();
@@ -133,7 +133,11 @@ public class EngineService(IServiceScopeFactory scopeFactory,
         }
     }
 
-    private async Task<string?> ApplyInputEntries(IServiceProvider serviceProvider, ContextObject nodeContext, ContextEntryListEntity? inputEntries)
+    private async Task<string?> ApplyInputEntries(
+        IServiceProvider serviceProvider, 
+        ContextObject nodeContext, 
+        ContextEntryListEntity? inputEntries,
+        Guid runId)
     {
         if (inputEntries is null)
             return null;
@@ -141,7 +145,7 @@ public class EngineService(IServiceScopeFactory scopeFactory,
         var inputJson = JsonSerializer.Serialize(inputEntries);
         foreach (var entry in inputEntries.Entries)
         {
-            var entryValue = await ContextHelpers.ResolveContextEntryValue(serviceProvider, nodeContext, entry, ScriptOptionsService);
+            var entryValue = await ContextHelpers.ResolveContextEntryValue(serviceProvider, nodeContext, entry, ScriptOptionsService, runId);
             if (!nodeContext.TrySet(entry.InputPath, entryValue))
                 throw new SharpOMaticException($"Input entry '{entry.InputPath}' could not be assigned the value.");
         }

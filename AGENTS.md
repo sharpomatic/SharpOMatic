@@ -130,7 +130,7 @@ The 'docs' directory defines the static website and uses docusaurus.
 ## Coding Style & Naming Conventions
 - C#: 4-space indentation; nullable is enabled; follow .NET conventions (PascalCase types/methods/properties, camelCase locals/parameters, `I` prefix for interfaces).
 - Angular/TypeScript: 2-space indentation and single quotes for `.ts` per `SharpOMatic.FrontEnd/.editorconfig`; HTML is formatted via Prettier.
-- File naming: Angular uses kebab-case (`my-widget.component.ts`); tests use `*.spec.ts`; C# tests typically end with `*UnitTest(s).cs`.
+- File naming: Angular uses kebab-case (`my-widget.component.ts`); there are no front end tests; C# tests end with `*UnitTest(s).cs`.
 
 ## Commit & Pull Request Guidelines
 - Commits are short, descriptive, and prefix-free; keep messages to a single line (e.g., "OpenAI parameters").

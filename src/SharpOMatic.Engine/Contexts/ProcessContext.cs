@@ -119,17 +119,23 @@ public class ProcessContext : ExecutionContext
             {
                 var sourceValue = source[key];
 
-                if (targetValue is ContextObject targetObject && sourceValue is ContextObject sourceObject)
-                {
-                    MergeContexts(targetObject, sourceObject);
-                }
-                else if (targetValue is ContextList targetList1 && sourceValue is ContextList sourceList)
+                if (targetValue is ContextList targetList1 && sourceValue is ContextList sourceList)
                 {
                     targetList1.AddRange(sourceList);
                 }
                 else if (targetValue is ContextList targetList2 && sourceValue is not ContextList)
                 {
                     targetList2.Add(sourceValue);
+                }
+                else if (targetValue is not ContextList && sourceValue is ContextList targetList3)
+                {
+                    var newList = new ContextList
+                    {
+                        targetValue
+                    };
+
+                    newList.AddRange(targetList3);
+                    target[key] = newList;
                 }
                 else
                 {
@@ -140,29 +146,6 @@ public class ProcessContext : ExecutionContext
                     };
                     target[key] = newList;
                 }
-            }
-        }
-    }
-
-    public void MergeContextsOverwrite(ContextObject target, ContextObject source)
-    {
-        foreach (var key in source.Keys)
-        {
-            if (!target.TryGetValue(key, out var targetValue))
-            {
-                target[key] = source[key];
-                continue;
-            }
-
-            var sourceValue = source[key];
-
-            if (targetValue is ContextObject targetObject && sourceValue is ContextObject sourceObject)
-            {
-                MergeContextsOverwrite(targetObject, sourceObject);
-            }
-            else
-            {
-                target[key] = sourceValue;
             }
         }
     }

@@ -7,7 +7,12 @@ public static class ContextHelpers
         PropertyNameCaseInsensitive = true
     };
 
-    public static async Task<object?> ResolveContextEntryValue(IServiceProvider serviceProvider, ContextObject context, ContextEntryEntity entry, IScriptOptionsService scriptOptionsService)
+    public static async Task<object?> ResolveContextEntryValue(
+        IServiceProvider serviceProvider, 
+        ContextObject context, 
+        ContextEntryEntity entry, 
+        IScriptOptionsService scriptOptionsService,
+        Guid runId)
     {
         object? entryValue = entry.EntryValue;
 
@@ -54,7 +59,14 @@ public static class ContextHelpers
                 if (!string.IsNullOrWhiteSpace(entry.EntryValue))
                 {
                     var options = scriptOptionsService.GetScriptOptions();
-                    var globals = new ScriptCodeContext() { Context = context, ServiceProvider = serviceProvider };
+                    var repositoryService = serviceProvider.GetRequiredService<IRepositoryService>();
+                    var assetStore = serviceProvider.GetRequiredService<IAssetStore>();
+                    var globals = new ScriptCodeContext()
+                    {
+                        Context = context,
+                        ServiceProvider = serviceProvider,
+                        Assets = new AssetHelper(repositoryService, assetStore, runId)
+                    };
 
                     try
                     {

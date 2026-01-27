@@ -151,8 +151,8 @@ public sealed class BatchNodeUnitTest
             .AddStart()
             .AddBatch(batchSize: 10, parallelBatches: 1, inputPath: "list")
             .AddFanOut("fanout", ["left", "right"])
-            .AddCode("left", "Context.Set(\"output.left\", true);")
-            .AddCode("right", "Context.Set(\"output.right\", true);")
+            .AddCode("left", "Context.Set(\"output\", true);")
+            .AddCode("right", "Context.Set(\"output\", false);")
             .AddFanIn("fanin")
             .Connect("start", "batch")
             .Connect("batch.process", "fanout")
@@ -172,10 +172,11 @@ public sealed class BatchNodeUnitTest
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
-        Assert.True(outCtx.TryGetObject("output", out var output));
+        Assert.True(outCtx.TryGetList("output", out var output));
         Assert.NotNull(output);
-        Assert.True(output.Get<bool>("left"));
-        Assert.True(output.Get<bool>("right"));
+        Assert.Equal(2, output.Count);
+        Assert.Contains(true, output);
+        Assert.Contains(false, output);
     }
 
     [Fact]

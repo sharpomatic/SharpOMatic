@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Inject, OnInit, Output, TemplateRef, ViewChild, inject } from '@angular/core';
+import { BsModalService } from 'ngx-bootstrap/modal';
 import { FormsModule } from '@angular/forms';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { TabComponent, TabItem } from '../../components/tab/tab.component';
@@ -9,12 +10,19 @@ import { ContextEntryEntity } from '../../entities/definitions/context-entry.ent
 import { ContextEntryType } from '../../entities/enumerations/context-entry-type';
 import { parseAssetRefListValue, parseAssetRefValue } from '../../entities/definitions/asset-ref';
 import { RunStatus } from '../../enumerations/run-status';
+import { AssetScope } from '../../enumerations/asset-scope';
+import { AssetSortField } from '../../enumerations/asset-sort-field';
+import { SortDirection } from '../../enumerations/sort-direction';
 import { RunProgressModel } from '../../pages/workflow/interfaces/run-progress-model';
 import { TraceProgressModel } from '../../pages/workflow/interfaces/trace-progress-model';
 import { DIALOG_DATA } from '../services/dialog.service';
 import { ServerRepositoryService } from '../../services/server.repository.service';
 import { MonacoService } from '../../services/monaco.service';
 import { TraceViewerComponent } from '../../components/trace-viewer/trace-viewer.component';
+import { AssetPreviewDialogComponent } from '../asset-preview/asset-preview-dialog.component';
+import { AssetTextDialogComponent } from '../asset-text/asset-text-dialog.component';
+import { AssetSummary } from '../../pages/assets/interfaces/asset-summary';
+import { formatByteSize } from '../../helper/format-size';
 
 interface RunPropertyRow {
   label: string;
@@ -36,7 +44,8 @@ interface RunPropertyRow {
     TraceViewerComponent
   ],
   templateUrl: './run-viewer-dialog.component.html',
-  styleUrls: ['./run-viewer-dialog.component.scss']
+  styleUrls: ['./run-viewer-dialog.component.scss'],
+  providers: [BsModalService]
 })
 export class RunViewerDialogComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
@@ -44,6 +53,7 @@ export class RunViewerDialogComponent implements OnInit {
   @ViewChild('inputTab', { static: true }) inputTab!: TemplateRef<unknown>;
   @ViewChild('outputTab', { static: true }) outputTab!: TemplateRef<unknown>;
   @ViewChild('traceTab', { static: true }) traceTab!: TemplateRef<unknown>;
+  @ViewChild('assetsTab', { static: true }) assetsTab!: TemplateRef<unknown>;
 
   public run: RunProgressModel;
   public tabs: TabItem[] = [];
@@ -53,12 +63,27 @@ export class RunViewerDialogComponent implements OnInit {
   public outputContexts: string[] = [];
   public traces: TraceProgressModel[] = [];
   public isLoadingTraces = true;
+  public runAssets: AssetSummary[] = [];
   public readonly RunStatus = RunStatus;
   public readonly contextEntryType = ContextEntryType;
 
   private readonly serverRepository = inject(ServerRepositoryService);
+  private readonly modalService = inject(BsModalService);
   private readonly jsonViewerOptions = { ...MonacoService.editorOptionsJson, readOnly: true };
   private readonly csharpViewerOptions = { ...MonacoService.editorOptionsCSharp, readOnly: true };
+  private readonly viewableTextMediaTypes = new Set([
+    'text/plain',
+    'text/markdown',
+    'text/csv',
+    'text/html',
+    'text/xml',
+    'text/css',
+    'text/javascript',
+    'application/json',
+    'application/xml',
+    'application/x-yaml',
+    'application/javascript',
+  ]);
 
   constructor(@Inject(DIALOG_DATA) data: { run: RunProgressModel }) {
     this.run = data.run;
@@ -70,12 +95,14 @@ export class RunViewerDialogComponent implements OnInit {
       { id: 'run', title: 'Run', content: this.runTab },
       { id: 'input', title: 'Input', content: this.inputTab },
       { id: 'output', title: 'Output', content: this.outputTab },
-      { id: 'trace', title: 'Trace', content: this.traceTab }
+      { id: 'trace', title: 'Trace', content: this.traceTab },
+      { id: 'assets', title: 'Assets', content: this.assetsTab }
     ];
 
     this.runInputs = this.loadInputEntries();
     this.runProperties = this.buildRunProperties();
     this.loadTraces();
+    this.loadRunAssets();
   }
 
   onClose(): void {
@@ -117,6 +144,52 @@ export class RunViewerDialogComponent implements OnInit {
     return entry.entryValue();
   }
 
+  public formatSize(bytes: number): string {
+    return formatByteSize(bytes);
+  }
+
+  public isImageAsset(asset: AssetSummary): boolean {
+    const mediaType = this.normalizeMediaType(asset.mediaType);
+    return mediaType.startsWith('image/');
+  }
+
+  public isViewableTextAsset(asset: AssetSummary): boolean {
+    const mediaType = this.normalizeMediaType(asset.mediaType);
+    return this.viewableTextMediaTypes.has(mediaType);
+  }
+
+  public openAssetPreview(asset: AssetSummary): void {
+    if (!this.isImageAsset(asset)) {
+      return;
+    }
+
+    this.modalService.show(AssetPreviewDialogComponent, {
+      initialState: {
+        assetId: asset.assetId,
+        title: asset.name,
+        fileName: asset.name,
+        imageUrl: this.serverRepository.getAssetContentUrl(asset.assetId),
+        altText: asset.name,
+      },
+      class: 'modal-fullscreen asset-preview-modal',
+    });
+  }
+
+  public openAssetViewer(asset: AssetSummary): void {
+    if (!this.isViewableTextAsset(asset)) {
+      return;
+    }
+
+    this.modalService.show(AssetTextDialogComponent, {
+      initialState: {
+        assetId: asset.assetId,
+        title: asset.name,
+        readOnly: true,
+      },
+      class: 'modal-fullscreen asset-text-modal',
+    });
+  }
+
   private loadInputEntries(): ContextEntryListEntity {
     const rawEntries = this.run.inputEntries;
     if (!rawEntries) {
@@ -140,6 +213,25 @@ export class RunViewerDialogComponent implements OnInit {
     this.serverRepository.getRunTraces(this.run.runId).subscribe(traces => {
       this.traces = traces ?? [];
       this.isLoadingTraces = false;
+    });
+  }
+
+  private loadRunAssets(): void {
+    if (!this.run.runId) {
+      this.runAssets = [];
+      return;
+    }
+
+    this.serverRepository.getAssets(
+      AssetScope.Run,
+      0,
+      0,
+      AssetSortField.Created,
+      SortDirection.Descending,
+      '',
+      this.run.runId
+    ).subscribe(assets => {
+      this.runAssets = assets ?? [];
     });
   }
 
@@ -191,5 +283,13 @@ export class RunViewerDialogComponent implements OnInit {
 
   private pad(value: number): string {
     return value.toString().padStart(2, '0');
+  }
+
+  private normalizeMediaType(mediaType: string | undefined | null): string {
+    if (!mediaType) {
+      return '';
+    }
+
+    return mediaType.split(';', 2)[0].trim().toLowerCase();
   }
 }
