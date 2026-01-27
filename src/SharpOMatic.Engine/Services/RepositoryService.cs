@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis;
 using SharpOMatic.Engine.Entities.Definitions;
+using SharpOMatic.Engine.Repository;
 using System.Threading.Tasks;
 
 namespace SharpOMatic.Engine.Services;
@@ -800,6 +801,117 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return sortBy switch
         {
             ModelSortField.Description => sortDirection == SortDirection.Ascending
+                ? models.OrderBy(model => model.Description).ThenBy(model => model.Name)
+                : models.OrderByDescending(model => model.Description).ThenByDescending(model => model.Name),
+            _ => sortDirection == SortDirection.Ascending
+                ? models.OrderBy(model => model.Name).ThenBy(model => model.Description)
+                : models.OrderByDescending(model => model.Name).ThenByDescending(model => model.Description),
+        };
+    }
+
+    // ------------------------------------------------
+    // EvalConfig Operations
+    // ------------------------------------------------
+    public async Task<List<EvalConfigSummary>> GetEvalConfigSummaries()
+    {
+        return await GetEvalConfigSummaries(null, EvalConfigSortField.Name, SortDirection.Ascending, 0, 0);
+    }
+
+    public async Task<int> GetEvalConfigSummaryCount(string? search)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var evalConfigs = ApplyModelSearch(dbContext.EvalConfigs.AsNoTracking(), search);
+        return await evalConfigs.CountAsync();
+    }
+
+    public async Task<List<EvalConfigSummary>> GetEvalConfigSummaries(
+        string? search,
+        EvalConfigSortField sortBy,
+        SortDirection sortDirection,
+        int skip,
+        int take)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var evalConfigs = ApplyModelSearch(dbContext.EvalConfigs.AsNoTracking(), search);
+        var sorted = GetSortedModels(evalConfigs, sortBy, sortDirection);
+
+        if (skip > 0)
+            sorted = sorted.Skip(skip);
+
+        if (take > 0)
+            sorted = sorted.Take(take);
+
+        return await sorted.Select(config => new EvalConfigSummary
+        {
+            EvalConfigId = config.EvalConfigId,
+            Name = config.Name,
+            Description = config.Description,
+        }).ToListAsync();
+    }
+
+    public async Task<EvalConfig> GetEvalConfig(Guid evalConfigId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var evalConfig = await (from m in dbContext.EvalConfigs
+                                where m.EvalConfigId == evalConfigId
+                                select m).AsNoTracking().FirstOrDefaultAsync();
+
+        if (evalConfig is null)
+            throw new SharpOMaticException($"EvalConfig '{evalConfigId}' cannot be found.");
+
+        return evalConfig;
+    }
+
+    public async Task UpsertEvalConfig(EvalConfig evalConfig)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var entity = await (from m in dbContext.EvalConfigs
+                              where m.EvalConfigId == evalConfig.EvalConfigId
+                              select m).FirstOrDefaultAsync();
+
+        if (entity is null)
+            dbContext.EvalConfigs.Add(evalConfig);
+        else
+            dbContext.Entry(entity).CurrentValues.SetValues(evalConfig);
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task DeleteEvalConfig(Guid evalConfigId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var evalConfig = await (from m in dbContext.EvalConfigs
+                                where m.EvalConfigId == evalConfigId
+                                select m).FirstOrDefaultAsync();
+
+        if (evalConfig is null)
+            throw new SharpOMaticException($"EvalConfig '{evalConfigId}' cannot be found.");
+
+        dbContext.Remove(evalConfig);
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static IQueryable<EvalConfig> ApplyModelSearch(IQueryable<EvalConfig> evalConfigs, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+            return evalConfigs;
+
+        var normalizedSearch = search.Trim().ToLower();
+        return evalConfigs.Where(model => model.Name.ToLower().Contains(normalizedSearch));
+    }
+
+    private static IQueryable<EvalConfig> GetSortedModels(
+        IQueryable<EvalConfig> models,
+        EvalConfigSortField sortBy,
+        SortDirection sortDirection)
+    {
+        return sortBy switch
+        {
+            EvalConfigSortField.Description => sortDirection == SortDirection.Ascending
                 ? models.OrderBy(model => model.Description).ThenBy(model => model.Name)
                 : models.OrderByDescending(model => model.Description).ThenByDescending(model => model.Name),
             _ => sortDirection == SortDirection.Ascending

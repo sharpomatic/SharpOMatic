@@ -64,6 +64,16 @@ public interface IRepositoryService
     Task DeleteModel(Guid modelId);
 
     // ------------------------------------------------
+    // EvalConfig Operations
+    // ------------------------------------------------
+    Task<List<EvalConfigSummary>> GetEvalConfigSummaries();
+    Task<int> GetEvalConfigSummaryCount(string? search);
+    Task<List<EvalConfigSummary>> GetEvalConfigSummaries(string? search, EvalConfigSortField sortBy, SortDirection sortDirection, int skip, int take);
+    Task<EvalConfig> GetEvalConfig(Guid evalConfigId);
+    Task UpsertEvalConfig(EvalConfig evalConfig);
+    Task DeleteEvalConfig(Guid evalConfigId);
+
+    // ------------------------------------------------
     // Setting Operations
     // ------------------------------------------------
     Task<List<Setting>> GetSettings();

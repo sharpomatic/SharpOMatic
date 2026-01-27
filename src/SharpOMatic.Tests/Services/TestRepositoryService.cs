@@ -130,6 +130,24 @@ public sealed class TestRepositoryService : IRepositoryService
     public Task DeleteModel(Guid modelId)
         => throw new NotImplementedException();
 
+    public Task<List<EvalConfigSummary>> GetEvalConfigSummaries()
+        => throw new NotImplementedException();
+
+    public Task<int> GetEvalConfigSummaryCount(string? search)
+        => throw new NotImplementedException();
+
+    public Task<List<EvalConfigSummary>> GetEvalConfigSummaries(string? search, EvalConfigSortField sortBy, SortDirection sortDirection, int skip, int take)
+        => throw new NotImplementedException();
+
+    public Task<EvalConfig> GetEvalConfig(Guid evalConfigId)
+        => throw new NotImplementedException();
+
+    public Task UpsertEvalConfig(EvalConfig evalConfig)
+        => throw new NotImplementedException();
+
+    public Task DeleteEvalConfig(Guid evalConfigId)
+        => throw new NotImplementedException();
+
     public Task<List<Setting>> GetSettings()
         => throw new NotImplementedException();
 

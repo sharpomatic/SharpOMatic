@@ -1,0 +1,91 @@
+<div class="container-fluid p-0 evaluations-page">
+  <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary">
+    <h2 class=""><i class="bi bi-clipboard-check pe-3 icon-sm"></i>Evaluations ({{ evalConfigsTotal || evalConfigs.length }})</h2>
+    <button class="btn btn-primary" (click)="newEvalConfig()">New</button>
+  </div>
+  <hr class="m-0"/>
+  <div class="p-3 bg-body-tertiary h-100 d-flex flex-column evaluations-body">
+    <div class="evaluations-toolbar d-flex align-items-center gap-2 mb-3">
+      <div class="input-group evaluations-search">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input
+          #searchInput
+          type="search"
+          class="form-control"
+          placeholder="Search by name"
+          [value]="searchText"
+          (input)="onSearchChange($event)"
+          (keyup.enter)="applySearch()" />
+      </div>
+    </div>
+    @if (!isLoading && evalConfigsTotal === 0 && evalConfigs.length === 0) {
+      <div class="empty-state text-body-secondary">
+        <div class="empty-icon"><i class="bi bi-clipboard-check"></i></div>
+        @if (searchText) {
+          <div class="empty-title">No matching evaluations</div>
+          <div class="empty-subtitle">Try a different search to find evaluations by name.</div>
+        } @else {
+          <div class="empty-title">No evaluations yet</div>
+          <div class="empty-subtitle">Add an evaluation to start organizing your runs.</div>
+        }
+      </div>
+    } @else {
+      <div class="d-flex flex-wrap gap-3 evaluations-list">
+        @for (config of evalConfigs; track config.evalConfigId) {
+          <div class="card workflow-card">
+            <div class="card-header">
+              <h5>{{ config.name }}</h5>
+            </div>
+            <div class="card-body">
+              <p class="card-text">{{ config.description }}</p>
+              <button class="btn btn-outline-danger" (click)="deleteEvalConfig(config)">Delete</button>
+            </div>
+          </div>
+        }
+      </div>
+      @if (evalConfigsTotal > 0) {
+        <div class="d-flex align-items-center justify-content-between evaluations-pagination">
+          <div class="text-muted small">
+            Page {{ evalConfigsPage }} of {{ evalConfigsPageCount() }} ({{ evalConfigsTotal }} total evaluations)
+          </div>
+          @if (evalConfigsPageCount() > 1) {
+            <nav aria-label="Evaluations pagination">
+              <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" [class.disabled]="evalConfigsPage === 1">
+                  <button class="page-link" type="button" [disabled]="evalConfigsPage === 1" aria-label="First"
+                    (click)="onEvalConfigsPageChange(1)">
+                    <span aria-hidden="true">&laquo;</span>
+                  </button>
+                </li>
+                <li class="page-item" [class.disabled]="evalConfigsPage === 1">
+                  <button class="page-link" type="button" [disabled]="evalConfigsPage === 1" aria-label="Previous"
+                    (click)="onEvalConfigsPageChange(evalConfigsPage - 1)">
+                    <span aria-hidden="true">&lsaquo;</span>
+                  </button>
+                </li>
+                @for (page of evalConfigsPageNumbers(); track page) {
+                  <li class="page-item" [class.active]="page === evalConfigsPage"
+                    [attr.aria-current]="page === evalConfigsPage ? 'page' : null">
+                    <button class="page-link" type="button" (click)="onEvalConfigsPageChange(page)">{{ page }}</button>
+                  </li>
+                }
+                <li class="page-item" [class.disabled]="evalConfigsPage >= evalConfigsPageCount()">
+                  <button class="page-link" type="button" [disabled]="evalConfigsPage >= evalConfigsPageCount()"
+                    aria-label="Next" (click)="onEvalConfigsPageChange(evalConfigsPage + 1)">
+                    <span aria-hidden="true">&rsaquo;</span>
+                  </button>
+                </li>
+                <li class="page-item" [class.disabled]="evalConfigsPage >= evalConfigsPageCount()">
+                  <button class="page-link" type="button" [disabled]="evalConfigsPage >= evalConfigsPageCount()"
+                    aria-label="Last" (click)="onEvalConfigsPageChange(evalConfigsPageCount())">
+                    <span aria-hidden="true">&raquo;</span>
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          }
+        </div>
+      }
+    }
+  </div>
+</div>
