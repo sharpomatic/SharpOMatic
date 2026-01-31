@@ -13,7 +13,7 @@
 
 ### Evaluations
 
-- Details allow definition of target workflow and grader workflows
+- Grader definitions
 - Manual creation of column definitions
 - Manual creation of data rows (add/edit/remove)
 - Start an evalaution run (full or sampled)

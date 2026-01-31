@@ -1,5 +1,6 @@
 import { AfterViewInit, Component, ElementRef, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router, RouterLink } from '@angular/router';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { ServerRepositoryService } from '../../services/server.repository.service';
 import { EvalConfig } from '../../eval/definitions/eval-config';
@@ -11,6 +12,7 @@ import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.com
   standalone: true,
   imports: [
     CommonModule,
+    RouterLink,
   ],
   templateUrl: './evaluations.component.html',
   styleUrls: ['./evaluations.component.scss'],
@@ -19,6 +21,7 @@ import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.com
 export class EvaluationsComponent implements AfterViewInit {
   private readonly serverRepository = inject(ServerRepositoryService);
   private readonly modalService = inject(BsModalService);
+  private readonly router = inject(Router);
   private confirmModalRef: BsModalRef<ConfirmDialogComponent> | undefined;
   @ViewChild('searchInput') private searchInput?: ElementRef<HTMLInputElement>;
 
@@ -46,7 +49,7 @@ export class EvaluationsComponent implements AfterViewInit {
     });
 
     this.serverRepository.upsertEvalConfig(newConfig).subscribe(() => {
-      this.refreshEvalConfigs();
+      this.router.navigate(['/evaluations', newConfig.evalConfigId]);
     });
   }
 

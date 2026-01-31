@@ -38,7 +38,8 @@
             </div>
             <div class="card-body">
               <p class="card-text">{{ config.description }}</p>
-              <button class="btn btn-outline-danger" (click)="deleteEvalConfig(config)">Delete</button>
+              <button class="btn btn-secondary" [routerLink]="['/evaluations', config.evalConfigId]">Open</button>
+              <button class="btn btn-outline-danger ms-2" (click)="deleteEvalConfig(config)">Delete</button>
             </div>
           </div>
         }

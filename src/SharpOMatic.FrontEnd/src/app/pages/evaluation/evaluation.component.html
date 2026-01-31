@@ -1,0 +1,76 @@
+<div class="d-flex flex-column bg-body-secondary h-100 evaluation-page">
+  <div class="flex-shrink-0">
+    <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-0">
+      <h2 class=""><i class="bi bi-clipboard-check pe-3 icon-sm"></i>{{ evalConfig.name() || 'Evaluation' }}</h2>
+      <button class="btn btn-primary" [disabled]="!evalConfig.isDirty()" (click)="save()">Save</button>
+    </div>
+  </div>
+
+  <div class="tab-shell mt-1">
+    <app-tab [tabs]="tabs" [(activeTabId)]="activeTabId" (activeTabChange)="onActiveTabChange($event)"
+      [preventOverflow]="true"></app-tab>
+  </div>
+
+  <ng-template #detailsTab>
+    <div class="p-3 details bg-body-tertiary h-100">
+      <div class="mb-3 form-line">
+        <label for="eval-id" class="form-label field-label">Id</label>
+        <div class="flex-fill control-column short">
+          <input type="text" class="form-control w-100" id="eval-id" [ngModel]="evalConfig.evalConfigId" readonly />
+        </div>
+      </div>
+      <div class="mb-3 form-line">
+        <label for="eval-title" class="form-label field-label">Title</label>
+        <div class="flex-fill control-column short">
+          <input type="text" class="form-control w-100" id="eval-title" [ngModel]="evalConfig.name()"
+            (ngModelChange)="evalConfig.name.set($event)" />
+        </div>
+      </div>
+      <div class="mb-3 form-line">
+        <label for="eval-description" class="form-label field-label">Description</label>
+        <div class="flex-fill control-column long">
+          <input type="text" class="form-control w-100" id="eval-description" [ngModel]="evalConfig.description()"
+            (ngModelChange)="evalConfig.description.set($event)" />
+        </div>
+      </div>
+      <div class="mb-3 form-line">
+        <label for="eval-workflow" class="form-label field-label">Workflow</label>
+        <div class="flex-fill control-column long">
+          <select
+            id="eval-workflow"
+            class="form-select w-100"
+            [ngModel]="workflowSelectionId"
+            (ngModelChange)="onWorkflowChange($event)"
+            [disabled]="!workflowSummaries.length">
+            <option [ngValue]="null">(None)</option>
+            @for (workflow of workflowSummaries; track workflow.id) {
+              <option [ngValue]="workflow.id">
+                {{ workflow.name() }}
+              </option>
+            }
+          </select>
+        </div>
+      </div>
+      <div class="mb-3 form-line">
+        <label for="eval-max-parallel" class="form-label field-label">Max Parallel</label>
+        <div class="flex-fill control-column tiny">
+          <input
+            id="eval-max-parallel"
+            type="number"
+            class="form-control w-100"
+            min="1"
+            step="1"
+            inputmode="numeric"
+            [ngModel]="evalConfig.maxParallel()"
+            (ngModelChange)="onMaxParallelChange($event)" />
+        </div>
+      </div>
+    </div>
+  </ng-template>
+
+  <ng-template #gradersTab>
+    <div class="p-3 bg-body-tertiary h-100 graders-tab">
+      <div class="text-body-secondary">Graders configuration will appear here.</div>
+    </div>
+  </ng-template>
+</div>

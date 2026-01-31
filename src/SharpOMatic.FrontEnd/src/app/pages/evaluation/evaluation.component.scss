@@ -1,0 +1,63 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.icon-sm {
+  font-size: 1.5rem;
+}
+
+.details {
+  .form-line {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+  }
+
+  .field-label {
+    width: 140px;
+    flex: 0 0 140px;
+    margin-bottom: 0;
+    text-align: right;
+  }
+
+  .control-column {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .control-column .form-control,
+  .control-column .form-select {
+    width: 100%;
+  }
+
+  .short {
+    max-width: 350px;
+    width: 100%;
+  }
+
+  .long {
+    max-width: 500px;
+    width: 100%;
+  }
+
+  .tiny {
+    max-width: 160px;
+    width: 100%;
+  }
+}
+
+.tab-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.graders-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
