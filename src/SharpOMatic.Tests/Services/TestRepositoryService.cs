@@ -164,10 +164,10 @@ public sealed class TestRepositoryService : IRepositoryService
     public Task<Asset> GetAsset(Guid assetId)
         => throw new NotImplementedException();
 
-    public Task<int> GetAssetCount(AssetScope scope, string? search)
+    public Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId)
         => throw new NotImplementedException();
 
-    public Task<List<Asset>> GetAssetsByScope(AssetScope scope, string? search, AssetSortField sortBy, SortDirection sortDirection, int skip, int take)
+    public Task<List<Asset>> GetAssetsByScope(AssetScope scope, string? search, AssetSortField sortBy, SortDirection sortDirection, int skip, int take, Guid? runId)
         => throw new NotImplementedException();
 
     public Task<List<Asset>> GetRunAssets(Guid runId)
