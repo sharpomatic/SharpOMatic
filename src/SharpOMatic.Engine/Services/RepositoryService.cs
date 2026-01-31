@@ -864,6 +864,49 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return evalConfig;
     }
 
+    public async Task<EvalConfigDetail> GetEvalConfigDetail(Guid evalConfigId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var evalConfig = await (from m in dbContext.EvalConfigs
+                                where m.EvalConfigId == evalConfigId
+                                select m).AsNoTracking().FirstOrDefaultAsync();
+
+        if (evalConfig is null)
+            throw new SharpOMaticException($"EvalConfig '{evalConfigId}' cannot be found.");
+
+        var graders = await (from g in dbContext.EvalGraders.AsNoTracking()
+                             where g.EvalConfigId == evalConfigId
+                             orderby g.Order
+                             select g).ToListAsync();
+
+        var columns = await (from c in dbContext.EvalColumns.AsNoTracking()
+                             where c.EvalConfigId == evalConfigId
+                             orderby c.Order
+                             select c).ToListAsync();
+
+        var rows = await (from r in dbContext.EvalRows.AsNoTracking()
+                          where r.EvalConfigId == evalConfigId
+                          orderby r.Order
+                          select r).ToListAsync();
+
+        var data = await (from d in dbContext.EvalData.AsNoTracking()
+                          join r in dbContext.EvalRows.AsNoTracking() on d.EvalRowId equals r.EvalRowId
+                          join c in dbContext.EvalColumns.AsNoTracking() on d.EvalColumnId equals c.EvalColumnId
+                          where r.EvalConfigId == evalConfigId && c.EvalConfigId == evalConfigId
+                          orderby r.Order, c.Order
+                          select d).ToListAsync();
+
+        return new EvalConfigDetail
+        {
+            EvalConfig = evalConfig,
+            Graders = graders,
+            Columns = columns,
+            Rows = rows,
+            Data = data
+        };
+    }
+
     public async Task UpsertEvalConfig(EvalConfig evalConfig)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
@@ -892,6 +935,186 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             throw new SharpOMaticException($"EvalConfig '{evalConfigId}' cannot be found.");
 
         dbContext.Remove(evalConfig);
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task UpsertEvalGraders(Guid evalConfigId, List<EvalGrader> graders)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        if (graders.Count == 0)
+            return;
+
+        var graderIds = graders.Select(grader => grader.EvalGraderId).ToList();
+        var existing = await dbContext.EvalGraders
+            .Where(grader => graderIds.Contains(grader.EvalGraderId))
+            .ToListAsync();
+        var existingLookup = existing.ToDictionary(grader => grader.EvalGraderId);
+
+        foreach (var grader in graders)
+        {
+            grader.EvalConfigId = evalConfigId;
+            if (existingLookup.TryGetValue(grader.EvalGraderId, out var entity))
+                dbContext.Entry(entity).CurrentValues.SetValues(grader);
+            else
+                dbContext.EvalGraders.Add(grader);
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task DeleteEvalGrader(Guid evalGraderId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var grader = await (from g in dbContext.EvalGraders
+                            where g.EvalGraderId == evalGraderId
+                            select g).FirstOrDefaultAsync();
+
+        if (grader is null)
+            throw new SharpOMaticException($"EvalGrader '{evalGraderId}' cannot be found.");
+
+        dbContext.Remove(grader);
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task UpsertEvalColumns(Guid evalConfigId, List<EvalColumn> columns)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        if (columns.Count == 0)
+            return;
+
+        var columnIds = columns.Select(column => column.EvalColumnId).ToList();
+        var existing = await dbContext.EvalColumns
+            .Where(column => columnIds.Contains(column.EvalColumnId))
+            .ToListAsync();
+        var existingLookup = existing.ToDictionary(column => column.EvalColumnId);
+
+        foreach (var column in columns)
+        {
+            column.EvalConfigId = evalConfigId;
+            if (existingLookup.TryGetValue(column.EvalColumnId, out var entity))
+                dbContext.Entry(entity).CurrentValues.SetValues(column);
+            else
+                dbContext.EvalColumns.Add(column);
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task DeleteEvalColumn(Guid evalColumnId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var column = await (from c in dbContext.EvalColumns
+                            where c.EvalColumnId == evalColumnId
+                            select c).FirstOrDefaultAsync();
+
+        if (column is null)
+            throw new SharpOMaticException($"EvalColumn '{evalColumnId}' cannot be found.");
+
+        dbContext.Remove(column);
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task UpsertEvalRows(Guid evalConfigId, List<EvalRow> rows)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        if (rows.Count == 0)
+            return;
+
+        var rowIds = rows.Select(row => row.EvalRowId).ToList();
+        var existing = await dbContext.EvalRows
+            .Where(row => rowIds.Contains(row.EvalRowId))
+            .ToListAsync();
+        var existingLookup = existing.ToDictionary(row => row.EvalRowId);
+
+        foreach (var row in rows)
+        {
+            row.EvalConfigId = evalConfigId;
+            if (existingLookup.TryGetValue(row.EvalRowId, out var entity))
+                dbContext.Entry(entity).CurrentValues.SetValues(row);
+            else
+                dbContext.EvalRows.Add(row);
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task DeleteEvalRow(Guid evalRowId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var row = await (from r in dbContext.EvalRows
+                         where r.EvalRowId == evalRowId
+                         select r).FirstOrDefaultAsync();
+
+        if (row is null)
+            throw new SharpOMaticException($"EvalRow '{evalRowId}' cannot be found.");
+
+        dbContext.Remove(row);
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task UpsertEvalData(Guid evalConfigId, List<EvalData> data)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        if (data.Count == 0)
+            return;
+
+        var rowIds = data.Select(entry => entry.EvalRowId).Distinct().ToList();
+        var columnIds = data.Select(entry => entry.EvalColumnId).Distinct().ToList();
+
+        var validRowIds = await dbContext.EvalRows.AsNoTracking()
+            .Where(row => row.EvalConfigId == evalConfigId && rowIds.Contains(row.EvalRowId))
+            .Select(row => row.EvalRowId)
+            .ToListAsync();
+
+        var validColumnIds = await dbContext.EvalColumns.AsNoTracking()
+            .Where(column => column.EvalConfigId == evalConfigId && columnIds.Contains(column.EvalColumnId))
+            .Select(column => column.EvalColumnId)
+            .ToListAsync();
+
+        var invalidRowIds = rowIds.Except(validRowIds).ToList();
+        if (invalidRowIds.Count > 0)
+            throw new SharpOMaticException($"EvalRow(s) do not belong to EvalConfig '{evalConfigId}'.");
+
+        var invalidColumnIds = columnIds.Except(validColumnIds).ToList();
+        if (invalidColumnIds.Count > 0)
+            throw new SharpOMaticException($"EvalColumn(s) do not belong to EvalConfig '{evalConfigId}'.");
+
+        var dataIds = data.Select(entry => entry.EvalDataId).ToList();
+        var existing = await dbContext.EvalData
+            .Where(entry => dataIds.Contains(entry.EvalDataId))
+            .ToListAsync();
+        var existingLookup = existing.ToDictionary(entry => entry.EvalDataId);
+
+        foreach (var entry in data)
+        {
+            if (existingLookup.TryGetValue(entry.EvalDataId, out var entity))
+                dbContext.Entry(entity).CurrentValues.SetValues(entry);
+            else
+                dbContext.EvalData.Add(entry);
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task DeleteEvalData(Guid evalDataId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var data = await (from d in dbContext.EvalData
+                          where d.EvalDataId == evalDataId
+                          select d).FirstOrDefaultAsync();
+
+        if (data is null)
+            throw new SharpOMaticException($"EvalData '{evalDataId}' cannot be found.");
+
+        dbContext.Remove(data);
         await dbContext.SaveChangesAsync();
     }
 

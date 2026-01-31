@@ -13,9 +13,8 @@
 
 ### Evaluations
 
-- Grader definitions
-- Manual creation of column definitions
-- Manual creation of data rows (add/edit/remove)
+- Manual creation of column definitions (add/update/remove)
+- Manual view and modify of a data grid (add/edit/remove)
 - Start an evalaution run (full or sampled)
 - Cancel a running evaluation
 - List runs

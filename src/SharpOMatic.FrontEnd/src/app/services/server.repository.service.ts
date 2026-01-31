@@ -15,7 +15,12 @@ import { ModelConfig, ModelConfigSnapshot } from '../metadata/definitions/model-
 import { ModelSummary, ModelSummarySnapshot } from '../metadata/definitions/model-summary';
 import { Model, ModelSnapshot } from '../metadata/definitions/model';
 import { EvalConfig, EvalConfigSnapshot } from '../eval/definitions/eval-config';
+import { EvalConfigDetailSnapshot } from '../eval/definitions/eval-config-detail';
 import { EvalConfigSummary, EvalConfigSummarySnapshot } from '../eval/definitions/eval-config-summary';
+import { EvalGraderSnapshot } from '../eval/definitions/eval-grader';
+import { EvalColumnSnapshot } from '../eval/definitions/eval-column';
+import { EvalRowSnapshot } from '../eval/definitions/eval-row';
+import { EvalDataSnapshot } from '../eval/definitions/eval-data';
 import { ToastService } from './toast.service';
 import { SettingsService } from './settings.service';
 import { RunSortField } from '../enumerations/run-sort-field';
@@ -429,6 +434,16 @@ export class ServerRepositoryService {
     );
   }
 
+  public getEvalConfigDetail(id: string): Observable<EvalConfigDetailSnapshot | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.get<EvalConfigDetailSnapshot>(`${apiUrl}/api/eval/configs/${id}/detail`).pipe(
+      catchError((error) => {
+        this.notifyError('Loading eval config detail', error);
+        return of(null);
+      })
+    );
+  }
+
   public upsertEvalConfig(evalConfig: EvalConfig): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
     return this.http.post<void>(`${apiUrl}/api/eval/configs`, evalConfig.toSnapshot()).pipe(
@@ -444,6 +459,86 @@ export class ServerRepositoryService {
     return this.http.delete<void>(`${apiUrl}/api/eval/configs/${id}`).pipe(
       catchError((error) => {
         this.notifyError('Deleting eval config', error);
+        return of(undefined);
+      })
+    );
+  }
+
+  public upsertEvalGraders(evalConfigId: string, graders: EvalGraderSnapshot[]): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/graders`, graders).pipe(
+      catchError((error) => {
+        this.notifyError('Saving eval graders', error);
+        return of(undefined);
+      })
+    );
+  }
+
+  public deleteEvalGrader(id: string): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.delete<void>(`${apiUrl}/api/eval/graders/${id}`).pipe(
+      catchError((error) => {
+        this.notifyError('Deleting eval grader', error);
+        return of(undefined);
+      })
+    );
+  }
+
+  public upsertEvalColumns(evalConfigId: string, columns: EvalColumnSnapshot[]): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/columns`, columns).pipe(
+      catchError((error) => {
+        this.notifyError('Saving eval columns', error);
+        return of(undefined);
+      })
+    );
+  }
+
+  public deleteEvalColumn(id: string): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.delete<void>(`${apiUrl}/api/eval/columns/${id}`).pipe(
+      catchError((error) => {
+        this.notifyError('Deleting eval column', error);
+        return of(undefined);
+      })
+    );
+  }
+
+  public upsertEvalRows(evalConfigId: string, rows: EvalRowSnapshot[]): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/rows`, rows).pipe(
+      catchError((error) => {
+        this.notifyError('Saving eval rows', error);
+        return of(undefined);
+      })
+    );
+  }
+
+  public deleteEvalRow(id: string): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.delete<void>(`${apiUrl}/api/eval/rows/${id}`).pipe(
+      catchError((error) => {
+        this.notifyError('Deleting eval row', error);
+        return of(undefined);
+      })
+    );
+  }
+
+  public upsertEvalData(evalConfigId: string, data: EvalDataSnapshot[]): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/data`, data).pipe(
+      catchError((error) => {
+        this.notifyError('Saving eval data', error);
+        return of(undefined);
+      })
+    );
+  }
+
+  public deleteEvalData(id: string): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.delete<void>(`${apiUrl}/api/eval/data/${id}`).pipe(
+      catchError((error) => {
+        this.notifyError('Deleting eval data', error);
         return of(undefined);
       })
     );

@@ -70,7 +70,55 @@
 
   <ng-template #gradersTab>
     <div class="p-3 bg-body-tertiary h-100 graders-tab">
-      <div class="text-body-secondary">Graders configuration will appear here.</div>
+      <div class="mb-3">
+        <div class="d-flex align-items-start gap-2 mb-2 graders-header">
+          <label class="grader-name">Name</label>
+          <label class="grader-workflow">Workflow</label>
+          <label class="grader-threshold">Pass Threshold</label>
+        </div>
+        @if (!evalConfig.graders().length) {
+          <div class="text-muted fst-italic mb-2">(empty)</div>
+        }
+        @for (grader of evalConfig.graders(); track grader.evalGraderId) {
+          <div class="d-flex align-items-start gap-2 mb-2 grader-row">
+            <input type="text"
+                  class="form-control grader-name"
+                  [ngModel]="grader.label()"
+                  (ngModelChange)="grader.label.set($event)"/>
+            <select class="form-select grader-workflow"
+                    [ngModel]="graderWorkflowSelectionId(grader)"
+                    (ngModelChange)="onGraderWorkflowChange(grader, $event)"
+                    [disabled]="!workflowSummaries.length">
+              <option [ngValue]="null">(None)</option>
+              @for (workflow of workflowSummaries; track workflow.id) {
+                <option [ngValue]="workflow.id">
+                  {{ workflow.name() }}
+                </option>
+              }
+            </select>
+            <input type="number"
+                  class="form-control grader-threshold"
+                  inputmode="decimal"
+                  step="any"
+                  [ngModel]="grader.passThreshold()"
+                  (ngModelChange)="onPassThresholdChange(grader, $event)"/>
+            <button class="btn btn-outline-primary"
+                    [disabled]="!canMoveGraderUp(grader)"
+                    (click)="onMoveGraderUp(grader)">
+              <i class="bi bi-arrow-up"></i>
+            </button>
+            <button class="btn btn-outline-primary"
+                    [disabled]="!canMoveGraderDown(grader)"
+                    (click)="onMoveGraderDown(grader)">
+              <i class="bi bi-arrow-down"></i>
+            </button>
+            <button class="btn btn-outline-danger" (click)="onDeleteGrader(grader)">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        }
+        <button class="btn btn-primary mt-2" (click)="appendGrader()">Add</button>
+      </div>
     </div>
   </ng-template>
 </div>

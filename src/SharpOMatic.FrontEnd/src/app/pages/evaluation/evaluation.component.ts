@@ -2,9 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnInit, TemplateRef, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Observable, map } from 'rxjs';
+import { Observable, forkJoin, map, of, switchMap } from 'rxjs';
 import { TabComponent, TabItem } from '../../components/tab/tab.component';
 import { EvalConfig } from '../../eval/definitions/eval-config';
+import { EvalConfigDetailSnapshot } from '../../eval/definitions/eval-config-detail';
+import { EvalGrader } from '../../eval/definitions/eval-grader';
 import { CanLeaveWithUnsavedChanges } from '../../helper/unsaved-changes.guard';
 import { WorkflowSummaryEntity } from '../../entities/definitions/workflow.summary.entity';
 import { WorkflowSortField } from '../../enumerations/workflow-sort-field';
@@ -76,6 +78,10 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
     this.evalConfig.workflowId.set(value ?? null);
   }
 
+  onGraderWorkflowChange(grader: EvalGrader, value: string | null): void {
+    grader.workflowId.set(value ?? null);
+  }
+
   onMaxParallelChange(value: string | number): void {
     const numeric = typeof value === 'number' ? value : Number(value);
     if (!Number.isFinite(numeric)) {
@@ -84,6 +90,16 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
     }
 
     this.evalConfig.maxParallel.set(Math.max(1, Math.trunc(numeric)));
+  }
+
+  onPassThresholdChange(grader: EvalGrader, value: string | number): void {
+    const numeric = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(numeric)) {
+      grader.passThreshold.set(0);
+      return;
+    }
+
+    grader.passThreshold.set(numeric);
   }
 
   get workflowSelectionId(): string | null {
@@ -96,12 +112,91 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
     return exists ? workflowId : null;
   }
 
+  graderWorkflowSelectionId(grader: EvalGrader): string | null {
+    const workflowId = grader.workflowId();
+    if (!workflowId) {
+      return null;
+    }
+
+    const exists = this.workflowSummaries.some(workflow => workflow.id === workflowId);
+    return exists ? workflowId : null;
+  }
+
+  appendGrader(): void {
+    const graders = this.evalConfig.graders();
+    const snapshot = EvalGrader.defaultSnapshot(graders.length, this.evalConfig.evalConfigId);
+    const next = [...graders, EvalGrader.fromSnapshot(snapshot)];
+    this.evalConfig.graders.set(next);
+  }
+
+  canMoveGraderUp(grader: EvalGrader): boolean {
+    const graders = this.evalConfig.graders();
+    return graders.indexOf(grader) > 0;
+  }
+
+  canMoveGraderDown(grader: EvalGrader): boolean {
+    const graders = this.evalConfig.graders();
+    const index = graders.indexOf(grader);
+    return index >= 0 && index < graders.length - 1;
+  }
+
+  onMoveGraderUp(grader: EvalGrader): void {
+    const graders = this.evalConfig.graders();
+    const index = graders.indexOf(grader);
+    if (index <= 0) {
+      return;
+    }
+
+    const next = graders.slice();
+    [next[index - 1], next[index]] = [next[index], next[index - 1]];
+    this.evalConfig.graders.set(next);
+  }
+
+  onMoveGraderDown(grader: EvalGrader): void {
+    const graders = this.evalConfig.graders();
+    const index = graders.indexOf(grader);
+    if (index < 0 || index >= graders.length - 1) {
+      return;
+    }
+
+    const next = graders.slice();
+    [next[index], next[index + 1]] = [next[index + 1], next[index]];
+    this.evalConfig.graders.set(next);
+  }
+
+  onDeleteGrader(grader: EvalGrader): void {
+    const graders = this.evalConfig.graders();
+    const index = graders.indexOf(grader);
+    if (index < 0) {
+      return;
+    }
+
+    const next = graders.slice();
+    next.splice(index, 1);
+    this.evalConfig.graders.set(next);
+  }
+
   hasUnsavedChanges(): boolean {
     return this.evalConfig.isDirty();
   }
 
   saveChanges(): Observable<void> {
+    const graderSnapshots = this.evalConfig.graders().map((grader, index) =>
+      grader.toSnapshot(index, this.evalConfig.evalConfigId)
+    );
+    const deletedGraderIds = this.evalConfig.getDeletedGraderIds();
+
     return this.serverRepository.upsertEvalConfig(this.evalConfig).pipe(
+      switchMap(() => this.serverRepository.upsertEvalGraders(this.evalConfig.evalConfigId, graderSnapshots)),
+      switchMap(() => {
+        if (deletedGraderIds.length === 0) {
+          return of(undefined);
+        }
+
+        return forkJoin(deletedGraderIds.map(id => this.serverRepository.deleteEvalGrader(id))).pipe(
+          map(() => undefined)
+        );
+      }),
       map(() => {
         this.evalConfig.markClean();
         return;
@@ -118,17 +213,28 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   private loadEvalConfig(id: string): void {
-    this.serverRepository.getEvalConfig(id).subscribe(config => {
-      if (!config) {
+    this.serverRepository.getEvalConfigDetail(id).subscribe(detail => {
+      if (!detail) {
         void this.router.navigate(['/evaluations']);
         return;
       }
 
-      this.evalConfig = config;
+      this.evalConfig = this.createEvalConfigFromDetail(detail);
       this.evalConfig.markClean();
       this.hasLoadedConfig = true;
       this.tryNormalizeWorkflowSelection();
     });
+  }
+
+  private createEvalConfigFromDetail(detail: EvalConfigDetailSnapshot): EvalConfig {
+    const snapshot = {
+      ...detail.evalConfig,
+      graders: detail.graders,
+      columns: detail.columns,
+      rows: detail.rows,
+    };
+
+    return new EvalConfig(snapshot, detail.data);
   }
 
   private loadWorkflows(): void {
@@ -152,17 +258,40 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
     this.normalizedWorkflowSelection = true;
     const workflowId = this.evalConfig.workflowId();
-    if (!workflowId) {
-      this.evalConfig.markClean();
+    if (workflowId) {
+      const exists = this.workflowSummaries.some(workflow => workflow.id === workflowId);
+      if (!exists) {
+        this.evalConfig.workflowId.set(null);
+      }
+    }
+
+    this.normalizeGraderWorkflows();
+    this.evalConfig.markClean();
+  }
+
+  private normalizeGraderWorkflows(): void {
+    const graders = this.evalConfig.graders();
+    if (!graders.length) {
       return;
     }
 
-    const exists = this.workflowSummaries.some(workflow => workflow.id === workflowId);
-    if (!exists) {
-      this.evalConfig.workflowId.set(null);
-    }
+    let changed = false;
+    graders.forEach(grader => {
+      const workflowId = grader.workflowId();
+      if (!workflowId) {
+        return;
+      }
 
-    this.evalConfig.markClean();
+      const exists = this.workflowSummaries.some(workflow => workflow.id === workflowId);
+      if (!exists) {
+        grader.workflowId.set(null);
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      this.evalConfig.graders.set([...graders]);
+    }
   }
 
   private resolveTabId(tabId: string | null): string {

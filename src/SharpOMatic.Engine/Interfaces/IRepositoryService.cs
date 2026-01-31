@@ -70,8 +70,17 @@ public interface IRepositoryService
     Task<int> GetEvalConfigSummaryCount(string? search);
     Task<List<EvalConfigSummary>> GetEvalConfigSummaries(string? search, EvalConfigSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task<EvalConfig> GetEvalConfig(Guid evalConfigId);
+    Task<EvalConfigDetail> GetEvalConfigDetail(Guid evalConfigId);
     Task UpsertEvalConfig(EvalConfig evalConfig);
     Task DeleteEvalConfig(Guid evalConfigId);
+    Task UpsertEvalGraders(Guid evalConfigId, List<EvalGrader> graders);
+    Task DeleteEvalGrader(Guid evalGraderId);
+    Task UpsertEvalColumns(Guid evalConfigId, List<EvalColumn> columns);
+    Task DeleteEvalColumn(Guid evalColumnId);
+    Task UpsertEvalRows(Guid evalConfigId, List<EvalRow> rows);
+    Task DeleteEvalRow(Guid evalRowId);
+    Task UpsertEvalData(Guid evalConfigId, List<EvalData> data);
+    Task DeleteEvalData(Guid evalDataId);
 
     // ------------------------------------------------
     // Setting Operations
