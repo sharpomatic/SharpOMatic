@@ -140,10 +140,37 @@ public sealed class TestRepositoryService : IRepositoryService
     public Task<EvalConfig> GetEvalConfig(Guid evalConfigId)
         => throw new NotImplementedException();
 
+    public Task<EvalConfigDetail> GetEvalConfigDetail(Guid evalConfigId)
+        => throw new NotImplementedException();
+
     public Task UpsertEvalConfig(EvalConfig evalConfig)
         => throw new NotImplementedException();
 
     public Task DeleteEvalConfig(Guid evalConfigId)
+        => throw new NotImplementedException();
+
+    public Task UpsertEvalGraders(Guid evalConfigId, List<EvalGrader> graders)
+        => throw new NotImplementedException();
+
+    public Task DeleteEvalGrader(Guid evalGraderId)
+        => throw new NotImplementedException();
+
+    public Task UpsertEvalColumns(Guid evalConfigId, List<EvalColumn> columns)
+        => throw new NotImplementedException();
+
+    public Task DeleteEvalColumn(Guid evalColumnId)
+        => throw new NotImplementedException();
+
+    public Task UpsertEvalRows(Guid evalConfigId, List<EvalRow> rows)
+        => throw new NotImplementedException();
+
+    public Task DeleteEvalRow(Guid evalRowId)
+        => throw new NotImplementedException();
+
+    public Task UpsertEvalData(Guid evalConfigId, List<EvalData> data)
+        => throw new NotImplementedException();
+
+    public Task DeleteEvalData(Guid evalDataId)
         => throw new NotImplementedException();
 
     public Task<List<Setting>> GetSettings()
