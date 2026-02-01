@@ -69,7 +69,7 @@
     },
     {
       "Name": "thinking_budget",
-      "Label": "Thinking Budget (128 - 32768)",
+      "Label": "Budget (128 - 32768)",
       "Description": "",
       "CallDefined": true,
       "Type": 5,
