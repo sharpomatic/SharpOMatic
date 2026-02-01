@@ -81,6 +81,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Metadata\Resources\ModelConfig\google\google_gemini-2.5-flash-lite.json" />
+    <EmbeddedResource Include="Metadata\Resources\ModelConfig\google\google_gemini-2.5-flash.json" />
+    <EmbeddedResource Include="Metadata\Resources\ModelConfig\google\google_gemini-2.5-pro.json" />
     <EmbeddedResource Include="Metadata\Resources\ModelConfig\google\google_gemini-3-pro-preview.json" />
     <EmbeddedResource Include="Metadata\Resources\ModelConfig\google\google_gemini-3-flash-preview.json" />
     <EmbeddedResource Include="Metadata\Resources\ModelConfig\google\google_custom.json" />

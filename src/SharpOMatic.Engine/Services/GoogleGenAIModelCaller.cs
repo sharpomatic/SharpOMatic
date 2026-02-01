@@ -78,6 +78,32 @@ public class GoogleGenAIModelCaller : BaseModelCaller
         if (GetCapabilityInt(model, modelConfig, node, "SupportsSampling", "top_k", out int topK))
             chatOptions.TopK = topK;
 
+        // Gemini 2.5 models have a thinking enum and budget
+        if (GetCapabilityString(model, modelConfig, node, "SupportsThinkingBudget", "thinking_enum", out string thinkingEnum))
+        {
+            int thinkingBudget = -1;
+            switch (thinkingEnum)
+            {
+                case "No thinking":
+                    thinkingBudget = 0;
+                    break;
+                case "Thinking budget":
+                    GetCapabilityInt(model, modelConfig, node, "SupportsThinkingBudget", "thinking_budget", out thinkingBudget);
+                    break;
+                case "Dynamic thinking":
+                default:
+                    thinkingBudget = -1;
+                    break;
+            }
+
+            generateContentConfig.ThinkingConfig = new Google.GenAI.Types.ThinkingConfig()
+            {
+                ThinkingBudget = thinkingBudget,
+                IncludeThoughts = true
+            };
+        }
+
+        // Gemini 3 models have a thinking level
         if (GetCapabilityString(model, modelConfig, node, "SupportsThinkingLevel", "thinking_level", out string thinkingLevel))
             generateContentConfig.ThinkingConfig = new Google.GenAI.Types.ThinkingConfig()
             {
