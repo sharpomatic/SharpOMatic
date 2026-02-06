@@ -5,12 +5,14 @@ import { NodeType } from '../enumerations/node-type';
 
 export interface BatchNodeSnapshot extends NodeSnapshot {
   inputArrayPath: string;
+  outputArrayPath: string;
   batchSize: number;
   parallelBatches: number;
 }
 
 export class BatchNodeEntity extends NodeEntity<BatchNodeSnapshot> {
   public inputArrayPath: WritableSignal<string>;
+  public outputArrayPath: WritableSignal<string>;
   public batchSize: WritableSignal<number>;
   public parallelBatches: WritableSignal<number>;
 
@@ -18,6 +20,7 @@ export class BatchNodeEntity extends NodeEntity<BatchNodeSnapshot> {
     super(snapshot);
 
     this.inputArrayPath = signal(snapshot.inputArrayPath);
+    this.outputArrayPath = signal(snapshot.outputArrayPath);
     this.batchSize = signal(snapshot.batchSize);
     this.parallelBatches = signal(snapshot.parallelBatches);
 
@@ -27,12 +30,14 @@ export class BatchNodeEntity extends NodeEntity<BatchNodeSnapshot> {
 
       const currentIsNodeDirty = isNodeDirty();
       const currentInputArrayPath = this.inputArrayPath();
+      const currentOutputArrayPath = this.outputArrayPath();
       const currentBatchSize = this.batchSize();
       const currentParallelBatches = this.parallelBatches();
 
       return (
         currentIsNodeDirty ||
         currentInputArrayPath !== snapshot.inputArrayPath ||
+        currentOutputArrayPath !== snapshot.outputArrayPath ||
         currentBatchSize !== snapshot.batchSize ||
         currentParallelBatches !== snapshot.parallelBatches
       );
@@ -43,6 +48,7 @@ export class BatchNodeEntity extends NodeEntity<BatchNodeSnapshot> {
     return {
       ...super.toNodeSnapshot(),
       inputArrayPath: this.inputArrayPath(),
+      outputArrayPath: this.outputArrayPath(),
       batchSize: this.batchSize(),
       parallelBatches: this.parallelBatches(),
     };
@@ -66,6 +72,7 @@ export class BatchNodeEntity extends NodeEntity<BatchNodeSnapshot> {
       inputs: [ConnectorEntity.defaultSnapshot()],
       outputs: [continueOutput, processOutput],
       inputArrayPath: '',
+      outputArrayPath: 'output',
       batchSize: 10,
       parallelBatches: 3,
     };

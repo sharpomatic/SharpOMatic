@@ -1,1 +1,176 @@
-{"name":"Batch processing of items","description":"Parallel processing of items in batches.","nodes":[{"applyInitialization":true,"initializing":{"entries":[{"purpose":0,"inputPath":"count","outputPath":"","optional":true,"entryType":1,"entryValue":"10","version":1,"id":"eabd0317-9223-4182-85a5-2d8554794e92"}],"version":1,"id":"f7629d9b-4628-4117-a078-7fc95dd40752"},"nodeType":0,"title":"Start","top":100,"left":60,"width":80,"height":80,"inputs":[],"outputs":[{"name":"","version":1,"id":"d164ea36-d194-4ec8-874e-573c6756d3b3"}],"version":1,"id":"800d8580-632c-418f-b4bf-3b0f1ce829c6"},{"applyMappings":false,"mappings":{"entries":[],"version":1,"id":"d831a5f7-2db9-4824-835f-060052869214"},"nodeType":1,"title":"End","top":60,"left":540,"width":80,"height":80,"inputs":[{"name":"","version":1,"id":"315e07ea-3b38-466a-a435-c98ac67828f3"}],"outputs":[],"version":1,"id":"68feab2e-834e-42b9-9a84-61a692549dc5"},{"inputArrayPath":"inputs","batchSize":2,"parallelBatches":2,"nodeType":8,"title":"Batch","top":100,"left":340,"width":80,"height":120,"inputs":[{"name":"","version":1,"id":"7b9c7654-401d-4e6e-9231-936fc7bfeb57"}],"outputs":[{"name":"continue","version":1,"id":"8f859e07-6124-46e3-9c37-474cb9e9ea98"},{"name":"process","version":1,"id":"400d253a-2926-4445-b678-89a78e2b267d"}],"version":1,"id":"5c841712-1f8e-4ff3-9b90-1c2c74c198cb"},{"code":"// Get the batch of items\r\nvar items = Context.Get\u003CContextList\u003E(\u0022inputs\u0022);\r\n\r\n// Double each value\r\nfor(int i=0; i\u003Citems.Count; i\u002B\u002B)\r\n  items[i] = (int)items[i] * 2;\r\n\r\n// Set updated values into the output\r\nContext.Set\u003CContextList\u003E(\u0022output\u0022, items);\r\n\r\n// Add new value that is unique to the batch\r\nContext.Set($\u0022Batch_{Guid.NewGuid().ToString().Replace(\u0027-\u0027, \u0027_\u0027)}\u0022, true);","nodeType":2,"title":"Batch Update","top":200,"left":540,"width":80,"height":80,"inputs":[{"name":"","version":1,"id":"bf685d81-d5b0-4776-a3ed-be39fd7daf93"}],"outputs":[{"name":"","version":1,"id":"b128b801-6149-4456-b05f-f3b2f85eaf71"}],"version":1,"id":"29065976-6702-4b49-85d8-bc76ad592806"},{"code":"// How many items should be added to a list\r\nvar count = Context.Get\u003Cint\u003E(\u0022count\u0022);\r\n\r\n// Create and populate the list\r\nvar list = new ContextList();\r\nfor(int i=0; i\u003Ccount; i\u002B\u002B)\r\n  list.Add(i);\r\n\r\n// Set list into context for batch processing\r\nContext.Set\u003CContextList\u003E(\u0022inputs\u0022, list);\r\n\r\n// Add context that will be present in every batch processing\r\nContext.Set(\u0022initialized\u0022, true);","nodeType":2,"title":"Setup","top":100,"left":200,"width":80,"height":80,"inputs":[{"name":"","version":1,"id":"13f95775-8bc5-4c39-9dd1-797503ccc662"}],"outputs":[{"name":"","version":1,"id":"d5902e96-d997-4fa1-8852-3a2edab418b4"}],"version":1,"id":"6c4c7960-12cb-46e6-b74c-e30b7d2c405e"}],"connections":[{"from":"400d253a-2926-4445-b678-89a78e2b267d","to":"bf685d81-d5b0-4776-a3ed-be39fd7daf93","version":1,"id":"0a1f475c-8eb4-4aa5-975d-56b2cfb6f809"},{"from":"8f859e07-6124-46e3-9c37-474cb9e9ea98","to":"315e07ea-3b38-466a-a435-c98ac67828f3","version":1,"id":"5476569c-64ff-4081-97ae-c2bcbd424818"},{"from":"d164ea36-d194-4ec8-874e-573c6756d3b3","to":"13f95775-8bc5-4c39-9dd1-797503ccc662","version":1,"id":"ca27d674-b88b-49b4-b77b-374b828cc89c"},{"from":"d5902e96-d997-4fa1-8852-3a2edab418b4","to":"7b9c7654-401d-4e6e-9231-936fc7bfeb57","version":1,"id":"06be0875-a014-43a1-9744-31a181eaf2d9"}],"version":1,"id":"85f0a742-fa09-4add-9579-b780e71b8258"}
+{
+  "name": "Batch processing of items",
+  "description": "Parallel processing of items in batches.",
+  "nodes": [
+    {
+      "applyInitialization": true,
+      "initializing": {
+        "entries": [
+          {
+            "purpose": 0,
+            "inputPath": "count",
+            "outputPath": "",
+            "optional": true,
+            "entryType": 1,
+            "entryValue": "10",
+            "version": 1,
+            "id": "eabd0317-9223-4182-85a5-2d8554794e92"
+          }
+        ],
+        "version": 1,
+        "id": "f7629d9b-4628-4117-a078-7fc95dd40752"
+      },
+      "nodeType": 0,
+      "title": "Start",
+      "top": 100,
+      "left": 60,
+      "width": 80,
+      "height": 80,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "version": 1,
+          "id": "d164ea36-d194-4ec8-874e-573c6756d3b3"
+        }
+      ],
+      "version": 1,
+      "id": "800d8580-632c-418f-b4bf-3b0f1ce829c6"
+    },
+    {
+      "applyMappings": false,
+      "mappings": {
+        "entries": [],
+        "version": 1,
+        "id": "d831a5f7-2db9-4824-835f-060052869214"
+      },
+      "nodeType": 1,
+      "title": "End",
+      "top": 60,
+      "left": 540,
+      "width": 80,
+      "height": 80,
+      "inputs": [
+        {
+          "name": "",
+          "version": 1,
+          "id": "315e07ea-3b38-466a-a435-c98ac67828f3"
+        }
+      ],
+      "outputs": [],
+      "version": 1,
+      "id": "68feab2e-834e-42b9-9a84-61a692549dc5"
+    },
+    {
+      "inputArrayPath": "inputs",
+      "outputArrayPath": "outputs",
+      "batchSize": 2,
+      "parallelBatches": 2,
+      "nodeType": 8,
+      "title": "Batch",
+      "top": 100,
+      "left": 340,
+      "width": 80,
+      "height": 120,
+      "inputs": [
+        {
+          "name": "",
+          "version": 1,
+          "id": "7b9c7654-401d-4e6e-9231-936fc7bfeb57"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "continue",
+          "version": 1,
+          "id": "8f859e07-6124-46e3-9c37-474cb9e9ea98"
+        },
+        {
+          "name": "process",
+          "version": 1,
+          "id": "400d253a-2926-4445-b678-89a78e2b267d"
+        }
+      ],
+      "version": 1,
+      "id": "5c841712-1f8e-4ff3-9b90-1c2c74c198cb"
+    },
+    {
+      "code": "// Get the batch of items\r\nvar items = Context.Get\u003CContextList\u003E(\u0022inputs\u0022);\r\n\r\n// Double each value\r\nfor(int i=0; i\u003Citems.Count; i\u002B\u002B)\r\n  items[i] = (int)items[i] * 2;\r\n\r\n// Set updated values into the output\r\nContext.Set\u003CContextList\u003E(\u0022output\u0022, items);\r\n\r\n// Add new value that is unique to the batch\r\nContext.Set($\u0022Batch_{Guid.NewGuid().ToString().Replace(\u0027-\u0027, \u0027_\u0027)}\u0022, true);",
+      "nodeType": 2,
+      "title": "Batch Update",
+      "top": 200,
+      "left": 540,
+      "width": 80,
+      "height": 80,
+      "inputs": [
+        {
+          "name": "",
+          "version": 1,
+          "id": "bf685d81-d5b0-4776-a3ed-be39fd7daf93"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "version": 1,
+          "id": "b128b801-6149-4456-b05f-f3b2f85eaf71"
+        }
+      ],
+      "version": 1,
+      "id": "29065976-6702-4b49-85d8-bc76ad592806"
+    },
+    {
+      "code": "// How many items should be added to a list\r\nvar count = Context.Get\u003Cint\u003E(\u0022count\u0022);\r\n\r\n// Create and populate the list\r\nvar list = new ContextList();\r\nfor(int i=0; i\u003Ccount; i\u002B\u002B)\r\n  list.Add(i);\r\n\r\n// Set list into context for batch processing\r\nContext.Set\u003CContextList\u003E(\u0022inputs\u0022, list);\r\n\r\n// Add context that will be present in every batch processing\r\nContext.Set(\u0022initialized\u0022, true);",
+      "nodeType": 2,
+      "title": "Setup",
+      "top": 100,
+      "left": 200,
+      "width": 80,
+      "height": 80,
+      "inputs": [
+        {
+          "name": "",
+          "version": 1,
+          "id": "13f95775-8bc5-4c39-9dd1-797503ccc662"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "version": 1,
+          "id": "d5902e96-d997-4fa1-8852-3a2edab418b4"
+        }
+      ],
+      "version": 1,
+      "id": "6c4c7960-12cb-46e6-b74c-e30b7d2c405e"
+    }
+  ],
+  "connections": [
+    {
+      "from": "400d253a-2926-4445-b678-89a78e2b267d",
+      "to": "bf685d81-d5b0-4776-a3ed-be39fd7daf93",
+      "version": 1,
+      "id": "0a1f475c-8eb4-4aa5-975d-56b2cfb6f809"
+    },
+    {
+      "from": "8f859e07-6124-46e3-9c37-474cb9e9ea98",
+      "to": "315e07ea-3b38-466a-a435-c98ac67828f3",
+      "version": 1,
+      "id": "5476569c-64ff-4081-97ae-c2bcbd424818"
+    },
+    {
+      "from": "d164ea36-d194-4ec8-874e-573c6756d3b3",
+      "to": "13f95775-8bc5-4c39-9dd1-797503ccc662",
+      "version": 1,
+      "id": "ca27d674-b88b-49b4-b77b-374b828cc89c"
+    },
+    {
+      "from": "d5902e96-d997-4fa1-8852-3a2edab418b4",
+      "to": "7b9c7654-401d-4e6e-9231-936fc7bfeb57",
+      "version": 1,
+      "id": "06be0875-a014-43a1-9744-31a181eaf2d9"
+    }
+  ],
+  "version": 1,
+  "id": "85f0a742-fa09-4add-9579-b780e71b8258"
+}

@@ -4,6 +4,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
 {
     public const int DEFAULT_RUN_HISTORY_LIMIT = 50;
     public const int DEFAULT_NODE_RUN_LIMIT = 500;
+    private const string DEFAULT_BATCH_OUTPUT_PATH = "output";
     private readonly SemaphoreSlim _semaphore = new(5);
 
     public async Task RunQueueAsync(CancellationToken cancellationToken = default)
@@ -180,8 +181,11 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             if (threadContext.BatchIndex is null)
                 throw new SharpOMaticException("Batch thread is missing a batch index.");
 
-            if (threadContext.NodeContext.TryGetValue("output", out var outputValue))
-                batchContext.BatchOutputs[threadContext.BatchIndex.Value] = new ContextObject { { "output", outputValue } };
+            if (!string.IsNullOrWhiteSpace(batchContext.OutputArrayPath))
+            {
+                if (threadContext.NodeContext.TryGet<object?>(batchContext.OutputArrayPath, out var batchOutputValue))
+                    batchContext.BatchOutputs[threadContext.BatchIndex.Value] = batchOutputValue;
+            }
 
             batchContext.CompletedBatches++;
             batchContext.InFlightBatches--;
@@ -205,10 +209,14 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             if (batchContext.InFlightBatches == 0)
             {
                 var mergedContext = ContextObject.Deserialize(batchContext.BaseContextJson, threadContext.ProcessContext.JsonConverters);
-                for (var index = 0; index < batchContext.NextBatchIndex; index++)
+
+                if (!string.IsNullOrWhiteSpace(batchContext.OutputArrayPath))
                 {
-                    if (batchContext.BatchOutputs.TryGetValue(index, out var outputContext))
-                        threadContext.ProcessContext.MergeContexts(mergedContext, outputContext);
+                    for (var index = 0; index < batchContext.NextBatchIndex; index++)
+                    {
+                        if (batchContext.BatchOutputs.TryGetValue(index, out var outputValue))
+                            MergeOutputValue(mergedContext, batchContext.OutputArrayPath, outputValue);
+                    }
                 }
 
                 batchContext.MergedContext = mergedContext;
@@ -244,6 +252,39 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             slice.Add(items[index]);
 
         return slice;
+    }
+
+    private static void MergeOutputValue(ContextObject target, string outputPath, object? sourceValue)
+    {
+        if (!target.TryGet<object?>(outputPath, out var targetValue))
+        {
+            if (!target.TrySet(outputPath, sourceValue))
+                throw new SharpOMaticException($"Batch node cannot set '{outputPath}' into context.");
+
+            return;
+        }
+
+        if (targetValue is ContextList targetList1 && sourceValue is ContextList sourceList)
+        {
+            targetList1.AddRange(sourceList);
+        }
+        else if (targetValue is ContextList targetList2 && sourceValue is not ContextList)
+        {
+            targetList2.Add(sourceValue);
+        }
+        else if (targetValue is not ContextList && sourceValue is ContextList sourceList2)
+        {
+            var newList = new ContextList { targetValue };
+            newList.AddRange(sourceList2);
+            if (!target.TrySet(outputPath, newList))
+                throw new SharpOMaticException($"Batch node cannot set '{outputPath}' into context.");
+        }
+        else
+        {
+            var newList = new ContextList { targetValue, sourceValue };
+            if (!target.TrySet(outputPath, newList))
+                throw new SharpOMaticException($"Batch node cannot set '{outputPath}' into context.");
+        }
     }
 
     private async Task PruneRunHistory(ProcessContext processContext)

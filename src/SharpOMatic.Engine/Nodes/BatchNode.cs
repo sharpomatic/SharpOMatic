@@ -42,6 +42,7 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node) : RunN
         var batchContext = new BatchContext(ThreadContext.CurrentContext)
         {
             InputArrayPath = Node.InputArrayPath,
+            OutputArrayPath = Node.OutputArrayPath,
             BaseContextJson = baseContextJson,
             BatchItems = arrayList,
             BatchSize = Node.BatchSize,

@@ -7,9 +7,10 @@ public sealed class BatchContext : ExecutionContext
 
     public Guid FanOutId { get; set; }
     public string InputArrayPath { get; set; } = string.Empty;
+    public string OutputArrayPath { get; set; } = string.Empty;
     public string? BaseContextJson { get; set; }
     public ContextObject? MergedContext { get; set; }
-    public Dictionary<int, ContextObject> BatchOutputs { get; } = new();
+    public Dictionary<int, object?> BatchOutputs { get; } = new();
     public ContextList BatchItems { get; set; } = [];
     public int BatchSize { get; set; }
     public int ParallelBatches { get; set; }

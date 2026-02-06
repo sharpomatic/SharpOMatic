@@ -335,6 +335,58 @@ public sealed class BatchNodeUnitTest
     }
 
     [Fact]
+    public async Task Batch_process_with_custom_output_path_merges_value()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddBatch(batchSize: 2, parallelBatches: 2, inputPath: "list", outputPath: "result.items")
+            .AddCode("process", "var list = Context.Get<ContextList>(\"list\"); Context.Set(\"result.items\", list);")
+            .Connect("start", "batch")
+            .Connect("batch.process", "process")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set<ContextList>("list", [1, 2, 3, 4, 5]);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.True(outCtx.TryGetList("result.items", out var output));
+        Assert.NotNull(output);
+        Assert.Equal(5, output.Count);
+    }
+
+    [Fact]
+    public async Task Batch_process_with_blank_output_path_outputs_nothing()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddBatch(batchSize: 2, parallelBatches: 2, inputPath: "list", outputPath: "")
+            .AddCode("process", "var list = Context.Get<ContextList>(\"list\"); Context.Set(\"output\", list);")
+            .Connect("start", "batch")
+            .Connect("batch.process", "process")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set<ContextList>("list", [1, 2, 3, 4, 5]);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.Single(outCtx);
+        Assert.False(outCtx.TryGetList("output", out var output));
+        Assert.True(outCtx.TryGetList("list", out var list));
+    }
+
+    [Fact]
     public async Task Batch_process_without_output_does_not_merge_output()
     {
         var workflow = new WorkflowBuilder()

@@ -40,6 +40,20 @@
           </div>
         </div>
         <div class="mb-3 form-line">
+          <label for="batch-output-array-path" class="form-label field-label"
+            >Output Array Path</label
+          >
+          <div class="flex-fill control-column path">
+            <input
+              type="text"
+              class="form-control w-100"
+              id="batch-output-array-path"
+              [ngModel]="node.outputArrayPath()"
+              (ngModelChange)="node.outputArrayPath.set($event)"
+            />
+          </div>
+        </div>
+        <div class="mb-3 form-line">
           <label for="batch-size" class="form-label field-label"
             >Batch Size</label
           >
