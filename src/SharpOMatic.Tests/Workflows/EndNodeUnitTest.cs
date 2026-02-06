@@ -5,11 +5,7 @@ public sealed class EndNodeUnitTest
     [Fact]
     public async Task End_does_nothing()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEnd()
-            .Connect("start", "end")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEnd().Connect("start", "end").Build();
 
         ContextObject ctx = [];
         ctx.Set<bool>("input.boolean", true);
@@ -29,10 +25,7 @@ public sealed class EndNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddEnd(
-                "end",
-                WorkflowBuilder.CreateOutputEntry("input.boolean", "output.boolean"),
-                WorkflowBuilder.CreateOutputEntry("input.integer", "output.integer"))
+            .AddEnd("end", WorkflowBuilder.CreateOutputEntry("input.boolean", "output.boolean"), WorkflowBuilder.CreateOutputEntry("input.integer", "output.integer"))
             .Connect("start", "end")
             .Build();
 
@@ -64,10 +57,7 @@ public sealed class EndNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddEnd(
-                "end",
-                WorkflowBuilder.CreateOutputEntry("input.present", "output.present"),
-                WorkflowBuilder.CreateOutputEntry("input.missing", "output.missing"))
+            .AddEnd("end", WorkflowBuilder.CreateOutputEntry("input.present", "output.present"), WorkflowBuilder.CreateOutputEntry("input.missing", "output.missing"))
             .Connect("start", "end")
             .Build();
 
@@ -92,11 +82,7 @@ public sealed class EndNodeUnitTest
     [Fact]
     public async Task End_mapping_empty_input_path()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEnd("end", WorkflowBuilder.CreateOutputEntry("", "output.value"))
-            .Connect("start", "end")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEnd("end", WorkflowBuilder.CreateOutputEntry("", "output.value")).Connect("start", "end").Build();
 
         var endNode = (EndNodeEntity)workflow.Nodes.Single(node => node.NodeType == NodeType.End);
         endNode.ApplyMappings = true;
@@ -111,11 +97,7 @@ public sealed class EndNodeUnitTest
     [Fact]
     public async Task End_mapping_empty_output_path()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEnd("end", WorkflowBuilder.CreateOutputEntry("input.value", ""))
-            .Connect("start", "end")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEnd("end", WorkflowBuilder.CreateOutputEntry("input.value", "")).Connect("start", "end").Build();
 
         var endNode = (EndNodeEntity)workflow.Nodes.Single(node => node.NodeType == NodeType.End);
         endNode.ApplyMappings = true;
@@ -133,11 +115,7 @@ public sealed class EndNodeUnitTest
     [Fact]
     public async Task End_mappings_empty_clears_context()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEnd("end")
-            .Connect("start", "end")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEnd("end").Connect("start", "end").Build();
 
         var endNode = (EndNodeEntity)workflow.Nodes.Single(node => node.NodeType == NodeType.End);
         endNode.ApplyMappings = true;
@@ -160,11 +138,7 @@ public sealed class EndNodeUnitTest
     [Fact]
     public async Task End_mappings_null_value_preserved()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEnd("end", WorkflowBuilder.CreateOutputEntry("input.nullValue", "output.nullValue"))
-            .Connect("start", "end")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEnd("end", WorkflowBuilder.CreateOutputEntry("input.nullValue", "output.nullValue")).Connect("start", "end").Build();
 
         var endNode = (EndNodeEntity)workflow.Nodes.Single(node => node.NodeType == NodeType.End);
         endNode.ApplyMappings = true;
@@ -187,11 +161,7 @@ public sealed class EndNodeUnitTest
     [Fact]
     public async Task End_mappings_invalid_output_path_skips_value()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEnd("end", WorkflowBuilder.CreateOutputEntry("input.value", "output[0]"))
-            .Connect("start", "end")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEnd("end", WorkflowBuilder.CreateOutputEntry("input.value", "output[0]")).Connect("start", "end").Build();
 
         var endNode = (EndNodeEntity)workflow.Nodes.Single(node => node.NodeType == NodeType.End);
         endNode.ApplyMappings = true;

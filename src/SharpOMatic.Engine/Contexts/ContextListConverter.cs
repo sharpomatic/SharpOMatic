@@ -2,11 +2,7 @@
 
 public class ContextListConverter : JsonConverter<ContextList>
 {
-    public override ContextList? Read(
-        ref Utf8JsonReader reader,
-        Type typeToConvert,
-        JsonSerializerOptions options
-    )
+    public override ContextList? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null)
             return null;
@@ -25,11 +21,7 @@ public class ContextListConverter : JsonConverter<ContextList>
         return list;
     }
 
-    public override void Write(
-        Utf8JsonWriter writer,
-        ContextList value,
-        JsonSerializerOptions options
-    )
+    public override void Write(Utf8JsonWriter writer, ContextList value, JsonSerializerOptions options)
     {
         writer.WriteStartArray();
 

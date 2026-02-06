@@ -26,9 +26,7 @@ public sealed class WorkflowBuilder
         return this;
     }
 
-    public WorkflowBuilder AddStart(string title = "start", 
-                                    bool applyInitialization = false, 
-                                    params ContextEntryEntity[] entries)
+    public WorkflowBuilder AddStart(string title = "start", bool applyInitialization = false, params ContextEntryEntity[] entries)
     {
         var node = new StartNodeEntity
         {
@@ -43,7 +41,7 @@ public sealed class WorkflowBuilder
             Inputs = [],
             Outputs = [CreateConnector()],
             ApplyInitialization = applyInitialization,
-            Initializing = CreateContextEntryList(entries)
+            Initializing = CreateContextEntryList(entries),
         };
 
         _nodes.Add(node);
@@ -65,7 +63,7 @@ public sealed class WorkflowBuilder
             Inputs = [CreateConnector()],
             Outputs = [],
             ApplyMappings = false,
-            Mappings = CreateContextEntryList(entries)
+            Mappings = CreateContextEntryList(entries),
         };
 
         _nodes.Add(node);
@@ -86,7 +84,7 @@ public sealed class WorkflowBuilder
             Height = 80f,
             Inputs = [CreateConnector()],
             Outputs = [CreateConnector()],
-            Code = code
+            Code = code,
         };
 
         _nodes.Add(node);
@@ -107,7 +105,7 @@ public sealed class WorkflowBuilder
             Height = 80f,
             Inputs = [CreateConnector()],
             Outputs = [CreateConnector()],
-            Edits = CreateContextEntryList(entries)
+            Edits = CreateContextEntryList(entries),
         };
 
         _nodes.Add(node);
@@ -131,7 +129,7 @@ public sealed class WorkflowBuilder
                 Id = Guid.NewGuid(),
                 Version = 1,
                 Name = choice.Name ?? string.Empty,
-                Code = choice.Code ?? string.Empty
+                Code = choice.Code ?? string.Empty,
             };
         }
 
@@ -147,7 +145,7 @@ public sealed class WorkflowBuilder
             Height = 80f,
             Inputs = [CreateConnector()],
             Outputs = CreateConnectors([.. choices.Select(c => c.Name)]),
-            Switches = switches
+            Switches = switches,
         };
 
         _nodes.Add(node);
@@ -192,7 +190,7 @@ public sealed class WorkflowBuilder
             Height = 80f,
             Inputs = [CreateConnector()],
             Outputs = CreateConnectors(names),
-            Names = names
+            Names = names,
         };
 
         _nodes.Add(node);
@@ -221,7 +219,7 @@ public sealed class WorkflowBuilder
             TextOutputPath = "output.text",
             ImageInputPath = string.Empty,
             ImageOutputPath = "output.image",
-            ParameterValues = []
+            ParameterValues = [],
         };
 
         _nodes.Add(node);
@@ -244,7 +242,7 @@ public sealed class WorkflowBuilder
             Outputs = CreateConnectors("continue", "process"),
             InputArrayPath = inputPath,
             BatchSize = batchSize,
-            ParallelBatches = parallelBatches
+            ParallelBatches = parallelBatches,
         };
 
         _nodes.Add(node);
@@ -257,7 +255,8 @@ public sealed class WorkflowBuilder
         bool applyInputMappings = false,
         ContextEntryEntity[]? inputMappings = null,
         bool applyOutputMappings = false,
-        ContextEntryEntity[]? outputMappings = null)
+        ContextEntryEntity[]? outputMappings = null
+    )
     {
         var node = new GosubNodeEntity
         {
@@ -275,7 +274,7 @@ public sealed class WorkflowBuilder
             ApplyInputMappings = applyInputMappings,
             InputMappings = CreateContextEntryList(inputMappings ?? []),
             ApplyOutputMappings = applyOutputMappings,
-            OutputMappings = CreateContextEntryList(outputMappings ?? [])
+            OutputMappings = CreateContextEntryList(outputMappings ?? []),
         };
 
         _nodes.Add(node);
@@ -319,13 +318,15 @@ public sealed class WorkflowBuilder
         var fromConnector = ResolveOutputConnector(source, outputName, sourceNode);
         var toConnector = ResolveSingleInputConnector(destination);
 
-        _connections.Add(new ConnectionEntity
-        {
-            Id = Guid.NewGuid(),
-            Version = 1,
-            From = fromConnector.Id,
-            To = toConnector.Id
-        });
+        _connections.Add(
+            new ConnectionEntity
+            {
+                Id = Guid.NewGuid(),
+                Version = 1,
+                From = fromConnector.Id,
+                To = toConnector.Id,
+            }
+        );
 
         return this;
     }
@@ -339,7 +340,7 @@ public sealed class WorkflowBuilder
             Name = _name,
             Description = _description,
             Nodes = _nodes.ToArray(),
-            Connections = _connections.ToArray()
+            Connections = _connections.ToArray(),
         };
     }
 
@@ -349,7 +350,7 @@ public sealed class WorkflowBuilder
         {
             Id = Guid.NewGuid(),
             Version = 1,
-            Entries = entries ?? Array.Empty<ContextEntryEntity>()
+            Entries = entries ?? Array.Empty<ContextEntryEntity>(),
         };
     }
 
@@ -423,6 +424,16 @@ public sealed class WorkflowBuilder
         return CreateEntry(ContextEntryPurpose.Delete, inputPath, optional: false, ContextEntryType.String, entryValue: string.Empty);
     }
 
+    public static ContextEntryEntity CreateMoveEntry(string fromPath, string toPath)
+    {
+        return CreateEntry(ContextEntryPurpose.Move, fromPath, optional: false, ContextEntryType.String, entryValue: string.Empty, outputPath: toPath);
+    }
+
+    public static ContextEntryEntity CreateDuplicateEntry(string fromPath, string toPath)
+    {
+        return CreateEntry(ContextEntryPurpose.Duplicate, fromPath, optional: false, ContextEntryType.String, entryValue: string.Empty, outputPath: toPath);
+    }
+
     public static ContextEntryEntity CreateOutputEntry(string inputPath, string outputPath)
     {
         return CreateEntry(ContextEntryPurpose.Output, inputPath, optional: false, ContextEntryType.String, entryValue: string.Empty, outputPath: outputPath);
@@ -433,13 +444,7 @@ public sealed class WorkflowBuilder
         return CreateEntry(ContextEntryPurpose.Input, inputPath, optional, entryType, entryValue);
     }
 
-    private static ContextEntryEntity CreateEntry(
-        ContextEntryPurpose purpose,
-        string inputPath,
-        bool optional,
-        ContextEntryType entryType,
-        string entryValue,
-        string outputPath = "")
+    private static ContextEntryEntity CreateEntry(ContextEntryPurpose purpose, string inputPath, bool optional, ContextEntryType entryType, string entryValue, string outputPath = "")
     {
         return new ContextEntryEntity
         {
@@ -450,7 +455,7 @@ public sealed class WorkflowBuilder
             OutputPath = outputPath,
             Optional = optional,
             EntryType = entryType,
-            EntryValue = entryValue
+            EntryValue = entryValue,
         };
     }
 
@@ -515,7 +520,7 @@ public sealed class WorkflowBuilder
         {
             Id = Guid.NewGuid(),
             Version = 1,
-            Name = name ?? string.Empty
+            Name = name ?? string.Empty,
         };
     }
 
@@ -534,5 +539,4 @@ public sealed class WorkflowBuilder
 
         return connectors;
     }
-
 }

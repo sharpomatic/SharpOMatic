@@ -1,9 +1,6 @@
 namespace SharpOMatic.Engine.Services;
 
-public class HostedNodeExecutionService(
-    IServiceScopeFactory scopeFactory,
-    INodeExecutionService executionService
-) : BackgroundService
+public class HostedNodeExecutionService(IServiceScopeFactory scopeFactory, INodeExecutionService executionService) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -19,14 +16,9 @@ public class HostedNodeExecutionService(
         using var scope = scopeFactory.CreateScope();
         var dbOptions = scope.ServiceProvider.GetRequiredService<IOptions<SharpOMaticDbOptions>>();
 
-        if (
-            (dbOptions.Value.ApplyMigrationsOnStartup is null)
-            || dbOptions.Value.ApplyMigrationsOnStartup.Value
-        )
+        if ((dbOptions.Value.ApplyMigrationsOnStartup is null) || dbOptions.Value.ApplyMigrationsOnStartup.Value)
         {
-            var contextFactory = scope.ServiceProvider.GetRequiredService<
-                IDbContextFactory<SharpOMaticDbContext>
-            >();
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<SharpOMaticDbContext>>();
             await using var dbContext = await contextFactory.CreateDbContextAsync();
             await dbContext.Database.MigrateAsync();
         }
@@ -80,27 +72,16 @@ public class HostedNodeExecutionService(
 
     private async Task LoadMetadata()
     {
-        await LoadMetadata<ConnectorConfig>(
-            "Metadata.Resources.ConnectorConfig",
-            (repo, config) => repo.UpsertConnectorConfig(config)
-        );
-        await LoadMetadata<ModelConfig>(
-            "Metadata.Resources.ModelConfig",
-            (repo, config) => repo.UpsertModelConfig(config)
-        );
+        await LoadMetadata<ConnectorConfig>("Metadata.Resources.ConnectorConfig", (repo, config) => repo.UpsertConnectorConfig(config));
+        await LoadMetadata<ModelConfig>("Metadata.Resources.ModelConfig", (repo, config) => repo.UpsertModelConfig(config));
     }
 
-    private async Task LoadMetadata<T>(
-        string resourceFilter,
-        Func<IRepositoryService, T, Task> upsertAction
-    )
+    private async Task LoadMetadata<T>(string resourceFilter, Func<IRepositoryService, T, Task> upsertAction)
     {
         using var scope = scopeFactory.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositoryService>();
         var assembly = Assembly.GetExecutingAssembly();
-        var resourceNames = assembly
-            .GetManifestResourceNames()
-            .Where(name => name.Contains(resourceFilter) && name.EndsWith(".json"));
+        var resourceNames = assembly.GetManifestResourceNames().Where(name => name.Contains(resourceFilter) && name.EndsWith(".json"));
 
         foreach (var resourceName in resourceNames)
         {

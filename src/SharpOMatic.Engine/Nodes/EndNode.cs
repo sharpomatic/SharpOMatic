@@ -3,8 +3,7 @@
 namespace SharpOMatic.Engine.Nodes;
 
 [RunNode(NodeType.End)]
-public class EndNode(ThreadContext threadContext, EndNodeEntity node)
-    : RunNode<EndNodeEntity>(threadContext, node)
+public class EndNode(ThreadContext threadContext, EndNodeEntity node) : RunNode<EndNodeEntity>(threadContext, node)
 {
     protected override async Task<(string, List<NextNodeData>)> RunInternal()
     {
@@ -41,9 +40,7 @@ public class EndNode(ThreadContext threadContext, EndNodeEntity node)
         if (gosubContext is not null)
         {
             if (gosubContext.Parent is null)
-                throw new SharpOMaticException(
-                    "Gosub context is missing a parent execution context."
-                );
+                throw new SharpOMaticException("Gosub context is missing a parent execution context.");
 
             lock (gosubContext.MergeLock)
             {
@@ -67,9 +64,7 @@ public class EndNode(ThreadContext threadContext, EndNodeEntity node)
         }
 
         // Last run EndNode has its output used as the output of the workflow
-        ProcessContext.Run.OutputContext = ThreadContext.NodeContext.Serialize(
-            ProcessContext.JsonConverters
-        );
+        ProcessContext.Run.OutputContext = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters);
 
         return (Trace.Message, []);
     }

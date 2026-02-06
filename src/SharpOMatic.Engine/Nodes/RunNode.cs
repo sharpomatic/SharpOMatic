@@ -87,9 +87,7 @@ public abstract class RunNode<T> : IRunNode
             return [];
 
         if (Node.Outputs.Length != 1)
-            throw new SharpOMaticException(
-                $"Node must have a single output but found {Node.Outputs.Length}."
-            );
+            throw new SharpOMaticException($"Node must have a single output but found {Node.Outputs.Length}.");
 
         if (!IsOutputConnected(Node.Outputs[0]))
             return [];
@@ -104,12 +102,6 @@ public abstract class RunNode<T> : IRunNode
 
     protected Task<object?> EvaluateContextEntryValue(ContextEntryEntity entry)
     {
-        return ContextHelpers.ResolveContextEntryValue(
-            ProcessContext.ServiceScope.ServiceProvider,
-            ThreadContext.NodeContext,
-            entry,
-            ProcessContext.ScriptOptionsService,
-            ProcessContext.Run.RunId
-        );
+        return ContextHelpers.ResolveContextEntryValue(ProcessContext.ServiceScope.ServiceProvider, ThreadContext.NodeContext, entry, ProcessContext.ScriptOptionsService, ProcessContext.Run.RunId);
     }
 }

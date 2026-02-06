@@ -5,11 +5,7 @@ public static class ContextTypedValueConverter
     private const string TypeProp = "$type";
     private const string ValueProp = "value";
 
-    public static void WriteTypedValue(
-        Utf8JsonWriter writer,
-        object? value,
-        JsonSerializerOptions options
-    )
+    public static void WriteTypedValue(Utf8JsonWriter writer, object? value, JsonSerializerOptions options)
     {
         writer.WriteStartObject();
 
@@ -81,10 +77,7 @@ public static class ContextTypedValueConverter
 
             if (prop == TypeProp)
             {
-                typeToken =
-                    reader.TokenType == JsonTokenType.String
-                        ? reader.GetString()
-                        : throw new SharpOMaticException("Expected string for $type.");
+                typeToken = reader.TokenType == JsonTokenType.String ? reader.GetString() : throw new SharpOMaticException("Expected string for $type.");
             }
             else if (prop == ValueProp)
             {
@@ -108,25 +101,17 @@ public static class ContextTypedValueConverter
         return result;
     }
 
-    private static object? ReadByTypeToken(
-        ref Utf8JsonReader reader,
-        string typeToken,
-        JsonSerializerOptions options
-    )
+    private static object? ReadByTypeToken(ref Utf8JsonReader reader, string typeToken, JsonSerializerOptions options)
     {
         // Special containers
         if (typeToken == "ContextList")
-            return JsonSerializer.Deserialize<ContextList>(ref reader, options)
-                ?? throw new SharpOMaticException("ContextList null.");
+            return JsonSerializer.Deserialize<ContextList>(ref reader, options) ?? throw new SharpOMaticException("ContextList null.");
 
         if (typeToken == "ContextObject")
-            return JsonSerializer.Deserialize<ContextObject>(ref reader, options)
-                ?? throw new SharpOMaticException("ContextObject null.");
+            return JsonSerializer.Deserialize<ContextObject>(ref reader, options) ?? throw new SharpOMaticException("ContextObject null.");
 
         if (typeToken == "Null")
-            return reader.TokenType == JsonTokenType.Null
-                ? null
-                : throw new SharpOMaticException("Null expected.");
+            return reader.TokenType == JsonTokenType.Null ? null : throw new SharpOMaticException("Null expected.");
 
         if (ContextTypeRegistry.TryResolve(typeToken, out var builtIn) && builtIn is not null)
         {
@@ -145,8 +130,7 @@ public static class ContextTypedValueConverter
                 throw new SharpOMaticException($"Null for '{typeToken}' not allowed.");
             }
 
-            return JsonSerializer.Deserialize(ref reader, builtIn, options)
-                ?? throw new JsonException($"Null for '{typeToken}' not allowed.");
+            return JsonSerializer.Deserialize(ref reader, builtIn, options) ?? throw new JsonException($"Null for '{typeToken}' not allowed.");
         }
 
         // External types (scalar or jagged arrays)
@@ -165,18 +149,13 @@ public static class ContextTypedValueConverter
 
                 throw new SharpOMaticException($"Null for '{typeToken}' not allowed.");
             }
-            return JsonSerializer.Deserialize(ref reader, extType, options)
-                ?? throw new JsonException($"Null for '{typeToken}' not allowed.");
+            return JsonSerializer.Deserialize(ref reader, extType, options) ?? throw new JsonException($"Null for '{typeToken}' not allowed.");
         }
 
         throw new SharpOMaticException($"Unsupported $type '{typeToken}'.");
     }
 
-    private static bool TryGetExternalTokenFor(
-        Type runtimeType,
-        JsonSerializerOptions options,
-        out string token
-    )
+    private static bool TryGetExternalTokenFor(Type runtimeType, JsonSerializerOptions options, out string token)
     {
         token = default!;
         var cfg = ExternalTypesConverter.From(options);
@@ -214,11 +193,7 @@ public static class ContextTypedValueConverter
         return true;
     }
 
-    private static bool TryResolveExternalType(
-        string token,
-        JsonSerializerOptions options,
-        out Type resolved
-    )
+    private static bool TryResolveExternalType(string token, JsonSerializerOptions options, out Type resolved)
     {
         resolved = default!;
         var cfg = ExternalTypesConverter.From(options);

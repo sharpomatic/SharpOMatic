@@ -1,26 +1,19 @@
 ﻿namespace SharpOMatic.Engine.Nodes;
 
 [RunNode(NodeType.Switch)]
-public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node)
-    : RunNode<SwitchNodeEntity>(threadContext, node)
+public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node) : RunNode<SwitchNodeEntity>(threadContext, node)
 {
     protected override async Task<(string, List<NextNodeData>)> RunInternal()
     {
         var lastIndex = Node.Switches.Length - 1;
         if (!IsOutputConnected(Node.Outputs[lastIndex]))
-            throw new SharpOMaticException(
-                "Switch node must have an output connection on the last output connector."
-            );
+            throw new SharpOMaticException("Switch node must have an output connection on the last output connector.");
 
         var globals = new ScriptCodeContext()
         {
             Context = ThreadContext.NodeContext,
             ServiceProvider = ProcessContext.ServiceScope.ServiceProvider,
-            Assets = new AssetHelper(
-                ProcessContext.RepositoryService,
-                ProcessContext.AssetStore,
-                ProcessContext.Run.RunId
-            ),
+            Assets = new AssetHelper(ProcessContext.RepositoryService, ProcessContext.AssetStore, ProcessContext.Run.RunId),
         };
 
         // Check each switch that has linked code
@@ -34,36 +27,19 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node)
 
                 try
                 {
-                    var result = await CSharpScript.EvaluateAsync(
-                        switcher.Code,
-                        options,
-                        globals,
-                        typeof(ScriptCodeContext)
-                    );
+                    var result = await CSharpScript.EvaluateAsync(switcher.Code, options, globals, typeof(ScriptCodeContext));
                     if (result is null)
-                        throw new SharpOMaticException(
-                            $"Switch node entry '{switcher.Name}' returned null instead of a boolean value."
-                        );
+                        throw new SharpOMaticException($"Switch node entry '{switcher.Name}' returned null instead of a boolean value.");
 
                     if (result is not bool)
-                        throw new SharpOMaticException(
-                            $"Switch node entry '{switcher.Name}' return type '{result.GetType()}' instead of a boolean value."
-                        );
+                        throw new SharpOMaticException($"Switch node entry '{switcher.Name}' return type '{result.GetType()}' instead of a boolean value.");
 
                     if ((bool)result)
                     {
                         if (!IsOutputConnected(Node.Outputs[i]))
                             continue;
 
-                        return (
-                            $"Switched to {switcher.Name}",
-                            [
-                                new NextNodeData(
-                                    ThreadContext,
-                                    WorkflowContext.ResolveOutput(Node.Outputs[i])
-                                ),
-                            ]
-                        );
+                        return ($"Switched to {switcher.Name}", [new NextNodeData(ThreadContext, WorkflowContext.ResolveOutput(Node.Outputs[i]))]);
                     }
                 }
                 catch (CompilationErrorException e1)
@@ -79,23 +55,13 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node)
                 catch (InvalidOperationException e2)
                 {
                     StringBuilder sb = new();
-                    sb.AppendLine(
-                        $"Switch node entry '{switcher.Name}' failed during execution.\n"
-                    );
+                    sb.AppendLine($"Switch node entry '{switcher.Name}' failed during execution.\n");
                     sb.Append(e2.Message);
                     throw new SharpOMaticException(sb.ToString());
                 }
             }
         }
 
-        return (
-            $"Switched to {Node.Switches[lastIndex].Name}",
-            [
-                new NextNodeData(
-                    ThreadContext,
-                    WorkflowContext.ResolveOutput(Node.Outputs[lastIndex])
-                ),
-            ]
-        );
+        return ($"Switched to {Node.Switches[lastIndex].Name}", [new NextNodeData(ThreadContext, WorkflowContext.ResolveOutput(Node.Outputs[lastIndex]))]);
     }
 }

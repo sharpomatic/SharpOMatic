@@ -11,8 +11,7 @@ public class SharpOMaticException(Location location, string message) : Exception
     public Location Location { get; init; } = location;
 }
 
-public class SharpOMaticExceptions(IEnumerable<SharpOMaticException> innerExceptions)
-    : Exception("Aggregate SharpOMaticExceptions")
+public class SharpOMaticExceptions(IEnumerable<SharpOMaticException> innerExceptions) : Exception("Aggregate SharpOMaticExceptions")
 {
     private readonly List<SharpOMaticException> _innerExceptions = new(innerExceptions);
     private ReadOnlyCollection<SharpOMaticException>? _readOnlyExceptions;
@@ -20,6 +19,5 @@ public class SharpOMaticExceptions(IEnumerable<SharpOMaticException> innerExcept
     public SharpOMaticExceptions(SharpOMaticException innerException)
         : this([innerException]) { }
 
-    public ReadOnlyCollection<SharpOMaticException> InnerExceptions =>
-        _readOnlyExceptions ??= new ReadOnlyCollection<SharpOMaticException>(_innerExceptions);
+    public ReadOnlyCollection<SharpOMaticException> InnerExceptions => _readOnlyExceptions ??= new ReadOnlyCollection<SharpOMaticException>(_innerExceptions);
 }

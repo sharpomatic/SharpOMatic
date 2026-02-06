@@ -9,22 +9,13 @@ public class NodeEntityConverter : JsonConverter<NodeEntity>
         _nodeEntities = Assembly
             .GetExecutingAssembly()
             .GetTypes()
-            .Where(t =>
-                typeof(NodeEntity).IsAssignableFrom(t)
-                && !t.IsAbstract
-                && t.GetCustomAttribute<NodeEntityAttribute>() != null
-            )
+            .Where(t => typeof(NodeEntity).IsAssignableFrom(t) && !t.IsAbstract && t.GetCustomAttribute<NodeEntityAttribute>() != null)
             .ToDictionary(t => t.GetCustomAttribute<NodeEntityAttribute>()!.NodeType, t => t);
     }
 
-    public override bool CanConvert(Type typeToConvert) =>
-        typeof(NodeEntity).IsAssignableFrom(typeToConvert);
+    public override bool CanConvert(Type typeToConvert) => typeof(NodeEntity).IsAssignableFrom(typeToConvert);
 
-    public override NodeEntity Read(
-        ref Utf8JsonReader reader,
-        Type typeToConvert,
-        JsonSerializerOptions options
-    )
+    public override NodeEntity Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         Utf8JsonReader readerClone = reader;
 
@@ -64,11 +55,7 @@ public class NodeEntityConverter : JsonConverter<NodeEntity>
         throw new NotSupportedException($"NodeType '{nodeType}' is not supported.");
     }
 
-    public override void Write(
-        Utf8JsonWriter writer,
-        NodeEntity value,
-        JsonSerializerOptions options
-    )
+    public override void Write(Utf8JsonWriter writer, NodeEntity value, JsonSerializerOptions options)
     {
         // Cannot use incoming options, overwise called Deserialize will just call this again
         var innerOptions = new JsonSerializerOptions(options);

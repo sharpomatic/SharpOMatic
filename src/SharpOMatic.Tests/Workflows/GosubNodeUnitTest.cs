@@ -183,14 +183,7 @@ public sealed class GosubNodeUnitTest
         var subOut = ContextObject.Deserialize(subRun.OutputContext);
         Assert.Equal("left", subOut.Get<string>("result"));
 
-        var parentWorkflow = new WorkflowBuilder()
-            .WithId(Guid.NewGuid())
-            .AddStart()
-            .AddGosub("gosub", subWorkflowId)
-            .AddEnd()
-            .Connect("start", "gosub")
-            .Connect("gosub", "end")
-            .Build();
+        var parentWorkflow = new WorkflowBuilder().WithId(Guid.NewGuid()).AddStart().AddGosub("gosub", subWorkflowId).AddEnd().Connect("start", "gosub").Connect("gosub", "end").Build();
 
         var parentRun = await WorkflowRunner.RunWorkflow([], parentWorkflow, subWorkflow);
 
@@ -229,14 +222,7 @@ public sealed class GosubNodeUnitTest
             .Connect("after", "end")
             .Build();
 
-        var parentWorkflow = new WorkflowBuilder()
-            .WithId(Guid.NewGuid())
-            .AddStart()
-            .AddGosub("child", childId)
-            .AddEnd()
-            .Connect("start", "child")
-            .Connect("child", "end")
-            .Build();
+        var parentWorkflow = new WorkflowBuilder().WithId(Guid.NewGuid()).AddStart().AddGosub("child", childId).AddEnd().Connect("start", "child").Connect("child", "end").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow, grandchildWorkflow);
 
@@ -299,21 +285,9 @@ public sealed class GosubNodeUnitTest
     public async Task Gosub_fails_when_child_requires_missing_input()
     {
         var childId = Guid.NewGuid();
-        var childWorkflow = new WorkflowBuilder()
-            .WithId(childId)
-            .AddStart("start", true, WorkflowBuilder.CreateStringInput("input.name", false))
-            .AddEnd()
-            .Connect("start", "end")
-            .Build();
+        var childWorkflow = new WorkflowBuilder().WithId(childId).AddStart("start", true, WorkflowBuilder.CreateStringInput("input.name", false)).AddEnd().Connect("start", "end").Build();
 
-        var parentWorkflow = new WorkflowBuilder()
-            .WithId(Guid.NewGuid())
-            .AddStart()
-            .AddGosub("gosub", childId)
-            .AddEnd()
-            .Connect("start", "gosub")
-            .Connect("gosub", "end")
-            .Build();
+        var parentWorkflow = new WorkflowBuilder().WithId(Guid.NewGuid()).AddStart().AddGosub("gosub", childId).AddEnd().Connect("start", "gosub").Connect("gosub", "end").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
 
@@ -370,14 +344,7 @@ public sealed class GosubNodeUnitTest
             .Connect("use", "end")
             .Build();
 
-        var parentWorkflow = new WorkflowBuilder()
-            .WithId(Guid.NewGuid())
-            .AddStart()
-            .AddGosub("gosub", childId)
-            .AddEnd()
-            .Connect("start", "gosub")
-            .Connect("gosub", "end")
-            .Build();
+        var parentWorkflow = new WorkflowBuilder().WithId(Guid.NewGuid()).AddStart().AddGosub("gosub", childId).AddEnd().Connect("start", "gosub").Connect("gosub", "end").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
 
@@ -403,14 +370,7 @@ public sealed class GosubNodeUnitTest
             .Connect("explode", "end")
             .Build();
 
-        var parentWorkflow = new WorkflowBuilder()
-            .WithId(Guid.NewGuid())
-            .AddStart()
-            .AddGosub("gosub", childId)
-            .AddEnd()
-            .Connect("start", "gosub")
-            .Connect("gosub", "end")
-            .Build();
+        var parentWorkflow = new WorkflowBuilder().WithId(Guid.NewGuid()).AddStart().AddGosub("gosub", childId).AddEnd().Connect("start", "gosub").Connect("gosub", "end").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
 
@@ -423,14 +383,7 @@ public sealed class GosubNodeUnitTest
     [Fact]
     public async Task Gosub_fails_when_workflow_id_missing()
     {
-        var parentWorkflow = new WorkflowBuilder()
-            .WithId(Guid.NewGuid())
-            .AddStart()
-            .AddGosub("gosub", null)
-            .AddEnd()
-            .Connect("start", "gosub")
-            .Connect("gosub", "end")
-            .Build();
+        var parentWorkflow = new WorkflowBuilder().WithId(Guid.NewGuid()).AddStart().AddGosub("gosub", null).AddEnd().Connect("start", "gosub").Connect("gosub", "end").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], parentWorkflow);
 
@@ -443,14 +396,7 @@ public sealed class GosubNodeUnitTest
     public async Task Gosub_fails_when_child_workflow_missing()
     {
         var missingId = Guid.NewGuid();
-        var parentWorkflow = new WorkflowBuilder()
-            .WithId(Guid.NewGuid())
-            .AddStart()
-            .AddGosub("gosub", missingId)
-            .AddEnd()
-            .Connect("start", "gosub")
-            .Connect("gosub", "end")
-            .Build();
+        var parentWorkflow = new WorkflowBuilder().WithId(Guid.NewGuid()).AddStart().AddGosub("gosub", missingId).AddEnd().Connect("start", "gosub").Connect("gosub", "end").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], parentWorkflow);
 
@@ -463,20 +409,9 @@ public sealed class GosubNodeUnitTest
     public async Task Gosub_fails_when_child_has_no_start()
     {
         var childId = Guid.NewGuid();
-        var childWorkflow = new WorkflowBuilder()
-            .WithId(childId)
-            .AddCode("work", "Context.Set<string>(\"value\", \"ok\");")
-            .AddEnd()
-            .Build();
+        var childWorkflow = new WorkflowBuilder().WithId(childId).AddCode("work", "Context.Set<string>(\"value\", \"ok\");").AddEnd().Build();
 
-        var parentWorkflow = new WorkflowBuilder()
-            .WithId(Guid.NewGuid())
-            .AddStart()
-            .AddGosub("gosub", childId)
-            .AddEnd()
-            .Connect("start", "gosub")
-            .Connect("gosub", "end")
-            .Build();
+        var parentWorkflow = new WorkflowBuilder().WithId(Guid.NewGuid()).AddStart().AddGosub("gosub", childId).AddEnd().Connect("start", "gosub").Connect("gosub", "end").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
 
@@ -489,21 +424,9 @@ public sealed class GosubNodeUnitTest
     public async Task Gosub_fails_when_child_has_multiple_starts()
     {
         var childId = Guid.NewGuid();
-        var childWorkflow = new WorkflowBuilder()
-            .WithId(childId)
-            .AddStart("start1")
-            .AddStart("start2")
-            .AddEnd()
-            .Build();
+        var childWorkflow = new WorkflowBuilder().WithId(childId).AddStart("start1").AddStart("start2").AddEnd().Build();
 
-        var parentWorkflow = new WorkflowBuilder()
-            .WithId(Guid.NewGuid())
-            .AddStart()
-            .AddGosub("gosub", childId)
-            .AddEnd()
-            .Connect("start", "gosub")
-            .Connect("gosub", "end")
-            .Build();
+        var parentWorkflow = new WorkflowBuilder().WithId(Guid.NewGuid()).AddStart().AddGosub("gosub", childId).AddEnd().Connect("start", "gosub").Connect("gosub", "end").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
 
@@ -516,24 +439,17 @@ public sealed class GosubNodeUnitTest
     public async Task Gosub_fails_when_output_count_invalid()
     {
         var childId = Guid.NewGuid();
-        var childWorkflow = new WorkflowBuilder()
-            .WithId(childId)
-            .AddStart()
-            .AddEnd()
-            .Connect("start", "end")
-            .Build();
+        var childWorkflow = new WorkflowBuilder().WithId(childId).AddStart().AddEnd().Connect("start", "end").Build();
 
-        var parentWorkflow = new WorkflowBuilder()
-            .WithId(Guid.NewGuid())
-            .AddStart()
-            .AddGosub("gosub", childId)
-            .AddEnd()
-            .Connect("start", "gosub")
-            .Connect("gosub", "end")
-            .Build();
+        var parentWorkflow = new WorkflowBuilder().WithId(Guid.NewGuid()).AddStart().AddGosub("gosub", childId).AddEnd().Connect("start", "gosub").Connect("gosub", "end").Build();
 
         var gosubNode = parentWorkflow.Nodes.OfType<GosubNodeEntity>().Single();
-        var extraOutput = new ConnectorEntity { Id = Guid.NewGuid(), Version = 1, Name = "extra" };
+        var extraOutput = new ConnectorEntity
+        {
+            Id = Guid.NewGuid(),
+            Version = 1,
+            Name = "extra",
+        };
         gosubNode.Outputs = [.. gosubNode.Outputs, extraOutput];
 
         var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
@@ -547,27 +463,22 @@ public sealed class GosubNodeUnitTest
     public async Task Gosub_self_referential_hits_run_node_limit()
     {
         var workflowId = Guid.NewGuid();
-        var workflow = new WorkflowBuilder()
-            .WithId(workflowId)
-            .AddStart()
-            .AddGosub("gosub", workflowId)
-            .AddEnd()
-            .Connect("start", "gosub")
-            .Connect("gosub", "end")
-            .Build();
+        var workflow = new WorkflowBuilder().WithId(workflowId).AddStart().AddGosub("gosub", workflowId).AddEnd().Connect("start", "gosub").Connect("gosub", "end").Build();
 
         using var provider = WorkflowRunner.BuildProvider();
         var repositoryService = provider.GetRequiredService<IRepositoryService>();
         await repositoryService.UpsertWorkflow(workflow);
-        await repositoryService.UpsertSetting(new Setting
-        {
-            SettingId = Guid.NewGuid(),
-            Name = "RunNodeLimit",
-            DisplayName = "RunNodeLimit",
-            SettingType = SettingType.Integer,
-            UserEditable = false,
-            ValueInteger = 20
-        });
+        await repositoryService.UpsertSetting(
+            new Setting
+            {
+                SettingId = Guid.NewGuid(),
+                Name = "RunNodeLimit",
+                DisplayName = "RunNodeLimit",
+                SettingType = SettingType.Integer,
+                UserEditable = false,
+                ValueInteger = 20,
+            }
+        );
 
         using var cts = new CancellationTokenSource();
         var executionService = provider.GetRequiredService<INodeExecutionService>();
@@ -598,7 +509,10 @@ public sealed class GosubNodeUnitTest
         var childWorkflow = new WorkflowBuilder()
             .WithId(childId)
             .AddStart()
-            .AddCode("use", "if (Context.TryGet<string>(\"parentOnly\", out var _)) throw new System.InvalidOperationException(\"Parent leaked\"); Context.Set<string>(\"result\", Context.Get<string>(\"child.name\") + \":\" + Context.Get<string>(\"child.mode\"));")
+            .AddCode(
+                "use",
+                "if (Context.TryGet<string>(\"parentOnly\", out var _)) throw new System.InvalidOperationException(\"Parent leaked\"); Context.Set<string>(\"result\", Context.Get<string>(\"child.name\") + \":\" + Context.Get<string>(\"child.mode\"));"
+            )
             .AddEnd()
             .Connect("start", "use")
             .Connect("use", "end")
@@ -623,7 +537,7 @@ public sealed class GosubNodeUnitTest
                         OutputPath = "child.name",
                         Optional = false,
                         EntryType = ContextEntryType.String,
-                        EntryValue = string.Empty
+                        EntryValue = string.Empty,
                     },
                     new ContextEntryEntity
                     {
@@ -634,9 +548,10 @@ public sealed class GosubNodeUnitTest
                         OutputPath = "child.mode",
                         Optional = true,
                         EntryType = ContextEntryType.String,
-                        EntryValue = "auto"
-                    }
-                ])
+                        EntryValue = "auto",
+                    },
+                ]
+            )
             .AddEnd()
             .Connect("start", "seed")
             .Connect("seed", "gosub")
@@ -686,9 +601,10 @@ public sealed class GosubNodeUnitTest
                         OutputPath = "result.publicValue",
                         Optional = false,
                         EntryType = ContextEntryType.String,
-                        EntryValue = string.Empty
-                    }
-                ])
+                        EntryValue = string.Empty,
+                    },
+                ]
+            )
             .AddEnd()
             .Connect("start", "gosub")
             .Connect("gosub", "end")
@@ -710,12 +626,7 @@ public sealed class GosubNodeUnitTest
     public async Task Gosub_output_mapping_applies_without_end()
     {
         var childId = Guid.NewGuid();
-        var childWorkflow = new WorkflowBuilder()
-            .WithId(childId)
-            .AddStart()
-            .AddCode("produce", "Context.Set<string>(\"child.value\", \"done\");")
-            .Connect("start", "produce")
-            .Build();
+        var childWorkflow = new WorkflowBuilder().WithId(childId).AddStart().AddCode("produce", "Context.Set<string>(\"child.value\", \"done\");").Connect("start", "produce").Build();
 
         var parentWorkflow = new WorkflowBuilder()
             .WithId(Guid.NewGuid())
@@ -735,9 +646,10 @@ public sealed class GosubNodeUnitTest
                         OutputPath = "output.value",
                         Optional = false,
                         EntryType = ContextEntryType.String,
-                        EntryValue = string.Empty
-                    }
-                ])
+                        EntryValue = string.Empty,
+                    },
+                ]
+            )
             .AddCode("after", "Context.Set<string>(\"result\", Context.Get<string>(\"output.value\"));")
             .AddEnd()
             .Connect("start", "gosub")
@@ -787,9 +699,10 @@ public sealed class GosubNodeUnitTest
                         OutputPath = "child.fixedValue",
                         Optional = true,
                         EntryType = ContextEntryType.String,
-                        EntryValue = "fixed"
-                    }
-                ])
+                        EntryValue = "fixed",
+                    },
+                ]
+            )
             .AddEnd()
             .Connect("start", "gosub")
             .Connect("gosub", "end")
@@ -837,9 +750,10 @@ public sealed class GosubNodeUnitTest
                         OutputPath = "output.value",
                         Optional = false,
                         EntryType = ContextEntryType.String,
-                        EntryValue = string.Empty
-                    }
-                ])
+                        EntryValue = string.Empty,
+                    },
+                ]
+            )
             .AddEnd()
             .Connect("start", "gosub")
             .Connect("gosub", "end")
@@ -859,12 +773,7 @@ public sealed class GosubNodeUnitTest
     public async Task Gosub_output_mapping_fails_on_empty_input_path()
     {
         var childId = Guid.NewGuid();
-        var childWorkflow = new WorkflowBuilder()
-            .WithId(childId)
-            .AddStart()
-            .AddEnd()
-            .Connect("start", "end")
-            .Build();
+        var childWorkflow = new WorkflowBuilder().WithId(childId).AddStart().AddEnd().Connect("start", "end").Build();
 
         var parentWorkflow = new WorkflowBuilder()
             .WithId(Guid.NewGuid())
@@ -884,9 +793,10 @@ public sealed class GosubNodeUnitTest
                         OutputPath = "output.value",
                         Optional = false,
                         EntryType = ContextEntryType.String,
-                        EntryValue = string.Empty
-                    }
-                ])
+                        EntryValue = string.Empty,
+                    },
+                ]
+            )
             .AddEnd()
             .Connect("start", "gosub")
             .Connect("gosub", "end")
@@ -930,9 +840,10 @@ public sealed class GosubNodeUnitTest
                         OutputPath = string.Empty,
                         Optional = false,
                         EntryType = ContextEntryType.String,
-                        EntryValue = string.Empty
-                    }
-                ])
+                        EntryValue = string.Empty,
+                    },
+                ]
+            )
             .AddEnd()
             .Connect("start", "gosub")
             .Connect("gosub", "end")
@@ -949,12 +860,7 @@ public sealed class GosubNodeUnitTest
     public async Task Gosub_input_mapping_fails_on_empty_input_path_when_required()
     {
         var childId = Guid.NewGuid();
-        var childWorkflow = new WorkflowBuilder()
-            .WithId(childId)
-            .AddStart()
-            .AddEnd()
-            .Connect("start", "end")
-            .Build();
+        var childWorkflow = new WorkflowBuilder().WithId(childId).AddStart().AddEnd().Connect("start", "end").Build();
 
         var parentWorkflow = new WorkflowBuilder()
             .WithId(Guid.NewGuid())
@@ -974,9 +880,10 @@ public sealed class GosubNodeUnitTest
                         OutputPath = "child.value",
                         Optional = false,
                         EntryType = ContextEntryType.String,
-                        EntryValue = string.Empty
-                    }
-                ])
+                        EntryValue = string.Empty,
+                    },
+                ]
+            )
             .AddEnd()
             .Connect("start", "gosub")
             .Connect("gosub", "end")
@@ -993,12 +900,7 @@ public sealed class GosubNodeUnitTest
     public async Task Gosub_input_mapping_fails_on_invalid_output_path()
     {
         var childId = Guid.NewGuid();
-        var childWorkflow = new WorkflowBuilder()
-            .WithId(childId)
-            .AddStart()
-            .AddEnd()
-            .Connect("start", "end")
-            .Build();
+        var childWorkflow = new WorkflowBuilder().WithId(childId).AddStart().AddEnd().Connect("start", "end").Build();
 
         var parentWorkflow = new WorkflowBuilder()
             .WithId(Guid.NewGuid())
@@ -1019,9 +921,10 @@ public sealed class GosubNodeUnitTest
                         OutputPath = "child.bad-key",
                         Optional = false,
                         EntryType = ContextEntryType.String,
-                        EntryValue = string.Empty
-                    }
-                ])
+                        EntryValue = string.Empty,
+                    },
+                ]
+            )
             .AddEnd()
             .Connect("start", "seed")
             .Connect("seed", "gosub")
@@ -1066,9 +969,10 @@ public sealed class GosubNodeUnitTest
                         OutputPath = "output.value",
                         Optional = false,
                         EntryType = ContextEntryType.String,
-                        EntryValue = string.Empty
-                    }
-                ])
+                        EntryValue = string.Empty,
+                    },
+                ]
+            )
             .Connect("start", "gosub")
             .Build();
 
@@ -1119,9 +1023,10 @@ public sealed class GosubNodeUnitTest
                         OutputPath = "output.result",
                         Optional = false,
                         EntryType = ContextEntryType.String,
-                        EntryValue = string.Empty
-                    }
-                ])
+                        EntryValue = string.Empty,
+                    },
+                ]
+            )
             .AddEnd()
             .Connect("start", "gosub")
             .Connect("gosub", "end")
@@ -1168,9 +1073,10 @@ public sealed class GosubNodeUnitTest
                         OutputPath = "output.value",
                         Optional = false,
                         EntryType = ContextEntryType.String,
-                        EntryValue = string.Empty
-                    }
-                ])
+                        EntryValue = string.Empty,
+                    },
+                ]
+            )
             .AddEnd()
             .Connect("start", "gosub")
             .Connect("gosub", "end")

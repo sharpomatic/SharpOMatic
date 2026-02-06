@@ -13,8 +13,6 @@ public static class IdentifierValidator
 
         // Check if it's a reserved keyword (like class, int, etc.)
         if (SyntaxFacts.GetKeywordKind(key) != SyntaxKind.None)
-            throw new SharpOMaticException(
-                $"'{key}' is a reserved C# keyword and cannot be used as an identifier without '@'."
-            );
+            throw new SharpOMaticException($"'{key}' is a reserved C# keyword and cannot be used as an identifier without '@'.");
     }
 }

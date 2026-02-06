@@ -6,9 +6,7 @@ builder.Services.AddControllers();
 // --------- SharpOMatic Specific Start ------------------------
 //
 // Assets are stored in the current users profile
-builder.Services.Configure<FileSystemAssetStoreOptions>(
-    builder.Configuration.GetSection("AssetStorage:FileSystem")
-);
+builder.Services.Configure<FileSystemAssetStoreOptions>(builder.Configuration.GetSection("AssetStorage:FileSystem"));
 builder.Services.AddSingleton<IAssetStore, FileSystemAssetStore>();
 
 // Provide the controllers and signalr needed by the visual editor

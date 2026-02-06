@@ -6,4 +6,6 @@ public enum ContextEntryPurpose
     Upsert = 1,
     Delete = 2,
     Output = 3,
+    Move = 4,
+    Duplicate = 5,
 }

@@ -1,8 +1,7 @@
 ﻿namespace SharpOMatic.Engine.Nodes;
 
 [RunNode(NodeType.Code)]
-public class CodeNode(ThreadContext threadContext, CodeNodeEntity node)
-    : RunNode<CodeNodeEntity>(threadContext, node)
+public class CodeNode(ThreadContext threadContext, CodeNodeEntity node) : RunNode<CodeNodeEntity>(threadContext, node)
 {
     protected override async Task<(string, List<NextNodeData>)> RunInternal()
     {
@@ -13,21 +12,12 @@ public class CodeNode(ThreadContext threadContext, CodeNodeEntity node)
             {
                 Context = ThreadContext.NodeContext,
                 ServiceProvider = ProcessContext.ServiceScope.ServiceProvider,
-                Assets = new AssetHelper(
-                    ProcessContext.RepositoryService,
-                    ProcessContext.AssetStore,
-                    ProcessContext.Run.RunId
-                ),
+                Assets = new AssetHelper(ProcessContext.RepositoryService, ProcessContext.AssetStore, ProcessContext.Run.RunId),
             };
 
             try
             {
-                var result = await CSharpScript.RunAsync(
-                    Node.Code,
-                    options,
-                    globals,
-                    typeof(ScriptCodeContext)
-                );
+                var result = await CSharpScript.RunAsync(Node.Code, options, globals, typeof(ScriptCodeContext));
             }
             catch (CompilationErrorException e1)
             {

@@ -4,11 +4,7 @@ namespace SharpOMatic.Editor.Controllers;
 [Route("api/[controller]")]
 public class WorkflowController : ControllerBase
 {
-    private static readonly JsonSerializerOptions _options = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new NodeEntityConverter() },
-    };
+    private static readonly JsonSerializerOptions _options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, Converters = { new NodeEntityConverter() } };
 
     [HttpGet]
     public Task<List<WorkflowSummary>> GetWorkflowSummaries(
@@ -31,20 +27,14 @@ public class WorkflowController : ControllerBase
     }
 
     [HttpGet("count")]
-    public Task<int> GetWorkflowSummaryCount(
-        IRepositoryService repository,
-        [FromQuery] string? search = null
-    )
+    public Task<int> GetWorkflowSummaryCount(IRepositoryService repository, [FromQuery] string? search = null)
     {
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
         return repository.GetWorkflowSummaryCount(normalizedSearch);
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<WorkflowEntity>> GetWorkflow(
-        IRepositoryService repository,
-        Guid id
-    )
+    public async Task<ActionResult<WorkflowEntity>> GetWorkflow(IRepositoryService repository, Guid id)
     {
         return await repository.GetWorkflow(id);
     }
@@ -76,10 +66,7 @@ public class WorkflowController : ControllerBase
     {
         // Parse the incoming ContextEntryListEntity data
         using var reader = new StreamReader(Request.Body);
-        var contextEntryListEntity = JsonSerializer.Deserialize<ContextEntryListEntity>(
-            await reader.ReadToEndAsync(),
-            _options
-        );
+        var contextEntryListEntity = JsonSerializer.Deserialize<ContextEntryListEntity>(await reader.ReadToEndAsync(), _options);
 
         var runId = await engineService.CreateWorkflowRun(id);
         await engineService.StartWorkflowRunAndNotify(runId, inputEntries: contextEntryListEntity);

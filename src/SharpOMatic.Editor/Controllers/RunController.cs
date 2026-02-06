@@ -4,10 +4,7 @@ namespace SharpOMatic.Editor.Controllers;
 [Route("api/[controller]")]
 public class RunController : ControllerBase
 {
-    private static readonly JsonSerializerOptions _options = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
+    private static readonly JsonSerializerOptions _options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     [HttpGet("latestforworkflow/{id}")]
     public async Task<Run?> GetLatestRunForWorkflow(IRepositoryService repositoryService, Guid id)

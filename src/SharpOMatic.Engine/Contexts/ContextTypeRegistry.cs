@@ -30,15 +30,8 @@ public static class ContextTypeRegistry
         (typeof(Uri), "Uri"),
     };
 
-    private static readonly Dictionary<Type, string> TypeToName = Scalars.ToDictionary(
-        x => x.Type,
-        x => x.Name
-    );
-    private static readonly Dictionary<string, Type> NameToType = Scalars.ToDictionary(
-        x => x.Name,
-        x => x.Type,
-        StringComparer.Ordinal
-    );
+    private static readonly Dictionary<Type, string> TypeToName = Scalars.ToDictionary(x => x.Type, x => x.Name);
+    private static readonly Dictionary<string, Type> NameToType = Scalars.ToDictionary(x => x.Name, x => x.Type, StringComparer.Ordinal);
 
     public static bool IsSupportedScalar(Type t) => TypeToName.ContainsKey(t);
 
@@ -90,9 +83,7 @@ public static class ContextTypeRegistry
         var elemScalar = elemIsNullable ? underlying! : cur;
 
         if (!IsSupportedScalar(elemScalar))
-            throw new SharpOMaticException(
-                $"Unsupported array element type: {elemScalar.FullName}"
-            );
+            throw new SharpOMaticException($"Unsupported array element type: {elemScalar.FullName}");
 
         var baseName = TypeToName[elemScalar];
 
@@ -143,12 +134,7 @@ public static class ContextTypeRegistry
         if (depth > 0 && !IsSupportedArray(t))
             return false;
 
-        if (
-            depth == 0
-            && !(
-                IsSupportedScalar(t) || (IsNullableValueType(t, out var u) && IsSupportedScalar(u!))
-            )
-        )
+        if (depth == 0 && !(IsSupportedScalar(t) || (IsNullableValueType(t, out var u) && IsSupportedScalar(u!))))
             return false;
 
         resolved = t;

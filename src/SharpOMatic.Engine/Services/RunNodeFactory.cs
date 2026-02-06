@@ -18,12 +18,6 @@ public class RunNodeFactory : IRunNodeFactory
         if (!_nodeRunners.TryGetValue(node.NodeType, out var runnerType))
             throw new SharpOMaticException($"Unrecognized node type '{node.NodeType}'");
 
-        return (IRunNode)
-            ActivatorUtilities.CreateInstance(
-                threadContext.ProcessContext.ServiceScope.ServiceProvider,
-                runnerType,
-                threadContext,
-                node
-            );
+        return (IRunNode)ActivatorUtilities.CreateInstance(threadContext.ProcessContext.ServiceScope.ServiceProvider, runnerType, threadContext, node);
     }
 }

@@ -21,9 +21,7 @@ public class TransferController(ITransferService transferService) : ControllerBa
 
     [HttpPost("import")]
     [Consumes("multipart/form-data")]
-    public async Task<ActionResult<TransferImportResult>> Import(
-        [FromForm] TransferImportRequest request
-    )
+    public async Task<ActionResult<TransferImportResult>> Import([FromForm] TransferImportRequest request)
     {
         if (request.File is null || request.File.Length == 0)
             return BadRequest("File is required.");

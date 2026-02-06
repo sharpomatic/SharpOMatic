@@ -7,13 +7,7 @@ public interface IRepositoryService
     // ------------------------------------------------
     Task<List<WorkflowSummary>> GetWorkflowSummaries();
     Task<int> GetWorkflowSummaryCount(string? search);
-    Task<List<WorkflowSummary>> GetWorkflowSummaries(
-        string? search,
-        WorkflowSortField sortBy,
-        SortDirection sortDirection,
-        int skip,
-        int take
-    );
+    Task<List<WorkflowSummary>> GetWorkflowSummaries(string? search, WorkflowSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task<WorkflowEntity> GetWorkflow(Guid workflowId);
     Task UpsertWorkflow(WorkflowEntity workflow);
     Task DeleteWorkflow(Guid workflowId);
@@ -25,13 +19,7 @@ public interface IRepositoryService
     Task<Run?> GetRun(Guid runId);
     Task<Run?> GetLatestRunForWorkflow(Guid workflowId);
     Task<int> GetWorkflowRunCount(Guid workflowId);
-    Task<List<Run>> GetWorkflowRuns(
-        Guid workflowId,
-        RunSortField sortBy,
-        SortDirection sortDirection,
-        int skip,
-        int take
-    );
+    Task<List<Run>> GetWorkflowRuns(Guid workflowId, RunSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task UpsertRun(Run run);
     Task PruneWorkflowRuns(Guid workflowId, int keepLatest);
 
@@ -53,13 +41,7 @@ public interface IRepositoryService
     // ------------------------------------------------
     Task<List<ConnectorSummary>> GetConnectorSummaries();
     Task<int> GetConnectorSummaryCount(string? search);
-    Task<List<ConnectorSummary>> GetConnectorSummaries(
-        string? search,
-        ConnectorSortField sortBy,
-        SortDirection sortDirection,
-        int skip,
-        int take
-    );
+    Task<List<ConnectorSummary>> GetConnectorSummaries(string? search, ConnectorSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task<Connector> GetConnector(Guid connectionId, bool hideSecrets = true);
     Task UpsertConnector(Connector connection, bool hideSecrets = true);
     Task DeleteConnector(Guid connectionId);
@@ -76,13 +58,7 @@ public interface IRepositoryService
     // ------------------------------------------------
     Task<List<ModelSummary>> GetModelSummaries();
     Task<int> GetModelSummaryCount(string? search);
-    Task<List<ModelSummary>> GetModelSummaries(
-        string? search,
-        ModelSortField sortBy,
-        SortDirection sortDirection,
-        int skip,
-        int take
-    );
+    Task<List<ModelSummary>> GetModelSummaries(string? search, ModelSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task<Model> GetModel(Guid modelId, bool hideSecrets = true);
     Task UpsertModel(Model model);
     Task DeleteModel(Guid modelId);
@@ -92,13 +68,7 @@ public interface IRepositoryService
     // ------------------------------------------------
     Task<List<EvalConfigSummary>> GetEvalConfigSummaries();
     Task<int> GetEvalConfigSummaryCount(string? search);
-    Task<List<EvalConfigSummary>> GetEvalConfigSummaries(
-        string? search,
-        EvalConfigSortField sortBy,
-        SortDirection sortDirection,
-        int skip,
-        int take
-    );
+    Task<List<EvalConfigSummary>> GetEvalConfigSummaries(string? search, EvalConfigSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task<EvalConfig> GetEvalConfig(Guid evalConfigId);
     Task<EvalConfigDetail> GetEvalConfigDetail(Guid evalConfigId);
     Task UpsertEvalConfig(EvalConfig evalConfig);
@@ -124,15 +94,7 @@ public interface IRepositoryService
     // ------------------------------------------------
     Task<Asset> GetAsset(Guid assetId);
     Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null);
-    Task<List<Asset>> GetAssetsByScope(
-        AssetScope scope,
-        string? search,
-        AssetSortField sortBy,
-        SortDirection sortDirection,
-        int skip,
-        int take,
-        Guid? runId = null
-    );
+    Task<List<Asset>> GetAssetsByScope(AssetScope scope, string? search, AssetSortField sortBy, SortDirection sortDirection, int skip, int take, Guid? runId = null);
     Task<List<Asset>> GetRunAssets(Guid runId);
     Task<Asset?> GetRunAssetByName(Guid runId, string name);
     Task<Asset?> GetLibraryAssetByName(string name);

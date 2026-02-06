@@ -1,36 +1,24 @@
 namespace SharpOMatic.Engine.Nodes;
 
 [RunNode(NodeType.Batch)]
-public class BatchNode(ThreadContext threadContext, BatchNodeEntity node)
-    : RunNode<BatchNodeEntity>(threadContext, node)
+public class BatchNode(ThreadContext threadContext, BatchNodeEntity node) : RunNode<BatchNodeEntity>(threadContext, node)
 {
     protected override async Task<(string, List<NextNodeData>)> RunInternal()
     {
         if (Node.BatchSize < 1)
-            throw new SharpOMaticException(
-                "Batch node batch size must be greater than or equal to 1."
-            );
+            throw new SharpOMaticException("Batch node batch size must be greater than or equal to 1.");
 
         if (Node.ParallelBatches < 1)
-            throw new SharpOMaticException(
-                "Batch node parallel batches must be greater than or equal to 1."
-            );
+            throw new SharpOMaticException("Batch node parallel batches must be greater than or equal to 1.");
 
         if (string.IsNullOrWhiteSpace(Node.InputArrayPath))
             throw new SharpOMaticException("Batch node input array path cannot be empty.");
 
-        if (
-            !ThreadContext.NodeContext.TryGet<object?>(Node.InputArrayPath, out var arrayValue)
-            || arrayValue is null
-        )
-            throw new SharpOMaticException(
-                $"Batch node input array path '{Node.InputArrayPath}' could not be resolved."
-            );
+        if (!ThreadContext.NodeContext.TryGet<object?>(Node.InputArrayPath, out var arrayValue) || arrayValue is null)
+            throw new SharpOMaticException($"Batch node input array path '{Node.InputArrayPath}' could not be resolved.");
 
         if (arrayValue is not ContextList arrayList)
-            throw new SharpOMaticException(
-                $"Batch node input array path '{Node.InputArrayPath}' must be a context list."
-            );
+            throw new SharpOMaticException($"Batch node input array path '{Node.InputArrayPath}' must be a context list.");
 
         var baseContextJson = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters);
 
@@ -47,10 +35,7 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node)
             if (continueNode is null)
                 return ("continue, no items", []);
 
-            ThreadContext.NodeContext = ContextObject.Deserialize(
-                baseContextJson,
-                ProcessContext.JsonConverters
-            );
+            ThreadContext.NodeContext = ContextObject.Deserialize(baseContextJson, ProcessContext.JsonConverters);
             return ("continue, no items", [new NextNodeData(ThreadContext, continueNode)]);
         }
 
@@ -74,16 +59,9 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node)
         ThreadContext.CurrentContext = batchContext;
         List<NextNodeData> nextNodes = [];
 
-        while (
-            batchContext.InFlightBatches < batchContext.ParallelBatches
-            && batchContext.NextItemIndex < batchContext.BatchItems.Count
-        )
+        while (batchContext.InFlightBatches < batchContext.ParallelBatches && batchContext.NextItemIndex < batchContext.BatchItems.Count)
         {
-            var batchSlice = CreateBatchSlice(
-                batchContext.BatchItems,
-                batchContext.NextItemIndex,
-                batchContext.BatchSize
-            );
+            var batchSlice = CreateBatchSlice(batchContext.BatchItems, batchContext.NextItemIndex, batchContext.BatchSize);
             if (batchSlice.Count == 0)
                 break;
 
@@ -94,19 +72,13 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node)
             ThreadContext targetThread;
             if (nextNodes.Count == 0)
             {
-                ThreadContext.NodeContext = CreateBatchContextObject(
-                    batchContext.BaseContextJson,
-                    batchSlice
-                );
+                ThreadContext.NodeContext = CreateBatchContextObject(batchContext.BaseContextJson, batchSlice);
                 ThreadContext.BatchIndex = batchIndex;
                 targetThread = ThreadContext;
             }
             else
             {
-                var batchContextObject = CreateBatchContextObject(
-                    batchContext.BaseContextJson,
-                    batchSlice
-                );
+                var batchContextObject = CreateBatchContextObject(batchContext.BaseContextJson, batchSlice);
                 targetThread = ProcessContext.CreateThread(batchContextObject, batchContext);
                 targetThread.BatchIndex = batchIndex;
             }
@@ -119,10 +91,7 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node)
             if (continueNode is null)
                 return ("continue, no items", []);
 
-            ThreadContext.NodeContext = ContextObject.Deserialize(
-                baseContextJson,
-                ProcessContext.JsonConverters
-            );
+            ThreadContext.NodeContext = ContextObject.Deserialize(baseContextJson, ProcessContext.JsonConverters);
             return ("continue, no items", [new NextNodeData(ThreadContext, continueNode)]);
         }
 
@@ -133,9 +102,7 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node)
     {
         var context = ContextObject.Deserialize(contextJson, ProcessContext.JsonConverters);
         if (!context.TrySet(Node.InputArrayPath, slice))
-            throw new SharpOMaticException(
-                $"Batch node cannot set '{Node.InputArrayPath}' into context."
-            );
+            throw new SharpOMaticException($"Batch node cannot set '{Node.InputArrayPath}' into context.");
 
         return context;
     }

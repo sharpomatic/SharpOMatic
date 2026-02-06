@@ -25,10 +25,7 @@ public static class AssetStorageKey
         if (string.IsNullOrWhiteSpace(storageKey))
             throw new SharpOMaticException("Storage key is required.");
 
-        if (
-            storageKey.StartsWith("/", StringComparison.Ordinal)
-            || storageKey.StartsWith("\\", StringComparison.Ordinal)
-        )
+        if (storageKey.StartsWith("/", StringComparison.Ordinal) || storageKey.StartsWith("\\", StringComparison.Ordinal))
         {
             throw new SharpOMaticException("Storage key must be relative.");
         }

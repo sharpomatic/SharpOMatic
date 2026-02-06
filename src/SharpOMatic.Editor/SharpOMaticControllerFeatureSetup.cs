@@ -45,9 +45,7 @@ internal static class SharpOMaticControllerFeatureSetup
 {
     public static SharpOMaticControllerToggle GetOrAddToggle(IServiceCollection services)
     {
-        var existing = services.FirstOrDefault(service =>
-            service.ServiceType == typeof(SharpOMaticControllerToggle)
-        );
+        var existing = services.FirstOrDefault(service => service.ServiceType == typeof(SharpOMaticControllerToggle));
         if (existing?.ImplementationInstance is SharpOMaticControllerToggle toggle)
             return toggle;
 
@@ -56,10 +54,7 @@ internal static class SharpOMaticControllerFeatureSetup
         return toggle;
     }
 
-    public static void EnsureFeatureProvider(
-        IMvcBuilder builder,
-        SharpOMaticControllerToggle toggle
-    )
+    public static void EnsureFeatureProvider(IMvcBuilder builder, SharpOMaticControllerToggle toggle)
     {
         builder.ConfigureApplicationPartManager(manager =>
         {
@@ -74,11 +69,7 @@ internal static class SharpOMaticControllerFeatureSetup
     {
         builder.ConfigureApplicationPartManager(manager =>
         {
-            if (
-                manager
-                    .ApplicationParts.OfType<AssemblyPart>()
-                    .Any(part => part.Assembly == assembly)
-            )
+            if (manager.ApplicationParts.OfType<AssemblyPart>().Any(part => part.Assembly == assembly))
                 return;
 
             manager.ApplicationParts.Add(new AssemblyPart(assembly));

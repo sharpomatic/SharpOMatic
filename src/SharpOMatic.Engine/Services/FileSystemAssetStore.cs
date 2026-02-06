@@ -7,17 +7,11 @@ public class FileSystemAssetStore : IAssetStore
     public FileSystemAssetStore(IOptions<FileSystemAssetStoreOptions> options)
     {
         var configuredRoot = options.Value?.RootPath;
-        var rootPath = string.IsNullOrWhiteSpace(configuredRoot)
-            ? FileSystemAssetStoreOptions.DefaultRootPath
-            : configuredRoot;
+        var rootPath = string.IsNullOrWhiteSpace(configuredRoot) ? FileSystemAssetStoreOptions.DefaultRootPath : configuredRoot;
         _rootPath = Path.GetFullPath(rootPath);
     }
 
-    public async Task SaveAsync(
-        string storageKey,
-        Stream content,
-        CancellationToken cancellationToken = default
-    )
+    public async Task SaveAsync(string storageKey, Stream content, CancellationToken cancellationToken = default)
     {
         var path = ResolvePath(storageKey);
         var directory = Path.GetDirectoryName(path);
@@ -29,16 +23,7 @@ public class FileSystemAssetStore : IAssetStore
         var tempPath = Path.Combine(directory, $"{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
         try
         {
-            await using (
-                var output = new FileStream(
-                    tempPath,
-                    FileMode.CreateNew,
-                    FileAccess.Write,
-                    FileShare.None,
-                    81920,
-                    FileOptions.Asynchronous | FileOptions.WriteThrough
-                )
-            )
+            await using (var output = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous | FileOptions.WriteThrough))
             {
                 await content.CopyToAsync(output, cancellationToken);
             }
@@ -54,23 +39,13 @@ public class FileSystemAssetStore : IAssetStore
         }
     }
 
-    public Task<Stream> OpenReadAsync(
-        string storageKey,
-        CancellationToken cancellationToken = default
-    )
+    public Task<Stream> OpenReadAsync(string storageKey, CancellationToken cancellationToken = default)
     {
         var path = ResolvePath(storageKey);
         if (!File.Exists(path))
             throw new SharpOMaticException($"Asset '{storageKey}' cannot be found.");
 
-        Stream stream = new FileStream(
-            path,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            81920,
-            FileOptions.Asynchronous | FileOptions.SequentialScan
-        );
+        Stream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
 
         return Task.FromResult(stream);
     }
@@ -103,9 +78,7 @@ public class FileSystemAssetStore : IAssetStore
         var fullPath = Path.GetFullPath(path);
         var relative = Path.GetRelativePath(rootPath, fullPath);
         if (relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative))
-            throw new SharpOMaticException(
-                $"Storage key '{storageKey}' resolves outside of the asset root."
-            );
+            throw new SharpOMaticException($"Storage key '{storageKey}' resolves outside of the asset root.");
 
         return fullPath;
     }
@@ -113,12 +86,7 @@ public class FileSystemAssetStore : IAssetStore
 
 public class FileSystemAssetStoreOptions
 {
-    public static string DefaultRootPath =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SharpOMatic",
-            "Assets"
-        );
+    public static string DefaultRootPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SharpOMatic", "Assets");
 
     public string RootPath { get; set; } = DefaultRootPath;
 }

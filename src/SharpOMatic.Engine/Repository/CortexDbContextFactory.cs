@@ -11,9 +11,6 @@ public class SharpOMaticDbContextFactory : IDesignTimeDbContextFactory<SharpOMat
         var dbPath = Path.Join(path, "sharpomatic.db");
         optionsBuilder.UseSqlite($"Data Source={dbPath}");
 
-        return new SharpOMaticDbContext(
-            optionsBuilder.Options,
-            Options.Create(new SharpOMaticDbOptions())
-        );
+        return new SharpOMaticDbContext(optionsBuilder.Options, Options.Create(new SharpOMaticDbOptions()));
     }
 }

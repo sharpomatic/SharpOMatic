@@ -22,9 +22,7 @@ public class EngineService(
             throw new SharpOMaticException("There is no matching workflow for this name.");
 
         if (matches.Count > 1)
-            throw new SharpOMaticException(
-                "There is more than one matching workflow for this name."
-            );
+            throw new SharpOMaticException("There is more than one matching workflow for this name.");
 
         return matches[0].Id;
     }
@@ -35,11 +33,7 @@ public class EngineService(
         return run.RunId;
     }
 
-    public async Task<Run> StartWorkflowRunAndWait(
-        Guid runId,
-        ContextObject? nodeContext = null,
-        ContextEntryListEntity? inputEntries = null
-    )
+    public async Task<Run> StartWorkflowRunAndWait(Guid runId, ContextObject? nodeContext = null, ContextEntryListEntity? inputEntries = null)
     {
         var run = await RepositoryService.GetRun(runId);
         if (run is null)
@@ -48,18 +42,12 @@ public class EngineService(
         if (run.RunStatus != RunStatus.Created)
             throw new SharpOMaticException($"Run '{runId}' is not in a Created state.");
 
-        var completionSource = new TaskCompletionSource<Run>(
-            TaskCreationOptions.RunContinuationsAsynchronously
-        );
+        var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
         await StartRunInternal(run, nodeContext, inputEntries, completionSource);
         return await completionSource.Task.ConfigureAwait(false);
     }
 
-    public async Task StartWorkflowRunAndNotify(
-        Guid runId,
-        ContextObject? nodeContext = null,
-        ContextEntryListEntity? inputEntries = null
-    )
+    public async Task StartWorkflowRunAndNotify(Guid runId, ContextObject? nodeContext = null, ContextEntryListEntity? inputEntries = null)
     {
         var run = await RepositoryService.GetRun(runId);
         if (run is null)
@@ -68,9 +56,7 @@ public class EngineService(
         if (run.RunStatus != RunStatus.Created)
             throw new SharpOMaticException($"Run '{runId}' is not in a Created state.");
 
-        var completionSource = new TaskCompletionSource<Run>(
-            TaskCreationOptions.RunContinuationsAsynchronously
-        );
+        var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
         await StartRunInternal(run, nodeContext, inputEntries, completionSource);
     }
 
@@ -79,11 +65,7 @@ public class EngineService(
         return CreateWorkflowRun(workflowId).GetAwaiter().GetResult();
     }
 
-    public Run StartWorkflowRunSynchronously(
-        Guid runId,
-        ContextObject? context = null,
-        ContextEntryListEntity? inputEntries = null
-    )
+    public Run StartWorkflowRunSynchronously(Guid runId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null)
     {
         return StartWorkflowRunAndWait(runId, context, inputEntries).GetAwaiter().GetResult();
     }
@@ -107,22 +89,14 @@ public class EngineService(
             RunStatus = RunStatus.Created,
             Message = "Created",
             Created = DateTime.Now,
-            InputContext = JsonSerializer.Serialize(
-                inputContext,
-                new JsonSerializerOptions().BuildOptions(converters)
-            ),
+            InputContext = JsonSerializer.Serialize(inputContext, new JsonSerializerOptions().BuildOptions(converters)),
         };
 
         await RepositoryService.UpsertRun(run);
         return run;
     }
 
-    private async Task StartRunInternal(
-        Run run,
-        ContextObject? nodeContext,
-        ContextEntryListEntity? inputEntries,
-        TaskCompletionSource<Run>? completionSource
-    )
+    private async Task StartRunInternal(Run run, ContextObject? nodeContext, ContextEntryListEntity? inputEntries, TaskCompletionSource<Run>? completionSource)
     {
         nodeContext ??= [];
 
@@ -130,37 +104,21 @@ public class EngineService(
 
         try
         {
-            var inputJson = await ApplyInputEntries(
-                serviceScope.ServiceProvider,
-                nodeContext,
-                inputEntries,
-                run.RunId
-            );
+            var inputJson = await ApplyInputEntries(serviceScope.ServiceProvider, nodeContext, inputEntries, run.RunId);
 
-            var workflow =
-                await RepositoryService.GetWorkflow(run.WorkflowId)
-                ?? throw new SharpOMaticException($"Could not load workflow {run.WorkflowId}.");
+            var workflow = await RepositoryService.GetWorkflow(run.WorkflowId) ?? throw new SharpOMaticException($"Could not load workflow {run.WorkflowId}.");
             var currentNodes = workflow.Nodes.Where(n => n.NodeType == NodeType.Start).ToList();
             if (currentNodes.Count != 1)
                 throw new SharpOMaticException("Must have exactly one start node.");
 
             var converters = JsonConverterService.GetConverters();
             run.InputEntries = inputJson;
-            run.InputContext = JsonSerializer.Serialize(
-                nodeContext,
-                new JsonSerializerOptions().BuildOptions(converters)
-            );
+            run.InputContext = JsonSerializer.Serialize(nodeContext, new JsonSerializerOptions().BuildOptions(converters));
 
             var nodeRunLimitSetting = await RepositoryService.GetSetting("RunNodeLimit");
-            var nodeRunLimit =
-                nodeRunLimitSetting?.ValueInteger ?? NodeExecutionService.DEFAULT_NODE_RUN_LIMIT;
+            var nodeRunLimit = nodeRunLimitSetting?.ValueInteger ?? NodeExecutionService.DEFAULT_NODE_RUN_LIMIT;
 
-            var processContext = new ProcessContext(
-                serviceScope,
-                run,
-                nodeRunLimit,
-                completionSource
-            );
+            var processContext = new ProcessContext(serviceScope, run, nodeRunLimit, completionSource);
             var workflowContext = new WorkflowContext(processContext, workflow);
             var threadContext = processContext.CreateThread(nodeContext, workflowContext);
             await processContext.RunUpdated();
@@ -173,12 +131,7 @@ public class EngineService(
         }
     }
 
-    private async Task<string?> ApplyInputEntries(
-        IServiceProvider serviceProvider,
-        ContextObject nodeContext,
-        ContextEntryListEntity? inputEntries,
-        Guid runId
-    )
+    private async Task<string?> ApplyInputEntries(IServiceProvider serviceProvider, ContextObject nodeContext, ContextEntryListEntity? inputEntries, Guid runId)
     {
         if (inputEntries is null)
             return null;
@@ -186,17 +139,9 @@ public class EngineService(
         var inputJson = JsonSerializer.Serialize(inputEntries);
         foreach (var entry in inputEntries.Entries)
         {
-            var entryValue = await ContextHelpers.ResolveContextEntryValue(
-                serviceProvider,
-                nodeContext,
-                entry,
-                ScriptOptionsService,
-                runId
-            );
+            var entryValue = await ContextHelpers.ResolveContextEntryValue(serviceProvider, nodeContext, entry, ScriptOptionsService, runId);
             if (!nodeContext.TrySet(entry.InputPath, entryValue))
-                throw new SharpOMaticException(
-                    $"Input entry '{entry.InputPath}' could not be assigned the value."
-                );
+                throw new SharpOMaticException($"Input entry '{entry.InputPath}' could not be assigned the value.");
         }
 
         return inputJson;

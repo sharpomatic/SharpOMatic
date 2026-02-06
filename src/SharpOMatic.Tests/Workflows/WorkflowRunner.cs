@@ -28,7 +28,6 @@ public class WorkflowRunner
             var run = await engine.StartWorkflowRunAndWait(runId, ctx);
             await Task.Delay(100);
             return run;
-
         }
         finally
         {
@@ -61,7 +60,6 @@ public class WorkflowRunner
             var run = await engine.StartWorkflowRunAndWait(runId, ctx);
             await Task.Delay(100);
             return (run, provider);
-
         }
         finally
         {
@@ -74,13 +72,11 @@ public class WorkflowRunner
     public static ServiceProvider BuildProvider()
     {
         var services = new ServiceCollection();
-        services.AddSharpOMaticEngine()
-                .AddScriptOptions([typeof(WorkflowRunner).Assembly], ["SharpOMatic.Tests.Workflows"])
-                .AddJsonConverters(typeof(ClassExampleConverter));
+        services.AddSharpOMaticEngine().AddScriptOptions([typeof(WorkflowRunner).Assembly], ["SharpOMatic.Tests.Workflows"]).AddJsonConverters(typeof(ClassExampleConverter));
 
         // Override the repository with a simple in memory test version
         services.AddSingleton<IRepositoryService, TestRepositoryService>();
-        
+
         var assetStoreMock = new Mock<IAssetStore>();
         services.AddSingleton(assetStoreMock.Object);
 

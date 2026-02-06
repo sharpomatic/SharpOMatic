@@ -5,11 +5,7 @@ public sealed class BatchNodeUnitTest
     [Fact]
     public async Task Batch_does_nothing()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddBatch(inputPath: "list")
-            .Connect("start", "batch")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddBatch(inputPath: "list").Connect("start", "batch").Build();
 
         ContextObject ctx = [];
         ctx.Set<ContextList>("list", [1, 2, 3]);
@@ -214,11 +210,7 @@ public sealed class BatchNodeUnitTest
     [Fact]
     public async Task Batch_fails_when_batch_size_invalid()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddBatch(batchSize: 0, parallelBatches: 1, inputPath: "list")
-            .Connect("start", "batch")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddBatch(batchSize: 0, parallelBatches: 1, inputPath: "list").Connect("start", "batch").Build();
 
         ContextObject ctx = [];
         ctx.Set<ContextList>("list", [1, 2, 3]);
@@ -233,11 +225,7 @@ public sealed class BatchNodeUnitTest
     [Fact]
     public async Task Batch_fails_when_parallel_batches_invalid()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddBatch(batchSize: 1, parallelBatches: 0, inputPath: "list")
-            .Connect("start", "batch")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddBatch(batchSize: 1, parallelBatches: 0, inputPath: "list").Connect("start", "batch").Build();
 
         ContextObject ctx = [];
         ctx.Set<ContextList>("list", [1, 2, 3]);
@@ -252,11 +240,7 @@ public sealed class BatchNodeUnitTest
     [Fact]
     public async Task Batch_fails_when_input_path_empty()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddBatch(batchSize: 1, parallelBatches: 1, inputPath: "")
-            .Connect("start", "batch")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddBatch(batchSize: 1, parallelBatches: 1, inputPath: "").Connect("start", "batch").Build();
 
         ContextObject ctx = [];
         ctx.Set<ContextList>("list", [1, 2, 3]);
@@ -271,11 +255,7 @@ public sealed class BatchNodeUnitTest
     [Fact]
     public async Task Batch_fails_when_input_path_missing()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddBatch(batchSize: 1, parallelBatches: 1, inputPath: "list")
-            .Connect("start", "batch")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddBatch(batchSize: 1, parallelBatches: 1, inputPath: "list").Connect("start", "batch").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -287,11 +267,7 @@ public sealed class BatchNodeUnitTest
     [Fact]
     public async Task Batch_fails_when_input_path_not_list()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddBatch(batchSize: 1, parallelBatches: 1, inputPath: "value")
-            .Connect("start", "batch")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddBatch(batchSize: 1, parallelBatches: 1, inputPath: "value").Connect("start", "batch").Build();
 
         ContextObject ctx = [];
         ctx.Set("value", 123);

@@ -1,16 +1,8 @@
 namespace SharpOMatic.Engine.Services;
 
-public class AssetService(IRepositoryService repositoryService, IAssetStore assetStore)
-    : IAssetService
+public class AssetService(IRepositoryService repositoryService, IAssetStore assetStore) : IAssetService
 {
-    public async Task<AssetRef> CreateFromStreamAsync(
-        Stream content,
-        long sizeBytes,
-        string name,
-        string mediaType,
-        AssetScope scope,
-        Guid? runId = null
-    )
+    public async Task<AssetRef> CreateFromStreamAsync(Stream content, long sizeBytes, string name, string mediaType, AssetScope scope, Guid? runId = null)
     {
         if (content is null)
             throw new SharpOMaticException("Asset content is required.");
@@ -52,13 +44,7 @@ public class AssetService(IRepositoryService repositoryService, IAssetStore asse
         };
     }
 
-    public async Task<AssetRef> CreateFromBytesAsync(
-        byte[] data,
-        string name,
-        string mediaType,
-        AssetScope scope,
-        Guid? runId = null
-    )
+    public async Task<AssetRef> CreateFromBytesAsync(byte[] data, string name, string mediaType, AssetScope scope, Guid? runId = null)
     {
         if (data is null)
             throw new SharpOMaticException("Asset data is required.");

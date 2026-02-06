@@ -122,39 +122,21 @@ public class ContextObject : IDictionary<string, object?>
 
     public T Get<T>(string path)
     {
-        if (
-            !ContextPathResolver.TryGetValue(
-                this,
-                path,
-                requireLeadingIndex: false,
-                throwOnError: true,
-                out var value
-            )
-        )
+        if (!ContextPathResolver.TryGetValue(this, path, requireLeadingIndex: false, throwOnError: true, out var value))
             throw new SharpOMaticException($"Path '{path}' not found.");
 
         if (ContextPathResolver.TryStrictCast(value, out T? result))
             return result!;
 
         var actual = value is null ? "null" : value.GetType().FullName;
-        throw new SharpOMaticException(
-            $"Value at '{path}' is of type '{actual}', not '{typeof(T).FullName}'."
-        );
+        throw new SharpOMaticException($"Value at '{path}' is of type '{actual}', not '{typeof(T).FullName}'.");
     }
 
     public bool TryGet<T>(string path, out T? value)
     {
         value = default!;
 
-        if (
-            !ContextPathResolver.TryGetValue(
-                this,
-                path,
-                requireLeadingIndex: false,
-                throwOnError: false,
-                out var resolved
-            )
-        )
+        if (!ContextPathResolver.TryGetValue(this, path, requireLeadingIndex: false, throwOnError: false, out var resolved))
             return false;
 
         if (ContextPathResolver.TryStrictCast(resolved, out T? result))
@@ -169,15 +151,7 @@ public class ContextObject : IDictionary<string, object?>
     public bool TryGetObject(string path, [MaybeNullWhen(false)] out ContextObject obj)
     {
         obj = default!;
-        if (
-            !ContextPathResolver.TryGetValue(
-                this,
-                path,
-                requireLeadingIndex: false,
-                throwOnError: false,
-                out var value
-            )
-        )
+        if (!ContextPathResolver.TryGetValue(this, path, requireLeadingIndex: false, throwOnError: false, out var value))
             return false;
         if (value is ContextObject co)
         {
@@ -190,15 +164,7 @@ public class ContextObject : IDictionary<string, object?>
     public bool TryGetList(string path, [MaybeNullWhen(false)] out ContextList list)
     {
         list = default!;
-        if (
-            !ContextPathResolver.TryGetValue(
-                this,
-                path,
-                requireLeadingIndex: false,
-                throwOnError: false,
-                out var value
-            )
-        )
+        if (!ContextPathResolver.TryGetValue(this, path, requireLeadingIndex: false, throwOnError: false, out var value))
             return false;
         if (value is ContextList cl)
         {
@@ -210,34 +176,17 @@ public class ContextObject : IDictionary<string, object?>
 
     public void Set<T>(string path, T value)
     {
-        ContextPathResolver.TrySetValue(
-            this,
-            path,
-            value,
-            requireLeadingIndex: false,
-            throwOnError: true
-        );
+        ContextPathResolver.TrySetValue(this, path, value, requireLeadingIndex: false, throwOnError: true);
     }
 
     public bool TrySet<T>(string path, T value)
     {
-        return ContextPathResolver.TrySetValue(
-            this,
-            path,
-            value,
-            requireLeadingIndex: false,
-            throwOnError: false
-        );
+        return ContextPathResolver.TrySetValue(this, path, value, requireLeadingIndex: false, throwOnError: false);
     }
 
     public bool RemovePath(string path)
     {
-        return ContextPathResolver.TryRemove(
-            this,
-            path,
-            requireLeadingIndex: false,
-            throwOnError: false
-        );
+        return ContextPathResolver.TryRemove(this, path, requireLeadingIndex: false, throwOnError: false);
     }
 
     public string Serialize(IServiceProvider serviceProvider)
@@ -254,10 +203,7 @@ public class ContextObject : IDictionary<string, object?>
 
     public string Serialize(IEnumerable<JsonConverter>? jsonConverters = null)
     {
-        return JsonSerializer.Serialize(
-            this,
-            new JsonSerializerOptions().BuildOptions(jsonConverters)
-        );
+        return JsonSerializer.Serialize(this, new JsonSerializerOptions().BuildOptions(jsonConverters));
     }
 
     public static ContextObject Deserialize(string? json, IServiceProvider serviceProvider)
@@ -266,26 +212,17 @@ public class ContextObject : IDictionary<string, object?>
         return Deserialize(json, jsonConverterService);
     }
 
-    public static ContextObject Deserialize(
-        string? json,
-        IJsonConverterService jsonConverterService
-    )
+    public static ContextObject Deserialize(string? json, IJsonConverterService jsonConverterService)
     {
         var jsonConverters = jsonConverterService.GetConverters();
         return Deserialize(json, jsonConverters);
     }
 
-    public static ContextObject Deserialize(
-        string? json,
-        IEnumerable<JsonConverter>? jsonConverters = null
-    )
+    public static ContextObject Deserialize(string? json, IEnumerable<JsonConverter>? jsonConverters = null)
     {
         if (string.IsNullOrWhiteSpace(json))
             return [];
 
-        return JsonSerializer.Deserialize<ContextObject>(
-            json,
-            new JsonSerializerOptions().BuildOptions(jsonConverters)
-        )!;
+        return JsonSerializer.Deserialize<ContextObject>(json, new JsonSerializerOptions().BuildOptions(jsonConverters))!;
     }
 }

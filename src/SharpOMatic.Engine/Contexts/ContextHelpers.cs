@@ -2,12 +2,8 @@
 
 public static class ContextHelpers
 {
-    private static readonly JsonSerializerOptions ContextJsonOptions =
-        new JsonSerializerOptions().BuildOptions();
-    private static readonly JsonSerializerOptions AssetRefJsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true,
-    };
+    private static readonly JsonSerializerOptions ContextJsonOptions = new JsonSerializerOptions().BuildOptions();
+    private static readonly JsonSerializerOptions AssetRefJsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public static async Task<object?> ResolveContextEntryValue(
         IServiceProvider serviceProvider,
@@ -24,27 +20,21 @@ public static class ContextHelpers
         {
             case ContextEntryType.Bool:
                 if (!bool.TryParse(entry.EntryValue, out var boolValue))
-                    throw new SharpOMaticException(
-                        $"Input entry '{entry.InputPath}' value could not be parsed as boolean."
-                    );
+                    throw new SharpOMaticException($"Input entry '{entry.InputPath}' value could not be parsed as boolean.");
 
                 entryValue = boolValue;
                 break;
 
             case ContextEntryType.Int:
                 if (!int.TryParse(entry.EntryValue, out var intValue))
-                    throw new SharpOMaticException(
-                        $"Input entry '{entry.InputPath}' value could not be parsed as an int."
-                    );
+                    throw new SharpOMaticException($"Input entry '{entry.InputPath}' value could not be parsed as an int.");
 
                 entryValue = intValue;
                 break;
 
             case ContextEntryType.Double:
                 if (!double.TryParse(entry.EntryValue, out var doubleValue))
-                    throw new SharpOMaticException(
-                        $"Input entry '{entry.InputPath}' value could not be parsed as a double."
-                    );
+                    throw new SharpOMaticException($"Input entry '{entry.InputPath}' value could not be parsed as a double.");
 
                 entryValue = doubleValue;
                 break;
@@ -60,9 +50,7 @@ public static class ContextHelpers
                 }
                 catch
                 {
-                    throw new SharpOMaticException(
-                        $"Input entry '{entry.InputPath}' value could not be parsed as json."
-                    );
+                    throw new SharpOMaticException($"Input entry '{entry.InputPath}' value could not be parsed as json.");
                 }
                 break;
 
@@ -70,8 +58,7 @@ public static class ContextHelpers
                 if (!string.IsNullOrWhiteSpace(entry.EntryValue))
                 {
                     var options = scriptOptionsService.GetScriptOptions();
-                    var repositoryService =
-                        serviceProvider.GetRequiredService<IRepositoryService>();
+                    var repositoryService = serviceProvider.GetRequiredService<IRepositoryService>();
                     var assetStore = serviceProvider.GetRequiredService<IAssetStore>();
                     var globals = new ScriptCodeContext()
                     {
@@ -82,20 +69,13 @@ public static class ContextHelpers
 
                     try
                     {
-                        entryValue = await CSharpScript.EvaluateAsync(
-                            entry.EntryValue,
-                            options,
-                            globals,
-                            typeof(ScriptCodeContext)
-                        );
+                        entryValue = await CSharpScript.EvaluateAsync(entry.EntryValue, options, globals, typeof(ScriptCodeContext));
                     }
                     catch (CompilationErrorException e1)
                     {
                         // Return the first 3 errors only
                         StringBuilder sb = new();
-                        sb.AppendLine(
-                            $"Input entry '{entry.InputPath}' expression failed compilation.\n"
-                        );
+                        sb.AppendLine($"Input entry '{entry.InputPath}' expression failed compilation.\n");
                         foreach (var diagnostic in e1.Diagnostics.Take(3))
                             sb.AppendLine(diagnostic.ToString());
 
@@ -104,9 +84,7 @@ public static class ContextHelpers
                     catch (InvalidOperationException e2)
                     {
                         StringBuilder sb = new();
-                        sb.AppendLine(
-                            $"Input entry '{entry.InputPath}' expression failed during execution.\n"
-                        );
+                        sb.AppendLine($"Input entry '{entry.InputPath}' expression failed during execution.\n");
                         sb.Append(e2.Message);
                         throw new SharpOMaticException(sb.ToString());
                     }
@@ -132,43 +110,33 @@ public static class ContextHelpers
     private static AssetRef ParseAssetRef(string rawValue, string inputPath)
     {
         if (string.IsNullOrWhiteSpace(rawValue))
-            throw new SharpOMaticException(
-                $"Input entry '{inputPath}' asset reference cannot be empty."
-            );
+            throw new SharpOMaticException($"Input entry '{inputPath}' asset reference cannot be empty.");
 
         try
         {
             var asset = JsonSerializer.Deserialize<AssetRef>(rawValue, AssetRefJsonOptions);
             if (asset is null)
-                throw new SharpOMaticException(
-                    $"Input entry '{inputPath}' asset reference cannot be null."
-                );
+                throw new SharpOMaticException($"Input entry '{inputPath}' asset reference cannot be null.");
 
             ValidateAssetRef(asset, inputPath);
             return asset;
         }
         catch (JsonException)
         {
-            throw new SharpOMaticException(
-                $"Input entry '{inputPath}' value could not be parsed as an asset reference."
-            );
+            throw new SharpOMaticException($"Input entry '{inputPath}' value could not be parsed as an asset reference.");
         }
     }
 
     private static ContextList ParseAssetRefList(string rawValue, string inputPath)
     {
         if (string.IsNullOrWhiteSpace(rawValue))
-            throw new SharpOMaticException(
-                $"Input entry '{inputPath}' asset list cannot be empty."
-            );
+            throw new SharpOMaticException($"Input entry '{inputPath}' asset list cannot be empty.");
 
         try
         {
             var assets = JsonSerializer.Deserialize<List<AssetRef>>(rawValue, AssetRefJsonOptions);
             if (assets is null)
-                throw new SharpOMaticException(
-                    $"Input entry '{inputPath}' asset list cannot be null."
-                );
+                throw new SharpOMaticException($"Input entry '{inputPath}' asset list cannot be null.");
 
             var list = new ContextList();
             for (var i = 0; i < assets.Count; i += 1)
@@ -182,17 +150,13 @@ public static class ContextHelpers
         }
         catch (JsonException)
         {
-            throw new SharpOMaticException(
-                $"Input entry '{inputPath}' value could not be parsed as an asset list."
-            );
+            throw new SharpOMaticException($"Input entry '{inputPath}' value could not be parsed as an asset list.");
         }
     }
 
     private static void ValidateAssetRef(AssetRef asset, string inputPath, int? index = null)
     {
-        var label = index.HasValue
-            ? $"Input entry '{inputPath}' asset at index {index.Value}"
-            : $"Input entry '{inputPath}' asset";
+        var label = index.HasValue ? $"Input entry '{inputPath}' asset at index {index.Value}" : $"Input entry '{inputPath}' asset";
 
         if (asset.AssetId == Guid.Empty)
             throw new SharpOMaticException($"{label} must include a valid assetId.");
@@ -237,24 +201,13 @@ public static class ContextHelpers
         );
     }
 
-    public static async Task<string> SubstituteValuesAsync(
-        string input,
-        ContextObject context,
-        IRepositoryService repositoryService,
-        IAssetStore assetStore,
-        Guid? runId
-    )
+    public static async Task<string> SubstituteValuesAsync(string input, ContextObject context, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId)
     {
         var substituted = SubstituteValues(input, context);
         return await SubstituteAssetValuesAsync(substituted, repositoryService, assetStore, runId);
     }
 
-    private static async Task<string> SubstituteAssetValuesAsync(
-        string input,
-        IRepositoryService repositoryService,
-        IAssetStore assetStore,
-        Guid? runId
-    )
+    private static async Task<string> SubstituteAssetValuesAsync(string input, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId)
     {
         if (string.IsNullOrWhiteSpace(input))
             return input;
@@ -271,12 +224,7 @@ public static class ContextHelpers
             sb.Append(input, lastIndex, match.Index - lastIndex);
 
             var assetName = match.Groups[1].Value.Trim();
-            var replacement = await ResolveAssetTextAsync(
-                assetName,
-                repositoryService,
-                assetStore,
-                runId
-            );
+            var replacement = await ResolveAssetTextAsync(assetName, repositoryService, assetStore, runId);
             sb.Append(replacement);
 
             lastIndex = match.Index + match.Length;
@@ -286,12 +234,7 @@ public static class ContextHelpers
         return sb.ToString();
     }
 
-    private static async Task<string> ResolveAssetTextAsync(
-        string assetName,
-        IRepositoryService repositoryService,
-        IAssetStore assetStore,
-        Guid? runId
-    )
+    private static async Task<string> ResolveAssetTextAsync(string assetName, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId)
     {
         if (string.IsNullOrWhiteSpace(assetName))
             return string.Empty;
@@ -319,6 +262,5 @@ public static class ContextHelpers
         }
     }
 
-    private static bool IsTextMediaType(string mediaType) =>
-        mediaType.StartsWith("text/", StringComparison.OrdinalIgnoreCase);
+    private static bool IsTextMediaType(string mediaType) => mediaType.StartsWith("text/", StringComparison.OrdinalIgnoreCase);
 }

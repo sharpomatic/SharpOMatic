@@ -7,8 +7,7 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch",
-                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddSwitch("switch", new WorkflowBuilder.SwitchChoice("default", ""))
             .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
             .Connect("start", "switch")
             .Connect("switch.default", "default")
@@ -30,9 +29,7 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch", 
-                new WorkflowBuilder.SwitchChoice("first", "true"),
-                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddSwitch("switch", new WorkflowBuilder.SwitchChoice("first", "true"), new WorkflowBuilder.SwitchChoice("default", ""))
             .AddCode("first", "Context.Set<string>(\"result\", \"first\");")
             .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
             .Connect("start", "switch")
@@ -56,9 +53,7 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch",
-                new WorkflowBuilder.SwitchChoice("first", "false"),
-                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddSwitch("switch", new WorkflowBuilder.SwitchChoice("first", "false"), new WorkflowBuilder.SwitchChoice("default", ""))
             .AddCode("first", "Context.Set<string>(\"result\", \"first\");")
             .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
             .Connect("start", "switch")
@@ -82,10 +77,12 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch",
+            .AddSwitch(
+                "switch",
                 new WorkflowBuilder.SwitchChoice("first", "return Context.Get<int>(\"value\") < 50;"),
                 new WorkflowBuilder.SwitchChoice("second", "return Context.Get<int>(\"value\") < 100;"),
-                new WorkflowBuilder.SwitchChoice("default", ""))
+                new WorkflowBuilder.SwitchChoice("default", "")
+            )
             .AddCode("first", "Context.Set<string>(\"result\", \"first\");")
             .AddCode("second", "Context.Set<string>(\"result\", \"second\");")
             .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
@@ -113,10 +110,12 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch",
+            .AddSwitch(
+                "switch",
                 new WorkflowBuilder.SwitchChoice("first", "return Context.Get<int>(\"value\") < 50;"),
                 new WorkflowBuilder.SwitchChoice("second", "return Context.Get<int>(\"value\") < 100;"),
-                new WorkflowBuilder.SwitchChoice("default", ""))
+                new WorkflowBuilder.SwitchChoice("default", "")
+            )
             .AddCode("first", "Context.Set<string>(\"result\", \"first\");")
             .AddCode("second", "Context.Set<string>(\"result\", \"second\");")
             .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
@@ -144,10 +143,12 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch",
+            .AddSwitch(
+                "switch",
                 new WorkflowBuilder.SwitchChoice("first", "return Context.Get<int>(\"value\") < 50;"),
                 new WorkflowBuilder.SwitchChoice("second", "return Context.Get<int>(\"value\") < 100;"),
-                new WorkflowBuilder.SwitchChoice("default", ""))
+                new WorkflowBuilder.SwitchChoice("default", "")
+            )
             .AddCode("first", "Context.Set<string>(\"result\", \"first\");")
             .AddCode("second", "Context.Set<string>(\"result\", \"second\");")
             .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
@@ -175,9 +176,7 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch",
-                new WorkflowBuilder.SwitchChoice("first", "true"),
-                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddSwitch("switch", new WorkflowBuilder.SwitchChoice("first", "true"), new WorkflowBuilder.SwitchChoice("default", ""))
             .AddCode("first", "Context.Set<string>(\"result\", \"first\");")
             .Connect("start", "switch")
             .Connect("switch.first", "first")
@@ -195,9 +194,7 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch",
-                new WorkflowBuilder.SwitchChoice("first", "return null;"),
-                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddSwitch("switch", new WorkflowBuilder.SwitchChoice("first", "return null;"), new WorkflowBuilder.SwitchChoice("default", ""))
             .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
             .Connect("start", "switch")
             .Connect("switch.default", "default")
@@ -215,9 +212,7 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch",
-                new WorkflowBuilder.SwitchChoice("first", "return 123;"),
-                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddSwitch("switch", new WorkflowBuilder.SwitchChoice("first", "return 123;"), new WorkflowBuilder.SwitchChoice("default", ""))
             .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
             .Connect("start", "switch")
             .Connect("switch.default", "default")
@@ -235,9 +230,7 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch",
-                new WorkflowBuilder.SwitchChoice("first", "return missing;"),
-                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddSwitch("switch", new WorkflowBuilder.SwitchChoice("first", "return missing;"), new WorkflowBuilder.SwitchChoice("default", ""))
             .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
             .Connect("start", "switch")
             .Connect("switch.default", "default")
@@ -256,9 +249,7 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch",
-                new WorkflowBuilder.SwitchChoice("first", "throw new System.InvalidOperationException(\"Boom\");"),
-                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddSwitch("switch", new WorkflowBuilder.SwitchChoice("first", "throw new System.InvalidOperationException(\"Boom\");"), new WorkflowBuilder.SwitchChoice("default", ""))
             .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
             .Connect("start", "switch")
             .Connect("switch.default", "default")
@@ -277,9 +268,7 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch",
-                new WorkflowBuilder.SwitchChoice("first", "true"),
-                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddSwitch("switch", new WorkflowBuilder.SwitchChoice("first", "true"), new WorkflowBuilder.SwitchChoice("default", ""))
             .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
             .Connect("start", "switch")
             .Connect("switch.default", "default")
@@ -301,10 +290,7 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch",
-                new WorkflowBuilder.SwitchChoice("first", "true"),
-                new WorkflowBuilder.SwitchChoice("second", "true"),
-                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddSwitch("switch", new WorkflowBuilder.SwitchChoice("first", "true"), new WorkflowBuilder.SwitchChoice("second", "true"), new WorkflowBuilder.SwitchChoice("default", ""))
             .AddCode("second", "Context.Set<string>(\"result\", \"second\");")
             .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
             .Connect("start", "switch")
@@ -328,9 +314,7 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch",
-                new WorkflowBuilder.SwitchChoice("first", "   "),
-                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddSwitch("switch", new WorkflowBuilder.SwitchChoice("first", "   "), new WorkflowBuilder.SwitchChoice("default", ""))
             .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
             .Connect("start", "switch")
             .Connect("switch.default", "default")
@@ -352,9 +336,7 @@ public sealed class SwitchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddSwitch("switch",
-                new WorkflowBuilder.SwitchChoice("first", "return missing1 + missing2 + missing3 + missing4;"),
-                new WorkflowBuilder.SwitchChoice("default", ""))
+            .AddSwitch("switch", new WorkflowBuilder.SwitchChoice("first", "return missing1 + missing2 + missing3 + missing4;"), new WorkflowBuilder.SwitchChoice("default", ""))
             .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
             .Connect("start", "switch")
             .Connect("switch.default", "default")

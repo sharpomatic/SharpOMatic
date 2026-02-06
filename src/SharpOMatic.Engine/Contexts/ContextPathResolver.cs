@@ -15,13 +15,7 @@ internal static class ContextPathResolver
         public static PathPart At(int index) => new(PathPartKind.Index, null, index);
     }
 
-    public static bool TryGetValue(
-        object? root,
-        string path,
-        bool requireLeadingIndex,
-        bool throwOnError,
-        out object? value
-    )
+    public static bool TryGetValue(object? root, string path, bool requireLeadingIndex, bool throwOnError, out object? value)
     {
         value = null;
 
@@ -47,9 +41,7 @@ internal static class ContextPathResolver
                     if (current is not ContextObject co)
                     {
                         if (throwOnError)
-                            throw new SharpOMaticException(
-                                $"'{path}' segment '{part.Name}' expects a ContextObject, found '{TypeNameOf(current)}'."
-                            );
+                            throw new SharpOMaticException($"'{path}' segment '{part.Name}' expects a ContextObject, found '{TypeNameOf(current)}'.");
 
                         return false;
                     }
@@ -57,9 +49,7 @@ internal static class ContextPathResolver
                     if (!co.TryGetValue(part.Name!, out current))
                     {
                         if (throwOnError)
-                            throw new SharpOMaticException(
-                                $"Missing '{part.Name}' in path '{path}'."
-                            );
+                            throw new SharpOMaticException($"Missing '{part.Name}' in path '{path}'.");
 
                         return false;
                     }
@@ -69,18 +59,14 @@ internal static class ContextPathResolver
                     if (current is not ContextList list)
                     {
                         if (throwOnError)
-                            throw new SharpOMaticException(
-                                $"'{path}' index [{part.Index}] expects a ContextList, found '{TypeNameOf(current)}'."
-                            );
+                            throw new SharpOMaticException($"'{path}' index [{part.Index}] expects a ContextList, found '{TypeNameOf(current)}'.");
 
                         return false;
                     }
                     if (part.Index < 0 || part.Index >= list.Count)
                     {
                         if (throwOnError)
-                            throw new SharpOMaticException(
-                                $"Index {part.Index} out of range for list (size {list.Count}) in path '{path}'."
-                            );
+                            throw new SharpOMaticException($"Index {part.Index} out of range for list (size {list.Count}) in path '{path}'.");
 
                         return false;
                     }
@@ -126,13 +112,7 @@ internal static class ContextPathResolver
         return false;
     }
 
-    public static bool TrySetValue(
-        object? root,
-        string path,
-        object? newValue,
-        bool requireLeadingIndex,
-        bool throwOnError
-    )
+    public static bool TrySetValue(object? root, string path, object? newValue, bool requireLeadingIndex, bool throwOnError)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
@@ -166,9 +146,7 @@ internal static class ContextPathResolver
                 if (current is not ContextObject co)
                 {
                     if (throwOnError)
-                        throw new SharpOMaticException(
-                            $"'{path}' segment '{part.Name}' expects a ContextObject, found '{TypeNameOf(current)}'."
-                        );
+                        throw new SharpOMaticException($"'{path}' segment '{part.Name}' expects a ContextObject, found '{TypeNameOf(current)}'.");
 
                     return false;
                 }
@@ -186,9 +164,7 @@ internal static class ContextPathResolver
                     else
                     {
                         if (throwOnError)
-                            throw new SharpOMaticException(
-                                $"Missing list '{part.Name}' in path '{path}'. Lists are not auto-created."
-                            );
+                            throw new SharpOMaticException($"Missing list '{part.Name}' in path '{path}'. Lists are not auto-created.");
 
                         return false;
                     }
@@ -203,9 +179,7 @@ internal static class ContextPathResolver
                     else
                     {
                         if (throwOnError)
-                            throw new SharpOMaticException(
-                                $"'{part.Name}' in path '{path}' is '{TypeNameOf(child)}', not a ContextObject."
-                            );
+                            throw new SharpOMaticException($"'{part.Name}' in path '{path}' is '{TypeNameOf(child)}', not a ContextObject.");
                         return false;
                     }
                 }
@@ -218,9 +192,7 @@ internal static class ContextPathResolver
                     else
                     {
                         if (throwOnError)
-                            throw new SharpOMaticException(
-                                $"'{part.Name}' in path '{path}' is '{TypeNameOf(child)}', not a ContextList."
-                            );
+                            throw new SharpOMaticException($"'{part.Name}' in path '{path}' is '{TypeNameOf(child)}', not a ContextList.");
                         return false;
                     }
                 }
@@ -230,9 +202,7 @@ internal static class ContextPathResolver
                 if (current is not ContextList list)
                 {
                     if (throwOnError)
-                        throw new SharpOMaticException(
-                            $"'{path}' index [{part.Index}] expects a ContextList, found '{TypeNameOf(current)}'."
-                        );
+                        throw new SharpOMaticException($"'{path}' index [{part.Index}] expects a ContextList, found '{TypeNameOf(current)}'.");
 
                     return false;
                 }
@@ -240,9 +210,7 @@ internal static class ContextPathResolver
                 if (part.Index < 0 || part.Index >= list.Count)
                 {
                     if (throwOnError)
-                        throw new SharpOMaticException(
-                            $"Index {part.Index} out of range for list (size {list.Count}) in path '{path}'."
-                        );
+                        throw new SharpOMaticException($"Index {part.Index} out of range for list (size {list.Count}) in path '{path}'.");
 
                     return false;
                 }
@@ -257,9 +225,7 @@ internal static class ContextPathResolver
                     else
                     {
                         if (throwOnError)
-                            throw new SharpOMaticException(
-                                $"Element at index {part.Index} in path '{path}' is '{TypeNameOf(elem)}', not a ContextObject."
-                            );
+                            throw new SharpOMaticException($"Element at index {part.Index} in path '{path}' is '{TypeNameOf(elem)}', not a ContextObject.");
                         return false;
                     }
                 }
@@ -272,9 +238,7 @@ internal static class ContextPathResolver
                     else
                     {
                         if (throwOnError)
-                            throw new SharpOMaticException(
-                                $"Element at index {part.Index} in path '{path}' is '{TypeNameOf(elem)}', not a ContextList."
-                            );
+                            throw new SharpOMaticException($"Element at index {part.Index} in path '{path}' is '{TypeNameOf(elem)}', not a ContextList.");
                         return false;
                     }
                 }
@@ -288,9 +252,7 @@ internal static class ContextPathResolver
             if (current is not ContextObject co)
             {
                 if (throwOnError)
-                    throw new SharpOMaticException(
-                        $"Final segment '{last.Name}' expects a ContextObject in path '{path}'."
-                    );
+                    throw new SharpOMaticException($"Final segment '{last.Name}' expects a ContextObject in path '{path}'.");
 
                 return false;
             }
@@ -305,9 +267,7 @@ internal static class ContextPathResolver
             if (current is not ContextList list)
             {
                 if (throwOnError)
-                    throw new SharpOMaticException(
-                        $"Final index [{last.Index}] expects a ContextList in path '{path}'."
-                    );
+                    throw new SharpOMaticException($"Final index [{last.Index}] expects a ContextList in path '{path}'.");
 
                 return false;
             }
@@ -315,9 +275,7 @@ internal static class ContextPathResolver
             if (last.Index < 0 || last.Index >= list.Count)
             {
                 if (throwOnError)
-                    throw new SharpOMaticException(
-                        $"Index {last.Index} out of range for list (size {list.Count}) in path '{path}'."
-                    );
+                    throw new SharpOMaticException($"Index {last.Index} out of range for list (size {list.Count}) in path '{path}'.");
 
                 return false;
             }
@@ -328,12 +286,7 @@ internal static class ContextPathResolver
         return true;
     }
 
-    private static bool TryParsePath(
-        string path,
-        bool requireLeadingIndex,
-        bool throwOnError,
-        out List<PathPart>? parts
-    )
+    private static bool TryParsePath(string path, bool requireLeadingIndex, bool throwOnError, out List<PathPart>? parts)
     {
         parts = null;
         var list = new List<PathPart>();
@@ -402,9 +355,7 @@ internal static class ContextPathResolver
                 if (!int.TryParse(span, out var index))
                 {
                     if (throwOnError)
-                        throw new SharpOMaticException(
-                            $"Invalid index '{span.ToString()}' in path '{path}'."
-                        );
+                        throw new SharpOMaticException($"Invalid index '{span.ToString()}' in path '{path}'.");
 
                     return false;
                 }
@@ -430,9 +381,7 @@ internal static class ContextPathResolver
                 else if (path[i] != '[')
                 {
                     if (throwOnError)
-                        throw new SharpOMaticException(
-                            $"Unexpected character '{path[i]}' in path '{path}'."
-                        );
+                        throw new SharpOMaticException($"Unexpected character '{path[i]}' in path '{path}'.");
 
                     return false;
                 }
@@ -450,9 +399,7 @@ internal static class ContextPathResolver
         if (requireLeadingIndex && !leadingIsIndex)
         {
             if (throwOnError)
-                throw new SharpOMaticException(
-                    $"Path '{path}' must start with an index when navigating a ContextList instance."
-                );
+                throw new SharpOMaticException($"Path '{path}' must start with an index when navigating a ContextList instance.");
 
             return false;
         }
@@ -461,15 +408,9 @@ internal static class ContextPathResolver
         return true;
     }
 
-    private static string TypeNameOf(object? o) =>
-        o is null ? "null" : o.GetType().FullName ?? o.GetType().Name;
+    private static string TypeNameOf(object? o) => o is null ? "null" : o.GetType().FullName ?? o.GetType().Name;
 
-    public static bool TryRemove(
-        object? root,
-        string path,
-        bool requireLeadingIndex,
-        bool throwOnError
-    )
+    public static bool TryRemove(object? root, string path, bool requireLeadingIndex, bool throwOnError)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
@@ -479,11 +420,7 @@ internal static class ContextPathResolver
             return false;
         }
 
-        if (
-            !TryParsePath(path, requireLeadingIndex, throwOnError, out var parts)
-            || parts is null
-            || parts.Count == 0
-        )
+        if (!TryParsePath(path, requireLeadingIndex, throwOnError, out var parts) || parts is null || parts.Count == 0)
         {
             if (throwOnError)
                 throw new SharpOMaticException("Path contains no segments.");
@@ -504,9 +441,7 @@ internal static class ContextPathResolver
                 if (current is not ContextObject co)
                 {
                     if (throwOnError)
-                        throw new SharpOMaticException(
-                            $"'{path}' segment '{part.Name}' expects a ContextObject, found '{TypeNameOf(current)}'."
-                        );
+                        throw new SharpOMaticException($"'{path}' segment '{part.Name}' expects a ContextObject, found '{TypeNameOf(current)}'.");
 
                     return false;
                 }
@@ -524,9 +459,7 @@ internal static class ContextPathResolver
                     else
                     {
                         if (throwOnError)
-                            throw new SharpOMaticException(
-                                $"'{part.Name}' in path '{path}' is '{TypeNameOf(child)}', not a ContextObject."
-                            );
+                            throw new SharpOMaticException($"'{part.Name}' in path '{path}' is '{TypeNameOf(child)}', not a ContextObject.");
 
                         return false;
                     }
@@ -538,9 +471,7 @@ internal static class ContextPathResolver
                     else
                     {
                         if (throwOnError)
-                            throw new SharpOMaticException(
-                                $"'{part.Name}' in path '{path}' is '{TypeNameOf(child)}', not a ContextList."
-                            );
+                            throw new SharpOMaticException($"'{part.Name}' in path '{path}' is '{TypeNameOf(child)}', not a ContextList.");
 
                         return false;
                     }
@@ -551,9 +482,7 @@ internal static class ContextPathResolver
                 if (current is not ContextList list)
                 {
                     if (throwOnError)
-                        throw new SharpOMaticException(
-                            $"'{path}' index [{part.Index}] expects a ContextList, found '{TypeNameOf(current)}'."
-                        );
+                        throw new SharpOMaticException($"'{path}' index [{part.Index}] expects a ContextList, found '{TypeNameOf(current)}'.");
 
                     return false;
                 }
@@ -572,9 +501,7 @@ internal static class ContextPathResolver
                     else
                     {
                         if (throwOnError)
-                            throw new SharpOMaticException(
-                                $"Element at index {part.Index} in path '{path}' is '{TypeNameOf(elem)}', not a ContextObject."
-                            );
+                            throw new SharpOMaticException($"Element at index {part.Index} in path '{path}' is '{TypeNameOf(elem)}', not a ContextObject.");
 
                         return false;
                     }
@@ -586,9 +513,7 @@ internal static class ContextPathResolver
                     else
                     {
                         if (throwOnError)
-                            throw new SharpOMaticException(
-                                $"Element at index {part.Index} in path '{path}' is '{TypeNameOf(elem)}', not a ContextList."
-                            );
+                            throw new SharpOMaticException($"Element at index {part.Index} in path '{path}' is '{TypeNameOf(elem)}', not a ContextList.");
 
                         return false;
                     }
@@ -603,9 +528,7 @@ internal static class ContextPathResolver
             if (current is not ContextObject co)
             {
                 if (throwOnError)
-                    throw new SharpOMaticException(
-                        $"Final segment '{last.Name}' expects a ContextObject in path '{path}'."
-                    );
+                    throw new SharpOMaticException($"Final segment '{last.Name}' expects a ContextObject in path '{path}'.");
 
                 return false;
             }
@@ -616,9 +539,7 @@ internal static class ContextPathResolver
             if (current is not ContextList list)
             {
                 if (throwOnError)
-                    throw new SharpOMaticException(
-                        $"Final index [{last.Index}] expects a ContextList in path '{path}'."
-                    );
+                    throw new SharpOMaticException($"Final index [{last.Index}] expects a ContextList in path '{path}'.");
 
                 return false;
             }

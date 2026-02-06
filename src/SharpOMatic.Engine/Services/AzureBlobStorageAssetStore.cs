@@ -20,9 +20,7 @@ public class AzureBlobStorageAssetStore : IAssetStore
         var hasServiceUri = !string.IsNullOrWhiteSpace(settings.ServiceUri);
 
         if (hasConnectionString == hasServiceUri)
-            throw new SharpOMaticException(
-                "Specify exactly one of ConnectionString or ServiceUri for Azure Blob Storage."
-            );
+            throw new SharpOMaticException("Specify exactly one of ConnectionString or ServiceUri for Azure Blob Storage.");
 
         if (hasConnectionString)
             _containerClient = new BlobContainerClient(settings.ConnectionString, containerName);
@@ -36,28 +34,17 @@ public class AzureBlobStorageAssetStore : IAssetStore
         }
     }
 
-    public async Task SaveAsync(
-        string storageKey,
-        Stream content,
-        CancellationToken cancellationToken = default
-    )
+    public async Task SaveAsync(string storageKey, Stream content, CancellationToken cancellationToken = default)
     {
         if (content is null)
             throw new SharpOMaticException("Asset content is required.");
 
         await EnsureContainerAsync(cancellationToken);
         var blobClient = GetBlobClient(storageKey);
-        await blobClient.UploadAsync(
-            content,
-            overwrite: true,
-            cancellationToken: cancellationToken
-        );
+        await blobClient.UploadAsync(content, overwrite: true, cancellationToken: cancellationToken);
     }
 
-    public async Task<Stream> OpenReadAsync(
-        string storageKey,
-        CancellationToken cancellationToken = default
-    )
+    public async Task<Stream> OpenReadAsync(string storageKey, CancellationToken cancellationToken = default)
     {
         await EnsureContainerAsync(cancellationToken);
         var blobClient = GetBlobClient(storageKey);
@@ -68,10 +55,7 @@ public class AzureBlobStorageAssetStore : IAssetStore
         return await blobClient.OpenReadAsync(cancellationToken: cancellationToken);
     }
 
-    public async Task<bool> ExistsAsync(
-        string storageKey,
-        CancellationToken cancellationToken = default
-    )
+    public async Task<bool> ExistsAsync(string storageKey, CancellationToken cancellationToken = default)
     {
         await EnsureContainerAsync(cancellationToken);
         var blobClient = GetBlobClient(storageKey);

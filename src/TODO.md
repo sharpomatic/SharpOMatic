@@ -28,7 +28,6 @@
 ### Editor
 
 - Fan In and Batch need to specify the path to merge with output as default
-- EditNode, copy section. So it can move, upsert, duplicate then delete
 - Cut, copy and paste of workflow nodes/connectors
 
 ### ChatClient

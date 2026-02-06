@@ -2,11 +2,7 @@
 
 public class ContextObjectConverter : JsonConverter<ContextObject>
 {
-    public override ContextObject? Read(
-        ref Utf8JsonReader reader,
-        Type typeToConvert,
-        JsonSerializerOptions options
-    )
+    public override ContextObject? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.Null)
             return null;
@@ -30,11 +26,7 @@ public class ContextObjectConverter : JsonConverter<ContextObject>
         return obj;
     }
 
-    public override void Write(
-        Utf8JsonWriter writer,
-        ContextObject value,
-        JsonSerializerOptions options
-    )
+    public override void Write(Utf8JsonWriter writer, ContextObject value, JsonSerializerOptions options)
     {
         writer.WriteStartObject();
 

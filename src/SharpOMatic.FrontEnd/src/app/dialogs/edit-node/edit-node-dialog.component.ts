@@ -107,15 +107,22 @@ export class EditNodeDialogComponent implements OnInit {
     }
   }
 
-  onInsertUpsertEntry(): void {
-    const entries = this.node.edits().entries();
-    const deleteIndex = entries.findIndex(
-      (entry) => entry.purpose() === ContextEntryPurpose.Delete,
+  onInsertMoveEntry(): void {
+    this.insertEntryBefore(
+      [ContextEntryPurpose.Duplicate, ContextEntryPurpose.Upsert, ContextEntryPurpose.Delete],
+      ContextEntryPurpose.Move,
     );
-    const targetIndex = deleteIndex === -1 ? entries.length : deleteIndex;
-    this.node
-      .edits()
-      .insertEntry(targetIndex, { purpose: ContextEntryPurpose.Upsert });
+  }
+
+  onInsertDuplicateEntry(): void {
+    this.insertEntryBefore(
+      [ContextEntryPurpose.Upsert, ContextEntryPurpose.Delete],
+      ContextEntryPurpose.Duplicate,
+    );
+  }
+
+  onInsertUpsertEntry(): void {
+    this.insertEntryBefore([ContextEntryPurpose.Delete], ContextEntryPurpose.Upsert);
   }
 
   onAppendDeleteEntry(): void {
@@ -189,17 +196,40 @@ export class EditNodeDialogComponent implements OnInit {
   }
 
   hasUpsertEntries(): boolean {
-    return this.node
-      .edits()
-      .entries()
-      .some((entry) => entry.purpose() === ContextEntryPurpose.Upsert);
+    return this.hasEntriesByPurpose(ContextEntryPurpose.Upsert);
+  }
+
+  hasMoveEntries(): boolean {
+    return this.hasEntriesByPurpose(ContextEntryPurpose.Move);
+  }
+
+  hasDuplicateEntries(): boolean {
+    return this.hasEntriesByPurpose(ContextEntryPurpose.Duplicate);
   }
 
   hasDeleteEntries(): boolean {
+    return this.hasEntriesByPurpose(ContextEntryPurpose.Delete);
+  }
+
+  private insertEntryBefore(
+    targetPurposes: ContextEntryPurpose[],
+    newPurpose: ContextEntryPurpose,
+  ): void {
+    const entries = this.node.edits().entries();
+    const targetIndex = entries.findIndex((entry) =>
+      targetPurposes.includes(entry.purpose()),
+    );
+
+    this.node.edits().insertEntry(targetIndex === -1 ? entries.length : targetIndex, {
+      purpose: newPurpose,
+    });
+  }
+
+  private hasEntriesByPurpose(purpose: ContextEntryPurpose): boolean {
     return this.node
       .edits()
       .entries()
-      .some((entry) => entry.purpose() === ContextEntryPurpose.Delete);
+      .some((entry) => entry.purpose() === purpose);
   }
 
   private hasSiblingEntry(entry: ContextEntryEntity, step: number): boolean {

@@ -5,31 +5,18 @@ using SharpOMatic.Engine.Repository;
 
 namespace SharpOMatic.Engine.Services;
 
-public class RepositoryService(
-    IDbContextFactory<SharpOMaticDbContext> dbContextFactory,
-    IAssetStore? assetStore = null
-) : IRepositoryService
+public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContextFactory, IAssetStore? assetStore = null) : IRepositoryService
 {
     private const string SECRET_OBFUSCATION = "********";
 
-    private static readonly JsonSerializerOptions _options = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new NodeEntityConverter() },
-    };
+    private static readonly JsonSerializerOptions _options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase, Converters = { new NodeEntityConverter() } };
 
     // ------------------------------------------------
     // Workflow Operations
     // ------------------------------------------------
     public async Task<List<WorkflowSummary>> GetWorkflowSummaries()
     {
-        return await GetWorkflowSummaries(
-            null,
-            WorkflowSortField.Name,
-            SortDirection.Ascending,
-            0,
-            0
-        );
+        return await GetWorkflowSummaries(null, WorkflowSortField.Name, SortDirection.Ascending, 0, 0);
     }
 
     public async Task<int> GetWorkflowSummaryCount(string? search)
@@ -39,13 +26,7 @@ public class RepositoryService(
         return await workflows.CountAsync();
     }
 
-    public async Task<List<WorkflowSummary>> GetWorkflowSummaries(
-        string? search,
-        WorkflowSortField sortBy,
-        SortDirection sortDirection,
-        int skip,
-        int take
-    )
+    public async Task<List<WorkflowSummary>> GetWorkflowSummaries(string? search, WorkflowSortField sortBy, SortDirection sortDirection, int skip, int take)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -73,11 +54,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var workflow = await (
-            from w in dbContext.Workflows
-            where w.WorkflowId == workflowId
-            select w
-        )
+        var workflow = await (from w in dbContext.Workflows where w.WorkflowId == workflowId select w)
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
@@ -90,10 +67,7 @@ public class RepositoryService(
                 Name = workflow.Named,
                 Description = workflow.Description,
                 Nodes = JsonSerializer.Deserialize<NodeEntity[]>(workflow.Nodes, _options)!,
-                Connections = JsonSerializer.Deserialize<ConnectionEntity[]>(
-                    workflow.Connections,
-                    _options
-                )!,
+                Connections = JsonSerializer.Deserialize<ConnectionEntity[]>(workflow.Connections, _options)!,
             };
     }
 
@@ -101,11 +75,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entry = await (
-            from w in dbContext.Workflows
-            where w.WorkflowId == workflow.Id
-            select w
-        ).FirstOrDefaultAsync();
+        var entry = await (from w in dbContext.Workflows where w.WorkflowId == workflow.Id select w).FirstOrDefaultAsync();
 
         if (entry is null)
         {
@@ -134,19 +104,12 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var workflow = await (
-            from w in dbContext.Workflows
-            where w.WorkflowId == workflowId
-            select w
-        ).FirstOrDefaultAsync();
+        var workflow = await (from w in dbContext.Workflows where w.WorkflowId == workflowId select w).FirstOrDefaultAsync();
 
         if (workflow is null)
             throw new SharpOMaticException($"Workflow '{workflowId}' cannot be found.");
 
-        var runIds = await dbContext
-            .Runs.Where(r => r.WorkflowId == workflowId)
-            .Select(r => r.RunId)
-            .ToListAsync();
+        var runIds = await dbContext.Runs.Where(r => r.WorkflowId == workflowId).Select(r => r.RunId).ToListAsync();
 
         await DeleteAssetStorageForRuns(runIds);
 
@@ -158,17 +121,12 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var workflow = await dbContext
-            .Workflows.AsNoTracking()
-            .FirstOrDefaultAsync(w => w.WorkflowId == workflowId);
+        var workflow = await dbContext.Workflows.AsNoTracking().FirstOrDefaultAsync(w => w.WorkflowId == workflowId);
 
         if (workflow is null)
             throw new SharpOMaticException($"Workflow '{workflowId}' cannot be found.");
 
-        var existingNames = await dbContext
-            .Workflows.AsNoTracking()
-            .Select(w => w.Named)
-            .ToListAsync();
+        var existingNames = await dbContext.Workflows.AsNoTracking().Select(w => w.Named).ToListAsync();
 
         var nameSet = new HashSet<string>(existingNames, StringComparer.OrdinalIgnoreCase);
         var baseName = workflow.Named;
@@ -250,10 +208,7 @@ public class RepositoryService(
         return true;
     }
 
-    private static IQueryable<Workflow> ApplyWorkflowSearch(
-        IQueryable<Workflow> workflows,
-        string? search
-    )
+    private static IQueryable<Workflow> ApplyWorkflowSearch(IQueryable<Workflow> workflows, string? search)
     {
         if (string.IsNullOrWhiteSpace(search))
             return workflows;
@@ -262,28 +217,16 @@ public class RepositoryService(
         return workflows.Where(workflow => workflow.Named.ToLower().Contains(normalizedSearch));
     }
 
-    private static IQueryable<Workflow> GetSortedWorkflows(
-        IQueryable<Workflow> workflows,
-        WorkflowSortField sortBy,
-        SortDirection sortDirection
-    )
+    private static IQueryable<Workflow> GetSortedWorkflows(IQueryable<Workflow> workflows, WorkflowSortField sortBy, SortDirection sortDirection)
     {
         return sortBy switch
         {
             WorkflowSortField.Description => sortDirection == SortDirection.Ascending
-                ? workflows
-                    .OrderBy(workflow => workflow.Description)
-                    .ThenBy(workflow => workflow.Named)
-                : workflows
-                    .OrderByDescending(workflow => workflow.Description)
-                    .ThenByDescending(workflow => workflow.Named),
+                ? workflows.OrderBy(workflow => workflow.Description).ThenBy(workflow => workflow.Named)
+                : workflows.OrderByDescending(workflow => workflow.Description).ThenByDescending(workflow => workflow.Named),
             _ => sortDirection == SortDirection.Ascending
-                ? workflows
-                    .OrderBy(workflow => workflow.Named)
-                    .ThenBy(workflow => workflow.Description)
-                : workflows
-                    .OrderByDescending(workflow => workflow.Named)
-                    .ThenByDescending(workflow => workflow.Description),
+                ? workflows.OrderBy(workflow => workflow.Named).ThenBy(workflow => workflow.Description)
+                : workflows.OrderByDescending(workflow => workflow.Named).ThenByDescending(workflow => workflow.Description),
         };
     }
 
@@ -300,30 +243,17 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await dbContext
-            .Runs.AsNoTracking()
-            .Where(r => r.WorkflowId == workflowId)
-            .OrderByDescending(r => r.Created)
-            .FirstOrDefaultAsync();
+        return await dbContext.Runs.AsNoTracking().Where(r => r.WorkflowId == workflowId).OrderByDescending(r => r.Created).FirstOrDefaultAsync();
     }
 
     public async Task<int> GetWorkflowRunCount(Guid workflowId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await dbContext
-            .Runs.AsNoTracking()
-            .Where(r => r.WorkflowId == workflowId)
-            .CountAsync();
+        return await dbContext.Runs.AsNoTracking().Where(r => r.WorkflowId == workflowId).CountAsync();
     }
 
-    public async Task<List<Run>> GetWorkflowRuns(
-        Guid workflowId,
-        RunSortField sortBy,
-        SortDirection sortDirection,
-        int skip,
-        int take
-    )
+    public async Task<List<Run>> GetWorkflowRuns(Guid workflowId, RunSortField sortBy, SortDirection sortDirection, int skip, int take)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -344,11 +274,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entity = await (
-            from r in dbContext.Runs
-            where r.RunId == run.RunId
-            select r
-        ).FirstOrDefaultAsync();
+        var entity = await (from r in dbContext.Runs where r.RunId == run.RunId select r).FirstOrDefaultAsync();
 
         if (entity is null)
             dbContext.Runs.Add(run);
@@ -365,12 +291,7 @@ public class RepositoryService(
 
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var runIdsToDelete = await dbContext
-            .Runs.Where(r => r.WorkflowId == workflowId)
-            .OrderByDescending(r => r.Created)
-            .Skip(keepLatest)
-            .Select(r => r.RunId)
-            .ToListAsync();
+        var runIdsToDelete = await dbContext.Runs.Where(r => r.WorkflowId == workflowId).OrderByDescending(r => r.Created).Skip(keepLatest).Select(r => r.RunId).ToListAsync();
 
         if (runIdsToDelete.Count == 0)
             return;
@@ -380,20 +301,14 @@ public class RepositoryService(
         await dbContext.Runs.Where(r => runIdsToDelete.Contains(r.RunId)).ExecuteDeleteAsync();
     }
 
-    private static IQueryable<Run> GetSortedRuns(
-        IQueryable<Run> runs,
-        RunSortField sortBy,
-        SortDirection sortDirection
-    )
+    private static IQueryable<Run> GetSortedRuns(IQueryable<Run> runs, RunSortField sortBy, SortDirection sortDirection)
     {
         return sortBy switch
         {
             RunSortField.Status => sortDirection == SortDirection.Ascending
                 ? runs.OrderBy(r => r.RunStatus).ThenByDescending(r => r.Created)
                 : runs.OrderByDescending(r => r.RunStatus).ThenByDescending(r => r.Created),
-            _ => sortDirection == SortDirection.Ascending
-                ? runs.OrderBy(r => r.Created)
-                : runs.OrderByDescending(r => r.Created),
+            _ => sortDirection == SortDirection.Ascending ? runs.OrderBy(r => r.Created) : runs.OrderByDescending(r => r.Created),
         };
     }
 
@@ -404,23 +319,14 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await (
-            from t in dbContext.Traces.AsNoTracking()
-            where t.RunId == runId
-            orderby t.Created
-            select t
-        ).ToListAsync();
+        return await (from t in dbContext.Traces.AsNoTracking() where t.RunId == runId orderby t.Created select t).ToListAsync();
     }
 
     public async Task UpsertTrace(Trace trace)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entity = await (
-            from t in dbContext.Traces
-            where t.TraceId == trace.TraceId
-            select t
-        ).FirstOrDefaultAsync();
+        var entity = await (from t in dbContext.Traces where t.TraceId == trace.TraceId select t).FirstOrDefaultAsync();
 
         if (entity is null)
             dbContext.Traces.Add(trace);
@@ -437,11 +343,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (
-            from c in dbContext.ConnectorConfigMetadata
-            where c.ConfigId == configId
-            select c
-        )
+        var metadata = await (from c in dbContext.ConnectorConfigMetadata where c.ConfigId == configId select c)
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
@@ -472,11 +374,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (
-            from c in dbContext.ConnectorConfigMetadata
-            where c.ConfigId == config.ConfigId
-            select c
-        ).FirstOrDefaultAsync();
+        var metadata = await (from c in dbContext.ConnectorConfigMetadata where c.ConfigId == config.ConfigId select c).FirstOrDefaultAsync();
 
         if (metadata is null)
         {
@@ -499,13 +397,7 @@ public class RepositoryService(
     // ------------------------------------------------
     public async Task<List<ConnectorSummary>> GetConnectorSummaries()
     {
-        return await GetConnectorSummaries(
-            null,
-            ConnectorSortField.Name,
-            SortDirection.Ascending,
-            0,
-            0
-        );
+        return await GetConnectorSummaries(null, ConnectorSortField.Name, SortDirection.Ascending, 0, 0);
     }
 
     public async Task<int> GetConnectorSummaryCount(string? search)
@@ -515,13 +407,7 @@ public class RepositoryService(
         return await connectors.CountAsync();
     }
 
-    public async Task<List<ConnectorSummary>> GetConnectorSummaries(
-        string? search,
-        ConnectorSortField sortBy,
-        SortDirection sortDirection,
-        int skip,
-        int take
-    )
+    public async Task<List<ConnectorSummary>> GetConnectorSummaries(string? search, ConnectorSortField sortBy, SortDirection sortDirection, int skip, int take)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -548,11 +434,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (
-            from c in dbContext.ConnectorMetadata
-            where c.ConnectorId == connectorId
-            select c
-        )
+        var metadata = await (from c in dbContext.ConnectorMetadata where c.ConnectorId == connectorId select c)
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
@@ -565,11 +447,7 @@ public class RepositoryService(
             throw new SharpOMaticException($"Connector '{connectorId}' configuration is invalid.");
 
         // We need to ensure that any field that is a secret, is replaced to prevent it being available to clients
-        if (
-            hideSecrets
-            && (connector.FieldValues.Count > 0)
-            && !string.IsNullOrWhiteSpace(connector.ConfigId)
-        )
+        if (hideSecrets && (connector.FieldValues.Count > 0) && !string.IsNullOrWhiteSpace(connector.ConfigId))
         {
             var config = await GetConnectorConfig(connector.ConfigId);
             if (config is not null)
@@ -577,10 +455,7 @@ public class RepositoryService(
                 foreach (var authModes in config.AuthModes)
                 {
                     foreach (var field in authModes.Fields)
-                        if (
-                            (field.Type == FieldDescriptorType.Secret)
-                            && connector.FieldValues.ContainsKey(field.Name)
-                        )
+                        if ((field.Type == FieldDescriptorType.Secret) && connector.FieldValues.ContainsKey(field.Name))
                             connector.FieldValues[field.Name] = SECRET_OBFUSCATION;
                 }
             }
@@ -593,11 +468,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entry = await (
-            from c in dbContext.ConnectorMetadata
-            where c.ConnectorId == connector.ConnectorId
-            select c
-        ).FirstOrDefaultAsync();
+        var entry = await (from c in dbContext.ConnectorMetadata where c.ConnectorId == connector.ConnectorId select c).FirstOrDefaultAsync();
 
         if (entry is null)
         {
@@ -632,9 +503,7 @@ public class RepositoryService(
                                 && (connector.FieldValues[field.Name] == SECRET_OBFUSCATION)
                             )
                             {
-                                connector.FieldValues[field.Name] = entryConfig.FieldValues[
-                                    field.Name
-                                ];
+                                connector.FieldValues[field.Name] = entryConfig.FieldValues[field.Name];
                             }
                         }
                     }
@@ -653,11 +522,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (
-            from c in dbContext.ConnectorMetadata
-            where c.ConnectorId == connectorId
-            select c
-        ).FirstOrDefaultAsync();
+        var metadata = await (from c in dbContext.ConnectorMetadata where c.ConnectorId == connectorId select c).FirstOrDefaultAsync();
 
         if (metadata is null)
             throw new SharpOMaticException($"Connector '{connectorId}' cannot be found.");
@@ -666,10 +531,7 @@ public class RepositoryService(
         await dbContext.SaveChangesAsync();
     }
 
-    private static IQueryable<ConnectorMetadata> ApplyConnectorSearch(
-        IQueryable<ConnectorMetadata> connectors,
-        string? search
-    )
+    private static IQueryable<ConnectorMetadata> ApplyConnectorSearch(IQueryable<ConnectorMetadata> connectors, string? search)
     {
         if (string.IsNullOrWhiteSpace(search))
             return connectors;
@@ -678,28 +540,16 @@ public class RepositoryService(
         return connectors.Where(connector => connector.Name.ToLower().Contains(normalizedSearch));
     }
 
-    private static IQueryable<ConnectorMetadata> GetSortedConnectors(
-        IQueryable<ConnectorMetadata> connectors,
-        ConnectorSortField sortBy,
-        SortDirection sortDirection
-    )
+    private static IQueryable<ConnectorMetadata> GetSortedConnectors(IQueryable<ConnectorMetadata> connectors, ConnectorSortField sortBy, SortDirection sortDirection)
     {
         return sortBy switch
         {
             ConnectorSortField.Description => sortDirection == SortDirection.Ascending
-                ? connectors
-                    .OrderBy(connector => connector.Description)
-                    .ThenBy(connector => connector.Name)
-                : connectors
-                    .OrderByDescending(connector => connector.Description)
-                    .ThenByDescending(connector => connector.Name),
+                ? connectors.OrderBy(connector => connector.Description).ThenBy(connector => connector.Name)
+                : connectors.OrderByDescending(connector => connector.Description).ThenByDescending(connector => connector.Name),
             _ => sortDirection == SortDirection.Ascending
-                ? connectors
-                    .OrderBy(connector => connector.Name)
-                    .ThenBy(connector => connector.Description)
-                : connectors
-                    .OrderByDescending(connector => connector.Name)
-                    .ThenByDescending(connector => connector.Description),
+                ? connectors.OrderBy(connector => connector.Name).ThenBy(connector => connector.Description)
+                : connectors.OrderByDescending(connector => connector.Name).ThenByDescending(connector => connector.Description),
         };
     }
 
@@ -710,11 +560,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (
-            from m in dbContext.ModelConfigMetadata
-            where m.ConfigId == configId
-            select m
-        )
+        var metadata = await (from m in dbContext.ModelConfigMetadata where m.ConfigId == configId select m)
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
@@ -745,11 +591,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (
-            from m in dbContext.ModelConfigMetadata
-            where m.ConfigId == config.ConfigId
-            select m
-        ).FirstOrDefaultAsync();
+        var metadata = await (from m in dbContext.ModelConfigMetadata where m.ConfigId == config.ConfigId select m).FirstOrDefaultAsync();
 
         if (metadata is null)
         {
@@ -782,13 +624,7 @@ public class RepositoryService(
         return await models.CountAsync();
     }
 
-    public async Task<List<ModelSummary>> GetModelSummaries(
-        string? search,
-        ModelSortField sortBy,
-        SortDirection sortDirection,
-        int skip,
-        int take
-    )
+    public async Task<List<ModelSummary>> GetModelSummaries(string? search, ModelSortField sortBy, SortDirection sortDirection, int skip, int take)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -828,20 +664,13 @@ public class RepositoryService(
             throw new SharpOMaticException($"Model '{modelId}' configuration is invalid.");
 
         // We need to ensure that any parameter that is a secret, is replaced to prevent it being available in the client
-        if (
-            hideSecrets
-            && (model.ParameterValues.Count > 0)
-            && !string.IsNullOrWhiteSpace(model.ConfigId)
-        )
+        if (hideSecrets && (model.ParameterValues.Count > 0) && !string.IsNullOrWhiteSpace(model.ConfigId))
         {
             var config = await GetModelConfig(model.ConfigId);
             if (config is not null)
             {
                 foreach (var field in config.ParameterFields)
-                    if (
-                        (field.Type == FieldDescriptorType.Secret)
-                        && model.ParameterValues.ContainsKey(field.Name)
-                    )
+                    if ((field.Type == FieldDescriptorType.Secret) && model.ParameterValues.ContainsKey(field.Name))
                         model.ParameterValues[field.Name] = "**********";
             }
         }
@@ -853,11 +682,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entry = await (
-            from m in dbContext.ModelMetadata
-            where m.ModelId == model.ModelId
-            select m
-        ).FirstOrDefaultAsync();
+        var entry = await (from m in dbContext.ModelMetadata where m.ModelId == model.ModelId select m).FirstOrDefaultAsync();
 
         if (entry is null)
         {
@@ -884,11 +709,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (
-            from m in dbContext.ModelMetadata
-            where m.ModelId == modelId
-            select m
-        ).FirstOrDefaultAsync();
+        var metadata = await (from m in dbContext.ModelMetadata where m.ModelId == modelId select m).FirstOrDefaultAsync();
 
         if (metadata is null)
             throw new SharpOMaticException($"Model '{modelId}' cannot be found.");
@@ -897,10 +718,7 @@ public class RepositoryService(
         await dbContext.SaveChangesAsync();
     }
 
-    private static IQueryable<ModelMetadata> ApplyModelSearch(
-        IQueryable<ModelMetadata> models,
-        string? search
-    )
+    private static IQueryable<ModelMetadata> ApplyModelSearch(IQueryable<ModelMetadata> models, string? search)
     {
         if (string.IsNullOrWhiteSpace(search))
             return models;
@@ -909,24 +727,16 @@ public class RepositoryService(
         return models.Where(model => model.Name.ToLower().Contains(normalizedSearch));
     }
 
-    private static IQueryable<ModelMetadata> GetSortedModels(
-        IQueryable<ModelMetadata> models,
-        ModelSortField sortBy,
-        SortDirection sortDirection
-    )
+    private static IQueryable<ModelMetadata> GetSortedModels(IQueryable<ModelMetadata> models, ModelSortField sortBy, SortDirection sortDirection)
     {
         return sortBy switch
         {
             ModelSortField.Description => sortDirection == SortDirection.Ascending
                 ? models.OrderBy(model => model.Description).ThenBy(model => model.Name)
-                : models
-                    .OrderByDescending(model => model.Description)
-                    .ThenByDescending(model => model.Name),
+                : models.OrderByDescending(model => model.Description).ThenByDescending(model => model.Name),
             _ => sortDirection == SortDirection.Ascending
                 ? models.OrderBy(model => model.Name).ThenBy(model => model.Description)
-                : models
-                    .OrderByDescending(model => model.Name)
-                    .ThenByDescending(model => model.Description),
+                : models.OrderByDescending(model => model.Name).ThenByDescending(model => model.Description),
         };
     }
 
@@ -935,13 +745,7 @@ public class RepositoryService(
     // ------------------------------------------------
     public async Task<List<EvalConfigSummary>> GetEvalConfigSummaries()
     {
-        return await GetEvalConfigSummaries(
-            null,
-            EvalConfigSortField.Name,
-            SortDirection.Ascending,
-            0,
-            0
-        );
+        return await GetEvalConfigSummaries(null, EvalConfigSortField.Name, SortDirection.Ascending, 0, 0);
     }
 
     public async Task<int> GetEvalConfigSummaryCount(string? search)
@@ -951,13 +755,7 @@ public class RepositoryService(
         return await evalConfigs.CountAsync();
     }
 
-    public async Task<List<EvalConfigSummary>> GetEvalConfigSummaries(
-        string? search,
-        EvalConfigSortField sortBy,
-        SortDirection sortDirection,
-        int skip,
-        int take
-    )
+    public async Task<List<EvalConfigSummary>> GetEvalConfigSummaries(string? search, EvalConfigSortField sortBy, SortDirection sortDirection, int skip, int take)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -984,11 +782,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var evalConfig = await (
-            from m in dbContext.EvalConfigs
-            where m.EvalConfigId == evalConfigId
-            select m
-        )
+        var evalConfig = await (from m in dbContext.EvalConfigs where m.EvalConfigId == evalConfigId select m)
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
@@ -1002,37 +796,18 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var evalConfig = await (
-            from m in dbContext.EvalConfigs
-            where m.EvalConfigId == evalConfigId
-            select m
-        )
+        var evalConfig = await (from m in dbContext.EvalConfigs where m.EvalConfigId == evalConfigId select m)
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
         if (evalConfig is null)
             throw new SharpOMaticException($"EvalConfig '{evalConfigId}' cannot be found.");
 
-        var graders = await (
-            from g in dbContext.EvalGraders.AsNoTracking()
-            where g.EvalConfigId == evalConfigId
-            orderby g.Order
-            select g
-        ).ToListAsync();
+        var graders = await (from g in dbContext.EvalGraders.AsNoTracking() where g.EvalConfigId == evalConfigId orderby g.Order select g).ToListAsync();
 
-        var columns = await (
-            from c in dbContext.EvalColumns.AsNoTracking()
-            where c.EvalConfigId == evalConfigId
-            orderby c.Order
-            select c
-        ).ToListAsync();
+        var columns = await (from c in dbContext.EvalColumns.AsNoTracking() where c.EvalConfigId == evalConfigId orderby c.Order select c).ToListAsync();
 
-        var rows = await (
-            from r in dbContext.EvalRows.AsNoTracking()
-            where r.EvalConfigId == evalConfigId
-            orderby r.Order
-            select r
-        ).ToListAsync();
+        var rows = await (from r in dbContext.EvalRows.AsNoTracking() where r.EvalConfigId == evalConfigId orderby r.Order select r).ToListAsync();
 
         var data = await (
             from d in dbContext.EvalData.AsNoTracking()
@@ -1057,11 +832,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entity = await (
-            from m in dbContext.EvalConfigs
-            where m.EvalConfigId == evalConfig.EvalConfigId
-            select m
-        ).FirstOrDefaultAsync();
+        var entity = await (from m in dbContext.EvalConfigs where m.EvalConfigId == evalConfig.EvalConfigId select m).FirstOrDefaultAsync();
 
         if (entity is null)
             dbContext.EvalConfigs.Add(evalConfig);
@@ -1075,11 +846,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var evalConfig = await (
-            from m in dbContext.EvalConfigs
-            where m.EvalConfigId == evalConfigId
-            select m
-        ).FirstOrDefaultAsync();
+        var evalConfig = await (from m in dbContext.EvalConfigs where m.EvalConfigId == evalConfigId select m).FirstOrDefaultAsync();
 
         if (evalConfig is null)
             throw new SharpOMaticException($"EvalConfig '{evalConfigId}' cannot be found.");
@@ -1096,9 +863,7 @@ public class RepositoryService(
             return;
 
         var graderIds = graders.Select(grader => grader.EvalGraderId).ToList();
-        var existing = await dbContext
-            .EvalGraders.Where(grader => graderIds.Contains(grader.EvalGraderId))
-            .ToListAsync();
+        var existing = await dbContext.EvalGraders.Where(grader => graderIds.Contains(grader.EvalGraderId)).ToListAsync();
         var existingLookup = existing.ToDictionary(grader => grader.EvalGraderId);
 
         foreach (var grader in graders)
@@ -1117,11 +882,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var grader = await (
-            from g in dbContext.EvalGraders
-            where g.EvalGraderId == evalGraderId
-            select g
-        ).FirstOrDefaultAsync();
+        var grader = await (from g in dbContext.EvalGraders where g.EvalGraderId == evalGraderId select g).FirstOrDefaultAsync();
 
         if (grader is null)
             throw new SharpOMaticException($"EvalGrader '{evalGraderId}' cannot be found.");
@@ -1138,9 +899,7 @@ public class RepositoryService(
             return;
 
         var columnIds = columns.Select(column => column.EvalColumnId).ToList();
-        var existing = await dbContext
-            .EvalColumns.Where(column => columnIds.Contains(column.EvalColumnId))
-            .ToListAsync();
+        var existing = await dbContext.EvalColumns.Where(column => columnIds.Contains(column.EvalColumnId)).ToListAsync();
         var existingLookup = existing.ToDictionary(column => column.EvalColumnId);
 
         foreach (var column in columns)
@@ -1159,11 +918,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var column = await (
-            from c in dbContext.EvalColumns
-            where c.EvalColumnId == evalColumnId
-            select c
-        ).FirstOrDefaultAsync();
+        var column = await (from c in dbContext.EvalColumns where c.EvalColumnId == evalColumnId select c).FirstOrDefaultAsync();
 
         if (column is null)
             throw new SharpOMaticException($"EvalColumn '{evalColumnId}' cannot be found.");
@@ -1180,9 +935,7 @@ public class RepositoryService(
             return;
 
         var rowIds = rows.Select(row => row.EvalRowId).ToList();
-        var existing = await dbContext
-            .EvalRows.Where(row => rowIds.Contains(row.EvalRowId))
-            .ToListAsync();
+        var existing = await dbContext.EvalRows.Where(row => rowIds.Contains(row.EvalRowId)).ToListAsync();
         var existingLookup = existing.ToDictionary(row => row.EvalRowId);
 
         foreach (var row in rows)
@@ -1201,11 +954,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var row = await (
-            from r in dbContext.EvalRows
-            where r.EvalRowId == evalRowId
-            select r
-        ).FirstOrDefaultAsync();
+        var row = await (from r in dbContext.EvalRows where r.EvalRowId == evalRowId select r).FirstOrDefaultAsync();
 
         if (row is null)
             throw new SharpOMaticException($"EvalRow '{evalRowId}' cannot be found.");
@@ -1224,36 +973,24 @@ public class RepositoryService(
         var rowIds = data.Select(entry => entry.EvalRowId).Distinct().ToList();
         var columnIds = data.Select(entry => entry.EvalColumnId).Distinct().ToList();
 
-        var validRowIds = await dbContext
-            .EvalRows.AsNoTracking()
-            .Where(row => row.EvalConfigId == evalConfigId && rowIds.Contains(row.EvalRowId))
-            .Select(row => row.EvalRowId)
-            .ToListAsync();
+        var validRowIds = await dbContext.EvalRows.AsNoTracking().Where(row => row.EvalConfigId == evalConfigId && rowIds.Contains(row.EvalRowId)).Select(row => row.EvalRowId).ToListAsync();
 
         var validColumnIds = await dbContext
             .EvalColumns.AsNoTracking()
-            .Where(column =>
-                column.EvalConfigId == evalConfigId && columnIds.Contains(column.EvalColumnId)
-            )
+            .Where(column => column.EvalConfigId == evalConfigId && columnIds.Contains(column.EvalColumnId))
             .Select(column => column.EvalColumnId)
             .ToListAsync();
 
         var invalidRowIds = rowIds.Except(validRowIds).ToList();
         if (invalidRowIds.Count > 0)
-            throw new SharpOMaticException(
-                $"EvalRow(s) do not belong to EvalConfig '{evalConfigId}'."
-            );
+            throw new SharpOMaticException($"EvalRow(s) do not belong to EvalConfig '{evalConfigId}'.");
 
         var invalidColumnIds = columnIds.Except(validColumnIds).ToList();
         if (invalidColumnIds.Count > 0)
-            throw new SharpOMaticException(
-                $"EvalColumn(s) do not belong to EvalConfig '{evalConfigId}'."
-            );
+            throw new SharpOMaticException($"EvalColumn(s) do not belong to EvalConfig '{evalConfigId}'.");
 
         var dataIds = data.Select(entry => entry.EvalDataId).ToList();
-        var existing = await dbContext
-            .EvalData.Where(entry => dataIds.Contains(entry.EvalDataId))
-            .ToListAsync();
+        var existing = await dbContext.EvalData.Where(entry => dataIds.Contains(entry.EvalDataId)).ToListAsync();
         var existingLookup = existing.ToDictionary(entry => entry.EvalDataId);
 
         foreach (var entry in data)
@@ -1271,11 +1008,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var data = await (
-            from d in dbContext.EvalData
-            where d.EvalDataId == evalDataId
-            select d
-        ).FirstOrDefaultAsync();
+        var data = await (from d in dbContext.EvalData where d.EvalDataId == evalDataId select d).FirstOrDefaultAsync();
 
         if (data is null)
             throw new SharpOMaticException($"EvalData '{evalDataId}' cannot be found.");
@@ -1284,10 +1017,7 @@ public class RepositoryService(
         await dbContext.SaveChangesAsync();
     }
 
-    private static IQueryable<EvalConfig> ApplyModelSearch(
-        IQueryable<EvalConfig> evalConfigs,
-        string? search
-    )
+    private static IQueryable<EvalConfig> ApplyModelSearch(IQueryable<EvalConfig> evalConfigs, string? search)
     {
         if (string.IsNullOrWhiteSpace(search))
             return evalConfigs;
@@ -1296,24 +1026,16 @@ public class RepositoryService(
         return evalConfigs.Where(model => model.Name.ToLower().Contains(normalizedSearch));
     }
 
-    private static IQueryable<EvalConfig> GetSortedModels(
-        IQueryable<EvalConfig> models,
-        EvalConfigSortField sortBy,
-        SortDirection sortDirection
-    )
+    private static IQueryable<EvalConfig> GetSortedModels(IQueryable<EvalConfig> models, EvalConfigSortField sortBy, SortDirection sortDirection)
     {
         return sortBy switch
         {
             EvalConfigSortField.Description => sortDirection == SortDirection.Ascending
                 ? models.OrderBy(model => model.Description).ThenBy(model => model.Name)
-                : models
-                    .OrderByDescending(model => model.Description)
-                    .ThenByDescending(model => model.Name),
+                : models.OrderByDescending(model => model.Description).ThenByDescending(model => model.Name),
             _ => sortDirection == SortDirection.Ascending
                 ? models.OrderBy(model => model.Name).ThenBy(model => model.Description)
-                : models
-                    .OrderByDescending(model => model.Name)
-                    .ThenByDescending(model => model.Description),
+                : models.OrderByDescending(model => model.Name).ThenByDescending(model => model.Description),
         };
     }
 
@@ -1325,33 +1047,21 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await (
-            from s in dbContext.Settings.AsNoTracking()
-            orderby s.Name
-            select s
-        ).ToListAsync();
+        return await (from s in dbContext.Settings.AsNoTracking() orderby s.Name select s).ToListAsync();
     }
 
     public async Task<Setting?> GetSetting(string name)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await (
-            from s in dbContext.Settings.AsNoTracking()
-            where s.Name == name
-            select s
-        ).FirstOrDefaultAsync();
+        return await (from s in dbContext.Settings.AsNoTracking() where s.Name == name select s).FirstOrDefaultAsync();
     }
 
     public async Task UpsertSetting(Setting model)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var setting = await (
-            from s in dbContext.Settings
-            where s.Name == model.Name
-            select s
-        ).FirstOrDefaultAsync();
+        var setting = await (from s in dbContext.Settings where s.Name == model.Name select s).FirstOrDefaultAsync();
 
         if (setting is null)
             dbContext.Settings.Add(model);
@@ -1368,9 +1078,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var asset = await dbContext
-            .Assets.AsNoTracking()
-            .FirstOrDefaultAsync(a => a.AssetId == assetId);
+        var asset = await dbContext.Assets.AsNoTracking().FirstOrDefaultAsync(a => a.AssetId == assetId);
 
         if (asset is null)
             throw new SharpOMaticException($"Asset '{assetId}' cannot be found.");
@@ -1397,15 +1105,7 @@ public class RepositoryService(
         return await assets.CountAsync();
     }
 
-    public async Task<List<Asset>> GetAssetsByScope(
-        AssetScope scope,
-        string? search,
-        AssetSortField sortBy,
-        SortDirection sortDirection,
-        int skip,
-        int take,
-        Guid? runId = null
-    )
+    public async Task<List<Asset>> GetAssetsByScope(AssetScope scope, string? search, AssetSortField sortBy, SortDirection sortDirection, int skip, int take, Guid? runId = null)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -1432,11 +1132,7 @@ public class RepositoryService(
         return await sortedAssets.ToListAsync();
     }
 
-    private static IQueryable<Asset> GetSortedAssets(
-        IQueryable<Asset> assets,
-        AssetSortField sortBy,
-        SortDirection sortDirection
-    )
+    private static IQueryable<Asset> GetSortedAssets(IQueryable<Asset> assets, AssetSortField sortBy, SortDirection sortDirection)
     {
         return sortBy switch
         {
@@ -1449,12 +1145,8 @@ public class RepositoryService(
             AssetSortField.Size => sortDirection == SortDirection.Ascending
                 ? assets.OrderBy(a => a.SizeBytes).ThenByDescending(a => a.Created)
                 : assets.OrderByDescending(a => a.SizeBytes).ThenByDescending(a => a.Created),
-            AssetSortField.Created => sortDirection == SortDirection.Ascending
-                ? assets.OrderBy(a => a.Created).ThenBy(a => a.Name)
-                : assets.OrderByDescending(a => a.Created).ThenBy(a => a.Name),
-            _ => sortDirection == SortDirection.Ascending
-                ? assets.OrderBy(a => a.Name).ThenByDescending(a => a.Created)
-                : assets.OrderByDescending(a => a.Name).ThenByDescending(a => a.Created),
+            AssetSortField.Created => sortDirection == SortDirection.Ascending ? assets.OrderBy(a => a.Created).ThenBy(a => a.Name) : assets.OrderByDescending(a => a.Created).ThenBy(a => a.Name),
+            _ => sortDirection == SortDirection.Ascending ? assets.OrderBy(a => a.Name).ThenByDescending(a => a.Created) : assets.OrderByDescending(a => a.Name).ThenByDescending(a => a.Created),
         };
     }
 
@@ -1462,11 +1154,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await dbContext
-            .Assets.AsNoTracking()
-            .Where(a => a.RunId == runId)
-            .OrderByDescending(a => a.Created)
-            .ToListAsync();
+        return await dbContext.Assets.AsNoTracking().Where(a => a.RunId == runId).OrderByDescending(a => a.Created).ToListAsync();
     }
 
     public async Task<Asset?> GetRunAssetByName(Guid runId, string name)
@@ -1479,9 +1167,7 @@ public class RepositoryService(
 
         return await dbContext
             .Assets.AsNoTracking()
-            .Where(a =>
-                a.Scope == AssetScope.Run && a.RunId == runId && a.Name.ToLower() == normalizedName
-            )
+            .Where(a => a.Scope == AssetScope.Run && a.RunId == runId && a.Name.ToLower() == normalizedName)
             .OrderByDescending(a => a.Created)
             .FirstOrDefaultAsync();
     }
@@ -1494,22 +1180,14 @@ public class RepositoryService(
         using var dbContext = dbContextFactory.CreateDbContext();
         var normalizedName = name.Trim().ToLower();
 
-        return await dbContext
-            .Assets.AsNoTracking()
-            .Where(a => a.Scope == AssetScope.Library && a.Name.ToLower() == normalizedName)
-            .OrderByDescending(a => a.Created)
-            .FirstOrDefaultAsync();
+        return await dbContext.Assets.AsNoTracking().Where(a => a.Scope == AssetScope.Library && a.Name.ToLower() == normalizedName).OrderByDescending(a => a.Created).FirstOrDefaultAsync();
     }
 
     public async Task UpsertAsset(Asset asset)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entity = await (
-            from a in dbContext.Assets
-            where a.AssetId == asset.AssetId
-            select a
-        ).FirstOrDefaultAsync();
+        var entity = await (from a in dbContext.Assets where a.AssetId == asset.AssetId select a).FirstOrDefaultAsync();
 
         if (entity is null)
             dbContext.Assets.Add(asset);
@@ -1523,11 +1201,7 @@ public class RepositoryService(
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var asset = await (
-            from a in dbContext.Assets
-            where a.AssetId == assetId
-            select a
-        ).FirstOrDefaultAsync();
+        var asset = await (from a in dbContext.Assets where a.AssetId == assetId select a).FirstOrDefaultAsync();
 
         if (asset is null)
             throw new SharpOMaticException($"Asset '{assetId}' cannot be found.");
@@ -1543,11 +1217,7 @@ public class RepositoryService(
 
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var storageKeys = await dbContext
-            .Assets.AsNoTracking()
-            .Where(a => a.RunId.HasValue && runIds.Contains(a.RunId.Value))
-            .Select(a => a.StorageKey)
-            .ToListAsync();
+        var storageKeys = await dbContext.Assets.AsNoTracking().Where(a => a.RunId.HasValue && runIds.Contains(a.RunId.Value)).Select(a => a.StorageKey).ToListAsync();
 
         foreach (var storageKey in storageKeys)
             await assetStore.DeleteAsync(storageKey);

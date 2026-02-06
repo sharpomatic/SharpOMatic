@@ -25,28 +25,17 @@ public class RunContext
     public int RunNodeLimit => _runNodeLimit;
     public TaskCompletionSource<Run>? CompletionSource { get; init; }
 
-    public RunContext(
-        IServiceScope serviceScope,
-        WorkflowEntity workflow,
-        Run run,
-        int runNodeLimit,
-        TaskCompletionSource<Run>? completionSource
-    )
+    public RunContext(IServiceScope serviceScope, WorkflowEntity workflow, Run run, int runNodeLimit, TaskCompletionSource<Run>? completionSource)
     {
         ServiceScope = serviceScope;
         Workflow = workflow;
         Run = run;
         RepositoryService = serviceScope.ServiceProvider.GetRequiredService<IRepositoryService>();
-        ProgressServices = serviceScope.ServiceProvider.GetRequiredService<
-            IEnumerable<IProgressService>
-        >();
+        ProgressServices = serviceScope.ServiceProvider.GetRequiredService<IEnumerable<IProgressService>>();
         ToolMethodRegistry = serviceScope.ServiceProvider.GetRequiredService<IToolMethodRegistry>();
         SchemaTypeRegistry = serviceScope.ServiceProvider.GetRequiredService<ISchemaTypeRegistry>();
-        ScriptOptionsService =
-            serviceScope.ServiceProvider.GetRequiredService<IScriptOptionsService>();
-        JsonConverters = serviceScope
-            .ServiceProvider.GetRequiredService<IJsonConverterService>()
-            .GetConverters();
+        ScriptOptionsService = serviceScope.ServiceProvider.GetRequiredService<IScriptOptionsService>();
+        JsonConverters = serviceScope.ServiceProvider.GetRequiredService<IJsonConverterService>().GetConverters();
         _runNodeLimit = runNodeLimit;
         CompletionSource = completionSource;
 
@@ -113,28 +102,19 @@ public class RunContext
     public NodeEntity ResolveSingleOutput(NodeEntity node)
     {
         if (node.Outputs.Length != 1)
-            throw new SharpOMaticException(
-                $"Node must have a single output but found {node.Outputs.Length}."
-            );
+            throw new SharpOMaticException($"Node must have a single output but found {node.Outputs.Length}.");
 
         return ResolveOutput(node.Outputs[0]);
     }
 
     public NodeEntity ResolveOutput(ConnectorEntity connector)
     {
-        if (
-            !_fromToConnection.TryGetValue(connector.Id, out var connection)
-            || !_inputConnectorToNode.TryGetValue(connection.To, out var nextNode)
-        )
+        if (!_fromToConnection.TryGetValue(connector.Id, out var connection) || !_inputConnectorToNode.TryGetValue(connection.To, out var nextNode))
         {
             if (string.IsNullOrWhiteSpace(connector.Name))
-                throw new SharpOMaticException(
-                    $"Cannot traverse '{connector.Name}' output because it is not connected to another node."
-                );
+                throw new SharpOMaticException($"Cannot traverse '{connector.Name}' output because it is not connected to another node.");
             else
-                throw new SharpOMaticException(
-                    $"Cannot traverse output because it is not connected to another node."
-                );
+                throw new SharpOMaticException($"Cannot traverse output because it is not connected to another node.");
         }
 
         return nextNode;

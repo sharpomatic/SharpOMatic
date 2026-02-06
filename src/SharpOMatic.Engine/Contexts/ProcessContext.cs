@@ -26,28 +26,18 @@ public class ProcessContext : ExecutionContext
     public int NodesRun => Volatile.Read(ref _nodesRun);
     public IReadOnlyCollection<ExecutionContext> ActiveContexts => _activeContexts.Keys.ToList();
 
-    public ProcessContext(
-        IServiceScope serviceScope,
-        Run run,
-        int runNodeLimit,
-        TaskCompletionSource<Run>? completionSource
-    )
+    public ProcessContext(IServiceScope serviceScope, Run run, int runNodeLimit, TaskCompletionSource<Run>? completionSource)
         : base(null)
     {
         ServiceScope = serviceScope;
         Run = run;
         RepositoryService = serviceScope.ServiceProvider.GetRequiredService<IRepositoryService>();
         AssetStore = serviceScope.ServiceProvider.GetRequiredService<IAssetStore>();
-        ProgressServices = serviceScope.ServiceProvider.GetRequiredService<
-            IEnumerable<IProgressService>
-        >();
+        ProgressServices = serviceScope.ServiceProvider.GetRequiredService<IEnumerable<IProgressService>>();
         ToolMethodRegistry = serviceScope.ServiceProvider.GetRequiredService<IToolMethodRegistry>();
         SchemaTypeRegistry = serviceScope.ServiceProvider.GetRequiredService<ISchemaTypeRegistry>();
-        ScriptOptionsService =
-            serviceScope.ServiceProvider.GetRequiredService<IScriptOptionsService>();
-        JsonConverters = serviceScope
-            .ServiceProvider.GetRequiredService<IJsonConverterService>()
-            .GetConverters();
+        ScriptOptionsService = serviceScope.ServiceProvider.GetRequiredService<IScriptOptionsService>();
+        JsonConverters = serviceScope.ServiceProvider.GetRequiredService<IJsonConverterService>().GetConverters();
         _runNodeLimit = runNodeLimit;
         CompletionSource = completionSource;
         _completionSource = completionSource;

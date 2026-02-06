@@ -31,6 +31,117 @@
         <hr />
 
         <div class="mb-3">
+          <h4 class="form-label mb-4">Move</h4>
+          <div class="d-flex align-items-start gap-2 mb-2">
+            <label class="editPath">From</label>
+            <label class="editPath">To</label>
+          </div>
+          @if (!hasMoveEntries()) {
+            <div class="text-muted fst-italic mb-2">(empty)</div>
+          }
+          @for (entry of node.edits().entries(); track entry.id) {
+            @if (entry.purpose() === contextEntryPurpose.Move) {
+              <div class="d-flex align-items-start gap-2 mb-2">
+                <input
+                  type="text"
+                  class="form-control editPath"
+                  [ngModel]="entry.inputPath()"
+                  (ngModelChange)="entry.inputPath.set($event)"
+                />
+                <input
+                  type="text"
+                  class="form-control editPath"
+                  [ngModel]="entry.outputPath()"
+                  (ngModelChange)="entry.outputPath.set($event)"
+                />
+                <button
+                  class="btn btn-outline-primary"
+                  [disabled]="!canMoveEntryUp(entry)"
+                  (click)="onMoveEntryUp(entry)"
+                >
+                  <i class="bi bi-arrow-up"></i>
+                </button>
+                <button
+                  class="btn btn-outline-primary"
+                  [disabled]="!canMoveEntryDown(entry)"
+                  (click)="onMoveEntryDown(entry)"
+                >
+                  <i class="bi bi-arrow-down"></i>
+                </button>
+                <button
+                  class="btn btn-outline-danger"
+                  (click)="onDeleteEntry(entry.id)"
+                >
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            }
+          }
+          <button class="btn btn-primary mt-2" (click)="onInsertMoveEntry()">
+            Add
+          </button>
+        </div>
+
+        <hr />
+
+        <div class="mb-3">
+          <h4 class="form-label mb-4">Duplicate</h4>
+          <div class="d-flex align-items-start gap-2 mb-2">
+            <label class="editPath">From</label>
+            <label class="editPath">To</label>
+          </div>
+          @if (!hasDuplicateEntries()) {
+            <div class="text-muted fst-italic mb-2">(empty)</div>
+          }
+          @for (entry of node.edits().entries(); track entry.id) {
+            @if (entry.purpose() === contextEntryPurpose.Duplicate) {
+              <div class="d-flex align-items-start gap-2 mb-2">
+                <input
+                  type="text"
+                  class="form-control editPath"
+                  [ngModel]="entry.inputPath()"
+                  (ngModelChange)="entry.inputPath.set($event)"
+                />
+                <input
+                  type="text"
+                  class="form-control editPath"
+                  [ngModel]="entry.outputPath()"
+                  (ngModelChange)="entry.outputPath.set($event)"
+                />
+                <button
+                  class="btn btn-outline-primary"
+                  [disabled]="!canMoveEntryUp(entry)"
+                  (click)="onMoveEntryUp(entry)"
+                >
+                  <i class="bi bi-arrow-up"></i>
+                </button>
+                <button
+                  class="btn btn-outline-primary"
+                  [disabled]="!canMoveEntryDown(entry)"
+                  (click)="onMoveEntryDown(entry)"
+                >
+                  <i class="bi bi-arrow-down"></i>
+                </button>
+                <button
+                  class="btn btn-outline-danger"
+                  (click)="onDeleteEntry(entry.id)"
+                >
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            }
+          }
+          <button
+            class="btn btn-primary mt-2"
+            (click)="onInsertDuplicateEntry()"
+          >
+            Add
+          </button>
+        </div>
+
+        <hr />
+
+        <div class="mb-3">
           <h4 class="form-label mb-4">Upserts</h4>
           <div class="d-flex align-items-start gap-2 mb-2">
             <label class="editPath">Path</label>

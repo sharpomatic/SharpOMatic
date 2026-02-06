@@ -484,131 +484,41 @@ namespace SharpOMatic.Engine.Migrations
                 }
             );
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Assets_Name",
-                schema: "SharpOMatic",
-                table: "Assets",
-                column: "Name"
-            );
+            migrationBuilder.CreateIndex(name: "IX_Assets_Name", schema: "SharpOMatic", table: "Assets", column: "Name");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Assets_RunId",
-                schema: "SharpOMatic",
-                table: "Assets",
-                column: "RunId"
-            );
+            migrationBuilder.CreateIndex(name: "IX_Assets_RunId", schema: "SharpOMatic", table: "Assets", column: "RunId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Assets_Scope_Created",
-                schema: "SharpOMatic",
-                table: "Assets",
-                columns: new[] { "Scope", "Created" }
-            );
+            migrationBuilder.CreateIndex(name: "IX_Assets_Scope_Created", schema: "SharpOMatic", table: "Assets", columns: new[] { "Scope", "Created" });
 
-            migrationBuilder.CreateIndex(
-                name: "IX_EvalColumns_EvalConfigId",
-                schema: "SharpOMatic",
-                table: "EvalColumns",
-                column: "EvalConfigId"
-            );
+            migrationBuilder.CreateIndex(name: "IX_EvalColumns_EvalConfigId", schema: "SharpOMatic", table: "EvalColumns", column: "EvalConfigId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_EvalData_EvalColumnId",
-                schema: "SharpOMatic",
-                table: "EvalData",
-                column: "EvalColumnId"
-            );
+            migrationBuilder.CreateIndex(name: "IX_EvalData_EvalColumnId", schema: "SharpOMatic", table: "EvalData", column: "EvalColumnId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_EvalData_EvalRowId",
-                schema: "SharpOMatic",
-                table: "EvalData",
-                column: "EvalRowId"
-            );
+            migrationBuilder.CreateIndex(name: "IX_EvalData_EvalRowId", schema: "SharpOMatic", table: "EvalData", column: "EvalRowId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_EvalGraders_EvalConfigId",
-                schema: "SharpOMatic",
-                table: "EvalGraders",
-                column: "EvalConfigId"
-            );
+            migrationBuilder.CreateIndex(name: "IX_EvalGraders_EvalConfigId", schema: "SharpOMatic", table: "EvalGraders", column: "EvalConfigId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_EvalRows_EvalConfigId",
-                schema: "SharpOMatic",
-                table: "EvalRows",
-                column: "EvalConfigId"
-            );
+            migrationBuilder.CreateIndex(name: "IX_EvalRows_EvalConfigId", schema: "SharpOMatic", table: "EvalRows", column: "EvalConfigId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_EvalRunGraderSummaries_EvalGraderId",
-                schema: "SharpOMatic",
-                table: "EvalRunGraderSummaries",
-                column: "EvalGraderId"
-            );
+            migrationBuilder.CreateIndex(name: "IX_EvalRunGraderSummaries_EvalGraderId", schema: "SharpOMatic", table: "EvalRunGraderSummaries", column: "EvalGraderId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_EvalRunGraderSummaries_EvalRunId",
-                schema: "SharpOMatic",
-                table: "EvalRunGraderSummaries",
-                column: "EvalRunId"
-            );
+            migrationBuilder.CreateIndex(name: "IX_EvalRunGraderSummaries_EvalRunId", schema: "SharpOMatic", table: "EvalRunGraderSummaries", column: "EvalRunId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_EvalRunRowGraders_EvalGraderId",
-                schema: "SharpOMatic",
-                table: "EvalRunRowGraders",
-                column: "EvalGraderId"
-            );
+            migrationBuilder.CreateIndex(name: "IX_EvalRunRowGraders_EvalGraderId", schema: "SharpOMatic", table: "EvalRunRowGraders", column: "EvalGraderId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_EvalRunRowGraders_EvalRunRowId",
-                schema: "SharpOMatic",
-                table: "EvalRunRowGraders",
-                column: "EvalRunRowId"
-            );
+            migrationBuilder.CreateIndex(name: "IX_EvalRunRowGraders_EvalRunRowId", schema: "SharpOMatic", table: "EvalRunRowGraders", column: "EvalRunRowId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_EvalRunRows_EvalRowId",
-                schema: "SharpOMatic",
-                table: "EvalRunRows",
-                column: "EvalRowId"
-            );
+            migrationBuilder.CreateIndex(name: "IX_EvalRunRows_EvalRowId", schema: "SharpOMatic", table: "EvalRunRows", column: "EvalRowId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_EvalRunRows_EvalRunId",
-                schema: "SharpOMatic",
-                table: "EvalRunRows",
-                column: "EvalRunId"
-            );
+            migrationBuilder.CreateIndex(name: "IX_EvalRunRows_EvalRunId", schema: "SharpOMatic", table: "EvalRunRows", column: "EvalRunId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_EvalRuns_EvalConfigId",
-                schema: "SharpOMatic",
-                table: "EvalRuns",
-                column: "EvalConfigId"
-            );
+            migrationBuilder.CreateIndex(name: "IX_EvalRuns_EvalConfigId", schema: "SharpOMatic", table: "EvalRuns", column: "EvalConfigId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Runs_WorkflowId_Created",
-                schema: "SharpOMatic",
-                table: "Runs",
-                columns: new[] { "WorkflowId", "Created" }
-            );
+            migrationBuilder.CreateIndex(name: "IX_Runs_WorkflowId_Created", schema: "SharpOMatic", table: "Runs", columns: new[] { "WorkflowId", "Created" });
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Runs_WorkflowId_RunStatus",
-                schema: "SharpOMatic",
-                table: "Runs",
-                columns: new[] { "WorkflowId", "RunStatus" }
-            );
+            migrationBuilder.CreateIndex(name: "IX_Runs_WorkflowId_RunStatus", schema: "SharpOMatic", table: "Runs", columns: new[] { "WorkflowId", "RunStatus" });
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Traces_RunId_Created",
-                schema: "SharpOMatic",
-                table: "Traces",
-                columns: new[] { "RunId", "Created" }
-            );
+            migrationBuilder.CreateIndex(name: "IX_Traces_RunId_Created", schema: "SharpOMatic", table: "Traces", columns: new[] { "RunId", "Created" });
         }
 
         /// <inheritdoc />

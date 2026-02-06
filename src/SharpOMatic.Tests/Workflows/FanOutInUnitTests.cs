@@ -99,11 +99,7 @@ public sealed class FanOutInUnitTests
     [Fact]
     public async Task FanIn_requires_fanout_parent()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddFanIn("fanin")
-            .Connect("start", "fanin")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddFanIn("fanin").Connect("start", "fanin").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -160,11 +156,7 @@ public sealed class FanOutInUnitTests
     [Fact]
     public async Task FanOut_with_no_connected_outputs_finishes_immediately()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddFanOut("fanout", ["first", "second"])
-            .Connect("start", "fanout")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddFanOut("fanout", ["first", "second"]).Connect("start", "fanout").Build();
 
         ContextObject ctx = [];
         ctx.Set<int>("input.value", 10);

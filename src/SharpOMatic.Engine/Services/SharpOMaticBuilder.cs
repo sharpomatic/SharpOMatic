@@ -17,15 +17,12 @@ public class SharpOMaticBuilder
         var converterTypeList = (converterTypes is null) ? [] : converterTypes.ToArray();
 
         Services.RemoveAll<IJsonConverterService>();
-        Services.AddSingleton<IJsonConverterService>(_ => new JsonConverterService(
-            converterTypeList
-        ));
+        Services.AddSingleton<IJsonConverterService>(_ => new JsonConverterService(converterTypeList));
 
         return this;
     }
 
-    public SharpOMaticBuilder AddJsonConverters(params Type[] converterTypes) =>
-        AddJsonConverters((IEnumerable<Type>)converterTypes);
+    public SharpOMaticBuilder AddJsonConverters(params Type[] converterTypes) => AddJsonConverters((IEnumerable<Type>)converterTypes);
 
     public SharpOMaticBuilder AddSchemaTypes(IEnumerable<Type> types)
     {
@@ -37,8 +34,7 @@ public class SharpOMaticBuilder
         return this;
     }
 
-    public SharpOMaticBuilder AddSchemaTypes(params Type[] types) =>
-        AddSchemaTypes((IEnumerable<Type>)types);
+    public SharpOMaticBuilder AddSchemaTypes(params Type[] types) => AddSchemaTypes((IEnumerable<Type>)types);
 
     public SharpOMaticBuilder AddToolMethods(IEnumerable<Delegate> delegates)
     {
@@ -50,33 +46,22 @@ public class SharpOMaticBuilder
         return this;
     }
 
-    public SharpOMaticBuilder AddToolMethods(params Delegate[] methods) =>
-        AddToolMethods((IEnumerable<Delegate>)methods);
+    public SharpOMaticBuilder AddToolMethods(params Delegate[] methods) => AddToolMethods((IEnumerable<Delegate>)methods);
 
-    public SharpOMaticBuilder AddScriptOptions(
-        IEnumerable<Assembly> assemblies,
-        IEnumerable<string> imports
-    )
+    public SharpOMaticBuilder AddScriptOptions(IEnumerable<Assembly> assemblies, IEnumerable<string> imports)
     {
         var assemblyList = (assemblies is null) ? [] : assemblies.ToArray();
         var importList = (imports is null) ? [] : imports.ToArray();
 
         Services.RemoveAll<IScriptOptionsService>();
-        Services.AddSingleton<IScriptOptionsService>(_ => new ScriptOptionsService(
-            assemblyList,
-            importList
-        ));
+        Services.AddSingleton<IScriptOptionsService>(_ => new ScriptOptionsService(assemblyList, importList));
 
         return this;
     }
 
-    public SharpOMaticBuilder AddScriptOptions(Assembly[] assemblies, string[] imports) =>
-        AddScriptOptions((IEnumerable<Assembly>)assemblies, (IEnumerable<string>)imports);
+    public SharpOMaticBuilder AddScriptOptions(Assembly[] assemblies, string[] imports) => AddScriptOptions((IEnumerable<Assembly>)assemblies, (IEnumerable<string>)imports);
 
-    public SharpOMaticBuilder AddRepository(
-        Action<DbContextOptionsBuilder> optionsAction,
-        Action<SharpOMaticDbOptions>? dbOptionsAction = null
-    )
+    public SharpOMaticBuilder AddRepository(Action<DbContextOptionsBuilder> optionsAction, Action<SharpOMaticDbOptions>? dbOptionsAction = null)
     {
         if (optionsAction is null)
             optionsAction = (_) => { };

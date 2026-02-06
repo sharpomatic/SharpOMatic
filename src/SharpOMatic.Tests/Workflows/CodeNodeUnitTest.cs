@@ -5,11 +5,7 @@ public sealed class CodeNodeUnitTest
     [Fact]
     public async Task Code_does_nothing()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddCode("code", "")
-            .Connect("start", "code")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddCode("code", "").Connect("start", "code").Build();
 
         ContextObject ctx = [];
         ctx.Set<bool>("input.boolean", true);
@@ -27,11 +23,7 @@ public sealed class CodeNodeUnitTest
     [Fact]
     public async Task Code_whitespace_is_noop()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddCode("code", "   ")
-            .Connect("start", "code")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddCode("code", "   ").Connect("start", "code").Build();
 
         ContextObject ctx = [];
         ctx.Set<bool>("input.boolean", true);
@@ -49,11 +41,7 @@ public sealed class CodeNodeUnitTest
     [Fact]
     public async Task Code_null_is_noop()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddCode("code", "Context.Set<bool>(\"should.not\", true);")
-            .Connect("start", "code")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddCode("code", "Context.Set<bool>(\"should.not\", true);").Connect("start", "code").Build();
 
         var codeNode = workflow.Nodes.OfType<CodeNodeEntity>().Single();
         codeNode.Code = null!;
@@ -75,11 +63,7 @@ public sealed class CodeNodeUnitTest
     [Fact]
     public async Task Code_adds_context()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddCode("code", "Context.Set<bool>(\"input.boolean\", true);")
-            .Connect("start", "code")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddCode("code", "Context.Set<bool>(\"input.boolean\", true);").Connect("start", "code").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -94,11 +78,7 @@ public sealed class CodeNodeUnitTest
     [Fact]
     public async Task Code_modifies_context()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddCode("code", "Context.Set<int>(\"input.integer\", 42);")
-            .Connect("start", "code")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddCode("code", "Context.Set<int>(\"input.integer\", 42);").Connect("start", "code").Build();
 
         ContextObject ctx = [];
         ctx.Set<int>("input.integer", 21);
@@ -116,11 +96,7 @@ public sealed class CodeNodeUnitTest
     [Fact]
     public async Task Code_no_output_connection_completes()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddCode("code", "Context.Set<int>(\"output.value\", 7);")
-            .Connect("start", "code")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddCode("code", "Context.Set<int>(\"output.value\", 7);").Connect("start", "code").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -134,11 +110,7 @@ public sealed class CodeNodeUnitTest
     [Fact]
     public async Task Code_allows_async()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddCode("code", "await Task.Delay(100);")
-            .Connect("start", "code")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddCode("code", "await Task.Delay(100);").Connect("start", "code").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -167,11 +139,7 @@ public sealed class CodeNodeUnitTest
     [Fact]
     public async Task Code_call_into_project()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddCode("code", "Context.Set<int>(\"output.integer\", WorkflowRunner.Double(21));")
-            .Connect("start", "code")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddCode("code", "Context.Set<int>(\"output.integer\", WorkflowRunner.Double(21));").Connect("start", "code").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -188,15 +156,18 @@ public sealed class CodeNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddCode("code", """"
-                             var example = new ClassExample() 
-                             { 
-                                Success = true,
-                                ErrorMessage = "Oops",
-                                Scores = [1, 7]
-                             };
-                             Context.Set<ClassExample>("output.example", example);
-                             """")
+            .AddCode(
+                "code",
+                """"
+                var example = new ClassExample() 
+                { 
+                   Success = true,
+                   ErrorMessage = "Oops",
+                   Scores = [1, 7]
+                };
+                Context.Set<ClassExample>("output.example", example);
+                """"
+            )
             .Connect("start", "code")
             .Build();
 
@@ -224,11 +195,7 @@ public sealed class CodeNodeUnitTest
     [Fact]
     public async Task Code_compile_error()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddCode("code", "this is not valid")
-            .Connect("start", "code")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddCode("code", "this is not valid").Connect("start", "code").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -241,11 +208,7 @@ public sealed class CodeNodeUnitTest
     [Fact]
     public async Task Code_compile_error_does_not_mutate_context()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddCode("code", "this is not valid")
-            .Connect("start", "code")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddCode("code", "this is not valid").Connect("start", "code").Build();
 
         ContextObject ctx = [];
         ctx.Set<int>("input.value", 5);
@@ -264,11 +227,7 @@ public sealed class CodeNodeUnitTest
     [Fact]
     public async Task Code_compile_error_truncates_diagnostics()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddCode("code", "int a = ; int b = ; int c = ; int d = ;")
-            .Connect("start", "code")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddCode("code", "int a = ; int b = ; int c = ; int d = ;").Connect("start", "code").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -283,11 +242,7 @@ public sealed class CodeNodeUnitTest
     [Fact]
     public async Task Code_runtime_error()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddCode("code", "throw new System.InvalidOperationException(\"Boom\");")
-            .Connect("start", "code")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddCode("code", "throw new System.InvalidOperationException(\"Boom\");").Connect("start", "code").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -300,11 +255,7 @@ public sealed class CodeNodeUnitTest
     [Fact]
     public async Task Code_runtime_error_does_not_mutate_context()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddCode("code", "throw new System.InvalidOperationException(\"Boom\");")
-            .Connect("start", "code")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddCode("code", "throw new System.InvalidOperationException(\"Boom\");").Connect("start", "code").Build();
 
         ContextObject ctx = [];
         ctx.Set<int>("input.value", 5);

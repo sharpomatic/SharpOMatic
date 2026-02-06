@@ -7,14 +7,9 @@ public class AssetHelper
     private readonly IAssetStore _assetStore;
     private readonly Guid? _runId;
 
-    public AssetHelper(
-        IRepositoryService repositoryService,
-        IAssetStore assetStore,
-        Guid? runId = null
-    )
+    public AssetHelper(IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId = null)
     {
-        _repositoryService =
-            repositoryService ?? throw new ArgumentNullException(nameof(repositoryService));
+        _repositoryService = repositoryService ?? throw new ArgumentNullException(nameof(repositoryService));
         _assetStore = assetStore ?? throw new ArgumentNullException(nameof(assetStore));
         _runId = runId;
     }
@@ -160,12 +155,7 @@ public class AssetHelper
         return await LoadAssetTextInternal(asset, encoding);
     }
 
-    public async Task<AssetRef> AddAssetFromBytesAsync(
-        byte[] data,
-        string name,
-        string mediaType,
-        AssetScope scope = AssetScope.Run
-    )
+    public async Task<AssetRef> AddAssetFromBytesAsync(byte[] data, string name, string mediaType, AssetScope scope = AssetScope.Run)
     {
         if (data is null)
             throw new SharpOMaticException("Asset data is required.");
@@ -174,22 +164,12 @@ public class AssetHelper
         return await AddAssetFromStreamInternal(stream, name, mediaType, scope);
     }
 
-    public Task<AssetRef> AddAssetFromStreamAsync(
-        Stream content,
-        string name,
-        string mediaType,
-        AssetScope scope = AssetScope.Run
-    )
+    public Task<AssetRef> AddAssetFromStreamAsync(Stream content, string name, string mediaType, AssetScope scope = AssetScope.Run)
     {
         return AddAssetFromStreamInternal(content, name, mediaType, scope);
     }
 
-    public async Task<AssetRef> AddAssetFromBase64Async(
-        string base64,
-        string name,
-        string mediaType,
-        AssetScope scope = AssetScope.Run
-    )
+    public async Task<AssetRef> AddAssetFromBase64Async(string base64, string name, string mediaType, AssetScope scope = AssetScope.Run)
     {
         if (string.IsNullOrWhiteSpace(base64))
             throw new SharpOMaticException("Asset base64 is required.");
@@ -205,12 +185,7 @@ public class AssetHelper
         }
     }
 
-    public async Task<AssetRef> AddAssetFromFileAsync(
-        string filePath,
-        string name,
-        string mediaType,
-        AssetScope scope = AssetScope.Run
-    )
+    public async Task<AssetRef> AddAssetFromFileAsync(string filePath, string name, string mediaType, AssetScope scope = AssetScope.Run)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             throw new SharpOMaticException("Asset file path is required.");
@@ -219,24 +194,12 @@ public class AssetHelper
         if (!File.Exists(fullPath))
             throw new SharpOMaticException($"Asset file '{fullPath}' cannot be found.");
 
-        await using var stream = new FileStream(
-            fullPath,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            81920,
-            FileOptions.Asynchronous | FileOptions.SequentialScan
-        );
+        await using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
 
         return await AddAssetFromStreamInternal(stream, name, mediaType, scope);
     }
 
-    public async Task<AssetRef> AddAssetFromUriAsync(
-        Uri uri,
-        string name,
-        string mediaType,
-        AssetScope scope = AssetScope.Run
-    )
+    public async Task<AssetRef> AddAssetFromUriAsync(Uri uri, string name, string mediaType, AssetScope scope = AssetScope.Run)
     {
         if (uri is null)
             throw new SharpOMaticException("Asset uri is required.");
@@ -244,14 +207,9 @@ public class AssetHelper
         if (!uri.IsAbsoluteUri)
             throw new SharpOMaticException("Asset uri must be absolute.");
 
-        using var response = await SharedHttpClient.GetAsync(
-            uri,
-            HttpCompletionOption.ResponseHeadersRead
-        );
+        using var response = await SharedHttpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
         if (!response.IsSuccessStatusCode)
-            throw new SharpOMaticException(
-                $"Asset download failed with status code {(int)response.StatusCode} ({response.StatusCode})."
-            );
+            throw new SharpOMaticException($"Asset download failed with status code {(int)response.StatusCode} ({response.StatusCode}).");
 
         await using var stream = await response.Content.ReadAsStreamAsync();
         return await AddAssetFromStreamInternal(stream, name, mediaType, scope);
@@ -308,10 +266,7 @@ public class AssetHelper
     {
         await using var stream = await _assetStore.OpenReadAsync(asset.StorageKey);
 
-        using var buffer =
-            asset.SizeBytes > 0 && asset.SizeBytes <= int.MaxValue
-                ? new MemoryStream((int)asset.SizeBytes)
-                : new MemoryStream();
+        using var buffer = asset.SizeBytes > 0 && asset.SizeBytes <= int.MaxValue ? new MemoryStream((int)asset.SizeBytes) : new MemoryStream();
 
         await stream.CopyToAsync(buffer);
         return buffer.ToArray();
@@ -328,12 +283,7 @@ public class AssetHelper
         return (encoding ?? Encoding.UTF8).GetString(bytes);
     }
 
-    private async Task<AssetRef> AddAssetFromStreamInternal(
-        Stream content,
-        string name,
-        string mediaType,
-        AssetScope scope
-    )
+    private async Task<AssetRef> AddAssetFromStreamInternal(Stream content, string name, string mediaType, AssetScope scope)
     {
         if (content is null)
             throw new SharpOMaticException("Asset content is required.");
@@ -414,8 +364,7 @@ public class AssetHelper
 
         public override void Flush() => _inner.Flush();
 
-        public override Task FlushAsync(CancellationToken cancellationToken) =>
-            _inner.FlushAsync(cancellationToken);
+        public override Task FlushAsync(CancellationToken cancellationToken) => _inner.FlushAsync(cancellationToken);
 
         public override int Read(byte[] buffer, int offset, int count)
         {
@@ -431,22 +380,14 @@ public class AssetHelper
             return read;
         }
 
-        public override async Task<int> ReadAsync(
-            byte[] buffer,
-            int offset,
-            int count,
-            CancellationToken cancellationToken
-        )
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             var read = await _inner.ReadAsync(buffer, offset, count, cancellationToken);
             BytesRead += read;
             return read;
         }
 
-        public override async ValueTask<int> ReadAsync(
-            Memory<byte> buffer,
-            CancellationToken cancellationToken = default
-        )
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
             var read = await _inner.ReadAsync(buffer, cancellationToken);
             BytesRead += read;
@@ -457,22 +398,13 @@ public class AssetHelper
 
         public override void SetLength(long value) => _inner.SetLength(value);
 
-        public override void Write(byte[] buffer, int offset, int count) =>
-            _inner.Write(buffer, offset, count);
+        public override void Write(byte[] buffer, int offset, int count) => _inner.Write(buffer, offset, count);
 
         public override void Write(ReadOnlySpan<byte> buffer) => _inner.Write(buffer);
 
-        public override Task WriteAsync(
-            byte[] buffer,
-            int offset,
-            int count,
-            CancellationToken cancellationToken
-        ) => _inner.WriteAsync(buffer, offset, count, cancellationToken);
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => _inner.WriteAsync(buffer, offset, count, cancellationToken);
 
-        public override ValueTask WriteAsync(
-            ReadOnlyMemory<byte> buffer,
-            CancellationToken cancellationToken = default
-        ) => _inner.WriteAsync(buffer, cancellationToken);
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) => _inner.WriteAsync(buffer, cancellationToken);
 
         protected override void Dispose(bool disposing)
         {

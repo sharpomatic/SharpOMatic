@@ -5,11 +5,7 @@ public sealed class EditNodeUnitTest
     [Fact]
     public async Task Edit_does_nothing()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEdit()
-            .Connect("start", "edit")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEdit().Connect("start", "edit").Build();
 
         ContextObject ctx = [];
         ctx.Set<bool>("input.boolean", true);
@@ -27,11 +23,7 @@ public sealed class EditNodeUnitTest
     [Fact]
     public async Task Edit_delete_removes_path()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEdit("edit", WorkflowBuilder.CreateDeleteEntry("input.boolean"))
-            .Connect("start", "edit")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateDeleteEntry("input.boolean")).Connect("start", "edit").Build();
 
         ContextObject ctx = [];
         ctx.Set<bool>("input.boolean", true);
@@ -52,11 +44,7 @@ public sealed class EditNodeUnitTest
     [Fact]
     public async Task Edit_upsert_sets_value()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEdit("edit", WorkflowBuilder.CreateIntUpsert("output.integer", 123))
-            .Connect("start", "edit")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateIntUpsert("output.integer", 123)).Connect("start", "edit").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -73,10 +61,7 @@ public sealed class EditNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddEdit(
-                "edit",
-                WorkflowBuilder.CreateDeleteEntry("input.remove"),
-                WorkflowBuilder.CreateStringUpsert("input.add", "added"))
+            .AddEdit("edit", WorkflowBuilder.CreateDeleteEntry("input.remove"), WorkflowBuilder.CreateStringUpsert("input.add", "added"))
             .Connect("start", "edit")
             .Build();
 
@@ -98,13 +83,150 @@ public sealed class EditNodeUnitTest
     }
 
     [Fact]
-    public async Task Edit_delete_missing_path()
+    public async Task Edit_move_moves_path()
+    {
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateMoveEntry("input.source", "input.target")).Connect("start", "edit").Build();
+
+        ContextObject ctx = [];
+        ctx.Set<string>("input.source", "moved");
+        ctx.Set<string>("input.keep", "keep-me");
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        var hasSource = outCtx.TryGet<string>("input.source", out var _);
+        Assert.False(hasSource);
+        Assert.Equal("moved", outCtx.Get<string>("input.target"));
+        Assert.Equal("keep-me", outCtx.Get<string>("input.keep"));
+    }
+
+    [Fact]
+    public async Task Edit_duplicate_copies_string()
+    {
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateDuplicateEntry("input.source", "input.target")).Connect("start", "edit").Build();
+
+        ContextObject ctx = [];
+        ctx.Set<string>("input.source", "copied");
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        Assert.Equal("copied", outCtx.Get<string>("input.source"));
+        Assert.Equal("copied", outCtx.Get<string>("input.target"));
+    }
+
+    [Fact]
+    public async Task Edit_duplicate_copies_object()
+    {
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateDuplicateEntry("input.source", "input.target")).Connect("start", "edit").Build();
+
+        ContextObject ctx = [];
+        ContextObject child = [];
+        child.Set("str", "copied");
+        child.Set("boolean", true);
+        ctx.Set("input.source", child);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        var sourceCtx = outCtx.Get<ContextObject>("input.source");
+        var targetCtx = outCtx.Get<ContextObject>("input.target");
+        Assert.NotNull(sourceCtx);
+        Assert.NotNull(targetCtx);
+        Assert.Equal("copied", sourceCtx.Get<string>("str"));
+        Assert.Equal("copied", targetCtx.Get<string>("str"));
+        Assert.True(sourceCtx.Get<bool>("boolean"));
+        Assert.True(targetCtx.Get<bool>("boolean"));
+    }
+
+    [Fact]
+    public async Task Edit_move_missing_path()
+    {
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateMoveEntry("input.missing", "input.target")).Connect("start", "edit").Build();
+
+        ContextObject ctx = [];
+        ctx.Set<string>("input.keep", "keep-me");
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        var hasTarget = outCtx.TryGet<string>("input.target", out var _);
+        Assert.False(hasTarget);
+        Assert.Equal("keep-me", outCtx.Get<string>("input.keep"));
+    }
+
+    [Fact]
+    public async Task Edit_duplicate_missing_path()
+    {
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateDuplicateEntry("input.missing", "input.target")).Connect("start", "edit").Build();
+
+        ContextObject ctx = [];
+        ctx.Set<string>("input.keep", "keep-me");
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        var hasTarget = outCtx.TryGet<string>("input.target", out var _);
+        Assert.False(hasTarget);
+        Assert.Equal("keep-me", outCtx.Get<string>("input.keep"));
+    }
+
+    [Fact]
+    public async Task Edit_move_duplicate_upsert_delete_order()
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddEdit("edit", WorkflowBuilder.CreateDeleteEntry("input.missing"))
+            .AddEdit(
+                "edit",
+                WorkflowBuilder.CreateMoveEntry("input.value", "output.moved"),
+                WorkflowBuilder.CreateDuplicateEntry("output.moved", "output.copy"),
+                WorkflowBuilder.CreateStringUpsert("output.moved", "upserted"),
+                WorkflowBuilder.CreateDeleteEntry("output.copy")
+            )
             .Connect("start", "edit")
             .Build();
+
+        ContextObject ctx = [];
+        ctx.Set<string>("input.value", "initial");
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        var hasInputValue = outCtx.TryGet<string>("input.value", out var _);
+        Assert.False(hasInputValue);
+        var hasOutputCopy = outCtx.TryGet<string>("output.copy", out var _);
+        Assert.False(hasOutputCopy);
+        Assert.Equal("upserted", outCtx.Get<string>("output.moved"));
+    }
+
+    [Fact]
+    public async Task Edit_delete_missing_path()
+    {
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateDeleteEntry("input.missing")).Connect("start", "edit").Build();
 
         ContextObject ctx = [];
         ctx.Set<string>("input.keep", "keep-me");
@@ -124,11 +246,7 @@ public sealed class EditNodeUnitTest
     [Fact]
     public async Task Edit_delete_empty_path()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEdit("edit", WorkflowBuilder.CreateDeleteEntry(""))
-            .Connect("start", "edit")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateDeleteEntry("")).Connect("start", "edit").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -138,13 +256,57 @@ public sealed class EditNodeUnitTest
     }
 
     [Fact]
+    public async Task Edit_move_empty_from_path()
+    {
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateMoveEntry("", "output.to")).Connect("start", "edit").Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Equal("Edit node move 'from' path cannot be empty.", run.Error);
+    }
+
+    [Fact]
+    public async Task Edit_move_empty_to_path()
+    {
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateMoveEntry("input.from", "")).Connect("start", "edit").Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Equal("Edit node move 'to' path cannot be empty.", run.Error);
+    }
+
+    [Fact]
+    public async Task Edit_duplicate_empty_from_path()
+    {
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateDuplicateEntry("", "output.to")).Connect("start", "edit").Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Equal("Edit node duplicate 'from' path cannot be empty.", run.Error);
+    }
+
+    [Fact]
+    public async Task Edit_duplicate_empty_to_path()
+    {
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateDuplicateEntry("input.from", "")).Connect("start", "edit").Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Equal("Edit node duplicate 'to' path cannot be empty.", run.Error);
+    }
+
+    [Fact]
     public async Task Edit_upsert_empty_path()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEdit("edit", WorkflowBuilder.CreateStringUpsert("", "value"))
-            .Connect("start", "edit")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateStringUpsert("", "value")).Connect("start", "edit").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -156,11 +318,7 @@ public sealed class EditNodeUnitTest
     [Fact]
     public async Task Edit_upsert_invalid_path()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEdit("edit", WorkflowBuilder.CreateIntUpsert("input.list[0]", 1))
-            .Connect("start", "edit")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateIntUpsert("input.list[0]", 1)).Connect("start", "edit").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -172,11 +330,7 @@ public sealed class EditNodeUnitTest
     [Fact]
     public async Task Edit_upsert_invalid_bool_value()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEdit("edit", WorkflowBuilder.CreateUpsertEntry("input.boolean", ContextEntryType.Bool, "not-bool"))
-            .Connect("start", "edit")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateUpsertEntry("input.boolean", ContextEntryType.Bool, "not-bool")).Connect("start", "edit").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -188,11 +342,7 @@ public sealed class EditNodeUnitTest
     [Fact]
     public async Task Edit_upsert_invalid_int_value()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEdit("edit", WorkflowBuilder.CreateUpsertEntry("input.integer", ContextEntryType.Int, "not-int"))
-            .Connect("start", "edit")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateUpsertEntry("input.integer", ContextEntryType.Int, "not-int")).Connect("start", "edit").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -204,11 +354,7 @@ public sealed class EditNodeUnitTest
     [Fact]
     public async Task Edit_upsert_invalid_double_value()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEdit("edit", WorkflowBuilder.CreateUpsertEntry("input.double", ContextEntryType.Double, "not-double"))
-            .Connect("start", "edit")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateUpsertEntry("input.double", ContextEntryType.Double, "not-double")).Connect("start", "edit").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -220,11 +366,7 @@ public sealed class EditNodeUnitTest
     [Fact]
     public async Task Edit_upsert_invalid_json_value()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEdit("edit", WorkflowBuilder.CreateUpsertEntry("input.json", ContextEntryType.JSON, "{ invalid"))
-            .Connect("start", "edit")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateUpsertEntry("input.json", ContextEntryType.JSON, "{ invalid")).Connect("start", "edit").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -236,11 +378,7 @@ public sealed class EditNodeUnitTest
     [Fact]
     public async Task Edit_upsert_expression_compile_error()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEdit("edit", WorkflowBuilder.CreateUpsertEntry("input.expr", ContextEntryType.Expression, "missing"))
-            .Connect("start", "edit")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateUpsertEntry("input.expr", ContextEntryType.Expression, "missing")).Connect("start", "edit").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -270,11 +408,7 @@ public sealed class EditNodeUnitTest
     [Fact]
     public async Task Edit_upsert_invalid_asset_ref_value()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEdit("edit", WorkflowBuilder.CreateUpsertEntry("input.asset", ContextEntryType.AssetRef, string.Empty))
-            .Connect("start", "edit")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEdit("edit", WorkflowBuilder.CreateUpsertEntry("input.asset", ContextEntryType.AssetRef, string.Empty)).Connect("start", "edit").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
@@ -304,10 +438,7 @@ public sealed class EditNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddEdit(
-                "edit",
-                WorkflowBuilder.CreateStringUpsert("input.value", "new"),
-                WorkflowBuilder.CreateDeleteEntry("input.value"))
+            .AddEdit("edit", WorkflowBuilder.CreateStringUpsert("input.value", "new"), WorkflowBuilder.CreateDeleteEntry("input.value"))
             .Connect("start", "edit")
             .Build();
 
