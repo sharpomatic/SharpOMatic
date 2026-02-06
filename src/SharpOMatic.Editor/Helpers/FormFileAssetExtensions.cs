@@ -8,7 +8,8 @@ public static class FormFileAssetExtensions
         AssetScope scope,
         Guid? runId = null,
         string? name = null,
-        string? mediaType = null)
+        string? mediaType = null
+    )
     {
         if (file is null)
             throw new SharpOMaticException("File is required.");
@@ -21,11 +22,21 @@ public static class FormFileAssetExtensions
             throw new SharpOMaticException("Asset name is required.");
 
         var resolvedMediaType = string.IsNullOrWhiteSpace(mediaType)
-            ? (string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType)
+            ? (
+                string.IsNullOrWhiteSpace(file.ContentType)
+                    ? "application/octet-stream"
+                    : file.ContentType
+            )
             : mediaType;
 
         await using var stream = file.OpenReadStream();
-        return await assetService.CreateFromStreamAsync(stream, file.Length, resolvedName,
-                                                        resolvedMediaType, scope, runId);
+        return await assetService.CreateFromStreamAsync(
+            stream,
+            file.Length,
+            resolvedName,
+            resolvedMediaType,
+            scope,
+            runId
+        );
     }
 }

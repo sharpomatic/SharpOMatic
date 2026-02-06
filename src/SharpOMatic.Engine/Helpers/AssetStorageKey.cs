@@ -5,11 +5,9 @@ public static class AssetStorageKey
     private const string LibraryPrefix = "library";
     private const string RunPrefix = "runs";
 
-    public static string ForLibrary(Guid assetId)
-        => $"{LibraryPrefix}/{assetId:N}";
+    public static string ForLibrary(Guid assetId) => $"{LibraryPrefix}/{assetId:N}";
 
-    public static string ForRun(Guid runId, Guid assetId)
-        => $"{RunPrefix}/{runId:N}/{assetId:N}";
+    public static string ForRun(Guid runId, Guid assetId) => $"{RunPrefix}/{runId:N}/{assetId:N}";
 
     public static string ForScope(AssetScope scope, Guid assetId, Guid? runId = null)
     {
@@ -27,8 +25,10 @@ public static class AssetStorageKey
         if (string.IsNullOrWhiteSpace(storageKey))
             throw new SharpOMaticException("Storage key is required.");
 
-        if (storageKey.StartsWith("/", StringComparison.Ordinal) ||
-            storageKey.StartsWith("\\", StringComparison.Ordinal))
+        if (
+            storageKey.StartsWith("/", StringComparison.Ordinal)
+            || storageKey.StartsWith("\\", StringComparison.Ordinal)
+        )
         {
             throw new SharpOMaticException("Storage key must be relative.");
         }

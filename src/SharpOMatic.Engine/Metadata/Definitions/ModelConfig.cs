@@ -11,4 +11,3 @@ public class ModelConfig
     public required List<ModelCapability> Capabilities { get; set; }
     public required List<FieldDescriptor> ParameterFields { get; set; }
 }
-

@@ -2,9 +2,8 @@ namespace SharpOMatic.Engine.Contexts;
 
 public sealed class BatchContext : ExecutionContext
 {
-    public BatchContext(ExecutionContext parent) : base(parent)
-    {
-    }
+    public BatchContext(ExecutionContext parent)
+        : base(parent) { }
 
     public Guid FanOutId { get; set; }
     public string InputArrayPath { get; set; } = string.Empty;

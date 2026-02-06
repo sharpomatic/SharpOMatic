@@ -13,12 +13,21 @@ public class CodeNode(ThreadContext threadContext, CodeNodeEntity node)
             {
                 Context = ThreadContext.NodeContext,
                 ServiceProvider = ProcessContext.ServiceScope.ServiceProvider,
-                Assets = new AssetHelper(ProcessContext.RepositoryService, ProcessContext.AssetStore, ProcessContext.Run.RunId)
+                Assets = new AssetHelper(
+                    ProcessContext.RepositoryService,
+                    ProcessContext.AssetStore,
+                    ProcessContext.Run.RunId
+                ),
             };
 
             try
             {
-                var result = await CSharpScript.RunAsync(Node.Code, options, globals, typeof(ScriptCodeContext));
+                var result = await CSharpScript.RunAsync(
+                    Node.Code,
+                    options,
+                    globals,
+                    typeof(ScriptCodeContext)
+                );
             }
             catch (CompilationErrorException e1)
             {
@@ -37,7 +46,7 @@ public class CodeNode(ThreadContext threadContext, CodeNodeEntity node)
                 sb.Append(e2.Message);
                 throw new SharpOMaticException(sb.ToString());
             }
-            catch(Exception e3)
+            catch (Exception e3)
             {
                 StringBuilder sb = new();
                 sb.AppendLine($"Code node failed during execution.\n");

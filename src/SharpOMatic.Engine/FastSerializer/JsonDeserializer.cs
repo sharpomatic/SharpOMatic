@@ -1,6 +1,4 @@
-﻿
-
-namespace SharpOMatic.Engine.FastSerializer;
+﻿namespace SharpOMatic.Engine.FastSerializer;
 
 public ref struct FastJsonDeserializer(ReadOnlySpan<char> json)
 {
@@ -26,7 +24,10 @@ public ref struct FastJsonDeserializer(ReadOnlySpan<char> json)
             FastJsonTokenKind.FloatValue => double.Parse(_tokenizer.TokenValue),
             FastJsonTokenKind.LeftSquareBracket => ParseArray(),
             FastJsonTokenKind.LeftCurlyBracket => ParseObject(),
-            _ => throw FastSerializationException.TokenNotAllowedHere(_tokenizer.Location, _tokenizer.TokenKind.ToString())
+            _ => throw FastSerializationException.TokenNotAllowedHere(
+                _tokenizer.Location,
+                _tokenizer.TokenKind.ToString()
+            ),
         };
     }
 
@@ -86,7 +87,11 @@ public ref struct FastJsonDeserializer(ReadOnlySpan<char> json)
             throw FastSerializationException.UnexpectedEndOfFile(_tokenizer.Location);
 
         if (_tokenizer.TokenKind != token)
-            throw FastSerializationException.ExpectedTokenNotFound(_tokenizer.Location, token.ToString(), _tokenizer.TokenKind.ToString());
+            throw FastSerializationException.ExpectedTokenNotFound(
+                _tokenizer.Location,
+                token.ToString(),
+                _tokenizer.TokenKind.ToString()
+            );
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -96,6 +101,10 @@ public ref struct FastJsonDeserializer(ReadOnlySpan<char> json)
             throw FastSerializationException.UnexpectedEndOfFile(_tokenizer.Location);
 
         if (_tokenizer.TokenKind != token)
-            throw FastSerializationException.ExpectedTokenNotFound(_tokenizer.Location, token.ToString(), _tokenizer.TokenKind.ToString());
+            throw FastSerializationException.ExpectedTokenNotFound(
+                _tokenizer.Location,
+                token.ToString(),
+                _tokenizer.TokenKind.ToString()
+            );
     }
 }

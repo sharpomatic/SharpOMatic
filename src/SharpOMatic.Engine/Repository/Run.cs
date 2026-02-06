@@ -1,5 +1,4 @@
-﻿
-namespace SharpOMatic.Engine.Repository;
+﻿namespace SharpOMatic.Engine.Repository;
 
 [Index(nameof(WorkflowId), nameof(Created))]
 [Index(nameof(WorkflowId), nameof(RunStatus))]
@@ -13,7 +12,7 @@ public class Run
     public DateTime? Started { get; set; }
     public DateTime? Stopped { get; set; }
     public string? InputEntries { get; set; }
-    public string? InputContext { get; set; } 
+    public string? InputContext { get; set; }
     public string? OutputContext { get; set; }
     public string? CustomData { get; set; }
     public string? Message { get; set; }

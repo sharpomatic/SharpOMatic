@@ -2,7 +2,7 @@ namespace SharpOMatic.Engine.Helpers;
 
 [SupportedOSPlatform("windows")]
 public class ImageHelper
-{   
+{
     private static readonly Color[] AnnotationColors =
     [
         Color.Red,
@@ -16,13 +16,18 @@ public class ImageHelper
         Color.RoyalBlue,
         Color.MediumPurple,
         Color.DeepPink,
-        Color.Sienna
+        Color.Sienna,
     ];
 
-    public static List<byte[]> ExtractRectangles(byte[] imageBytes, IReadOnlyList<RectangleF> rectangles)
+    public static List<byte[]> ExtractRectangles(
+        byte[] imageBytes,
+        IReadOnlyList<RectangleF> rectangles
+    )
     {
         if (!OperatingSystem.IsWindows())
-            throw new PlatformNotSupportedException("Image extraction requires System.Drawing on Windows.");
+            throw new PlatformNotSupportedException(
+                "Image extraction requires System.Drawing on Windows."
+            );
 
         if (imageBytes is null || imageBytes.Length == 0)
             throw new ArgumentException("Image bytes cannot be null or empty.", nameof(imageBytes));
@@ -41,10 +46,19 @@ public class ImageHelper
             if (!TryConvertToPixels(rectangle, bitmap.Width, bitmap.Height, out var rect))
                 continue;
 
-            using var regionBitmap = new Bitmap(rect.Width, rect.Height, PixelFormat.Format32bppArgb);
+            using var regionBitmap = new Bitmap(
+                rect.Width,
+                rect.Height,
+                PixelFormat.Format32bppArgb
+            );
             using (var graphics = Graphics.FromImage(regionBitmap))
             {
-                graphics.DrawImage(bitmap, new Rectangle(0, 0, rect.Width, rect.Height), rect, GraphicsUnit.Pixel);
+                graphics.DrawImage(
+                    bitmap,
+                    new Rectangle(0, 0, rect.Width, rect.Height),
+                    rect,
+                    GraphicsUnit.Pixel
+                );
             }
 
             using var output = new MemoryStream();
@@ -55,10 +69,16 @@ public class ImageHelper
         return extractedRectangles;
     }
 
-    public static byte[] AnnotatePoints(byte[] imageBytes, IReadOnlyList<PointF> points, int radius = 10)
+    public static byte[] AnnotatePoints(
+        byte[] imageBytes,
+        IReadOnlyList<PointF> points,
+        int radius = 10
+    )
     {
         if (!OperatingSystem.IsWindows())
-            throw new PlatformNotSupportedException("Image annotation requires System.Drawing on Windows.");
+            throw new PlatformNotSupportedException(
+                "Image annotation requires System.Drawing on Windows."
+            );
 
         if (imageBytes is null || imageBytes.Length == 0)
             throw new ArgumentException("Image bytes cannot be null or empty.", nameof(imageBytes));
@@ -80,7 +100,11 @@ public class ImageHelper
         return output.ToArray();
     }
 
-    public static byte[] AnnotateRectangles(byte[] imageBytes, IReadOnlyList<RectangleF> rectangles, IReadOnlyList<string>? titles = null)
+    public static byte[] AnnotateRectangles(
+        byte[] imageBytes,
+        IReadOnlyList<RectangleF> rectangles,
+        IReadOnlyList<string>? titles = null
+    )
     {
         if (imageBytes is null || imageBytes.Length == 0)
             throw new ArgumentException("Image bytes cannot be null or empty.", nameof(imageBytes));
@@ -89,7 +113,9 @@ public class ImageHelper
             return imageBytes;
 
         if (!OperatingSystem.IsWindows())
-            throw new PlatformNotSupportedException("Image annotation requires System.Drawing on Windows.");
+            throw new PlatformNotSupportedException(
+                "Image annotation requires System.Drawing on Windows."
+            );
 
         using var input = new MemoryStream(imageBytes);
         using var image = Image.FromStream(input);
@@ -102,7 +128,11 @@ public class ImageHelper
         return output.ToArray();
     }
 
-    public static Task<byte[]> AnnotatePolygons(byte[] imageBytes, IReadOnlyList<IReadOnlyList<PointF>> polygons, IReadOnlyList<string>? titles = null)
+    public static Task<byte[]> AnnotatePolygons(
+        byte[] imageBytes,
+        IReadOnlyList<IReadOnlyList<PointF>> polygons,
+        IReadOnlyList<string>? titles = null
+    )
     {
         if (imageBytes is null || imageBytes.Length == 0)
             throw new ArgumentException("Image bytes cannot be null or empty.", nameof(imageBytes));
@@ -111,7 +141,9 @@ public class ImageHelper
             return Task.FromResult(imageBytes);
 
         if (!OperatingSystem.IsWindows())
-            throw new PlatformNotSupportedException("Image annotation requires System.Drawing on Windows.");
+            throw new PlatformNotSupportedException(
+                "Image annotation requires System.Drawing on Windows."
+            );
 
         using var input = new MemoryStream(imageBytes);
         using var image = Image.FromStream(input);
@@ -124,13 +156,13 @@ public class ImageHelper
         return Task.FromResult(output.ToArray());
     }
 
-
     private static void DrawRectangles(
-        Graphics graphics, 
-        int imageWidth, 
-        int imageHeight, 
-        IReadOnlyList<RectangleF> rectangles, 
-        IReadOnlyList<string>? titles = null)
+        Graphics graphics,
+        int imageWidth,
+        int imageHeight,
+        IReadOnlyList<RectangleF> rectangles,
+        IReadOnlyList<string>? titles = null
+    )
     {
         var penWidth = Math.Max(2, Math.Min(6, imageWidth / 400));
         var fontSize = Math.Max(12, Math.Min(24, imageHeight / 40));
@@ -140,7 +172,7 @@ public class ImageHelper
         using var textBrush = new SolidBrush(Color.White);
 
         var colorIndex = 0;
-        for(int i=0; i<rectangles.Count; i++)
+        for (int i = 0; i < rectangles.Count; i++)
         {
             var rectangle = rectangles[i];
 
@@ -160,17 +192,28 @@ public class ImageHelper
                 using var backgroundBrush = new SolidBrush(color);
                 var textX = Math.Clamp(rect.Left + 2, 0, imageWidth - 1);
                 var textY = Math.Clamp(rect.Top + 2, 0, imageHeight - 1);
-                DrawLabel(graphics, titles[i], font, textBrush, backgroundBrush, imageWidth, imageHeight, textX, textY);
+                DrawLabel(
+                    graphics,
+                    titles[i],
+                    font,
+                    textBrush,
+                    backgroundBrush,
+                    imageWidth,
+                    imageHeight,
+                    textX,
+                    textY
+                );
             }
         }
     }
 
     private static void DrawPolygons(
-        Graphics graphics, 
-        int imageWidth, 
-        int imageHeight, 
-        IReadOnlyList<IReadOnlyList<PointF>> polygons, 
-        IReadOnlyList<string>? titles = null)
+        Graphics graphics,
+        int imageWidth,
+        int imageHeight,
+        IReadOnlyList<IReadOnlyList<PointF>> polygons,
+        IReadOnlyList<string>? titles = null
+    )
     {
         var penWidth = Math.Max(2, Math.Min(6, imageWidth / 400));
         var fontSize = Math.Max(12, Math.Min(24, imageHeight / 40));
@@ -184,7 +227,15 @@ public class ImageHelper
         {
             var polygon = polygons[i];
 
-            if (!TryConvertToPixels(polygon, imageWidth, imageHeight, out var points, out var bounds))
+            if (
+                !TryConvertToPixels(
+                    polygon,
+                    imageWidth,
+                    imageHeight,
+                    out var points,
+                    out var bounds
+                )
+            )
                 continue;
 
             var color = AnnotationColors[colorIndex % AnnotationColors.Length];
@@ -200,7 +251,17 @@ public class ImageHelper
                 using var backgroundBrush = new SolidBrush(color);
                 var textX = Math.Clamp(bounds.Left + 2, 0, imageWidth - 1);
                 var textY = Math.Clamp(bounds.Top + 2, 0, imageHeight - 1);
-                DrawLabel(graphics, titles[i], font, textBrush, backgroundBrush, imageWidth, imageHeight, textX, textY);
+                DrawLabel(
+                    graphics,
+                    titles[i],
+                    font,
+                    textBrush,
+                    backgroundBrush,
+                    imageWidth,
+                    imageHeight,
+                    textX,
+                    textY
+                );
             }
         }
     }
@@ -210,7 +271,8 @@ public class ImageHelper
         int imageWidth,
         int imageHeight,
         IReadOnlyList<PointF> points,
-        int radius)
+        int radius
+    )
     {
         var penWidth = Math.Max(2, Math.Min(6, imageWidth / 400));
         const int fillAlpha = 26;
@@ -247,7 +309,8 @@ public class ImageHelper
         int imageWidth,
         int imageHeight,
         float x,
-        float y)
+        float y
+    )
     {
         const float padding = 2f;
         var size = graphics.MeasureString(text, font);
@@ -269,7 +332,12 @@ public class ImageHelper
         graphics.DrawString(text, font, textBrush, clampedX + padding, clampedY + padding);
     }
 
-    private static bool TryConvertToPixels(RectangleF region, int imageWidth, int imageHeight, out Rectangle rect)
+    private static bool TryConvertToPixels(
+        RectangleF region,
+        int imageWidth,
+        int imageHeight,
+        out Rectangle rect
+    )
     {
         rect = Rectangle.Empty;
 
@@ -306,7 +374,8 @@ public class ImageHelper
         int imageWidth,
         int imageHeight,
         out PointF[] points,
-        out RectangleF bounds)
+        out RectangleF bounds
+    )
     {
         points = [];
         bounds = RectangleF.Empty;

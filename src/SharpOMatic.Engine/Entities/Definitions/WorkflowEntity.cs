@@ -7,4 +7,3 @@ public class WorkflowEntity : Entity
     public required NodeEntity[] Nodes { get; set; }
     public required ConnectionEntity[] Connections { get; set; }
 }
-

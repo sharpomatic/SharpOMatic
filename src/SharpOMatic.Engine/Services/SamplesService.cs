@@ -7,7 +7,7 @@ public class SamplesService(IRepositoryService repositoryService) : ISamplesServ
     private static readonly JsonSerializerOptions _workflowOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new NodeEntityConverter() }
+        Converters = { new NodeEntityConverter() },
     };
 
     private static readonly Lazy<Task<SampleCatalog>> _catalog = new(BuildCatalogAsync);
@@ -37,9 +37,12 @@ public class SamplesService(IRepositoryService repositoryService) : ISamplesServ
 
     private static IEnumerable<string> GetWorkflowResourceNames(Assembly assembly)
     {
-        return assembly.GetManifestResourceNames()
-            .Where(name => name.Contains(WorkflowResourceFilter, StringComparison.OrdinalIgnoreCase) && 
-                           name.EndsWith(".json", StringComparison.OrdinalIgnoreCase));
+        return assembly
+            .GetManifestResourceNames()
+            .Where(name =>
+                name.Contains(WorkflowResourceFilter, StringComparison.OrdinalIgnoreCase)
+                && name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+            );
     }
 
     private static async Task<SampleCatalog> BuildCatalogAsync()
@@ -73,7 +76,10 @@ public class SamplesService(IRepositoryService repositoryService) : ISamplesServ
         }
 
         names.Sort(StringComparer.OrdinalIgnoreCase);
-        return new SampleCatalog(names.AsReadOnly(), new ReadOnlyDictionary<string, string>(resourceMap));
+        return new SampleCatalog(
+            names.AsReadOnly(),
+            new ReadOnlyDictionary<string, string>(resourceMap)
+        );
     }
 
     private static async Task<string?> TryReadWorkflowName(Assembly assembly, string resourceName)
@@ -92,13 +98,19 @@ public class SamplesService(IRepositoryService repositoryService) : ISamplesServ
         return null;
     }
 
-    private static async Task<WorkflowEntity> LoadWorkflowSample(Assembly assembly, string resourceName)
+    private static async Task<WorkflowEntity> LoadWorkflowSample(
+        Assembly assembly,
+        string resourceName
+    )
     {
         await using var stream = assembly.GetManifestResourceStream(resourceName);
         if (stream is null)
             throw new SharpOMaticException($"Sample '{resourceName}' could not be loaded.");
 
-        var workflow = await JsonSerializer.DeserializeAsync<WorkflowEntity>(stream, _workflowOptions);
+        var workflow = await JsonSerializer.DeserializeAsync<WorkflowEntity>(
+            stream,
+            _workflowOptions
+        );
         if (workflow is null)
             throw new SharpOMaticException($"Sample '{resourceName}' could not be parsed.");
 
@@ -116,11 +128,17 @@ public class SamplesService(IRepositoryService repositoryService) : ISamplesServ
 
         var withoutExtension = resourceName[..lastDot];
         var lastSeparator = withoutExtension.LastIndexOf('.');
-        
-        return lastSeparator >= 0 ? withoutExtension.Substring(lastSeparator + 1) : withoutExtension;
+
+        return lastSeparator >= 0
+            ? withoutExtension.Substring(lastSeparator + 1)
+            : withoutExtension;
     }
 
-    private static void TryAddAlias(IDictionary<string, string> resourceMap, string? alias, string resourceName)
+    private static void TryAddAlias(
+        IDictionary<string, string> resourceMap,
+        string? alias,
+        string resourceName
+    )
     {
         if (string.IsNullOrWhiteSpace(alias))
             return;
@@ -129,5 +147,8 @@ public class SamplesService(IRepositoryService repositoryService) : ISamplesServ
             resourceMap[alias] = resourceName;
     }
 
-    private record SampleCatalog(IReadOnlyList<string> Names, IReadOnlyDictionary<string, string> ResourceMap);
+    private record SampleCatalog(
+        IReadOnlyList<string> Names,
+        IReadOnlyDictionary<string, string> ResourceMap
+    );
 }

@@ -17,7 +17,8 @@ public class MetadataController(IRepositoryService repositoryService) : Controll
         [FromQuery] ConnectorSortField sortBy = ConnectorSortField.Name,
         [FromQuery] SortDirection sortDirection = SortDirection.Ascending,
         [FromQuery] int skip = 0,
-        [FromQuery] int take = 0)
+        [FromQuery] int take = 0
+    )
     {
         if (skip < 0)
             skip = 0;
@@ -26,24 +27,39 @@ public class MetadataController(IRepositoryService repositoryService) : Controll
             take = 0;
 
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
-        return repositoryService.GetConnectorSummaries(normalizedSearch, sortBy, sortDirection, skip, take);
+        return repositoryService.GetConnectorSummaries(
+            normalizedSearch,
+            sortBy,
+            sortDirection,
+            skip,
+            take
+        );
     }
 
     [HttpGet("connectors/count")]
-    public Task<int> GetConnectorSummaryCount(IRepositoryService repositoryService, [FromQuery] string? search = null)
+    public Task<int> GetConnectorSummaryCount(
+        IRepositoryService repositoryService,
+        [FromQuery] string? search = null
+    )
     {
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
         return repositoryService.GetConnectorSummaryCount(normalizedSearch);
     }
 
     [HttpGet("connectors/{id}")]
-    public async Task<ActionResult<Connector>> GetConnector(IRepositoryService repositoryService, Guid id)
+    public async Task<ActionResult<Connector>> GetConnector(
+        IRepositoryService repositoryService,
+        Guid id
+    )
     {
         return await repositoryService.GetConnector(id);
     }
 
     [HttpPost("connectors")]
-    public async Task UpsertConnector(IRepositoryService repositoryService, [FromBody]Connector connector)
+    public async Task UpsertConnector(
+        IRepositoryService repositoryService,
+        [FromBody] Connector connector
+    )
     {
         await repositoryService.UpsertConnector(connector);
     }
@@ -67,7 +83,8 @@ public class MetadataController(IRepositoryService repositoryService) : Controll
         [FromQuery] ModelSortField sortBy = ModelSortField.Name,
         [FromQuery] SortDirection sortDirection = SortDirection.Ascending,
         [FromQuery] int skip = 0,
-        [FromQuery] int take = 0)
+        [FromQuery] int take = 0
+    )
     {
         if (skip < 0)
             skip = 0;
@@ -76,11 +93,20 @@ public class MetadataController(IRepositoryService repositoryService) : Controll
             take = 0;
 
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
-        return repositoryService.GetModelSummaries(normalizedSearch, sortBy, sortDirection, skip, take);
+        return repositoryService.GetModelSummaries(
+            normalizedSearch,
+            sortBy,
+            sortDirection,
+            skip,
+            take
+        );
     }
 
     [HttpGet("models/count")]
-    public Task<int> GetModelSummaryCount(IRepositoryService repositoryService, [FromQuery] string? search = null)
+    public Task<int> GetModelSummaryCount(
+        IRepositoryService repositoryService,
+        [FromQuery] string? search = null
+    )
     {
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
         return repositoryService.GetModelSummaryCount(normalizedSearch);

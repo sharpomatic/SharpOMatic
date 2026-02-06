@@ -12,5 +12,5 @@ public enum NodeType
     ModelCall = 7,
     Batch = 8,
     Gosub = 9,
-    Input = 10
+    Input = 10,
 }

@@ -1,3 +1,6 @@
+global using System.ComponentModel;
+global using System.Text.Json;
+global using System.Text.Json.Serialization;
 global using Microsoft.AspNetCore.Mvc;
 global using Microsoft.EntityFrameworkCore;
 global using SharpOMatic.DemoServer;
@@ -7,7 +10,3 @@ global using SharpOMatic.Engine.Enumerations;
 global using SharpOMatic.Engine.Interfaces;
 global using SharpOMatic.Engine.Repository;
 global using SharpOMatic.Engine.Services;
-global using System.ComponentModel;
-global using System.Text.Json;
-global using System.Text.Json.Serialization;
-

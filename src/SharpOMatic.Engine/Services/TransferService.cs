@@ -2,7 +2,8 @@ using System.IO.Compression;
 
 namespace SharpOMatic.Engine.Services;
 
-public class TransferService(IRepositoryService repositoryService, IAssetStore assetStore) : ITransferService
+public class TransferService(IRepositoryService repositoryService, IAssetStore assetStore)
+    : ITransferService
 {
     private const string ManifestFileName = "manifest.json";
     private const string WorkflowDirectory = "workflows";
@@ -13,31 +14,44 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
-        Converters = { new NodeEntityConverter() }
+        Converters = { new NodeEntityConverter() },
     };
 
-    public async Task ExportAsync(TransferExportRequest request, Stream output, CancellationToken cancellationToken = default)
+    public async Task ExportAsync(
+        TransferExportRequest request,
+        Stream output,
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(output);
 
-        var workflowIds = await ResolveSelectionAsync(request.Workflows, async () =>
-        {
-            var summaries = await repositoryService.GetWorkflowSummaries();
-            return summaries.Select(summary => summary.Id);
-        });
+        var workflowIds = await ResolveSelectionAsync(
+            request.Workflows,
+            async () =>
+            {
+                var summaries = await repositoryService.GetWorkflowSummaries();
+                return summaries.Select(summary => summary.Id);
+            }
+        );
 
-        var connectorIds = await ResolveSelectionAsync(request.Connectors, async () =>
-        {
-            var summaries = await repositoryService.GetConnectorSummaries();
-            return summaries.Select(summary => summary.ConnectorId);
-        });
+        var connectorIds = await ResolveSelectionAsync(
+            request.Connectors,
+            async () =>
+            {
+                var summaries = await repositoryService.GetConnectorSummaries();
+                return summaries.Select(summary => summary.ConnectorId);
+            }
+        );
 
-        var modelIds = await ResolveSelectionAsync(request.Models, async () =>
-        {
-            var summaries = await repositoryService.GetModelSummaries();
-            return summaries.Select(summary => summary.ModelId);
-        });
+        var modelIds = await ResolveSelectionAsync(
+            request.Models,
+            async () =>
+            {
+                var summaries = await repositoryService.GetModelSummaries();
+                return summaries.Select(summary => summary.ModelId);
+            }
+        );
 
         var assets = await ResolveAssetsAsync(request.Assets);
 
@@ -50,16 +64,18 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                 Workflows = workflowIds.Count,
                 Connectors = connectorIds.Count,
                 Models = modelIds.Count,
-                Assets = assets.Count
+                Assets = assets.Count,
             },
-            Assets = assets.Select(asset => new TransferAssetEntry
-            {
-                AssetId = asset.AssetId,
-                Name = asset.Name,
-                MediaType = asset.MediaType,
-                SizeBytes = asset.SizeBytes,
-                Created = asset.Created
-            }).ToList()
+            Assets = assets
+                .Select(asset => new TransferAssetEntry
+                {
+                    AssetId = asset.AssetId,
+                    Name = asset.Name,
+                    MediaType = asset.MediaType,
+                    SizeBytes = asset.SizeBytes,
+                    Created = asset.Created,
+                })
+                .ToList(),
         };
 
         using var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true);
@@ -69,46 +85,80 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         foreach (var workflowId in workflowIds)
         {
             var workflow = await repositoryService.GetWorkflow(workflowId);
-            await WriteJsonEntryAsync(archive, BuildEntityEntryName(WorkflowDirectory, workflowId), workflow, cancellationToken);
+            await WriteJsonEntryAsync(
+                archive,
+                BuildEntityEntryName(WorkflowDirectory, workflowId),
+                workflow,
+                cancellationToken
+            );
         }
 
         foreach (var connectorId in connectorIds)
         {
-            var connector = await repositoryService.GetConnector(connectorId, hideSecrets: !request.IncludeSecrets);
+            var connector = await repositoryService.GetConnector(
+                connectorId,
+                hideSecrets: !request.IncludeSecrets
+            );
             if (!request.IncludeSecrets)
                 await StripConnectorSecrets(connector);
 
-            await WriteJsonEntryAsync(archive, BuildEntityEntryName(ConnectorDirectory, connectorId), connector, cancellationToken);
+            await WriteJsonEntryAsync(
+                archive,
+                BuildEntityEntryName(ConnectorDirectory, connectorId),
+                connector,
+                cancellationToken
+            );
         }
 
         foreach (var modelId in modelIds)
         {
-            var model = await repositoryService.GetModel(modelId, hideSecrets: !request.IncludeSecrets);
+            var model = await repositoryService.GetModel(
+                modelId,
+                hideSecrets: !request.IncludeSecrets
+            );
             if (!request.IncludeSecrets)
                 await StripModelSecrets(model);
 
-            await WriteJsonEntryAsync(archive, BuildEntityEntryName(ModelDirectory, modelId), model, cancellationToken);
+            await WriteJsonEntryAsync(
+                archive,
+                BuildEntityEntryName(ModelDirectory, modelId),
+                model,
+                cancellationToken
+            );
         }
 
         foreach (var asset in assets)
         {
-            var entry = archive.CreateEntry(BuildAssetEntryName(asset.AssetId), CompressionLevel.Optimal);
+            var entry = archive.CreateEntry(
+                BuildAssetEntryName(asset.AssetId),
+                CompressionLevel.Optimal
+            );
             await using var entryStream = entry.Open();
-            await using var assetStream = await assetStore.OpenReadAsync(asset.StorageKey, cancellationToken);
+            await using var assetStream = await assetStore.OpenReadAsync(
+                asset.StorageKey,
+                cancellationToken
+            );
             await assetStream.CopyToAsync(entryStream, cancellationToken);
         }
     }
 
-    public async Task<TransferImportResult> ImportAsync(Stream input, CancellationToken cancellationToken = default)
+    public async Task<TransferImportResult> ImportAsync(
+        Stream input,
+        CancellationToken cancellationToken = default
+    )
     {
         ArgumentNullException.ThrowIfNull(input);
 
         using var archive = new ZipArchive(input, ZipArchiveMode.Read, leaveOpen: true);
-        var manifestEntry = archive.GetEntry(ManifestFileName) ?? throw new SharpOMaticException("Transfer manifest is missing.");
+        var manifestEntry =
+            archive.GetEntry(ManifestFileName)
+            ?? throw new SharpOMaticException("Transfer manifest is missing.");
         var manifest = await ReadJsonEntryAsync<TransferManifest>(manifestEntry, cancellationToken);
 
         if (manifest.SchemaVersion != TransferManifest.CurrentSchemaVersion)
-            throw new SharpOMaticException($"Transfer manifest schema version {manifest.SchemaVersion} is not supported.");
+            throw new SharpOMaticException(
+                $"Transfer manifest schema version {manifest.SchemaVersion} is not supported."
+            );
 
         var connectorEntries = GetEntityEntries(archive, ConnectorDirectory);
         var modelEntries = GetEntityEntries(archive, ModelDirectory);
@@ -145,8 +195,11 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
 
         foreach (var assetEntry in manifest.Assets ?? [])
         {
-            var zipEntry = archive.GetEntry(BuildAssetEntryName(assetEntry.AssetId))
-                ?? throw new SharpOMaticException($"Asset '{assetEntry.AssetId}' is missing from the transfer package.");
+            var zipEntry =
+                archive.GetEntry(BuildAssetEntryName(assetEntry.AssetId))
+                ?? throw new SharpOMaticException(
+                    $"Asset '{assetEntry.AssetId}' is missing from the transfer package."
+                );
 
             var storageKey = AssetStorageKey.ForLibrary(assetEntry.AssetId);
             await using (var assetStream = zipEntry.Open())
@@ -164,7 +217,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                 Created = assetEntry.Created,
                 MediaType = assetEntry.MediaType,
                 SizeBytes = sizeBytes,
-                StorageKey = storageKey
+                StorageKey = storageKey,
             };
 
             await repositoryService.UpsertAsset(asset);
@@ -181,7 +234,14 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
 
         if (selection.All)
         {
-            return await repositoryService.GetAssetsByScope(AssetScope.Library, null, AssetSortField.Name, SortDirection.Ascending, 0, 0);
+            return await repositoryService.GetAssetsByScope(
+                AssetScope.Library,
+                null,
+                AssetSortField.Name,
+                SortDirection.Ascending,
+                0,
+                0
+            );
         }
 
         var assets = new List<Asset>();
@@ -197,7 +257,10 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         return assets;
     }
 
-    private static async Task<List<Guid>> ResolveSelectionAsync(TransferSelection? selection, Func<Task<IEnumerable<Guid>>> resolveAllIds)
+    private static async Task<List<Guid>> ResolveSelectionAsync(
+        TransferSelection? selection,
+        Func<Task<IEnumerable<Guid>>> resolveAllIds
+    )
     {
         if (selection is null)
             return [];
@@ -208,30 +271,44 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         return (selection.Ids ?? []).Distinct().ToList();
     }
 
-    private static string BuildEntityEntryName(string directory, Guid id)
-        => $"{directory}/{id:D}{JsonExtension}";
+    private static string BuildEntityEntryName(string directory, Guid id) =>
+        $"{directory}/{id:D}{JsonExtension}";
 
-    private static string BuildAssetEntryName(Guid id)
-        => $"{AssetDirectory}/{id:D}";
+    private static string BuildAssetEntryName(Guid id) => $"{AssetDirectory}/{id:D}";
 
-    private static async Task WriteJsonEntryAsync<T>(ZipArchive archive, string entryName, T payload, CancellationToken cancellationToken)
+    private static async Task WriteJsonEntryAsync<T>(
+        ZipArchive archive,
+        string entryName,
+        T payload,
+        CancellationToken cancellationToken
+    )
     {
         var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
         await using var entryStream = entry.Open();
         await JsonSerializer.SerializeAsync(entryStream, payload, JsonOptions, cancellationToken);
     }
 
-    private static async Task<T> ReadJsonEntryAsync<T>(ZipArchiveEntry entry, CancellationToken cancellationToken)
+    private static async Task<T> ReadJsonEntryAsync<T>(
+        ZipArchiveEntry entry,
+        CancellationToken cancellationToken
+    )
     {
         await using var entryStream = entry.Open();
-        var payload = await JsonSerializer.DeserializeAsync<T>(entryStream, JsonOptions, cancellationToken);
+        var payload = await JsonSerializer.DeserializeAsync<T>(
+            entryStream,
+            JsonOptions,
+            cancellationToken
+        );
         if (payload is null)
             throw new SharpOMaticException($"Entry '{entry.FullName}' is invalid.");
 
         return payload;
     }
 
-    private static Dictionary<Guid, ZipArchiveEntry> GetEntityEntries(ZipArchive archive, string directory)
+    private static Dictionary<Guid, ZipArchiveEntry> GetEntityEntries(
+        ZipArchive archive,
+        string directory
+    )
     {
         var entries = new Dictionary<Guid, ZipArchiveEntry>();
         var prefix = $"{directory}/";
@@ -268,7 +345,10 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         if (string.IsNullOrWhiteSpace(fullName))
             return false;
 
-        if (fullName.StartsWith("/", StringComparison.Ordinal) || fullName.StartsWith("\\", StringComparison.Ordinal))
+        if (
+            fullName.StartsWith("/", StringComparison.Ordinal)
+            || fullName.StartsWith("\\", StringComparison.Ordinal)
+        )
             return false;
 
         if (fullName.Contains("..", StringComparison.Ordinal))
@@ -289,8 +369,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             return;
         }
 
-        var secretFields = config.AuthModes
-            .SelectMany(authMode => authMode.Fields)
+        var secretFields = config
+            .AuthModes.SelectMany(authMode => authMode.Fields)
             .Where(field => field.Type == FieldDescriptorType.Secret)
             .Select(field => field.Name)
             .ToHashSet(StringComparer.Ordinal);
@@ -311,7 +391,11 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             return;
         }
 
-        foreach (var field in config.ParameterFields.Where(field => field.Type == FieldDescriptorType.Secret))
+        foreach (
+            var field in config.ParameterFields.Where(field =>
+                field.Type == FieldDescriptorType.Secret
+            )
+        )
             model.ParameterValues.Remove(field.Name);
     }
 
@@ -324,8 +408,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         if (config is null)
             return;
 
-        var secretFields = config.AuthModes
-            .SelectMany(authMode => authMode.Fields)
+        var secretFields = config
+            .AuthModes.SelectMany(authMode => authMode.Fields)
             .Where(field => field.Type == FieldDescriptorType.Secret)
             .Select(field => field.Name)
             .ToHashSet(StringComparer.Ordinal);
@@ -336,19 +420,22 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         Connector? existing = null;
         try
         {
-            existing = await repositoryService.GetConnector(connector.ConnectorId, hideSecrets: false);
+            existing = await repositoryService.GetConnector(
+                connector.ConnectorId,
+                hideSecrets: false
+            );
         }
-        catch (SharpOMaticException)
-        {
-        }
+        catch (SharpOMaticException) { }
 
         if (existing is null)
             return;
 
         foreach (var fieldName in secretFields)
         {
-            if (!connector.FieldValues.ContainsKey(fieldName) &&
-                existing.FieldValues.TryGetValue(fieldName, out var value))
+            if (
+                !connector.FieldValues.ContainsKey(fieldName)
+                && existing.FieldValues.TryGetValue(fieldName, out var value)
+            )
             {
                 connector.FieldValues[fieldName] = value;
             }
@@ -364,8 +451,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         if (config is null)
             return;
 
-        var secretFields = config.ParameterFields
-            .Where(field => field.Type == FieldDescriptorType.Secret)
+        var secretFields = config
+            .ParameterFields.Where(field => field.Type == FieldDescriptorType.Secret)
             .Select(field => field.Name)
             .ToHashSet(StringComparer.Ordinal);
 
@@ -377,17 +464,17 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         {
             existing = await repositoryService.GetModel(model.ModelId, hideSecrets: false);
         }
-        catch (SharpOMaticException)
-        {
-        }
+        catch (SharpOMaticException) { }
 
         if (existing is null)
             return;
 
         foreach (var fieldName in secretFields)
         {
-            if (!model.ParameterValues.ContainsKey(fieldName) &&
-                existing.ParameterValues.TryGetValue(fieldName, out var value))
+            if (
+                !model.ParameterValues.ContainsKey(fieldName)
+                && existing.ParameterValues.TryGetValue(fieldName, out var value)
+            )
             {
                 model.ParameterValues[fieldName] = value;
             }

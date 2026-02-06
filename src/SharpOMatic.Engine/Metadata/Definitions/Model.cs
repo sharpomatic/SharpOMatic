@@ -8,4 +8,3 @@ public class Model : ModelSummary
     public required List<string> CustomCapabilities { get; set; }
     public required Dictionary<string, string?> ParameterValues { get; set; }
 }
-

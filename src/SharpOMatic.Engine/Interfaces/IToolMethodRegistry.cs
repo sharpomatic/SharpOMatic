@@ -6,4 +6,3 @@ public interface IToolMethodRegistry
     public IReadOnlyList<string> GetToolDisplayNames();
     public Delegate? GetToolFromDisplayName(string displayName);
 }
-

@@ -1,18 +1,21 @@
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using SharpOMatic.Engine.Entities.Definitions;
 using SharpOMatic.Engine.Repository;
-using System.Threading.Tasks;
 
 namespace SharpOMatic.Engine.Services;
 
-public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContextFactory, IAssetStore? assetStore = null) : IRepositoryService
+public class RepositoryService(
+    IDbContextFactory<SharpOMaticDbContext> dbContextFactory,
+    IAssetStore? assetStore = null
+) : IRepositoryService
 {
     private const string SECRET_OBFUSCATION = "********";
 
     private static readonly JsonSerializerOptions _options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new NodeEntityConverter() }
+        Converters = { new NodeEntityConverter() },
     };
 
     // ------------------------------------------------
@@ -20,7 +23,13 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     // ------------------------------------------------
     public async Task<List<WorkflowSummary>> GetWorkflowSummaries()
     {
-        return await GetWorkflowSummaries(null, WorkflowSortField.Name, SortDirection.Ascending, 0, 0);
+        return await GetWorkflowSummaries(
+            null,
+            WorkflowSortField.Name,
+            SortDirection.Ascending,
+            0,
+            0
+        );
     }
 
     public async Task<int> GetWorkflowSummaryCount(string? search)
@@ -35,7 +44,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         WorkflowSortField sortBy,
         SortDirection sortDirection,
         int skip,
-        int take)
+        int take
+    )
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -48,22 +58,28 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (take > 0)
             sorted = sorted.Take(take);
 
-        return await sorted.Select(workflow => new WorkflowSummary
-        {
-            Version = workflow.Version,
-            Id = workflow.WorkflowId,
-            Name = workflow.Named,
-            Description = workflow.Description,
-        }).ToListAsync();
+        return await sorted
+            .Select(workflow => new WorkflowSummary
+            {
+                Version = workflow.Version,
+                Id = workflow.WorkflowId,
+                Name = workflow.Named,
+                Description = workflow.Description,
+            })
+            .ToListAsync();
     }
 
     public async Task<WorkflowEntity> GetWorkflow(Guid workflowId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var workflow = await (from w in dbContext.Workflows
-                              where w.WorkflowId == workflowId
-                              select w).AsNoTracking().FirstOrDefaultAsync();
+        var workflow = await (
+            from w in dbContext.Workflows
+            where w.WorkflowId == workflowId
+            select w
+        )
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
 
         return workflow is null
             ? throw new SharpOMaticException($"Workflow '{workflowId}' cannot be found.")
@@ -74,7 +90,10 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 Name = workflow.Named,
                 Description = workflow.Description,
                 Nodes = JsonSerializer.Deserialize<NodeEntity[]>(workflow.Nodes, _options)!,
-                Connections = JsonSerializer.Deserialize<ConnectionEntity[]>(workflow.Connections, _options)!,
+                Connections = JsonSerializer.Deserialize<ConnectionEntity[]>(
+                    workflow.Connections,
+                    _options
+                )!,
             };
     }
 
@@ -82,9 +101,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entry = await (from w in dbContext.Workflows
-                           where w.WorkflowId == workflow.Id
-                           select w).FirstOrDefaultAsync();
+        var entry = await (
+            from w in dbContext.Workflows
+            where w.WorkflowId == workflow.Id
+            select w
+        ).FirstOrDefaultAsync();
 
         if (entry is null)
         {
@@ -95,7 +116,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 Named = "",
                 Description = "",
                 Nodes = "",
-                Connections = ""
+                Connections = "",
             };
 
             dbContext.Workflows.Add(entry);
@@ -113,15 +134,17 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var workflow = await (from w in dbContext.Workflows
-                              where w.WorkflowId == workflowId
-                              select w).FirstOrDefaultAsync();
+        var workflow = await (
+            from w in dbContext.Workflows
+            where w.WorkflowId == workflowId
+            select w
+        ).FirstOrDefaultAsync();
 
         if (workflow is null)
             throw new SharpOMaticException($"Workflow '{workflowId}' cannot be found.");
 
-        var runIds = await dbContext.Runs
-            .Where(r => r.WorkflowId == workflowId)
+        var runIds = await dbContext
+            .Runs.Where(r => r.WorkflowId == workflowId)
             .Select(r => r.RunId)
             .ToListAsync();
 
@@ -135,13 +158,15 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var workflow = await dbContext.Workflows.AsNoTracking()
+        var workflow = await dbContext
+            .Workflows.AsNoTracking()
             .FirstOrDefaultAsync(w => w.WorkflowId == workflowId);
 
         if (workflow is null)
             throw new SharpOMaticException($"Workflow '{workflowId}' cannot be found.");
 
-        var existingNames = await dbContext.Workflows.AsNoTracking()
+        var existingNames = await dbContext
+            .Workflows.AsNoTracking()
             .Select(w => w.Named)
             .ToListAsync();
 
@@ -181,7 +206,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             Named = copyName,
             Description = workflow.Description,
             Nodes = workflow.Nodes,
-            Connections = workflow.Connections
+            Connections = workflow.Connections,
         };
 
         dbContext.Workflows.Add(newWorkflow);
@@ -225,29 +250,40 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return true;
     }
 
-    private static IQueryable<Workflow> ApplyWorkflowSearch(IQueryable<Workflow> workflows, string? search)
+    private static IQueryable<Workflow> ApplyWorkflowSearch(
+        IQueryable<Workflow> workflows,
+        string? search
+    )
     {
         if (string.IsNullOrWhiteSpace(search))
             return workflows;
 
         var normalizedSearch = search.Trim().ToLower();
-        return workflows.Where(workflow =>
-            workflow.Named.ToLower().Contains(normalizedSearch));
+        return workflows.Where(workflow => workflow.Named.ToLower().Contains(normalizedSearch));
     }
 
     private static IQueryable<Workflow> GetSortedWorkflows(
         IQueryable<Workflow> workflows,
         WorkflowSortField sortBy,
-        SortDirection sortDirection)
+        SortDirection sortDirection
+    )
     {
         return sortBy switch
         {
             WorkflowSortField.Description => sortDirection == SortDirection.Ascending
-                ? workflows.OrderBy(workflow => workflow.Description).ThenBy(workflow => workflow.Named)
-                : workflows.OrderByDescending(workflow => workflow.Description).ThenByDescending(workflow => workflow.Named),
+                ? workflows
+                    .OrderBy(workflow => workflow.Description)
+                    .ThenBy(workflow => workflow.Named)
+                : workflows
+                    .OrderByDescending(workflow => workflow.Description)
+                    .ThenByDescending(workflow => workflow.Named),
             _ => sortDirection == SortDirection.Ascending
-                ? workflows.OrderBy(workflow => workflow.Named).ThenBy(workflow => workflow.Description)
-                : workflows.OrderByDescending(workflow => workflow.Named).ThenByDescending(workflow => workflow.Description),
+                ? workflows
+                    .OrderBy(workflow => workflow.Named)
+                    .ThenBy(workflow => workflow.Description)
+                : workflows
+                    .OrderByDescending(workflow => workflow.Named)
+                    .ThenByDescending(workflow => workflow.Description),
         };
     }
 
@@ -264,7 +300,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await dbContext.Runs.AsNoTracking()
+        return await dbContext
+            .Runs.AsNoTracking()
             .Where(r => r.WorkflowId == workflowId)
             .OrderByDescending(r => r.Created)
             .FirstOrDefaultAsync();
@@ -274,17 +311,23 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await dbContext.Runs.AsNoTracking()
+        return await dbContext
+            .Runs.AsNoTracking()
             .Where(r => r.WorkflowId == workflowId)
             .CountAsync();
     }
 
-    public async Task<List<Run>> GetWorkflowRuns(Guid workflowId, RunSortField sortBy, SortDirection sortDirection, int skip, int take)
+    public async Task<List<Run>> GetWorkflowRuns(
+        Guid workflowId,
+        RunSortField sortBy,
+        SortDirection sortDirection,
+        int skip,
+        int take
+    )
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var runs = dbContext.Runs.AsNoTracking()
-            .Where(r => r.WorkflowId == workflowId);
+        var runs = dbContext.Runs.AsNoTracking().Where(r => r.WorkflowId == workflowId);
 
         var sortedRuns = GetSortedRuns(runs, sortBy, sortDirection);
 
@@ -301,9 +344,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entity = await (from r in dbContext.Runs
-                            where r.RunId == run.RunId
-                            select r).FirstOrDefaultAsync();
+        var entity = await (
+            from r in dbContext.Runs
+            where r.RunId == run.RunId
+            select r
+        ).FirstOrDefaultAsync();
 
         if (entity is null)
             dbContext.Runs.Add(run);
@@ -320,8 +365,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var runIdsToDelete = await dbContext.Runs
-            .Where(r => r.WorkflowId == workflowId)
+        var runIdsToDelete = await dbContext
+            .Runs.Where(r => r.WorkflowId == workflowId)
             .OrderByDescending(r => r.Created)
             .Skip(keepLatest)
             .Select(r => r.RunId)
@@ -332,12 +377,14 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         await DeleteAssetStorageForRuns(runIdsToDelete);
 
-        await dbContext.Runs
-            .Where(r => runIdsToDelete.Contains(r.RunId))
-            .ExecuteDeleteAsync();
+        await dbContext.Runs.Where(r => runIdsToDelete.Contains(r.RunId)).ExecuteDeleteAsync();
     }
 
-    private static IQueryable<Run> GetSortedRuns(IQueryable<Run> runs, RunSortField sortBy, SortDirection sortDirection)
+    private static IQueryable<Run> GetSortedRuns(
+        IQueryable<Run> runs,
+        RunSortField sortBy,
+        SortDirection sortDirection
+    )
     {
         return sortBy switch
         {
@@ -357,19 +404,23 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await (from t in dbContext.Traces.AsNoTracking()
-                      where t.RunId == runId
-                      orderby t.Created
-                      select t).ToListAsync();
+        return await (
+            from t in dbContext.Traces.AsNoTracking()
+            where t.RunId == runId
+            orderby t.Created
+            select t
+        ).ToListAsync();
     }
 
     public async Task UpsertTrace(Trace trace)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entity = await (from t in dbContext.Traces
-                            where t.TraceId == trace.TraceId
-                            select t).FirstOrDefaultAsync();
+        var entity = await (
+            from t in dbContext.Traces
+            where t.TraceId == trace.TraceId
+            select t
+        ).FirstOrDefaultAsync();
 
         if (entity is null)
             dbContext.Traces.Add(trace);
@@ -386,15 +437,18 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (from c in dbContext.ConnectorConfigMetadata
-                              where c.ConfigId == configId
-                              select c).AsNoTracking().FirstOrDefaultAsync();
+        var metadata = await (
+            from c in dbContext.ConnectorConfigMetadata
+            where c.ConfigId == configId
+            select c
+        )
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
 
         if (metadata is null)
             return null;
 
         return JsonSerializer.Deserialize<ConnectorConfig>(metadata.Config, _options);
-
     }
 
     public async Task<List<ConnectorConfig>> GetConnectorConfigs()
@@ -418,9 +472,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (from c in dbContext.ConnectorConfigMetadata
-                              where c.ConfigId == config.ConfigId
-                              select c).FirstOrDefaultAsync();
+        var metadata = await (
+            from c in dbContext.ConnectorConfigMetadata
+            where c.ConfigId == config.ConfigId
+            select c
+        ).FirstOrDefaultAsync();
 
         if (metadata is null)
         {
@@ -428,7 +484,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             {
                 Version = config.Version,
                 ConfigId = config.ConfigId,
-                Config = ""
+                Config = "",
             };
 
             dbContext.ConnectorConfigMetadata.Add(metadata);
@@ -443,7 +499,13 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     // ------------------------------------------------
     public async Task<List<ConnectorSummary>> GetConnectorSummaries()
     {
-        return await GetConnectorSummaries(null, ConnectorSortField.Name, SortDirection.Ascending, 0, 0);
+        return await GetConnectorSummaries(
+            null,
+            ConnectorSortField.Name,
+            SortDirection.Ascending,
+            0,
+            0
+        );
     }
 
     public async Task<int> GetConnectorSummaryCount(string? search)
@@ -458,7 +520,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         ConnectorSortField sortBy,
         SortDirection sortDirection,
         int skip,
-        int take)
+        int take
+    )
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -471,21 +534,27 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (take > 0)
             sorted = sorted.Take(take);
 
-        return await sorted.Select(connector => new ConnectorSummary
-        {
-            ConnectorId = connector.ConnectorId,
-            Name = connector.Name,
-            Description = connector.Description,
-        }).ToListAsync();
+        return await sorted
+            .Select(connector => new ConnectorSummary
+            {
+                ConnectorId = connector.ConnectorId,
+                Name = connector.Name,
+                Description = connector.Description,
+            })
+            .ToListAsync();
     }
 
     public async Task<Connector> GetConnector(Guid connectorId, bool hideSecrets = true)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (from c in dbContext.ConnectorMetadata
-                              where c.ConnectorId == connectorId
-                              select c).AsNoTracking().FirstOrDefaultAsync();
+        var metadata = await (
+            from c in dbContext.ConnectorMetadata
+            where c.ConnectorId == connectorId
+            select c
+        )
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
 
         if (metadata is null)
             throw new SharpOMaticException($"Connector '{connectorId}' cannot be found.");
@@ -496,7 +565,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             throw new SharpOMaticException($"Connector '{connectorId}' configuration is invalid.");
 
         // We need to ensure that any field that is a secret, is replaced to prevent it being available to clients
-        if (hideSecrets && (connector.FieldValues.Count > 0) && !string.IsNullOrWhiteSpace(connector.ConfigId))
+        if (
+            hideSecrets
+            && (connector.FieldValues.Count > 0)
+            && !string.IsNullOrWhiteSpace(connector.ConfigId)
+        )
         {
             var config = await GetConnectorConfig(connector.ConfigId);
             if (config is not null)
@@ -504,7 +577,10 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 foreach (var authModes in config.AuthModes)
                 {
                     foreach (var field in authModes.Fields)
-                        if ((field.Type == FieldDescriptorType.Secret) && connector.FieldValues.ContainsKey(field.Name))
+                        if (
+                            (field.Type == FieldDescriptorType.Secret)
+                            && connector.FieldValues.ContainsKey(field.Name)
+                        )
                             connector.FieldValues[field.Name] = SECRET_OBFUSCATION;
                 }
             }
@@ -517,9 +593,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entry = await (from c in dbContext.ConnectorMetadata
-                           where c.ConnectorId == connector.ConnectorId
-                           select c).FirstOrDefaultAsync();
+        var entry = await (
+            from c in dbContext.ConnectorMetadata
+            where c.ConnectorId == connector.ConnectorId
+            select c
+        ).FirstOrDefaultAsync();
 
         if (entry is null)
         {
@@ -529,7 +607,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 Version = connector.Version,
                 Name = "",
                 Description = "",
-                Config = ""
+                Config = "",
             };
 
             dbContext.ConnectorMetadata.Add(entry);
@@ -547,12 +625,16 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                     {
                         foreach (var field in authModes.Fields)
                         {
-                            if ((field.Type == FieldDescriptorType.Secret) &&
-                                connector.FieldValues.ContainsKey(field.Name) &&
-                                entryConfig.FieldValues.ContainsKey(field.Name) &&
-                                (connector.FieldValues[field.Name] == SECRET_OBFUSCATION))
+                            if (
+                                (field.Type == FieldDescriptorType.Secret)
+                                && connector.FieldValues.ContainsKey(field.Name)
+                                && entryConfig.FieldValues.ContainsKey(field.Name)
+                                && (connector.FieldValues[field.Name] == SECRET_OBFUSCATION)
+                            )
                             {
-                                connector.FieldValues[field.Name] = entryConfig.FieldValues[field.Name];
+                                connector.FieldValues[field.Name] = entryConfig.FieldValues[
+                                    field.Name
+                                ];
                             }
                         }
                     }
@@ -571,9 +653,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (from c in dbContext.ConnectorMetadata
-                              where c.ConnectorId == connectorId
-                              select c).FirstOrDefaultAsync();
+        var metadata = await (
+            from c in dbContext.ConnectorMetadata
+            where c.ConnectorId == connectorId
+            select c
+        ).FirstOrDefaultAsync();
 
         if (metadata is null)
             throw new SharpOMaticException($"Connector '{connectorId}' cannot be found.");
@@ -582,29 +666,40 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
-    private static IQueryable<ConnectorMetadata> ApplyConnectorSearch(IQueryable<ConnectorMetadata> connectors, string? search)
+    private static IQueryable<ConnectorMetadata> ApplyConnectorSearch(
+        IQueryable<ConnectorMetadata> connectors,
+        string? search
+    )
     {
         if (string.IsNullOrWhiteSpace(search))
             return connectors;
 
         var normalizedSearch = search.Trim().ToLower();
-        return connectors.Where(connector =>
-            connector.Name.ToLower().Contains(normalizedSearch));
+        return connectors.Where(connector => connector.Name.ToLower().Contains(normalizedSearch));
     }
 
     private static IQueryable<ConnectorMetadata> GetSortedConnectors(
         IQueryable<ConnectorMetadata> connectors,
         ConnectorSortField sortBy,
-        SortDirection sortDirection)
+        SortDirection sortDirection
+    )
     {
         return sortBy switch
         {
             ConnectorSortField.Description => sortDirection == SortDirection.Ascending
-                ? connectors.OrderBy(connector => connector.Description).ThenBy(connector => connector.Name)
-                : connectors.OrderByDescending(connector => connector.Description).ThenByDescending(connector => connector.Name),
+                ? connectors
+                    .OrderBy(connector => connector.Description)
+                    .ThenBy(connector => connector.Name)
+                : connectors
+                    .OrderByDescending(connector => connector.Description)
+                    .ThenByDescending(connector => connector.Name),
             _ => sortDirection == SortDirection.Ascending
-                ? connectors.OrderBy(connector => connector.Name).ThenBy(connector => connector.Description)
-                : connectors.OrderByDescending(connector => connector.Name).ThenByDescending(connector => connector.Description),
+                ? connectors
+                    .OrderBy(connector => connector.Name)
+                    .ThenBy(connector => connector.Description)
+                : connectors
+                    .OrderByDescending(connector => connector.Name)
+                    .ThenByDescending(connector => connector.Description),
         };
     }
 
@@ -615,15 +710,18 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (from m in dbContext.ModelConfigMetadata
-                              where m.ConfigId == configId
-                              select m).AsNoTracking().FirstOrDefaultAsync();
+        var metadata = await (
+            from m in dbContext.ModelConfigMetadata
+            where m.ConfigId == configId
+            select m
+        )
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
 
         if (metadata is null)
             return null;
 
         return JsonSerializer.Deserialize<ModelConfig>(metadata.Config, _options);
-
     }
 
     public async Task<List<ModelConfig>> GetModelConfigs()
@@ -647,9 +745,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (from m in dbContext.ModelConfigMetadata
-                              where m.ConfigId == config.ConfigId
-                              select m).FirstOrDefaultAsync();
+        var metadata = await (
+            from m in dbContext.ModelConfigMetadata
+            where m.ConfigId == config.ConfigId
+            select m
+        ).FirstOrDefaultAsync();
 
         if (metadata is null)
         {
@@ -657,7 +757,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             {
                 Version = config.Version,
                 ConfigId = config.ConfigId,
-                Config = ""
+                Config = "",
             };
 
             dbContext.ModelConfigMetadata.Add(metadata);
@@ -687,7 +787,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         ModelSortField sortBy,
         SortDirection sortDirection,
         int skip,
-        int take)
+        int take
+    )
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -700,21 +801,23 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (take > 0)
             sorted = sorted.Take(take);
 
-        return await sorted.Select(model => new ModelSummary
-        {
-            ModelId = model.ModelId,
-            Name = model.Name,
-            Description = model.Description,
-        }).ToListAsync();
+        return await sorted
+            .Select(model => new ModelSummary
+            {
+                ModelId = model.ModelId,
+                Name = model.Name,
+                Description = model.Description,
+            })
+            .ToListAsync();
     }
 
     public async Task<Model> GetModel(Guid modelId, bool hideSecrets = true)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (from m in dbContext.ModelMetadata
-                              where m.ModelId == modelId
-                              select m).AsNoTracking().FirstOrDefaultAsync();
+        var metadata = await (from m in dbContext.ModelMetadata where m.ModelId == modelId select m)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
 
         if (metadata is null)
             throw new SharpOMaticException($"Model '{modelId}' cannot be found.");
@@ -725,13 +828,20 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             throw new SharpOMaticException($"Model '{modelId}' configuration is invalid.");
 
         // We need to ensure that any parameter that is a secret, is replaced to prevent it being available in the client
-        if (hideSecrets && (model.ParameterValues.Count > 0) && !string.IsNullOrWhiteSpace(model.ConfigId))
+        if (
+            hideSecrets
+            && (model.ParameterValues.Count > 0)
+            && !string.IsNullOrWhiteSpace(model.ConfigId)
+        )
         {
             var config = await GetModelConfig(model.ConfigId);
             if (config is not null)
             {
                 foreach (var field in config.ParameterFields)
-                    if ((field.Type == FieldDescriptorType.Secret) && model.ParameterValues.ContainsKey(field.Name))
+                    if (
+                        (field.Type == FieldDescriptorType.Secret)
+                        && model.ParameterValues.ContainsKey(field.Name)
+                    )
                         model.ParameterValues[field.Name] = "**********";
             }
         }
@@ -743,9 +853,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entry = await (from m in dbContext.ModelMetadata
-                           where m.ModelId == model.ModelId
-                           select m).FirstOrDefaultAsync();
+        var entry = await (
+            from m in dbContext.ModelMetadata
+            where m.ModelId == model.ModelId
+            select m
+        ).FirstOrDefaultAsync();
 
         if (entry is null)
         {
@@ -755,7 +867,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 Version = model.Version,
                 Name = "",
                 Description = "",
-                Config = ""
+                Config = "",
             };
 
             dbContext.ModelMetadata.Add(entry);
@@ -772,9 +884,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (from m in dbContext.ModelMetadata
-                              where m.ModelId == modelId
-                              select m).FirstOrDefaultAsync();
+        var metadata = await (
+            from m in dbContext.ModelMetadata
+            where m.ModelId == modelId
+            select m
+        ).FirstOrDefaultAsync();
 
         if (metadata is null)
             throw new SharpOMaticException($"Model '{modelId}' cannot be found.");
@@ -783,29 +897,36 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
-    private static IQueryable<ModelMetadata> ApplyModelSearch(IQueryable<ModelMetadata> models, string? search)
+    private static IQueryable<ModelMetadata> ApplyModelSearch(
+        IQueryable<ModelMetadata> models,
+        string? search
+    )
     {
         if (string.IsNullOrWhiteSpace(search))
             return models;
 
         var normalizedSearch = search.Trim().ToLower();
-        return models.Where(model =>
-            model.Name.ToLower().Contains(normalizedSearch));
+        return models.Where(model => model.Name.ToLower().Contains(normalizedSearch));
     }
 
     private static IQueryable<ModelMetadata> GetSortedModels(
         IQueryable<ModelMetadata> models,
         ModelSortField sortBy,
-        SortDirection sortDirection)
+        SortDirection sortDirection
+    )
     {
         return sortBy switch
         {
             ModelSortField.Description => sortDirection == SortDirection.Ascending
                 ? models.OrderBy(model => model.Description).ThenBy(model => model.Name)
-                : models.OrderByDescending(model => model.Description).ThenByDescending(model => model.Name),
+                : models
+                    .OrderByDescending(model => model.Description)
+                    .ThenByDescending(model => model.Name),
             _ => sortDirection == SortDirection.Ascending
                 ? models.OrderBy(model => model.Name).ThenBy(model => model.Description)
-                : models.OrderByDescending(model => model.Name).ThenByDescending(model => model.Description),
+                : models
+                    .OrderByDescending(model => model.Name)
+                    .ThenByDescending(model => model.Description),
         };
     }
 
@@ -814,7 +935,13 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     // ------------------------------------------------
     public async Task<List<EvalConfigSummary>> GetEvalConfigSummaries()
     {
-        return await GetEvalConfigSummaries(null, EvalConfigSortField.Name, SortDirection.Ascending, 0, 0);
+        return await GetEvalConfigSummaries(
+            null,
+            EvalConfigSortField.Name,
+            SortDirection.Ascending,
+            0,
+            0
+        );
     }
 
     public async Task<int> GetEvalConfigSummaryCount(string? search)
@@ -829,7 +956,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         EvalConfigSortField sortBy,
         SortDirection sortDirection,
         int skip,
-        int take)
+        int take
+    )
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -842,21 +970,27 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (take > 0)
             sorted = sorted.Take(take);
 
-        return await sorted.Select(config => new EvalConfigSummary
-        {
-            EvalConfigId = config.EvalConfigId,
-            Name = config.Name,
-            Description = config.Description,
-        }).ToListAsync();
+        return await sorted
+            .Select(config => new EvalConfigSummary
+            {
+                EvalConfigId = config.EvalConfigId,
+                Name = config.Name,
+                Description = config.Description,
+            })
+            .ToListAsync();
     }
 
     public async Task<EvalConfig> GetEvalConfig(Guid evalConfigId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var evalConfig = await (from m in dbContext.EvalConfigs
-                                where m.EvalConfigId == evalConfigId
-                                select m).AsNoTracking().FirstOrDefaultAsync();
+        var evalConfig = await (
+            from m in dbContext.EvalConfigs
+            where m.EvalConfigId == evalConfigId
+            select m
+        )
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
 
         if (evalConfig is null)
             throw new SharpOMaticException($"EvalConfig '{evalConfigId}' cannot be found.");
@@ -868,34 +1002,46 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var evalConfig = await (from m in dbContext.EvalConfigs
-                                where m.EvalConfigId == evalConfigId
-                                select m).AsNoTracking().FirstOrDefaultAsync();
+        var evalConfig = await (
+            from m in dbContext.EvalConfigs
+            where m.EvalConfigId == evalConfigId
+            select m
+        )
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
 
         if (evalConfig is null)
             throw new SharpOMaticException($"EvalConfig '{evalConfigId}' cannot be found.");
 
-        var graders = await (from g in dbContext.EvalGraders.AsNoTracking()
-                             where g.EvalConfigId == evalConfigId
-                             orderby g.Order
-                             select g).ToListAsync();
+        var graders = await (
+            from g in dbContext.EvalGraders.AsNoTracking()
+            where g.EvalConfigId == evalConfigId
+            orderby g.Order
+            select g
+        ).ToListAsync();
 
-        var columns = await (from c in dbContext.EvalColumns.AsNoTracking()
-                             where c.EvalConfigId == evalConfigId
-                             orderby c.Order
-                             select c).ToListAsync();
+        var columns = await (
+            from c in dbContext.EvalColumns.AsNoTracking()
+            where c.EvalConfigId == evalConfigId
+            orderby c.Order
+            select c
+        ).ToListAsync();
 
-        var rows = await (from r in dbContext.EvalRows.AsNoTracking()
-                          where r.EvalConfigId == evalConfigId
-                          orderby r.Order
-                          select r).ToListAsync();
+        var rows = await (
+            from r in dbContext.EvalRows.AsNoTracking()
+            where r.EvalConfigId == evalConfigId
+            orderby r.Order
+            select r
+        ).ToListAsync();
 
-        var data = await (from d in dbContext.EvalData.AsNoTracking()
-                          join r in dbContext.EvalRows.AsNoTracking() on d.EvalRowId equals r.EvalRowId
-                          join c in dbContext.EvalColumns.AsNoTracking() on d.EvalColumnId equals c.EvalColumnId
-                          where r.EvalConfigId == evalConfigId && c.EvalConfigId == evalConfigId
-                          orderby r.Order, c.Order
-                          select d).ToListAsync();
+        var data = await (
+            from d in dbContext.EvalData.AsNoTracking()
+            join r in dbContext.EvalRows.AsNoTracking() on d.EvalRowId equals r.EvalRowId
+            join c in dbContext.EvalColumns.AsNoTracking() on d.EvalColumnId equals c.EvalColumnId
+            where r.EvalConfigId == evalConfigId && c.EvalConfigId == evalConfigId
+            orderby r.Order, c.Order
+            select d
+        ).ToListAsync();
 
         return new EvalConfigDetail
         {
@@ -903,7 +1049,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             Graders = graders,
             Columns = columns,
             Rows = rows,
-            Data = data
+            Data = data,
         };
     }
 
@@ -911,9 +1057,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entity = await (from m in dbContext.EvalConfigs
-                              where m.EvalConfigId == evalConfig.EvalConfigId
-                              select m).FirstOrDefaultAsync();
+        var entity = await (
+            from m in dbContext.EvalConfigs
+            where m.EvalConfigId == evalConfig.EvalConfigId
+            select m
+        ).FirstOrDefaultAsync();
 
         if (entity is null)
             dbContext.EvalConfigs.Add(evalConfig);
@@ -927,9 +1075,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var evalConfig = await (from m in dbContext.EvalConfigs
-                                where m.EvalConfigId == evalConfigId
-                                select m).FirstOrDefaultAsync();
+        var evalConfig = await (
+            from m in dbContext.EvalConfigs
+            where m.EvalConfigId == evalConfigId
+            select m
+        ).FirstOrDefaultAsync();
 
         if (evalConfig is null)
             throw new SharpOMaticException($"EvalConfig '{evalConfigId}' cannot be found.");
@@ -946,8 +1096,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             return;
 
         var graderIds = graders.Select(grader => grader.EvalGraderId).ToList();
-        var existing = await dbContext.EvalGraders
-            .Where(grader => graderIds.Contains(grader.EvalGraderId))
+        var existing = await dbContext
+            .EvalGraders.Where(grader => graderIds.Contains(grader.EvalGraderId))
             .ToListAsync();
         var existingLookup = existing.ToDictionary(grader => grader.EvalGraderId);
 
@@ -967,9 +1117,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var grader = await (from g in dbContext.EvalGraders
-                            where g.EvalGraderId == evalGraderId
-                            select g).FirstOrDefaultAsync();
+        var grader = await (
+            from g in dbContext.EvalGraders
+            where g.EvalGraderId == evalGraderId
+            select g
+        ).FirstOrDefaultAsync();
 
         if (grader is null)
             throw new SharpOMaticException($"EvalGrader '{evalGraderId}' cannot be found.");
@@ -986,8 +1138,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             return;
 
         var columnIds = columns.Select(column => column.EvalColumnId).ToList();
-        var existing = await dbContext.EvalColumns
-            .Where(column => columnIds.Contains(column.EvalColumnId))
+        var existing = await dbContext
+            .EvalColumns.Where(column => columnIds.Contains(column.EvalColumnId))
             .ToListAsync();
         var existingLookup = existing.ToDictionary(column => column.EvalColumnId);
 
@@ -1007,9 +1159,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var column = await (from c in dbContext.EvalColumns
-                            where c.EvalColumnId == evalColumnId
-                            select c).FirstOrDefaultAsync();
+        var column = await (
+            from c in dbContext.EvalColumns
+            where c.EvalColumnId == evalColumnId
+            select c
+        ).FirstOrDefaultAsync();
 
         if (column is null)
             throw new SharpOMaticException($"EvalColumn '{evalColumnId}' cannot be found.");
@@ -1026,8 +1180,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             return;
 
         var rowIds = rows.Select(row => row.EvalRowId).ToList();
-        var existing = await dbContext.EvalRows
-            .Where(row => rowIds.Contains(row.EvalRowId))
+        var existing = await dbContext
+            .EvalRows.Where(row => rowIds.Contains(row.EvalRowId))
             .ToListAsync();
         var existingLookup = existing.ToDictionary(row => row.EvalRowId);
 
@@ -1047,9 +1201,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var row = await (from r in dbContext.EvalRows
-                         where r.EvalRowId == evalRowId
-                         select r).FirstOrDefaultAsync();
+        var row = await (
+            from r in dbContext.EvalRows
+            where r.EvalRowId == evalRowId
+            select r
+        ).FirstOrDefaultAsync();
 
         if (row is null)
             throw new SharpOMaticException($"EvalRow '{evalRowId}' cannot be found.");
@@ -1068,27 +1224,35 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         var rowIds = data.Select(entry => entry.EvalRowId).Distinct().ToList();
         var columnIds = data.Select(entry => entry.EvalColumnId).Distinct().ToList();
 
-        var validRowIds = await dbContext.EvalRows.AsNoTracking()
+        var validRowIds = await dbContext
+            .EvalRows.AsNoTracking()
             .Where(row => row.EvalConfigId == evalConfigId && rowIds.Contains(row.EvalRowId))
             .Select(row => row.EvalRowId)
             .ToListAsync();
 
-        var validColumnIds = await dbContext.EvalColumns.AsNoTracking()
-            .Where(column => column.EvalConfigId == evalConfigId && columnIds.Contains(column.EvalColumnId))
+        var validColumnIds = await dbContext
+            .EvalColumns.AsNoTracking()
+            .Where(column =>
+                column.EvalConfigId == evalConfigId && columnIds.Contains(column.EvalColumnId)
+            )
             .Select(column => column.EvalColumnId)
             .ToListAsync();
 
         var invalidRowIds = rowIds.Except(validRowIds).ToList();
         if (invalidRowIds.Count > 0)
-            throw new SharpOMaticException($"EvalRow(s) do not belong to EvalConfig '{evalConfigId}'.");
+            throw new SharpOMaticException(
+                $"EvalRow(s) do not belong to EvalConfig '{evalConfigId}'."
+            );
 
         var invalidColumnIds = columnIds.Except(validColumnIds).ToList();
         if (invalidColumnIds.Count > 0)
-            throw new SharpOMaticException($"EvalColumn(s) do not belong to EvalConfig '{evalConfigId}'.");
+            throw new SharpOMaticException(
+                $"EvalColumn(s) do not belong to EvalConfig '{evalConfigId}'."
+            );
 
         var dataIds = data.Select(entry => entry.EvalDataId).ToList();
-        var existing = await dbContext.EvalData
-            .Where(entry => dataIds.Contains(entry.EvalDataId))
+        var existing = await dbContext
+            .EvalData.Where(entry => dataIds.Contains(entry.EvalDataId))
             .ToListAsync();
         var existingLookup = existing.ToDictionary(entry => entry.EvalDataId);
 
@@ -1107,9 +1271,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var data = await (from d in dbContext.EvalData
-                          where d.EvalDataId == evalDataId
-                          select d).FirstOrDefaultAsync();
+        var data = await (
+            from d in dbContext.EvalData
+            where d.EvalDataId == evalDataId
+            select d
+        ).FirstOrDefaultAsync();
 
         if (data is null)
             throw new SharpOMaticException($"EvalData '{evalDataId}' cannot be found.");
@@ -1118,7 +1284,10 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
-    private static IQueryable<EvalConfig> ApplyModelSearch(IQueryable<EvalConfig> evalConfigs, string? search)
+    private static IQueryable<EvalConfig> ApplyModelSearch(
+        IQueryable<EvalConfig> evalConfigs,
+        string? search
+    )
     {
         if (string.IsNullOrWhiteSpace(search))
             return evalConfigs;
@@ -1130,16 +1299,21 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     private static IQueryable<EvalConfig> GetSortedModels(
         IQueryable<EvalConfig> models,
         EvalConfigSortField sortBy,
-        SortDirection sortDirection)
+        SortDirection sortDirection
+    )
     {
         return sortBy switch
         {
             EvalConfigSortField.Description => sortDirection == SortDirection.Ascending
                 ? models.OrderBy(model => model.Description).ThenBy(model => model.Name)
-                : models.OrderByDescending(model => model.Description).ThenByDescending(model => model.Name),
+                : models
+                    .OrderByDescending(model => model.Description)
+                    .ThenByDescending(model => model.Name),
             _ => sortDirection == SortDirection.Ascending
                 ? models.OrderBy(model => model.Name).ThenBy(model => model.Description)
-                : models.OrderByDescending(model => model.Name).ThenByDescending(model => model.Description),
+                : models
+                    .OrderByDescending(model => model.Name)
+                    .ThenByDescending(model => model.Description),
         };
     }
 
@@ -1151,27 +1325,33 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await (from s in dbContext.Settings.AsNoTracking()
-                      orderby s.Name
-                      select s).ToListAsync();
+        return await (
+            from s in dbContext.Settings.AsNoTracking()
+            orderby s.Name
+            select s
+        ).ToListAsync();
     }
 
     public async Task<Setting?> GetSetting(string name)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await (from s in dbContext.Settings.AsNoTracking()
-                      where s.Name == name
-                      select s).FirstOrDefaultAsync();
+        return await (
+            from s in dbContext.Settings.AsNoTracking()
+            where s.Name == name
+            select s
+        ).FirstOrDefaultAsync();
     }
 
     public async Task UpsertSetting(Setting model)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var setting = await (from s in dbContext.Settings
-                             where s.Name == model.Name
-                             select s).FirstOrDefaultAsync();
+        var setting = await (
+            from s in dbContext.Settings
+            where s.Name == model.Name
+            select s
+        ).FirstOrDefaultAsync();
 
         if (setting is null)
             dbContext.Settings.Add(model);
@@ -1188,7 +1368,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var asset = await dbContext.Assets.AsNoTracking()
+        var asset = await dbContext
+            .Assets.AsNoTracking()
             .FirstOrDefaultAsync(a => a.AssetId == assetId);
 
         if (asset is null)
@@ -1201,8 +1382,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var assets = dbContext.Assets.AsNoTracking()
-            .Where(a => a.Scope == scope);
+        var assets = dbContext.Assets.AsNoTracking().Where(a => a.Scope == scope);
 
         if (scope == AssetScope.Run && runId.HasValue)
             assets = assets.Where(a => a.RunId == runId.Value);
@@ -1217,12 +1397,19 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return await assets.CountAsync();
     }
 
-    public async Task<List<Asset>> GetAssetsByScope(AssetScope scope, string? search, AssetSortField sortBy, SortDirection sortDirection, int skip, int take, Guid? runId = null)
+    public async Task<List<Asset>> GetAssetsByScope(
+        AssetScope scope,
+        string? search,
+        AssetSortField sortBy,
+        SortDirection sortDirection,
+        int skip,
+        int take,
+        Guid? runId = null
+    )
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var assets = dbContext.Assets.AsNoTracking()
-            .Where(a => a.Scope == scope);
+        var assets = dbContext.Assets.AsNoTracking().Where(a => a.Scope == scope);
 
         if (scope == AssetScope.Run && runId.HasValue)
             assets = assets.Where(a => a.RunId == runId.Value);
@@ -1245,7 +1432,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return await sortedAssets.ToListAsync();
     }
 
-    private static IQueryable<Asset> GetSortedAssets(IQueryable<Asset> assets, AssetSortField sortBy, SortDirection sortDirection)
+    private static IQueryable<Asset> GetSortedAssets(
+        IQueryable<Asset> assets,
+        AssetSortField sortBy,
+        SortDirection sortDirection
+    )
     {
         return sortBy switch
         {
@@ -1271,7 +1462,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await dbContext.Assets.AsNoTracking()
+        return await dbContext
+            .Assets.AsNoTracking()
             .Where(a => a.RunId == runId)
             .OrderByDescending(a => a.Created)
             .ToListAsync();
@@ -1285,10 +1477,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         using var dbContext = dbContextFactory.CreateDbContext();
         var normalizedName = name.Trim().ToLower();
 
-        return await dbContext.Assets.AsNoTracking()
-            .Where(a => a.Scope == AssetScope.Run &&
-                        a.RunId == runId &&
-                        a.Name.ToLower() == normalizedName)
+        return await dbContext
+            .Assets.AsNoTracking()
+            .Where(a =>
+                a.Scope == AssetScope.Run && a.RunId == runId && a.Name.ToLower() == normalizedName
+            )
             .OrderByDescending(a => a.Created)
             .FirstOrDefaultAsync();
     }
@@ -1301,9 +1494,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         using var dbContext = dbContextFactory.CreateDbContext();
         var normalizedName = name.Trim().ToLower();
 
-        return await dbContext.Assets.AsNoTracking()
-            .Where(a => a.Scope == AssetScope.Library &&
-                        a.Name.ToLower() == normalizedName)
+        return await dbContext
+            .Assets.AsNoTracking()
+            .Where(a => a.Scope == AssetScope.Library && a.Name.ToLower() == normalizedName)
             .OrderByDescending(a => a.Created)
             .FirstOrDefaultAsync();
     }
@@ -1312,9 +1505,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var entity = await (from a in dbContext.Assets
-                            where a.AssetId == asset.AssetId
-                            select a).FirstOrDefaultAsync();
+        var entity = await (
+            from a in dbContext.Assets
+            where a.AssetId == asset.AssetId
+            select a
+        ).FirstOrDefaultAsync();
 
         if (entity is null)
             dbContext.Assets.Add(asset);
@@ -1328,9 +1523,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var asset = await (from a in dbContext.Assets
-                           where a.AssetId == assetId
-                           select a).FirstOrDefaultAsync();
+        var asset = await (
+            from a in dbContext.Assets
+            where a.AssetId == assetId
+            select a
+        ).FirstOrDefaultAsync();
 
         if (asset is null)
             throw new SharpOMaticException($"Asset '{assetId}' cannot be found.");
@@ -1346,7 +1543,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var storageKeys = await dbContext.Assets.AsNoTracking()
+        var storageKeys = await dbContext
+            .Assets.AsNoTracking()
             .Where(a => a.RunId.HasValue && runIds.Contains(a.RunId.Value))
             .Select(a => a.StorageKey)
             .ToListAsync();

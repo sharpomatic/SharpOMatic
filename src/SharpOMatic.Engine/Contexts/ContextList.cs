@@ -5,9 +5,7 @@ public class ContextList : IList<object?>
     private readonly object _sync = new();
     private readonly List<object?> _list = [];
 
-    public ContextList()
-    {
-    }
+    public ContextList() { }
 
     public ContextList(IEnumerable<object?> items)
     {
@@ -19,7 +17,7 @@ public class ContextList : IList<object?>
 
     public void AddRange(IEnumerable<object?> items)
     {
-        if (items is null) 
+        if (items is null)
             return;
 
         lock (_sync)
@@ -31,15 +29,15 @@ public class ContextList : IList<object?>
 
     public void InsertRange(int index, IEnumerable<object?> items)
     {
-        if (items is null) 
+        if (items is null)
             return;
 
         lock (_sync)
             _list.InsertRange(index, items);
     }
 
-    public object? this[int index] 
-    { 
+    public object? this[int index]
+    {
         get
         {
             lock (_sync)
@@ -129,21 +127,39 @@ public class ContextList : IList<object?>
 
     public T Get<T>(string path)
     {
-        if (!ContextPathResolver.TryGetValue(this, path, requireLeadingIndex: true, throwOnError: true, out var value))
+        if (
+            !ContextPathResolver.TryGetValue(
+                this,
+                path,
+                requireLeadingIndex: true,
+                throwOnError: true,
+                out var value
+            )
+        )
             throw new SharpOMaticException($"Path '{path}' not found.");
 
         if (ContextPathResolver.TryStrictCast(value, out T? result))
             return result!;
 
         var actual = value is null ? "null" : value.GetType().FullName;
-        throw new SharpOMaticException($"Value at '{path}' is of type '{actual}', not '{typeof(T).FullName}'.");
+        throw new SharpOMaticException(
+            $"Value at '{path}' is of type '{actual}', not '{typeof(T).FullName}'."
+        );
     }
 
     public bool TryGet<T>(string path, out T? value)
     {
         value = default!;
 
-        if (!ContextPathResolver.TryGetValue(this, path, requireLeadingIndex: true, throwOnError: false, out var resolved))
+        if (
+            !ContextPathResolver.TryGetValue(
+                this,
+                path,
+                requireLeadingIndex: true,
+                throwOnError: false,
+                out var resolved
+            )
+        )
             return false;
 
         if (ContextPathResolver.TryStrictCast(resolved, out T? result))
@@ -158,7 +174,15 @@ public class ContextList : IList<object?>
     public bool TryGetObject(string path, [MaybeNullWhen(false)] out ContextObject obj)
     {
         obj = default!;
-        if (!ContextPathResolver.TryGetValue(this, path, requireLeadingIndex: true, throwOnError: false, out var value))
+        if (
+            !ContextPathResolver.TryGetValue(
+                this,
+                path,
+                requireLeadingIndex: true,
+                throwOnError: false,
+                out var value
+            )
+        )
             return false;
         if (value is ContextObject co)
         {
@@ -171,7 +195,15 @@ public class ContextList : IList<object?>
     public bool TryGetList(string path, [MaybeNullWhen(false)] out ContextList list)
     {
         list = default!;
-        if (!ContextPathResolver.TryGetValue(this, path, requireLeadingIndex: true, throwOnError: false, out var value))
+        if (
+            !ContextPathResolver.TryGetValue(
+                this,
+                path,
+                requireLeadingIndex: true,
+                throwOnError: false,
+                out var value
+            )
+        )
             return false;
         if (value is ContextList cl)
         {
@@ -183,16 +215,33 @@ public class ContextList : IList<object?>
 
     public void Set<T>(string path, T value)
     {
-        ContextPathResolver.TrySetValue(this, path, value, requireLeadingIndex: true, throwOnError: true);
+        ContextPathResolver.TrySetValue(
+            this,
+            path,
+            value,
+            requireLeadingIndex: true,
+            throwOnError: true
+        );
     }
 
     public bool TrySet<T>(string path, T value)
     {
-        return ContextPathResolver.TrySetValue(this, path, value, requireLeadingIndex: true, throwOnError: false);
+        return ContextPathResolver.TrySetValue(
+            this,
+            path,
+            value,
+            requireLeadingIndex: true,
+            throwOnError: false
+        );
     }
 
     public bool RemovePath(string path)
     {
-        return ContextPathResolver.TryRemove(this, path, requireLeadingIndex: true, throwOnError: false);
+        return ContextPathResolver.TryRemove(
+            this,
+            path,
+            requireLeadingIndex: true,
+            throwOnError: false
+        );
     }
 }

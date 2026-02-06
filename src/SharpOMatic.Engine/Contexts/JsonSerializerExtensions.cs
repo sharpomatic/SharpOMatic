@@ -2,8 +2,10 @@ namespace SharpOMatic.Engine.Contexts;
 
 public static class JsonSerializerExtensions
 {
-    public static JsonSerializerOptions BuildOptions(this JsonSerializerOptions baseOptions,
-                                                     IEnumerable<JsonConverter>? extraConverters = null)
+    public static JsonSerializerOptions BuildOptions(
+        this JsonSerializerOptions baseOptions,
+        IEnumerable<JsonConverter>? extraConverters = null
+    )
     {
         var o = new JsonSerializerOptions(baseOptions);
 
@@ -38,9 +40,11 @@ public static class JsonSerializerExtensions
         return o;
     }
 
-    private static void RegisterExternalType(Dictionary<Type, string> typeToToken,
-                                             Dictionary<string, Type> tokenToType,
-                                             Type type)
+    private static void RegisterExternalType(
+        Dictionary<Type, string> typeToToken,
+        Dictionary<string, Type> tokenToType,
+        Type type
+    )
     {
         if (typeToToken.ContainsKey(type))
             return;

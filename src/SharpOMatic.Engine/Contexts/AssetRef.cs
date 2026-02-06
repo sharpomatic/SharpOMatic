@@ -2,9 +2,7 @@ namespace SharpOMatic.Engine.Contexts;
 
 public class AssetRef
 {
-    public AssetRef()
-    {
-    }
+    public AssetRef() { }
 
     public AssetRef(Asset asset)
     {

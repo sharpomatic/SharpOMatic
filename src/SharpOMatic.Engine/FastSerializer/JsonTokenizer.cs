@@ -195,14 +195,22 @@ public ref struct FastJsonTokenizer
         switch (_index - _tokenIndex)
         {
             case 4:
-                if ((_text[_tokenIndex + 0] == 't') && (_text[_tokenIndex + 1] == 'r') &&
-                    (_text[_tokenIndex + 2] == 'u') && (_text[_tokenIndex + 3] == 'e'))
+                if (
+                    (_text[_tokenIndex + 0] == 't')
+                    && (_text[_tokenIndex + 1] == 'r')
+                    && (_text[_tokenIndex + 2] == 'u')
+                    && (_text[_tokenIndex + 3] == 'e')
+                )
                 {
                     _tokenKind = FullTokenKind.TrueValue;
                     break;
                 }
-                else if ((_text[_tokenIndex + 0] == 'n') && (_text[_tokenIndex + 1] == 'u') &&
-                         (_text[_tokenIndex + 2] == 'l') && (_text[_tokenIndex + 3] == 'l'))
+                else if (
+                    (_text[_tokenIndex + 0] == 'n')
+                    && (_text[_tokenIndex + 1] == 'u')
+                    && (_text[_tokenIndex + 2] == 'l')
+                    && (_text[_tokenIndex + 3] == 'l')
+                )
                 {
                     _tokenKind = FullTokenKind.NullValue;
                     break;
@@ -210,8 +218,13 @@ public ref struct FastJsonTokenizer
                 else
                     throw FastSerializationException.UnrecognizedKeyword(Location, TokenValue);
             case 5:
-                if ((_text[_tokenIndex + 0] == 'f') && (_text[_tokenIndex + 1] == 'a') && (_text[_tokenIndex + 2] == 'l') &&
-                    (_text[_tokenIndex + 3] == 's') && (_text[_tokenIndex + 4] == 'e'))
+                if (
+                    (_text[_tokenIndex + 0] == 'f')
+                    && (_text[_tokenIndex + 1] == 'a')
+                    && (_text[_tokenIndex + 2] == 'l')
+                    && (_text[_tokenIndex + 3] == 's')
+                    && (_text[_tokenIndex + 4] == 'e')
+                )
                 {
                     _tokenKind = FullTokenKind.FalseValue;
                     break;
@@ -281,7 +294,10 @@ public ref struct FastJsonTokenizer
         else
         {
             if (s_mapKind[_text[_index]] == FullTokenKind.Letter)
-                throw FastSerializationException.IntCannotBeFollowed(Location, s_mapKind[_c].ToString());
+                throw FastSerializationException.IntCannotBeFollowed(
+                    Location,
+                    s_mapKind[_c].ToString()
+                );
 
             _tokenKind = FullTokenKind.IntValue;
         }
@@ -321,7 +337,10 @@ public ref struct FastJsonTokenizer
         {
             case FullTokenKind.Dot:
             case FullTokenKind.Letter:
-                throw FastSerializationException.FloatCannotBeFollowed(Location, s_mapKind[_text[_index]].ToString());
+                throw FastSerializationException.FloatCannotBeFollowed(
+                    Location,
+                    s_mapKind[_text[_index]].ToString()
+                );
         }
 
         _tokenKind = FullTokenKind.FloatValue;
@@ -387,8 +406,12 @@ public ref struct FastJsonTokenizer
                         var hexToken2 = s_hexKind[_text[_index++]];
                         var hexToken3 = s_hexKind[_text[_index++]];
                         var hexToken4 = s_hexKind[_text[_index]];
-                        if ((hexToken1 != FullTokenKind.Hexadecimal) || (hexToken2 != FullTokenKind.Hexadecimal) ||
-                            (hexToken3 != FullTokenKind.Hexadecimal) || (hexToken4 != FullTokenKind.Hexadecimal))
+                        if (
+                            (hexToken1 != FullTokenKind.Hexadecimal)
+                            || (hexToken2 != FullTokenKind.Hexadecimal)
+                            || (hexToken3 != FullTokenKind.Hexadecimal)
+                            || (hexToken4 != FullTokenKind.Hexadecimal)
+                        )
                         {
                             _index++;
                             throw FastSerializationException.EscapeOnlyUsingHex(Location);
@@ -398,10 +421,14 @@ public ref struct FastJsonTokenizer
                         if (copyIndex < (_index - 5))
                             _sb.Append(_text[copyIndex..(_index - 5)]);
 
-                        _sb.Append((char)(s_hexValues[_text[_index]] |
-                                            (s_hexValues[_text[_index - 1]] << 4) |
-                                            (s_hexValues[_text[_index - 2]] << 8) |
-                                            (s_hexValues[_text[_index - 3]] << 12)));
+                        _sb.Append(
+                            (char)(
+                                s_hexValues[_text[_index]]
+                                | (s_hexValues[_text[_index - 1]] << 4)
+                                | (s_hexValues[_text[_index - 2]] << 8)
+                                | (s_hexValues[_text[_index - 3]] << 12)
+                            )
+                        );
 
                         copyIndex = _index + 1;
                         break;
@@ -456,6 +483,6 @@ public ref struct FastJsonTokenizer
         NewLine = 6,
         CarriageReturn = 7,
         Tab = 8,
-        u = 9
+        u = 9,
     }
 }

@@ -2,9 +2,12 @@ namespace SharpOMatic.Editor.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AssetsController(IRepositoryService repositoryService, IAssetStore assetStore) : ControllerBase
+public class AssetsController(IRepositoryService repositoryService, IAssetStore assetStore)
+    : ControllerBase
 {
-    private static readonly HashSet<string> EditableTextMediaTypes = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> EditableTextMediaTypes = new(
+        StringComparer.OrdinalIgnoreCase
+    )
     {
         "text/plain",
         "text/markdown",
@@ -16,7 +19,7 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         "application/json",
         "application/xml",
         "application/x-yaml",
-        "application/javascript"
+        "application/javascript",
     };
 
     [HttpGet]
@@ -27,7 +30,8 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         [FromQuery] SortDirection sortDirection = SortDirection.Descending,
         [FromQuery] int skip = 0,
         [FromQuery] int take = 0,
-        [FromQuery] Guid? runId = null)
+        [FromQuery] Guid? runId = null
+    )
     {
         if (skip < 0)
             skip = 0;
@@ -36,7 +40,15 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
             take = 0;
 
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
-        var assets = await repositoryService.GetAssetsByScope(scope, normalizedSearch, sortBy, sortDirection, skip, take, runId);
+        var assets = await repositoryService.GetAssetsByScope(
+            scope,
+            normalizedSearch,
+            sortBy,
+            sortDirection,
+            skip,
+            take,
+            runId
+        );
         return [.. assets.Select(ToSummary)];
     }
 
@@ -44,7 +56,8 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
     public async Task<ActionResult<int>> GetAssetCount(
         [FromQuery] AssetScope scope = AssetScope.Library,
         [FromQuery] string? search = null,
-        [FromQuery] Guid? runId = null)
+        [FromQuery] Guid? runId = null
+    )
     {
         if (!Enum.IsDefined(typeof(AssetScope), scope))
             return BadRequest("Scope is invalid.");
@@ -73,10 +86,20 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
     {
         var asset = await repositoryService.GetAsset(id);
         if (!IsEditableTextMediaType(asset.MediaType))
-            return StatusCode(StatusCodes.Status415UnsupportedMediaType, "Media type is not editable.");
+            return StatusCode(
+                StatusCodes.Status415UnsupportedMediaType,
+                "Media type is not editable."
+            );
 
-        await using var stream = await assetStore.OpenReadAsync(asset.StorageKey, HttpContext.RequestAborted);
-        using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+        await using var stream = await assetStore.OpenReadAsync(
+            asset.StorageKey,
+            HttpContext.RequestAborted
+        );
+        using var reader = new StreamReader(
+            stream,
+            Encoding.UTF8,
+            detectEncodingFromByteOrderMarks: true
+        );
         var content = await reader.ReadToEndAsync(HttpContext.RequestAborted);
 
         return new AssetTextRequest { Content = content };
@@ -87,7 +110,10 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
     {
         var asset = await repositoryService.GetAsset(id);
         if (!IsEditableTextMediaType(asset.MediaType))
-            return StatusCode(StatusCodes.Status415UnsupportedMediaType, "Media type is not editable.");
+            return StatusCode(
+                StatusCodes.Status415UnsupportedMediaType,
+                "Media type is not editable."
+            );
 
         var text = request.Content ?? string.Empty;
         var bytes = Encoding.UTF8.GetBytes(text);
@@ -105,7 +131,7 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
             Created = asset.Created,
             MediaType = asset.MediaType,
             SizeBytes = bytes.Length,
-            StorageKey = asset.StorageKey
+            StorageKey = asset.StorageKey,
         };
 
         await repositoryService.UpsertAsset(updated);
@@ -124,7 +150,9 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         if (request.Scope == AssetScope.Run && request.RunId is null)
             return BadRequest("RunId is required for run assets.");
 
-        var name = string.IsNullOrWhiteSpace(request.Name) ? Path.GetFileName(request.File.FileName) : request.Name.Trim();
+        var name = string.IsNullOrWhiteSpace(request.Name)
+            ? Path.GetFileName(request.File.FileName)
+            : request.Name.Trim();
         if (string.IsNullOrWhiteSpace(name))
             return BadRequest("Name is required.");
 
@@ -134,7 +162,9 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         await using (var stream = request.File.OpenReadStream())
             await assetStore.SaveAsync(storageKey, stream, HttpContext.RequestAborted);
 
-        var mediaType = string.IsNullOrWhiteSpace(request.File.ContentType) ? "application/octet-stream" : request.File.ContentType;
+        var mediaType = string.IsNullOrWhiteSpace(request.File.ContentType)
+            ? "application/octet-stream"
+            : request.File.ContentType;
 
         var asset = new Asset
         {
@@ -145,7 +175,7 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
             Created = DateTime.Now,
             MediaType = mediaType,
             SizeBytes = request.File.Length,
-            StorageKey = storageKey
+            StorageKey = storageKey,
         };
 
         await repositoryService.UpsertAsset(asset);
@@ -162,8 +192,15 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         return NoContent();
     }
 
-    private static AssetSummary ToSummary(Asset asset)
-        => new(asset.AssetId, asset.Name, asset.MediaType, asset.SizeBytes, asset.Scope, asset.Created);
+    private static AssetSummary ToSummary(Asset asset) =>
+        new(
+            asset.AssetId,
+            asset.Name,
+            asset.MediaType,
+            asset.SizeBytes,
+            asset.Scope,
+            asset.Created
+        );
 
     private static bool IsEditableTextMediaType(string mediaType)
     {

@@ -27,7 +27,8 @@ public class RunController : ControllerBase
         int page,
         int count,
         [FromQuery] RunSortField sortBy = RunSortField.Created,
-        [FromQuery] SortDirection sortDirection = SortDirection.Descending)
+        [FromQuery] SortDirection sortDirection = SortDirection.Descending
+    )
     {
         var totalCount = await repositoryService.GetWorkflowRunCount(id);
         if (count < 1 || page < 1 || totalCount == 0)

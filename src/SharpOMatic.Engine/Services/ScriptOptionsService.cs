@@ -18,7 +18,7 @@ public class ScriptOptionsService : IScriptOptionsService
         "SharpOMatic.Engine.Contexts",
         "SharpOMatic.Engine.FastSerializer",
         "SharpOMatic.Engine.Enumerations",
-        "SharpOMatic.Engine.Helpers"
+        "SharpOMatic.Engine.Helpers",
     ];
 
     private static readonly Assembly[] s_defaultAssemblies =
@@ -56,9 +56,7 @@ public class ScriptOptionsService : IScriptOptionsService
 
         _assemblies = assemblySet.ToArray();
         _imports = importSet.ToArray();
-        _options = ScriptOptions.Default
-            .WithReferences(_assemblies)
-            .WithImports(_imports);
+        _options = ScriptOptions.Default.WithReferences(_assemblies).WithImports(_imports);
     }
 
     public IReadOnlyCollection<Assembly> GetAssemblies() => _assemblies;

@@ -1,6 +1,7 @@
 namespace SharpOMatic.Engine.Services;
 
-public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNodeFactory) : INodeExecutionService
+public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNodeFactory)
+    : INodeExecutionService
 {
     public const int DEFAULT_RUN_HISTORY_LIMIT = 50;
     public const int DEFAULT_NODE_RUN_LIMIT = 500;
@@ -16,19 +17,22 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             {
                 var (threadContext, node) = await queue.DequeueAsync(cancellationToken);
 
-                _ = Task.Run(async () =>
-                {
-                    try
+                _ = Task.Run(
+                    async () =>
                     {
-                        // If the workflow has already been failed, then ignore the node execution
-                        if (threadContext.ProcessContext.Run.RunStatus != RunStatus.Failed)
-                            await ProcessNode(threadContext, node);
-                    }
-                    finally
-                    {
-                        _semaphore.Release();
-                    }
-                }, cancellationToken);
+                        try
+                        {
+                            // If the workflow has already been failed, then ignore the node execution
+                            if (threadContext.ProcessContext.Run.RunStatus != RunStatus.Failed)
+                                await ProcessNode(threadContext, node);
+                        }
+                        finally
+                        {
+                            _semaphore.Release();
+                        }
+                    },
+                    cancellationToken
+                );
             }
             catch (OperationCanceledException)
             {
@@ -53,11 +57,15 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         {
             threadContext.NodeId = node.Id;
 
-            if (threadContext.CurrentContext is BatchContext batchContext &&
-                batchContext.ContinueNodeId == node.Id)
+            if (
+                threadContext.CurrentContext is BatchContext batchContext
+                && batchContext.ContinueNodeId == node.Id
+            )
             {
                 if (batchContext.Parent is null)
-                    throw new SharpOMaticException("Batch context is missing a parent execution context.");
+                    throw new SharpOMaticException(
+                        "Batch context is missing a parent execution context."
+                    );
 
                 threadContext.CurrentContext = batchContext.Parent;
                 processContext.UntrackContext(batchContext);
@@ -67,23 +75,32 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
                 return;
 
             if (!processContext.TryIncrementNodesRun(out _))
-                throw new SharpOMaticException($"Hit run node limit of {processContext.RunNodeLimit}");
+                throw new SharpOMaticException(
+                    $"Hit run node limit of {processContext.RunNodeLimit}"
+                );
 
             List<NextNodeData> nextNodes = await RunNode(threadContext, node);
             if (processContext.Run.RunStatus == RunStatus.Failed)
                 return;
 
-            if (nextNodes.Count == 0 && TryHandleBatchCompletion(threadContext, out var batchNextNodes))
+            if (
+                nextNodes.Count == 0
+                && TryHandleBatchCompletion(threadContext, out var batchNextNodes)
+            )
                 nextNodes = batchNextNodes;
 
-            var continues = nextNodes.Any(nextNode => ReferenceEquals(nextNode.ThreadContext, threadContext));
+            var continues = nextNodes.Any(nextNode =>
+                ReferenceEquals(nextNode.ThreadContext, threadContext)
+            );
             if (!continues)
             {
                 var gosubContext = GosubContext.Find(threadContext.CurrentContext);
                 if (gosubContext is not null && gosubContext.DecrementThreads() == 0)
                 {
                     if (gosubContext.Parent is null)
-                        throw new SharpOMaticException("Gosub context is missing a parent execution context.");
+                        throw new SharpOMaticException(
+                            "Gosub context is missing a parent execution context."
+                        );
 
                     gosubContext.MergeOutput(processContext, threadContext.NodeContext);
                     threadContext.NodeContext = gosubContext.ParentContext;
@@ -125,7 +142,12 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         }
     }
 
-    private async Task RunCompleted(ThreadContext threadContext, RunStatus runStatus, string message, string? error = "")
+    private async Task RunCompleted(
+        ThreadContext threadContext,
+        RunStatus runStatus,
+        string message,
+        string? error = ""
+    )
     {
         var processContext = threadContext.ProcessContext;
 
@@ -136,7 +158,9 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
 
         // If no EndNode was encountered then use the output of the last run node
         if (processContext.Run.OutputContext is null)
-            processContext.Run.OutputContext = threadContext.NodeContext.Serialize(processContext.JsonConverters);
+            processContext.Run.OutputContext = threadContext.NodeContext.Serialize(
+                processContext.JsonConverters
+            );
 
         await processContext.RunUpdated();
 
@@ -144,15 +168,20 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
 
         await PruneRunHistory(processContext);
 
-        var notifications = processContext.ServiceScope.ServiceProvider.GetServices<IEngineNotification>();
+        var notifications =
+            processContext.ServiceScope.ServiceProvider.GetServices<IEngineNotification>();
         foreach (var notification in notifications)
         {
             // Notify in separate task in case called instance perform a long running action
             _ = Task.Run(async () =>
             {
-                await notification.RunCompleted(processContext.Run.RunId, processContext.Run.WorkflowId, processContext.Run.RunStatus,
-                                                processContext.Run.OutputContext, processContext.Run.Error);
-
+                await notification.RunCompleted(
+                    processContext.Run.RunId,
+                    processContext.Run.WorkflowId,
+                    processContext.Run.RunStatus,
+                    processContext.Run.OutputContext,
+                    processContext.Run.Error
+                );
             });
         }
 
@@ -165,7 +194,10 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         return runner.Run();
     }
 
-    private bool TryHandleBatchCompletion(ThreadContext threadContext, out List<NextNodeData> nextNodes)
+    private bool TryHandleBatchCompletion(
+        ThreadContext threadContext,
+        out List<NextNodeData> nextNodes
+    )
     {
         nextNodes = [];
 
@@ -181,21 +213,32 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
                 throw new SharpOMaticException("Batch thread is missing a batch index.");
 
             if (threadContext.NodeContext.TryGetValue("output", out var outputValue))
-                batchContext.BatchOutputs[threadContext.BatchIndex.Value] = new ContextObject { { "output", outputValue } };
+                batchContext.BatchOutputs[threadContext.BatchIndex.Value] = new ContextObject
+                {
+                    { "output", outputValue },
+                };
 
             batchContext.CompletedBatches++;
             batchContext.InFlightBatches--;
 
             if (batchContext.NextItemIndex < batchContext.BatchItems.Count)
             {
-                var batchSlice = CreateBatchSlice(batchContext.BatchItems, batchContext.NextItemIndex, batchContext.BatchSize);
+                var batchSlice = CreateBatchSlice(
+                    batchContext.BatchItems,
+                    batchContext.NextItemIndex,
+                    batchContext.BatchSize
+                );
                 if (batchSlice.Count > 0)
                 {
                     var batchIndex = batchContext.NextBatchIndex++;
                     batchContext.NextItemIndex += batchSlice.Count;
                     batchContext.InFlightBatches++;
 
-                    threadContext.NodeContext = CreateBatchContextObject(batchContext, batchSlice, threadContext.ProcessContext.JsonConverters);
+                    threadContext.NodeContext = CreateBatchContextObject(
+                        batchContext,
+                        batchSlice,
+                        threadContext.ProcessContext.JsonConverters
+                    );
                     threadContext.BatchIndex = batchIndex;
                     nextNodes = [new NextNodeData(threadContext, batchContext.ProcessNode)];
                     return true;
@@ -204,7 +247,10 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
 
             if (batchContext.InFlightBatches == 0)
             {
-                var mergedContext = ContextObject.Deserialize(batchContext.BaseContextJson, threadContext.ProcessContext.JsonConverters);
+                var mergedContext = ContextObject.Deserialize(
+                    batchContext.BaseContextJson,
+                    threadContext.ProcessContext.JsonConverters
+                );
                 for (var index = 0; index < batchContext.NextBatchIndex; index++)
                 {
                     if (batchContext.BatchOutputs.TryGetValue(index, out var outputContext))
@@ -227,11 +273,17 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         return true;
     }
 
-    private static ContextObject CreateBatchContextObject(BatchContext batchContext, ContextList slice, IEnumerable<JsonConverter> jsonConverters)
+    private static ContextObject CreateBatchContextObject(
+        BatchContext batchContext,
+        ContextList slice,
+        IEnumerable<JsonConverter> jsonConverters
+    )
     {
         var context = ContextObject.Deserialize(batchContext.BaseContextJson, jsonConverters);
         if (!context.TrySet(batchContext.InputArrayPath, slice))
-            throw new SharpOMaticException($"Batch node cannot set '{batchContext.InputArrayPath}' into context.");
+            throw new SharpOMaticException(
+                $"Batch node cannot set '{batchContext.InputArrayPath}' into context."
+            );
 
         return context;
     }
@@ -250,17 +302,24 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
     {
         try
         {
-            var runHistoryLimitSetting = await processContext.RepositoryService.GetSetting("RunHistoryLimit");
+            var runHistoryLimitSetting = await processContext.RepositoryService.GetSetting(
+                "RunHistoryLimit"
+            );
 
             var runHistoryLimit = runHistoryLimitSetting?.ValueInteger ?? DEFAULT_RUN_HISTORY_LIMIT;
             if (runHistoryLimit < 0)
                 runHistoryLimit = 0;
 
-            await processContext.RepositoryService.PruneWorkflowRuns(processContext.Run.WorkflowId, runHistoryLimit);
+            await processContext.RepositoryService.PruneWorkflowRuns(
+                processContext.Run.WorkflowId,
+                runHistoryLimit
+            );
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to prune run history for workflow '{processContext.Run.WorkflowId}': {ex.Message}");
+            Console.WriteLine(
+                $"Failed to prune run history for workflow '{processContext.Run.WorkflowId}': {ex.Message}"
+            );
         }
     }
 }

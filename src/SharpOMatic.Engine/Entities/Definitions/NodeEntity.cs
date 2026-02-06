@@ -11,4 +11,3 @@ public abstract class NodeEntity : Entity
     public required ConnectorEntity[] Inputs { get; set; }
     public required ConnectorEntity[] Outputs { get; set; }
 }
-

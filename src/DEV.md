@@ -1,5 +1,11 @@
 # Development Notes
 
+## Run Csharpier on Engine
+cd c:\code\SharpOMatic\src
+dotnet csharpier format SharpOMatic.DemoServer
+dotnet csharpier format SharpOMatic.Editor
+dotnet csharpier format SharpOMatic.Engine
+
 ## Entity Framework Core
 C:\Users\philw\AppData\Local
 

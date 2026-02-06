@@ -18,4 +18,3 @@ public static class ToolCalling
         return DateTimeOffset.Now.ToString();
     }
 }
-

@@ -5,7 +5,8 @@ namespace SharpOMatic.Editor.Controllers;
 public class StatusController : ControllerBase
 {
     [HttpGet]
-    public IActionResult Index() {
+    public IActionResult Index()
+    {
         return Ok();
     }
 }

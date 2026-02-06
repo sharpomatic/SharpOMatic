@@ -8,12 +8,14 @@ public interface IAssetService
         string name,
         string mediaType,
         AssetScope scope,
-        Guid? runId = null);
+        Guid? runId = null
+    );
 
     Task<AssetRef> CreateFromBytesAsync(
         byte[] data,
         string name,
         string mediaType,
         AssetScope scope,
-        Guid? runId = null);
+        Guid? runId = null
+    );
 }

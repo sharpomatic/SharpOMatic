@@ -11,7 +11,9 @@ public sealed class GosubContext : ExecutionContext
         ContextObject parentContext,
         NodeEntity? returnNode,
         bool applyOutputMappings,
-        ContextEntryListEntity outputMappings) : base(parent)
+        ContextEntryListEntity outputMappings
+    )
+        : base(parent)
     {
         ParentTraceId = parentTraceId;
         ParentContext = parentContext;
@@ -27,6 +29,7 @@ public sealed class GosubContext : ExecutionContext
     public bool ApplyOutputMappings { get; }
     public ContextEntryListEntity OutputMappings { get; }
     public object MergeLock => _mergeLock;
+
     public int IncrementThreads() => Interlocked.Increment(ref _activeThreads);
 
     public int DecrementThreads() => Interlocked.Decrement(ref _activeThreads);
@@ -58,15 +61,21 @@ public sealed class GosubContext : ExecutionContext
                 foreach (var mapping in mappings)
                 {
                     if (string.IsNullOrWhiteSpace(mapping.InputPath))
-                        throw new SharpOMaticException("Gosub output mapping input path cannot be empty.");
+                        throw new SharpOMaticException(
+                            "Gosub output mapping input path cannot be empty."
+                        );
 
                     if (string.IsNullOrWhiteSpace(mapping.OutputPath))
-                        throw new SharpOMaticException("Gosub output mapping output path cannot be empty.");
+                        throw new SharpOMaticException(
+                            "Gosub output mapping output path cannot be empty."
+                        );
 
                     if (childContext.TryGet<object?>(mapping.InputPath, out var mapValue))
                     {
                         if (!outputContext.TrySet(mapping.OutputPath, mapValue))
-                            throw new SharpOMaticException($"Gosub output mapping could not set '{mapping.OutputPath}' into context.");
+                            throw new SharpOMaticException(
+                                $"Gosub output mapping could not set '{mapping.OutputPath}' into context."
+                            );
                     }
                 }
 
@@ -91,7 +100,10 @@ public sealed class GosubContext : ExecutionContext
 
             var sourceValue = source[key];
 
-            if (targetValue is ContextObject targetObject && sourceValue is ContextObject sourceObject)
+            if (
+                targetValue is ContextObject targetObject
+                && sourceValue is ContextObject sourceObject
+            )
                 OverwriteContexts(targetObject, sourceObject);
             else
                 target[key] = sourceValue;

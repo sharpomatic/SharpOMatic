@@ -11,7 +11,8 @@ public class EvalController : ControllerBase
         [FromQuery] EvalConfigSortField sortBy = EvalConfigSortField.Name,
         [FromQuery] SortDirection sortDirection = SortDirection.Ascending,
         [FromQuery] int skip = 0,
-        [FromQuery] int take = 0)
+        [FromQuery] int take = 0
+    )
     {
         if (skip < 0)
             skip = 0;
@@ -20,30 +21,48 @@ public class EvalController : ControllerBase
             take = 0;
 
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
-        return repositoryService.GetEvalConfigSummaries(normalizedSearch, sortBy, sortDirection, skip, take);
+        return repositoryService.GetEvalConfigSummaries(
+            normalizedSearch,
+            sortBy,
+            sortDirection,
+            skip,
+            take
+        );
     }
 
     [HttpGet("configs/count")]
-    public Task<int> GetEvalConfigSummaryCount(IRepositoryService repositoryService, [FromQuery] string? search = null)
+    public Task<int> GetEvalConfigSummaryCount(
+        IRepositoryService repositoryService,
+        [FromQuery] string? search = null
+    )
     {
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
         return repositoryService.GetEvalConfigSummaryCount(normalizedSearch);
     }
 
     [HttpGet("configs/{id}")]
-    public async Task<ActionResult<EvalConfig>> GetEvalConfig(IRepositoryService repositoryService, Guid id)
+    public async Task<ActionResult<EvalConfig>> GetEvalConfig(
+        IRepositoryService repositoryService,
+        Guid id
+    )
     {
         return await repositoryService.GetEvalConfig(id);
     }
 
     [HttpGet("configs/{id}/detail")]
-    public async Task<ActionResult<EvalConfigDetail>> GetEvalConfigDetail(IRepositoryService repositoryService, Guid id)
+    public async Task<ActionResult<EvalConfigDetail>> GetEvalConfigDetail(
+        IRepositoryService repositoryService,
+        Guid id
+    )
     {
         return await repositoryService.GetEvalConfigDetail(id);
     }
 
     [HttpPost("configs")]
-    public async Task UpsertEvalConfig(IRepositoryService repositoryService, [FromBody] EvalConfig evalConfig)
+    public async Task UpsertEvalConfig(
+        IRepositoryService repositoryService,
+        [FromBody] EvalConfig evalConfig
+    )
     {
         await repositoryService.UpsertEvalConfig(evalConfig);
     }
@@ -58,7 +77,8 @@ public class EvalController : ControllerBase
     public async Task UpsertEvalGraders(
         IRepositoryService repositoryService,
         Guid id,
-        [FromBody] List<EvalGrader> graders)
+        [FromBody] List<EvalGrader> graders
+    )
     {
         if (graders is null || graders.Count == 0)
             return;
@@ -79,7 +99,8 @@ public class EvalController : ControllerBase
     public async Task UpsertEvalColumns(
         IRepositoryService repositoryService,
         Guid id,
-        [FromBody] List<EvalColumn> columns)
+        [FromBody] List<EvalColumn> columns
+    )
     {
         if (columns is null || columns.Count == 0)
             return;
@@ -100,7 +121,8 @@ public class EvalController : ControllerBase
     public async Task UpsertEvalRows(
         IRepositoryService repositoryService,
         Guid id,
-        [FromBody] List<EvalRow> rows)
+        [FromBody] List<EvalRow> rows
+    )
     {
         if (rows is null || rows.Count == 0)
             return;
@@ -121,7 +143,8 @@ public class EvalController : ControllerBase
     public async Task UpsertEvalData(
         IRepositoryService repositoryService,
         Guid id,
-        [FromBody] List<EvalData> data)
+        [FromBody] List<EvalData> data
+    )
     {
         if (data is null || data.Count == 0)
             return;

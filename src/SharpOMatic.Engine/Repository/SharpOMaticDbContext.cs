@@ -23,7 +23,10 @@ public class SharpOMaticDbContext : DbContext
 
     private readonly SharpOMaticDbOptions _options;
 
-    public SharpOMaticDbContext(DbContextOptions<SharpOMaticDbContext> options, IOptions<SharpOMaticDbOptions> dbOptions)
+    public SharpOMaticDbContext(
+        DbContextOptions<SharpOMaticDbContext> options,
+        IOptions<SharpOMaticDbOptions> dbOptions
+    )
         : base(options)
     {
         _options = dbOptions.Value;
@@ -37,109 +40,123 @@ public class SharpOMaticDbContext : DbContext
         modelBuilder.HasDefaultSchema("SharpOMatic");
 
         // Cascade delete: Deleting a Workflow deletes its Runs
-        modelBuilder.Entity<Run>()
+        modelBuilder
+            .Entity<Run>()
             .HasOne<Workflow>()
             .WithMany()
             .HasForeignKey(r => r.WorkflowId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting a Run deletes its Traces
-        modelBuilder.Entity<Trace>()
+        modelBuilder
+            .Entity<Trace>()
             .HasOne<Run>()
             .WithMany()
             .HasForeignKey(t => t.RunId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting a Run deletes its Assets
-        modelBuilder.Entity<Asset>()
+        modelBuilder
+            .Entity<Asset>()
             .HasOne<Run>()
             .WithMany()
             .HasForeignKey(a => a.RunId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting an EvalConfig deletes its EvalGraders
-        modelBuilder.Entity<EvalGrader>()
+        modelBuilder
+            .Entity<EvalGrader>()
             .HasOne<EvalConfig>()
             .WithMany()
             .HasForeignKey(e => e.EvalConfigId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting an EvalConfig deletes its EvalColumns
-        modelBuilder.Entity<EvalColumn>()
+        modelBuilder
+            .Entity<EvalColumn>()
             .HasOne<EvalConfig>()
             .WithMany()
             .HasForeignKey(e => e.EvalConfigId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting an EvalConfig deletes its EvalRows
-        modelBuilder.Entity<EvalRow>()
+        modelBuilder
+            .Entity<EvalRow>()
             .HasOne<EvalConfig>()
             .WithMany()
             .HasForeignKey(e => e.EvalConfigId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting an EvalRow deletes its EvalData
-        modelBuilder.Entity<EvalData>()
+        modelBuilder
+            .Entity<EvalData>()
             .HasOne<EvalRow>()
             .WithMany()
             .HasForeignKey(e => e.EvalRowId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting an EvalColumn deletes its EvalData
-        modelBuilder.Entity<EvalData>()
+        modelBuilder
+            .Entity<EvalData>()
             .HasOne<EvalColumn>()
             .WithMany()
             .HasForeignKey(e => e.EvalColumnId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting an EvalConfig deletes its EvalRuns
-        modelBuilder.Entity<EvalRun>()
+        modelBuilder
+            .Entity<EvalRun>()
             .HasOne<EvalConfig>()
             .WithMany()
             .HasForeignKey(e => e.EvalConfigId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting an EvalRun deletes its EvalRunRows
-        modelBuilder.Entity<EvalRunRow>()
+        modelBuilder
+            .Entity<EvalRunRow>()
             .HasOne<EvalRun>()
             .WithMany()
             .HasForeignKey(e => e.EvalRunId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting an EvalRow deletes its EvalRunRows
-        modelBuilder.Entity<EvalRunRow>()
+        modelBuilder
+            .Entity<EvalRunRow>()
             .HasOne<EvalRow>()
             .WithMany()
             .HasForeignKey(e => e.EvalRowId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting an EvalRunRow deletes its EvalRunRowGraders
-        modelBuilder.Entity<EvalRunRowGrader>()
+        modelBuilder
+            .Entity<EvalRunRowGrader>()
             .HasOne<EvalRunRow>()
             .WithMany()
             .HasForeignKey(e => e.EvalRunRowId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting an EvalGrader deletes its EvalRunRowGraders
-        modelBuilder.Entity<EvalRunRowGrader>()
+        modelBuilder
+            .Entity<EvalRunRowGrader>()
             .HasOne<EvalGrader>()
             .WithMany()
             .HasForeignKey(e => e.EvalGraderId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting an EvalRun deletes its EvalRunGraderSummaries
-        modelBuilder.Entity<EvalRunGraderSummary>()
+        modelBuilder
+            .Entity<EvalRunGraderSummary>()
             .HasOne<EvalRun>()
             .WithMany()
             .HasForeignKey(e => e.EvalRunId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting an EvalGrader deletes its EvalRunGraderSummaries
-        modelBuilder.Entity<EvalRunGraderSummary>()
+        modelBuilder
+            .Entity<EvalRunGraderSummary>()
             .HasOne<EvalGrader>()
             .WithMany()
             .HasForeignKey(e => e.EvalGraderId)
             .OnDelete(DeleteBehavior.Cascade);
-
     }
 }

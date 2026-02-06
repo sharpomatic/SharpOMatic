@@ -11,7 +11,10 @@ public class SettingController : ControllerBase
     }
 
     [HttpPost]
-    public async Task UpsertSetting(IRepositoryService repositoryService, [FromBody] Setting setting)
+    public async Task UpsertSetting(
+        IRepositoryService repositoryService,
+        [FromBody] Setting setting
+    )
     {
         await repositoryService.UpsertSetting(setting);
     }

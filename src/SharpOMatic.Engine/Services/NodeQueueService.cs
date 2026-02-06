@@ -17,7 +17,9 @@ public class NodeQueueService : INodeQueueService
         _queue.Writer.TryWrite((threadContext, node));
     }
 
-    public async ValueTask<(ThreadContext threadContext, NodeEntity node)> DequeueAsync(CancellationToken cancellationToken)
+    public async ValueTask<(ThreadContext threadContext, NodeEntity node)> DequeueAsync(
+        CancellationToken cancellationToken
+    )
     {
         while (true)
         {

@@ -1,4 +1,4 @@
-﻿namespace SharpOMatic.Engine.Helpers; 
+﻿namespace SharpOMatic.Engine.Helpers;
 
 public class Location
 {
@@ -24,4 +24,3 @@ public class Location
     public required int Line { get; init; }
     public required int Column { get; init; }
 }
-

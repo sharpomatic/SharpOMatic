@@ -1,7 +1,7 @@
 ﻿namespace SharpOMatic.Engine.Nodes;
 
 [RunNode(NodeType.FanOut)]
-public class FanOutNode(ThreadContext threadContext, FanOutNodeEntity node) 
+public class FanOutNode(ThreadContext threadContext, FanOutNodeEntity node)
     : RunNode<FanOutNodeEntity>(threadContext, node)
 {
     protected override async Task<(string, List<NextNodeData>)> RunInternal()
@@ -17,7 +17,7 @@ public class FanOutNode(ThreadContext threadContext, FanOutNodeEntity node)
             FanOutCount = connectedOutputs.Count,
             FanInArrived = 0,
             FanInId = null,
-            MergedContext = ContextObject.Deserialize(json, ProcessContext.JsonConverters)
+            MergedContext = ContextObject.Deserialize(json, ProcessContext.JsonConverters),
         };
 
         List<NextNodeData> nextNodes = [];

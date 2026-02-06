@@ -6,46 +6,52 @@ public static class ContextTypeRegistry
     private static readonly (Type Type, string Name)[] Scalars =
     {
         // c# scalars
-        (typeof(bool),   "Boolean"),
-        (typeof(byte),   "Byte"),
-        (typeof(sbyte),  "SByte"),
-        (typeof(short),  "Int16"),
+        (typeof(bool), "Boolean"),
+        (typeof(byte), "Byte"),
+        (typeof(sbyte), "SByte"),
+        (typeof(short), "Int16"),
         (typeof(ushort), "UInt16"),
-        (typeof(int),    "Int32"),
-        (typeof(uint),   "UInt32"),
-        (typeof(long),   "Int64"),
-        (typeof(ulong),  "UInt64"),
-        (typeof(float),  "Single"),
+        (typeof(int), "Int32"),
+        (typeof(uint), "UInt32"),
+        (typeof(long), "Int64"),
+        (typeof(ulong), "UInt64"),
+        (typeof(float), "Single"),
         (typeof(double), "Double"),
-        (typeof(decimal),"Decimal"),
-        (typeof(char),   "Char"),
+        (typeof(decimal), "Decimal"),
+        (typeof(char), "Char"),
         (typeof(string), "String"),
-
         // .net scalars
-        (typeof(DateTime),       "DateTime"),
+        (typeof(DateTime), "DateTime"),
         (typeof(DateTimeOffset), "DateTimeOffset"),
-        (typeof(TimeSpan),       "TimeSpan"),
-        (typeof(DateOnly),       "DateOnly"),
-        (typeof(TimeOnly),       "TimeOnly"),
-        (typeof(Guid),           "Guid"),
-        (typeof(Uri),            "Uri"),
+        (typeof(TimeSpan), "TimeSpan"),
+        (typeof(DateOnly), "DateOnly"),
+        (typeof(TimeOnly), "TimeOnly"),
+        (typeof(Guid), "Guid"),
+        (typeof(Uri), "Uri"),
     };
 
-    private static readonly Dictionary<Type, string> TypeToName = Scalars.ToDictionary(x => x.Type, x => x.Name);
-    private static readonly Dictionary<string, Type> NameToType = Scalars.ToDictionary(x => x.Name, x => x.Type, StringComparer.Ordinal);
+    private static readonly Dictionary<Type, string> TypeToName = Scalars.ToDictionary(
+        x => x.Type,
+        x => x.Name
+    );
+    private static readonly Dictionary<string, Type> NameToType = Scalars.ToDictionary(
+        x => x.Name,
+        x => x.Type,
+        StringComparer.Ordinal
+    );
 
     public static bool IsSupportedScalar(Type t) => TypeToName.ContainsKey(t);
 
     public static bool IsSupportedArray(Type t)
     {
-        if (!t.IsArray) 
+        if (!t.IsArray)
             return false;
 
         // Jagged only; each level must be rank-1
         var cur = t;
         while (cur.IsArray)
         {
-            if (cur.GetArrayRank() != 1) 
+            if (cur.GetArrayRank() != 1)
                 return false;
 
             cur = cur.GetElementType()!;
@@ -61,7 +67,7 @@ public static class ContextTypeRegistry
     public static string GetTokenFor(Type t)
     {
         // Scalars (note: non-null scalars are never Nullable<T> at runtime after boxing)
-        if (IsSupportedScalar(t)) 
+        if (IsSupportedScalar(t))
             return TypeToName[t];
 
         if (!t.IsArray)
@@ -84,7 +90,9 @@ public static class ContextTypeRegistry
         var elemScalar = elemIsNullable ? underlying! : cur;
 
         if (!IsSupportedScalar(elemScalar))
-            throw new SharpOMaticException($"Unsupported array element type: {elemScalar.FullName}");
+            throw new SharpOMaticException(
+                $"Unsupported array element type: {elemScalar.FullName}"
+            );
 
         var baseName = TypeToName[elemScalar];
 
@@ -128,13 +136,19 @@ public static class ContextTypeRegistry
         }
 
         Type t = elemType;
-        for (int i = 0; i < depth; i++) t = t.MakeArrayType();
+        for (int i = 0; i < depth; i++)
+            t = t.MakeArrayType();
 
         // Validate final array shape/type
-        if (depth > 0 && !IsSupportedArray(t)) 
+        if (depth > 0 && !IsSupportedArray(t))
             return false;
 
-        if (depth == 0 && !(IsSupportedScalar(t) || (IsNullableValueType(t, out var u) && IsSupportedScalar(u!))))
+        if (
+            depth == 0
+            && !(
+                IsSupportedScalar(t) || (IsNullableValueType(t, out var u) && IsSupportedScalar(u!))
+            )
+        )
             return false;
 
         resolved = t;

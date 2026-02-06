@@ -1,4 +1,20 @@
-﻿global using Azure;
+﻿global using System.ClientModel;
+global using System.Collections;
+global using System.Collections.Concurrent;
+global using System.Collections.Immutable;
+global using System.Collections.ObjectModel;
+global using System.ComponentModel.DataAnnotations;
+global using System.Diagnostics.CodeAnalysis;
+global using System.Drawing;
+global using System.Drawing.Imaging;
+global using System.Reflection;
+global using System.Runtime.CompilerServices;
+global using System.Runtime.Versioning;
+global using System.Text;
+global using System.Text.Json;
+global using System.Text.Json.Serialization;
+global using System.Threading.Channels;
+global using Azure;
 global using Azure.AI.OpenAI;
 global using Azure.Identity;
 global using Azure.Storage.Blobs;
@@ -30,23 +46,3 @@ global using SharpOMatic.Engine.Metadata.Definitions;
 global using SharpOMatic.Engine.Metadata.Enumerations;
 global using SharpOMatic.Engine.Nodes;
 global using SharpOMatic.Engine.Repository;
-global using System.ClientModel;
-global using System.Collections;
-global using System.Collections.Concurrent;
-global using System.Collections.Immutable;
-global using System.Collections.ObjectModel;
-global using System.ComponentModel.DataAnnotations;
-global using System.Diagnostics.CodeAnalysis;
-global using System.Drawing;
-global using System.Drawing.Imaging;
-global using System.Reflection;
-global using System.Runtime.CompilerServices;
-global using System.Runtime.Versioning;
-global using System.Text;
-global using System.Text.Json;
-global using System.Text.Json.Serialization;
-global using System.Threading.Channels;
-
-
-
-

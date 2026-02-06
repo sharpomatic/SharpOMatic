@@ -1,7 +1,7 @@
 ﻿namespace SharpOMatic.Engine.Nodes;
 
 [RunNode(NodeType.FanIn)]
-public class FanInNode(ThreadContext threadContext, FanInNodeEntity node) 
+public class FanInNode(ThreadContext threadContext, FanInNodeEntity node)
     : RunNode<FanInNodeEntity>(threadContext, node)
 {
     protected override async Task<(string, List<NextNodeData>)> RunInternal()
@@ -20,7 +20,9 @@ public class FanInNode(ThreadContext threadContext, FanInNodeEntity node)
             else if (fanOutContext.FanInId != Node.Id)
             {
                 // This thread is arriving at a different FanIn than another thread from the same FanOut
-                throw new SharpOMaticException($"All incoming connections must originate from the same Fan Out.");
+                throw new SharpOMaticException(
+                    $"All incoming connections must originate from the same Fan Out."
+                );
             }
 
             if (ThreadContext.NodeContext.TryGetValue("output", out var outputValue))
@@ -41,9 +43,12 @@ public class FanInNode(ThreadContext threadContext, FanInNodeEntity node)
             else
             {
                 // Last thread to arrive; exit fan-out scope and continue with merged context
-                ThreadContext.NodeContext = fanOutContext.MergedContext ?? ThreadContext.NodeContext;
+                ThreadContext.NodeContext =
+                    fanOutContext.MergedContext ?? ThreadContext.NodeContext;
                 if (fanOutContext.Parent is null)
-                    throw new SharpOMaticException("Fan out context is missing a parent execution context.");
+                    throw new SharpOMaticException(
+                        "Fan out context is missing a parent execution context."
+                    );
 
                 ThreadContext.CurrentContext = fanOutContext.Parent;
                 ProcessContext.UntrackContext(fanOutContext);

@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -11,7 +10,7 @@
     <Company>SharpOMatic</Company>
     <RepositoryUrl>https://github.com/sharpomatic/SharpOMatic</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-	  <PackageProjectUrl>https://sharpomatic.com</PackageProjectUrl>
+    <PackageProjectUrl>https://sharpomatic.com</PackageProjectUrl>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>SharpOMatic;AspNet</PackageTags>
@@ -27,12 +26,12 @@
   </ItemGroup>
 
   <ItemGroup>
-	<PackageReference Include="Azure.AI.OpenAI" Version="2.7.0-beta.2" />
-	<PackageReference Include="Azure.Identity" Version="1.17.1" />
-	<PackageReference Include="Azure.Storage.Blobs" Version="12.26.0" />
-	<PackageReference Include="Google.GenAI" Version="0.13.1" />
-	<PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.0.0-preview.251204.1" />
-	<PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.14.0" />
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.7.0-beta.2" />
+    <PackageReference Include="Azure.Identity" Version="1.17.1" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.26.0" />
+    <PackageReference Include="Google.GenAI" Version="0.13.1" />
+    <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.0.0-preview.251204.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.14.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Features" Version="4.14.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.14.0" />
@@ -50,7 +49,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
   </ItemGroup>
-  
+
   <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
       <PrivateAssets>all</PrivateAssets>
@@ -75,10 +74,10 @@
   </ItemGroup>
 
   <ItemGroup>
-	<EmbeddedResource Include="Metadata\Resources\ConnectorConfig\*.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\*.json" />
-	<EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\*.json" />
-	<EmbeddedResource Include="Samples\Workflows\*.json" />
+    <EmbeddedResource Include="Metadata\Resources\ConnectorConfig\*.json" />
+    <EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\*.json" />
+    <EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\*.json" />
+    <EmbeddedResource Include="Samples\Workflows\*.json" />
   </ItemGroup>
 
   <ItemGroup>
@@ -95,5 +94,4 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-
 </Project>

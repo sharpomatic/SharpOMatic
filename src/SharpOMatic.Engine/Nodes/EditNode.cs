@@ -16,7 +16,9 @@ public class EditNode(ThreadContext threadContext, EditNodeEntity node)
                 var entryValue = await EvaluateContextEntryValue(entry);
 
                 if (!ThreadContext.NodeContext.TrySet(entry.InputPath, entryValue))
-                    throw new SharpOMaticException($"Edit node entry '{entry.InputPath}' could not be assigned the value.");
+                    throw new SharpOMaticException(
+                        $"Edit node entry '{entry.InputPath}' could not be assigned the value."
+                    );
             }
         }
 
@@ -31,8 +33,12 @@ public class EditNode(ThreadContext threadContext, EditNodeEntity node)
             }
         }
 
-        var numUpserts = Node.Edits.Entries.Where(e => e.Purpose == ContextEntryPurpose.Upsert).Count();
-        var numDeletes = Node.Edits.Entries.Where(e => e.Purpose == ContextEntryPurpose.Delete).Count();
+        var numUpserts = Node
+            .Edits.Entries.Where(e => e.Purpose == ContextEntryPurpose.Upsert)
+            .Count();
+        var numDeletes = Node
+            .Edits.Entries.Where(e => e.Purpose == ContextEntryPurpose.Delete)
+            .Count();
 
         StringBuilder message = new();
         if (numUpserts == 0)

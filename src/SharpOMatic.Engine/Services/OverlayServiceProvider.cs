@@ -1,6 +1,7 @@
 ﻿namespace SharpOMatic.Engine.Services;
 
-public class OverlayServiceProvider(IServiceProvider fallback, params object[] localServices) : IServiceProvider
+public class OverlayServiceProvider(IServiceProvider fallback, params object[] localServices)
+    : IServiceProvider
 {
     public object? GetService(Type serviceType)
     {

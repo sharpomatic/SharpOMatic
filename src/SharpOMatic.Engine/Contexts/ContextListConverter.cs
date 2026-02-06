@@ -2,9 +2,14 @@
 
 public class ContextListConverter : JsonConverter<ContextList>
 {
-    public override ContextList? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override ContextList? Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options
+    )
     {
-        if (reader.TokenType == JsonTokenType.Null) return null;
+        if (reader.TokenType == JsonTokenType.Null)
+            return null;
         if (reader.TokenType != JsonTokenType.StartArray)
             throw new SharpOMaticException("Expected StartArray for ContextList.");
 
@@ -20,7 +25,11 @@ public class ContextListConverter : JsonConverter<ContextList>
         return list;
     }
 
-    public override void Write(Utf8JsonWriter writer, ContextList value, JsonSerializerOptions options)
+    public override void Write(
+        Utf8JsonWriter writer,
+        ContextList value,
+        JsonSerializerOptions options
+    )
     {
         writer.WriteStartArray();
 

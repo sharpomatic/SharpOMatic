@@ -1,6 +1,7 @@
 namespace SharpOMatic.Engine.Services;
 
-public class AssetService(IRepositoryService repositoryService, IAssetStore assetStore) : IAssetService
+public class AssetService(IRepositoryService repositoryService, IAssetStore assetStore)
+    : IAssetService
 {
     public async Task<AssetRef> CreateFromStreamAsync(
         Stream content,
@@ -8,7 +9,8 @@ public class AssetService(IRepositoryService repositoryService, IAssetStore asse
         string name,
         string mediaType,
         AssetScope scope,
-        Guid? runId = null)
+        Guid? runId = null
+    )
     {
         if (content is null)
             throw new SharpOMaticException("Asset content is required.");
@@ -36,7 +38,7 @@ public class AssetService(IRepositoryService repositoryService, IAssetStore asse
             Created = DateTime.Now,
             MediaType = mediaType.Trim(),
             SizeBytes = sizeBytes,
-            StorageKey = storageKey
+            StorageKey = storageKey,
         };
 
         await repositoryService.UpsertAsset(asset);
@@ -46,7 +48,7 @@ public class AssetService(IRepositoryService repositoryService, IAssetStore asse
             AssetId = asset.AssetId,
             Name = asset.Name,
             MediaType = asset.MediaType,
-            SizeBytes = asset.SizeBytes
+            SizeBytes = asset.SizeBytes,
         };
     }
 
@@ -55,7 +57,8 @@ public class AssetService(IRepositoryService repositoryService, IAssetStore asse
         string name,
         string mediaType,
         AssetScope scope,
-        Guid? runId = null)
+        Guid? runId = null
+    )
     {
         if (data is null)
             throw new SharpOMaticException("Asset data is required.");

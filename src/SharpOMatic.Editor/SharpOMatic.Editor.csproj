@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -25,7 +24,7 @@
 
   <ItemGroup>
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
-	<None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -51,16 +50,26 @@
     </None>
   </ItemGroup>
 
-  <Target Name="PrepareEditorAssets" BeforeTargets="_CalculateEmbeddedFilesManifestInputs" Condition="'$(DesignTimeBuild)' != 'true'">
-    <Exec WorkingDirectory="$(SpaRoot)" Command="npm ci" Condition="!Exists('$(SpaRoot)node_modules')" />
+  <Target
+    Name="PrepareEditorAssets"
+    BeforeTargets="_CalculateEmbeddedFilesManifestInputs"
+    Condition="'$(DesignTimeBuild)' != 'true'"
+  >
+    <Exec
+      WorkingDirectory="$(SpaRoot)"
+      Command="npm ci"
+      Condition="!Exists('$(SpaRoot)node_modules')"
+    />
     <Exec WorkingDirectory="$(SpaRoot)" Command="npm run build -- --configuration production" />
     <ItemGroup>
       <_EditorFiles Include="$(EditorDistDir)**\*" />
-      <_EditorFiles Remove="@(_EditorFiles)" Condition="$([System.IO.Directory]::Exists('%(FullPath)'))" />
+      <_EditorFiles
+        Remove="@(_EditorFiles)"
+        Condition="$([System.IO.Directory]::Exists('%(FullPath)'))"
+      />
       <EmbeddedResource Include="@(_EditorFiles)">
         <TargetPath>$([System.IO.Path]::Combine('wwwroot', '%(RecursiveDir)', '%(Filename)%(Extension)'))</TargetPath>
       </EmbeddedResource>
     </ItemGroup>
   </Target>
-
 </Project>

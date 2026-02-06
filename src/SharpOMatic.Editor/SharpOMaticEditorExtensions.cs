@@ -9,7 +9,10 @@ public static class SharpOMaticEditorExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         var mvcBuilder = services.AddControllers();
-        SharpOMaticControllerFeatureSetup.EnsureApplicationPart(mvcBuilder, typeof(SharpOMaticEditorExtensions).Assembly);
+        SharpOMaticControllerFeatureSetup.EnsureApplicationPart(
+            mvcBuilder,
+            typeof(SharpOMaticEditorExtensions).Assembly
+        );
 
         var toggle = SharpOMaticControllerFeatureSetup.GetOrAddToggle(services);
         toggle.EnableEditor = true;
@@ -27,25 +30,35 @@ public static class SharpOMaticEditorExtensions
         return services;
     }
 
-    public static WebApplication MapSharpOMaticEditor(this WebApplication app, string path = "/editor")
+    public static WebApplication MapSharpOMaticEditor(
+        this WebApplication app,
+        string path = "/editor"
+    )
     {
         ArgumentNullException.ThrowIfNull(app);
 
         if (string.IsNullOrWhiteSpace(path))
-            throw new ArgumentException("Editor path must be a non-empty route like '/editor'.", nameof(path));
+            throw new ArgumentException(
+                "Editor path must be a non-empty route like '/editor'.",
+                nameof(path)
+            );
 
         var normalizedPath = NormalizePath(path);
         if (string.Equals(normalizedPath, "/", StringComparison.Ordinal))
-            throw new ArgumentException("Editor path must be a sub-path like '/editor'.", nameof(path));
+            throw new ArgumentException(
+                "Editor path must be a sub-path like '/editor'.",
+                nameof(path)
+            );
 
-        var fileProvider = new ManifestEmbeddedFileProvider(typeof(SharpOMaticEditorExtensions).Assembly, "wwwroot");
+        var fileProvider = new ManifestEmbeddedFileProvider(
+            typeof(SharpOMaticEditorExtensions).Assembly,
+            "wwwroot"
+        );
         var indexHtml = LoadIndexHtml(fileProvider, normalizedPath);
 
-        app.UseStaticFiles(new StaticFileOptions
-        {
-            FileProvider = fileProvider,
-            RequestPath = normalizedPath
-        });
+        app.UseStaticFiles(
+            new StaticFileOptions { FileProvider = fileProvider, RequestPath = normalizedPath }
+        );
 
         var editorGroup = app.MapGroup(normalizedPath);
         editorGroup.MapControllers();
@@ -75,16 +88,23 @@ public static class SharpOMaticEditorExtensions
         {
             throw new FileNotFoundException(
                 "The editor index.html was not found in embedded resources.",
-                "index.html");
+                "index.html"
+            );
         }
 
         using var stream = fileInfo.CreateReadStream();
         using var reader = new StreamReader(stream, Encoding.UTF8, true);
         var html = reader.ReadToEnd();
 
-        var normalizedBase = basePath.EndsWith("/", StringComparison.Ordinal) ? basePath : basePath + "/";
+        var normalizedBase = basePath.EndsWith("/", StringComparison.Ordinal)
+            ? basePath
+            : basePath + "/";
         if (html.Contains(DefaultBaseHref, StringComparison.OrdinalIgnoreCase))
-            return html.Replace(DefaultBaseHref, $"<base href=\"{normalizedBase}\">", StringComparison.OrdinalIgnoreCase);
+            return html.Replace(
+                DefaultBaseHref,
+                $"<base href=\"{normalizedBase}\">",
+                StringComparison.OrdinalIgnoreCase
+            );
 
         var headClose = "</head>";
         var index = html.IndexOf(headClose, StringComparison.OrdinalIgnoreCase);

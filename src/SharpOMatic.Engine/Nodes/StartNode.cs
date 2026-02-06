@@ -29,19 +29,25 @@ public class StartNode(ThreadContext threadContext, StartNodeEntity node)
                 if (ThreadContext.NodeContext.TryGet<object?>(entry.InputPath, out var mapValue))
                 {
                     if (!outputContext.TrySet(entry.InputPath, mapValue))
-                        throw new SharpOMaticException($"Start node cannot set '{entry.InputPath}' into context.");
+                        throw new SharpOMaticException(
+                            $"Start node cannot set '{entry.InputPath}' into context."
+                        );
 
                     provided++;
                 }
                 else
                 {
                     if (!entry.Optional)
-                        throw new SharpOMaticException($"Start node mandatory path '{entry.InputPath}' cannot be resolved.");
+                        throw new SharpOMaticException(
+                            $"Start node mandatory path '{entry.InputPath}' cannot be resolved."
+                        );
 
                     var entryValue = await EvaluateContextEntryValue(entry);
 
                     if (!outputContext.TrySet(entry.InputPath, entryValue))
-                        throw new SharpOMaticException($"Start node entry '{entry.InputPath}' could not be assigned the value.");
+                        throw new SharpOMaticException(
+                            $"Start node entry '{entry.InputPath}' could not be assigned the value."
+                        );
 
                     defaulted++;
                 }

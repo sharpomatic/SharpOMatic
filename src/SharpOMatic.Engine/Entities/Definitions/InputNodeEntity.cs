@@ -1,6 +1,4 @@
 namespace SharpOMatic.Engine.Entities.Definitions;
 
 [NodeEntity(NodeType.Input)]
-public class InputNodeEntity : NodeEntity
-{
-}
+public class InputNodeEntity : NodeEntity { }

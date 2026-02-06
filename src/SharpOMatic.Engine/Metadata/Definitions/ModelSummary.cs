@@ -6,4 +6,3 @@ public class ModelSummary
     public required string Name { get; set; }
     public required string Description { get; set; }
 }
-
