@@ -2,7 +2,10 @@ import { computed, signal, WritableSignal } from '@angular/core';
 import { ConnectorEntity } from './connector.entity';
 import { NodeEntity, NodeSnapshot } from './node.entity';
 import { NodeType } from '../enumerations/node-type';
-import { ContextEntryListEntity, ContextEntryListSnapshot } from './context-entry-list.entity';
+import {
+  ContextEntryListEntity,
+  ContextEntryListSnapshot,
+} from './context-entry-list.entity';
 
 export interface GosubNodeSnapshot extends NodeSnapshot {
   workflowId: string | null;
@@ -24,9 +27,13 @@ export class GosubNodeEntity extends NodeEntity<GosubNodeSnapshot> {
 
     this.workflowId = signal(snapshot.workflowId ?? null);
     this.applyInputMappings = signal(snapshot.applyInputMappings);
-    this.inputMappings = signal(ContextEntryListEntity.fromSnapshot(snapshot.inputMappings));
+    this.inputMappings = signal(
+      ContextEntryListEntity.fromSnapshot(snapshot.inputMappings),
+    );
     this.applyOutputMappings = signal(snapshot.applyOutputMappings);
-    this.outputMappings = signal(ContextEntryListEntity.fromSnapshot(snapshot.outputMappings));
+    this.outputMappings = signal(
+      ContextEntryListEntity.fromSnapshot(snapshot.outputMappings),
+    );
 
     const baseIsDirty = this.isDirty;
     this.isDirty = computed(() => {
@@ -38,12 +45,14 @@ export class GosubNodeEntity extends NodeEntity<GosubNodeSnapshot> {
       const currentApplyOutputMappings = this.applyOutputMappings();
       const currentOutputMappingsDirty = this.outputMappings().isDirty();
 
-      return currentIsDirty ||
+      return (
+        currentIsDirty ||
         currentWorkflowId !== snapshot.workflowId ||
         currentApplyInputMappings !== snapshot.applyInputMappings ||
         currentInputMappingsDirty ||
         currentApplyOutputMappings !== snapshot.applyOutputMappings ||
-        currentOutputMappingsDirty;
+        currentOutputMappingsDirty
+      );
     });
   }
 

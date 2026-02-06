@@ -29,7 +29,9 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
     this.name = signal(snapshot.name);
     this.description = signal(snapshot.description);
     this.nodes = signal(snapshot.nodes.map(nodeFromSnapshot));
-    this.connections = signal(snapshot.connections.map(ConnectionEntity.fromSnapshot));
+    this.connections = signal(
+      snapshot.connections.map(ConnectionEntity.fromSnapshot),
+    );
 
     this.refreshCache();
 
@@ -45,19 +47,30 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
       const currentConnections = this.connections();
 
       // Must touch all nodes/connections dirty signals
-      const currentNodesDirty = currentNodes.reduce((dirty, node) => node.isDirty() || dirty, false);
-      const currentConnectionsDirty = currentConnections.reduce((dirty, connection) => connection.isDirty() || dirty, false);
-      const connectionIdsChanged = this.haveConnectionIdsChanged(currentConnections, snaphotConnections);
+      const currentNodesDirty = currentNodes.reduce(
+        (dirty, node) => node.isDirty() || dirty,
+        false,
+      );
+      const currentConnectionsDirty = currentConnections.reduce(
+        (dirty, connection) => connection.isDirty() || dirty,
+        false,
+      );
+      const connectionIdsChanged = this.haveConnectionIdsChanged(
+        currentConnections,
+        snaphotConnections,
+      );
 
-      const needsRefresh = (currentNodes.length !== snaphotNodes.length) ||
-                           (currentConnections.length !== snaphotConnections.length) ||
-                           connectionIdsChanged ||
-                           currentNodesDirty ||
-                           currentConnectionsDirty;
+      const needsRefresh =
+        currentNodes.length !== snaphotNodes.length ||
+        currentConnections.length !== snaphotConnections.length ||
+        connectionIdsChanged ||
+        currentNodesDirty ||
+        currentConnectionsDirty;
 
-      const isDirty = needsRefresh ||
-                      (currentName !== snapshot.name) ||
-                      (currentDescription !== snapshot.description);
+      const isDirty =
+        needsRefresh ||
+        currentName !== snapshot.name ||
+        currentDescription !== snapshot.description;
 
       if (needsRefresh) {
         setTimeout(() => this.refreshCache(), 0);
@@ -73,8 +86,10 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
       version: this.version,
       name: this.name(),
       description: this.description(),
-      nodes: this.nodes().map(node => node.toSnapshot()),
-      connections: this.connections().map(connection => connection.toSnapshot()),
+      nodes: this.nodes().map((node) => node.toSnapshot()),
+      connections: this.connections().map((connection) =>
+        connection.toSnapshot(),
+      ),
     };
   }
 
@@ -85,7 +100,7 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
       description: '',
       nodes: [],
       connections: [],
-    }
+    };
   }
 
   public static fromSnapshot(snapshot: WorkflowSnapshot): WorkflowEntity {
@@ -102,8 +117,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
 
   public override markClean(): void {
     super.markClean();
-    this.nodes().forEach(node => node.markClean());
-    this.connections().forEach(connection => connection.markClean());
+    this.nodes().forEach((node) => node.markClean());
+    this.connections().forEach((connection) => connection.markClean());
   }
 
   public getNodeById(id: string): NodeEntity<NodeSnapshot> | undefined {
@@ -114,17 +129,20 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
     return this.connectionMap.get(id);
   }
 
-    public getConnectorById(id: string): ConnectorEntity | undefined {
+  public getConnectorById(id: string): ConnectorEntity | undefined {
     return this.connectorMap.get(id);
   }
 
-  private haveConnectionIdsChanged(currentConnections: ConnectionEntity[], snapshotConnections: ConnectionSnapshot[]): boolean {
+  private haveConnectionIdsChanged(
+    currentConnections: ConnectionEntity[],
+    snapshotConnections: ConnectionSnapshot[],
+  ): boolean {
     if (currentConnections.length !== snapshotConnections.length) {
       return true;
     }
 
-    const currentIds = new Set(currentConnections.map(c => c.id));
-    const snapshotIds = new Set(snapshotConnections.map(c => c.id));
+    const currentIds = new Set(currentConnections.map((c) => c.id));
+    const snapshotIds = new Set(snapshotConnections.map((c) => c.id));
 
     if (currentIds.size !== snapshotIds.size) {
       return true;
@@ -140,8 +158,12 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
   }
 
   private refreshCache(): void {
-    this.nodeMap = new Map(this.nodes().map(n => [n.id, n]));
-    this.connectionMap = new Map(this.connections().map(c => [c.id, c]));
-    this.connectorMap = new Map(this.nodes().flatMap(n => [...n.inputs(), ...n.outputs()]).map(c => [c.id, c]));
+    this.nodeMap = new Map(this.nodes().map((n) => [n.id, n]));
+    this.connectionMap = new Map(this.connections().map((c) => [c.id, c]));
+    this.connectorMap = new Map(
+      this.nodes()
+        .flatMap((n) => [...n.inputs(), ...n.outputs()])
+        .map((c) => [c.id, c]),
+    );
   }
 }

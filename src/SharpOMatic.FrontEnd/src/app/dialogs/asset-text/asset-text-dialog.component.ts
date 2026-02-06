@@ -45,7 +45,12 @@ export class AssetTextDialogComponent implements OnInit {
   }
 
   canSave(): boolean {
-    return !this.readOnly && !this.isLoading && !this.isSaving && this.content !== this.originalContent;
+    return (
+      !this.readOnly &&
+      !this.isLoading &&
+      !this.isSaving &&
+      this.content !== this.originalContent
+    );
   }
 
   save(): void {
@@ -54,14 +59,16 @@ export class AssetTextDialogComponent implements OnInit {
     }
 
     this.isSaving = true;
-    this.serverRepository.updateAssetText(this.assetId, this.content).subscribe((success) => {
-      if (success) {
-        this.originalContent = this.content;
-        this.saved = true;
-      }
+    this.serverRepository
+      .updateAssetText(this.assetId, this.content)
+      .subscribe((success) => {
+        if (success) {
+          this.originalContent = this.content;
+          this.saved = true;
+        }
 
-      this.isSaving = false;
-    });
+        this.isSaving = false;
+      });
   }
 
   download(): void {

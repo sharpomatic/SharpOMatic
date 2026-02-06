@@ -6,5 +6,5 @@ export enum ContextEntryType {
   AssetRef = 6,
   AssetRefList = 7,
   JSON = 4,
-  Expression = 5
+  Expression = 5,
 }

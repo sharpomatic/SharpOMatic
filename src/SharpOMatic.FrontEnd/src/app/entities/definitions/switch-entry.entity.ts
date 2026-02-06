@@ -24,8 +24,7 @@ export class SwitchEntryEntity extends Entity<SwitchEntrySnapshot> {
       const currentName = this.name();
       const currentCode = this.code();
 
-      return (currentName !== snapshot.name) ||
-             (currentCode !== snapshot.code);
+      return currentName !== snapshot.name || currentCode !== snapshot.code;
     });
   }
 

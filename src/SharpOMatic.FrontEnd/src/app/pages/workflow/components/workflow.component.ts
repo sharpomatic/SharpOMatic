@@ -1,4 +1,14 @@
-import { Component, HostListener, TemplateRef, ViewChild, inject, OnInit, signal, computed, effect } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  TemplateRef,
+  ViewChild,
+  inject,
+  OnInit,
+  signal,
+  computed,
+  effect,
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { WorkflowService } from '../services/workflow.service';
 import { DesignerComponent } from '../../../components/designer/components/designer.component';
@@ -27,10 +37,10 @@ import { RunViewerDialogComponent } from '../../../dialogs/run-viewer/run-viewer
     BsDropdownModule,
     TabComponent,
     DesignerComponent,
-    TracebarComponent
+    TracebarComponent,
   ],
   templateUrl: './workflow.component.html',
-  styleUrl: './workflow.component.scss'
+  styleUrl: './workflow.component.scss',
 })
 export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
   @ViewChild('designTab', { static: true }) designTab!: TemplateRef<unknown>;
@@ -52,11 +62,18 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
   public isTracebarClosed = signal(true);
   public tracebarWidth = signal(800);
   public tabs: TabItem[] = [];
-  public readonly hasStartNode = computed(() => this.workflowService.workflow().nodes().some(node => node.nodeType() === NodeType.Start));
+  public readonly hasStartNode = computed(() =>
+    this.workflowService
+      .workflow()
+      .nodes()
+      .some((node) => node.nodeType() === NodeType.Start),
+  );
   public readonly RunStatus = RunStatus;
   public readonly RunSortField = RunSortField;
   public readonly SortDirection = SortDirection;
-  public readonly runsPageCount = computed(() => this.workflowService.getRunsPageCount());
+  public readonly runsPageCount = computed(() =>
+    this.workflowService.getRunsPageCount(),
+  );
   public readonly runsPageNumbers = computed(() => {
     const totalPages = this.runsPageCount();
     if (totalPages <= 1) {
@@ -81,11 +98,13 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
     this.tabs = [
       { id: 'details', title: 'Details', content: this.detailsTab },
       { id: 'design', title: 'Design', content: this.designTab },
-      { id: 'runs', title: 'Runs', content: this.runsTab }
+      { id: 'runs', title: 'Runs', content: this.runsTab },
     ];
 
-    this.activeTabId = this.resolveTabId(this.route.snapshot.queryParamMap.get('tab'));
-    this.route.queryParamMap.subscribe(params => {
+    this.activeTabId = this.resolveTabId(
+      this.route.snapshot.queryParamMap.get('tab'),
+    );
+    this.route.queryParamMap.subscribe((params) => {
       const nextTabId = this.resolveTabId(params.get('tab'));
       if (nextTabId !== this.activeTabId) {
         this.activeTabId = nextTabId;
@@ -162,7 +181,10 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   hasUnsavedChanges(): boolean {
-    return this.workflowService.workflow().isDirty() || this.workflowService.runInputs().isDirty();
+    return (
+      this.workflowService.workflow().isDirty() ||
+      this.workflowService.runInputs().isDirty()
+    );
   }
 
   saveChanges(): Observable<void> {
@@ -176,7 +198,11 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
     const startedMs = Date.parse(run.started);
     const stoppedMs = Date.parse(run.stopped);
-    if (!Number.isFinite(startedMs) || !Number.isFinite(stoppedMs) || stoppedMs < startedMs) {
+    if (
+      !Number.isFinite(startedMs) ||
+      !Number.isFinite(stoppedMs) ||
+      stoppedMs < startedMs
+    ) {
       return '';
     }
 
@@ -215,7 +241,7 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tab: tabId },
-      queryParamsHandling: 'merge'
+      queryParamsHandling: 'merge',
     });
   }
 

@@ -1,18 +1,23 @@
-import { CodeNodeEntity, CodeNodeSnapshot } from "./code-node.entity";
-import { EditNodeEntity, EditNodeSnapshot } from "./edit-node.entity";
-import { EndNodeEntity, EndNodeSnapshot } from "./end-node.entity";
-import { NodeEntity, NodeSnapshot } from "./node.entity";
-import { StartNodeEntity, StartNodeSnapshot } from "./start-node.entity";
+import { CodeNodeEntity, CodeNodeSnapshot } from './code-node.entity';
+import { EditNodeEntity, EditNodeSnapshot } from './edit-node.entity';
+import { EndNodeEntity, EndNodeSnapshot } from './end-node.entity';
+import { NodeEntity, NodeSnapshot } from './node.entity';
+import { StartNodeEntity, StartNodeSnapshot } from './start-node.entity';
 import { NodeType } from '../enumerations/node-type';
-import { SwitchNodeEntity, SwitchNodeSnapshot } from "./switch-node.entity";
-import { FanInNodeEntity, FanInNodeSnapshot } from "./fan-in-node.entity";
-import { FanOutNodeEntity, FanOutNodeSnapshot } from "./fan-out-node.entity";
-import { ModelCallNodeEntity, ModelCallNodeSnapshot } from "./model-call-node.entity";
-import { BatchNodeEntity, BatchNodeSnapshot } from "./batch-node.entity";
-import { GosubNodeEntity, GosubNodeSnapshot } from "./gosub-node.entity";
-import { InputNodeEntity, InputNodeSnapshot } from "./input-node.entity";
+import { SwitchNodeEntity, SwitchNodeSnapshot } from './switch-node.entity';
+import { FanInNodeEntity, FanInNodeSnapshot } from './fan-in-node.entity';
+import { FanOutNodeEntity, FanOutNodeSnapshot } from './fan-out-node.entity';
+import {
+  ModelCallNodeEntity,
+  ModelCallNodeSnapshot,
+} from './model-call-node.entity';
+import { BatchNodeEntity, BatchNodeSnapshot } from './batch-node.entity';
+import { GosubNodeEntity, GosubNodeSnapshot } from './gosub-node.entity';
+import { InputNodeEntity, InputNodeSnapshot } from './input-node.entity';
 
-export function nodeFromSnapshot(snapshot: NodeSnapshot): NodeEntity<NodeSnapshot> {
+export function nodeFromSnapshot(
+  snapshot: NodeSnapshot,
+): NodeEntity<NodeSnapshot> {
   switch (snapshot.nodeType) {
     case NodeType.Start:
       return StartNodeEntity.fromSnapshot(snapshot as StartNodeSnapshot);
@@ -29,7 +34,9 @@ export function nodeFromSnapshot(snapshot: NodeSnapshot): NodeEntity<NodeSnapsho
     case NodeType.FanOut:
       return FanOutNodeEntity.fromSnapshot(snapshot as FanOutNodeSnapshot);
     case NodeType.ModelCall:
-      return ModelCallNodeEntity.fromSnapshot(snapshot as ModelCallNodeSnapshot);
+      return ModelCallNodeEntity.fromSnapshot(
+        snapshot as ModelCallNodeSnapshot,
+      );
     case NodeType.Batch:
       return BatchNodeEntity.fromSnapshot(snapshot as BatchNodeSnapshot);
     case NodeType.Gosub:

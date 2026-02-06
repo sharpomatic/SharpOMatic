@@ -1,8 +1,12 @@
 <div class="d-flex flex-column dialog-overlay bg-body-secondary">
   <div class="d-flex flex-column dialog-content">
-    <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1">
-      <h2 class=""><i class="bi bi-filetype-cs pe-3 icon-sm"></i>{{ node.title() }}</h2>
-          <button class="btn btn-primary" (click)="onClose()">Close</button>
+    <div
+      class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1"
+    >
+      <h2 class="">
+        <i class="bi bi-filetype-cs pe-3 icon-sm"></i>{{ node.title() }}
+      </h2>
+      <button class="btn btn-primary" (click)="onClose()">Close</button>
     </div>
 
     <div class="tab-shell">
@@ -12,19 +16,31 @@
     <ng-template #detailsTab>
       <div class="p-3 details">
         <div class="mb-3 form-line">
-          <label for="workflow-title" class="form-label field-label">Title</label>
+          <label for="workflow-title" class="form-label field-label"
+            >Title</label
+          >
           <div class="flex-fill control-column title">
-            <input type="text" class="form-control w-100" id="workflow-title" [ngModel]="node.title()" (ngModelChange)="node.title.set($event)"/>
+            <input
+              type="text"
+              class="form-control w-100"
+              id="workflow-title"
+              [ngModel]="node.title()"
+              (ngModelChange)="node.title.set($event)"
+            />
           </div>
         </div>
 
         <div class="ps-0 pe-0">
-          <hr class="m-0"/>
+          <hr class="m-0" />
           <h4 class="form-label mt-3 mb-2">Code</h4>
         </div>
 
         <div class="p-0 editCode">
-          <ngx-monaco-editor [options]="editorOptions" [ngModel]="node.code()" (ngModelChange)="node.code.set($event)"></ngx-monaco-editor>
+          <ngx-monaco-editor
+            [options]="editorOptions"
+            [ngModel]="node.code()"
+            (ngModelChange)="node.code.set($event)"
+          ></ngx-monaco-editor>
         </div>
       </div>
     </ng-template>
@@ -37,5 +53,6 @@
       <div class="bg-body-tertiary p-3">
         <app-context-viewer [contexts]="outputTraces"></app-context-viewer>
       </div>
-    </ng-template>  </div>
+    </ng-template>
+  </div>
 </div>

@@ -42,7 +42,10 @@ export class EvalColumn {
     return new EvalColumn(snapshot);
   }
 
-  public static defaultSnapshot(order: number, evalConfigId: string): EvalColumnSnapshot {
+  public static defaultSnapshot(
+    order: number,
+    evalConfigId: string,
+  ): EvalColumnSnapshot {
     return {
       evalColumnId: crypto.randomUUID(),
       evalConfigId,

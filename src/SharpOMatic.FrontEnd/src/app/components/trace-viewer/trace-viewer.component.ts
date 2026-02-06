@@ -15,7 +15,7 @@ interface TraceTreeNode {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './trace-viewer.component.html',
-  styleUrls: ['./trace-viewer.component.scss']
+  styleUrls: ['./trace-viewer.component.scss'],
 })
 export class TraceViewerComponent implements OnChanges {
   @Input() traces: TraceProgressModel[] = [];
@@ -37,17 +37,17 @@ export class TraceViewerComponent implements OnChanges {
   }
 
   private buildTraceTree(traces: TraceProgressModel[]): TraceTreeNode[] {
-    const nodes = traces.map(trace => ({
+    const nodes = traces.map((trace) => ({
       trace,
       children: [],
-      expanded: this.expandedState.get(trace.traceId) ?? true
+      expanded: this.expandedState.get(trace.traceId) ?? true,
     }));
 
     const nodeById = new Map<string, TraceTreeNode>();
-    nodes.forEach(node => nodeById.set(node.trace.traceId, node));
+    nodes.forEach((node) => nodeById.set(node.trace.traceId, node));
 
     const roots: TraceTreeNode[] = [];
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       const parentId = node.trace.parentTraceId;
       if (parentId && nodeById.has(parentId)) {
         nodeById.get(parentId)!.children.push(node);

@@ -1,4 +1,10 @@
-import { effect, inject, Injectable, WritableSignal, signal } from '@angular/core';
+import {
+  effect,
+  inject,
+  Injectable,
+  WritableSignal,
+  signal,
+} from '@angular/core';
 import { ServerRepositoryService } from './server.repository.service';
 import { SignalrService } from './signalr.service';
 
@@ -22,7 +28,7 @@ export class SamplesService {
   }
 
   private loadSampleNames(): void {
-    this.serverRepository.getSampleWorkflowNames().subscribe(names => {
+    this.serverRepository.getSampleWorkflowNames().subscribe((names) => {
       const sorted = [...names].sort((a, b) => a.localeCompare(b));
       this._sampleNames.set(sorted);
     });

@@ -115,13 +115,13 @@
 .col-status {
   width: 90px;
   min-width: 90px;
-  max-width: 90px;  
+  max-width: 90px;
 }
 
 .col-duration {
   width: 110px;
   min-width: 110px;
-  max-width: 110px;  
+  max-width: 110px;
 }
 
 .col-error {
@@ -140,7 +140,7 @@
 
   &.running {
     color: black;
-    background-color: #FF8654
+    background-color: #ff8654;
   }
 
   &.success {
@@ -150,7 +150,7 @@
 
   &.failed {
     color: white;
-    background-color: #FF5454
+    background-color: #ff5454;
   }
 }
 

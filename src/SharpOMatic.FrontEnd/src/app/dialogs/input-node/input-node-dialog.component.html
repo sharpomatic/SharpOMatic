@@ -1,7 +1,11 @@
 <div class="d-flex flex-column dialog-overlay bg-body-secondary">
   <div class="d-flex flex-column dialog-content">
-    <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1">
-      <h2 class=""><i class="bi bi-chat-dots pe-3 icon-sm"></i>{{ node.title() }}</h2>
+    <div
+      class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1"
+    >
+      <h2 class="">
+        <i class="bi bi-chat-dots pe-3 icon-sm"></i>{{ node.title() }}
+      </h2>
       <button class="btn btn-primary" (click)="onClose()">Close</button>
     </div>
     <div class="tab-shell">
@@ -12,8 +16,13 @@
         <div class="mb-3 form-line">
           <label for="input-title" class="form-label field-label">Title</label>
           <div class="flex-fill control-column title">
-            <input type="text" class="form-control w-100" id="input-title" [ngModel]="node.title()"
-              (ngModelChange)="node.title.set($event)" />
+            <input
+              type="text"
+              class="form-control w-100"
+              id="input-title"
+              [ngModel]="node.title()"
+              (ngModelChange)="node.title.set($event)"
+            />
           </div>
         </div>
       </div>

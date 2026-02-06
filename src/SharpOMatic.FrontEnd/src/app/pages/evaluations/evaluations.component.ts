@@ -1,4 +1,10 @@
-import { AfterViewInit, Component, ElementRef, ViewChild, inject } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  ViewChild,
+  inject,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
@@ -10,10 +16,7 @@ import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.com
 @Component({
   selector: 'app-evaluations',
   standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-  ],
+  imports: [CommonModule, RouterLink],
   templateUrl: './evaluations.component.html',
   styleUrls: ['./evaluations.component.scss'],
   providers: [BsModalService],
@@ -63,9 +66,11 @@ export class EvaluationsComponent implements AfterViewInit {
 
     this.confirmModalRef.onHidden?.subscribe(() => {
       if (this.confirmModalRef?.content?.result) {
-        this.serverRepository.deleteEvalConfig(config.evalConfigId).subscribe(() => {
-          this.refreshEvalConfigs();
-        });
+        this.serverRepository
+          .deleteEvalConfig(config.evalConfigId)
+          .subscribe(() => {
+            this.refreshEvalConfigs();
+          });
       }
     });
   }
@@ -126,10 +131,11 @@ export class EvaluationsComponent implements AfterViewInit {
   private refreshEvalConfigs(): void {
     this.isLoading = true;
     const search = this.searchText.trim();
-    this.serverRepository.getEvalConfigCount(search).subscribe(total => {
+    this.serverRepository.getEvalConfigCount(search).subscribe((total) => {
       this.evalConfigsTotal = total;
       const totalPages = this.evalConfigsPageCount();
-      const nextPage = totalPages === 0 ? 1 : Math.min(this.evalConfigsPage, totalPages);
+      const nextPage =
+        totalPages === 0 ? 1 : Math.min(this.evalConfigsPage, totalPages);
       this.loadEvalConfigsPage(nextPage);
     });
   }
@@ -138,16 +144,18 @@ export class EvaluationsComponent implements AfterViewInit {
     this.isLoading = true;
     const skip = (page - 1) * this.evalConfigsPageSize;
     const search = this.searchText.trim();
-    this.serverRepository.getEvalConfigSummaries(search, skip, this.evalConfigsPageSize).subscribe({
-      next: (configs) => {
-        this.evalConfigs = configs;
-        this.evalConfigsPage = page;
-        this.isLoading = false;
-      },
-      error: () => {
-        this.isLoading = false;
-      },
-    });
+    this.serverRepository
+      .getEvalConfigSummaries(search, skip, this.evalConfigsPageSize)
+      .subscribe({
+        next: (configs) => {
+          this.evalConfigs = configs;
+          this.evalConfigsPage = page;
+          this.isLoading = false;
+        },
+        error: () => {
+          this.isLoading = false;
+        },
+      });
   }
 
   private scheduleSearch(): void {

@@ -1,116 +1,221 @@
-<div class="trace-panel flex-shrink-0 h-100 bg-body-secondary d-flex flex-column" [class.is-resizing]="isResizing">
-  <div class="trace-resize-handle" (mousedown)="startResize($event)" (touchstart)="startResize($event)"></div>
+<div
+  class="trace-panel flex-shrink-0 h-100 bg-body-secondary d-flex flex-column"
+  [class.is-resizing]="isResizing"
+>
+  <div
+    class="trace-resize-handle"
+    (mousedown)="startResize($event)"
+    (touchstart)="startResize($event)"
+  ></div>
   <div class="d-flex flex-row align-items-center">
     <div class="trace-heading-text">Run</div>
-    <span class="run-text" [class.created]="workflowService.runProgress()?.runStatus === RunStatus.Created"
-      [class.running]="workflowService.runProgress()?.runStatus === RunStatus.Running"
-      [class.success]="workflowService.runProgress()?.runStatus === RunStatus.Success"
-      [class.failed]="workflowService.runProgress()?.runStatus === RunStatus.Failed">
+    <span
+      class="run-text"
+      [class.created]="
+        workflowService.runProgress()?.runStatus === RunStatus.Created
+      "
+      [class.running]="
+        workflowService.runProgress()?.runStatus === RunStatus.Running
+      "
+      [class.success]="
+        workflowService.runProgress()?.runStatus === RunStatus.Success
+      "
+      [class.failed]="
+        workflowService.runProgress()?.runStatus === RunStatus.Failed
+      "
+    >
       {{ workflowService.runProgress()?.message }}
     </span>
   </div>
   @if (workflowService.runProgress()?.runStatus === RunStatus.Failed) {
-  <hr class="header-separator" />
-  <div class="run-error-text">{{ workflowService.runProgress()?.error }}</div>
-  <hr class="header-separator" />
+    <hr class="header-separator" />
+    <div class="run-error-text">{{ workflowService.runProgress()?.error }}</div>
+    <hr class="header-separator" />
   }
   <div class="tab-shell mt-2">
-    <app-tab [tabs]="tabs" [activeTabId]="activeTabId" (activeTabIdChange)="onActiveTabIdChange($event)"></app-tab>
+    <app-tab
+      [tabs]="tabs"
+      [activeTabId]="activeTabId"
+      (activeTabIdChange)="onActiveTabIdChange($event)"
+    ></app-tab>
   </div>
 
   <ng-template #inputTab>
     <div class="bg-body-tertiary flex-grow-1 d-flex flex-column p-3 h-100">
       @if (workflowService.runInputs().entries().length > 0) {
-      <div class="run-inputs flex-grow-1">
-        <div class="d-flex align-items-start gap-2 mb-2">
-          <label class="form-label editPath mb-0">Path</label>
-          <label class="form-label editType mb-0">Type</label>
-          <label class="form-label editValue mb-0">Value</label>
-        </div>
-        @for (entry of workflowService.runInputs().entries(); track entry.id) {
-        <div class="d-flex align-items-start gap-2 mb-2 run-input-row">
-          <input type="text" class="form-control editPath" [value]="entry.inputPath()" readonly />
-          @if (entry.optional()) {
-          <input type="text" class="form-control editType" [value]="getEntryTypeDisplay(entry.entryType())" readonly />
-          } @else {
-          <select class="form-select editType" [ngModel]="entry.entryType()"
-            (ngModelChange)="entry.entryType.set($event)">
-            @for (key of contextEntryTypeKeys; track key) {
-            <option [ngValue]="getEnumValue(key)">{{ getEntryTypeDisplay(getEnumValue(key)) }}</option>
-            }
-          </select>
+        <div class="run-inputs flex-grow-1">
+          <div class="d-flex align-items-start gap-2 mb-2">
+            <label class="form-label editPath mb-0">Path</label>
+            <label class="form-label editType mb-0">Type</label>
+            <label class="form-label editValue mb-0">Value</label>
+          </div>
+          @for (
+            entry of workflowService.runInputs().entries();
+            track entry.id
+          ) {
+            <div class="d-flex align-items-start gap-2 mb-2 run-input-row">
+              <input
+                type="text"
+                class="form-control editPath"
+                [value]="entry.inputPath()"
+                readonly
+              />
+              @if (entry.optional()) {
+                <input
+                  type="text"
+                  class="form-control editType"
+                  [value]="getEntryTypeDisplay(entry.entryType())"
+                  readonly
+                />
+              } @else {
+                <select
+                  class="form-select editType"
+                  [ngModel]="entry.entryType()"
+                  (ngModelChange)="entry.entryType.set($event)"
+                >
+                  @for (key of contextEntryTypeKeys; track key) {
+                    <option [ngValue]="getEnumValue(key)">
+                      {{ getEntryTypeDisplay(getEnumValue(key)) }}
+                    </option>
+                  }
+                </select>
+              }
+              @if (entry.entryType() === contextEntryType.JSON) {
+                <div class="editValue">
+                  <ngx-monaco-editor
+                    class="editJson"
+                    [options]="getEditorOptions(entry)"
+                    [ngModel]="entry.entryValue()"
+                    (ngModelChange)="entry.entryValue.set($event)"
+                  />
+                </div>
+              } @else if (entry.entryType() === contextEntryType.Expression) {
+                <div class="editValue">
+                  <ngx-monaco-editor
+                    class="editExpression"
+                    [options]="getEditorOptions(entry)"
+                    [ngModel]="entry.entryValue()"
+                    (ngModelChange)="entry.entryValue.set($event)"
+                  />
+                </div>
+              } @else if (entry.entryType() === contextEntryType.Bool) {
+                <div class="d-flex editValue">
+                  <select
+                    class="form-select editBoolValue"
+                    [ngModel]="entry.entryValue() || 'False'"
+                    (ngModelChange)="
+                      entry.entryValue.set(($event ?? 'False').toString())
+                    "
+                  >
+                    <option value="True">True</option>
+                    <option value="False">False</option>
+                  </select>
+                </div>
+              } @else if (entry.entryType() === contextEntryType.Int) {
+                <input
+                  type="number"
+                  class="form-control editValue"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  step="1"
+                  [ngModel]="
+                    entry.entryValue() !== '' ? +entry.entryValue() : null
+                  "
+                  (ngModelChange)="
+                    entry.entryValue.set(($event ?? '').toString())
+                  "
+                />
+              } @else if (entry.entryType() === contextEntryType.Double) {
+                <input
+                  type="number"
+                  class="form-control editValue"
+                  inputmode="decimal"
+                  step="any"
+                  [ngModel]="
+                    entry.entryValue() !== '' ? +entry.entryValue() : null
+                  "
+                  (ngModelChange)="
+                    entry.entryValue.set(($event ?? '').toString())
+                  "
+                />
+              } @else if (entry.entryType() === contextEntryType.AssetRef) {
+                <div class="editValue asset-selection">
+                  <button
+                    class="btn btn-outline-primary"
+                    type="button"
+                    (click)="openAssetPicker(entry, 'single')"
+                  >
+                    Select
+                  </button>
+                  <input
+                    type="text"
+                    class="form-control asset-selection-label"
+                    [value]="
+                      getSelectedAssetLabel(entry) || 'No asset selected'
+                    "
+                    [title]="getSelectedAssetLabel(entry)"
+                    readonly
+                  />
+                </div>
+              } @else if (entry.entryType() === contextEntryType.AssetRefList) {
+                <div class="editValue asset-selection">
+                  <button
+                    class="btn btn-outline-primary"
+                    type="button"
+                    (click)="openAssetPicker(entry, 'multi')"
+                  >
+                    Select
+                  </button>
+                  <input
+                    type="text"
+                    class="form-control asset-selection-label"
+                    [value]="
+                      getSelectedAssetListLabel(entry) || 'No assets selected'
+                    "
+                    [title]="getSelectedAssetListLabel(entry)"
+                    readonly
+                  />
+                </div>
+              } @else {
+                <input
+                  type="text"
+                  class="form-control editValue"
+                  [ngModel]="entry.entryValue()"
+                  (ngModelChange)="entry.entryValue.set($event)"
+                />
+              }
+            </div>
           }
-          @if (entry.entryType() === contextEntryType.JSON) {
-          <div class="editValue">
-            <ngx-monaco-editor class="editJson" [options]="getEditorOptions(entry)" [ngModel]="entry.entryValue()"
-              (ngModelChange)="entry.entryValue.set($event)" />
-          </div>
-          } @else if (entry.entryType() === contextEntryType.Expression) {
-          <div class="editValue">
-            <ngx-monaco-editor class="editExpression" [options]="getEditorOptions(entry)" [ngModel]="entry.entryValue()"
-              (ngModelChange)="entry.entryValue.set($event)" />
-          </div>
-          } @else if (entry.entryType() === contextEntryType.Bool) {
-          <div class="d-flex editValue">
-            <select class="form-select editBoolValue" [ngModel]="entry.entryValue() || 'False'"
-              (ngModelChange)="entry.entryValue.set(($event ?? 'False').toString())">
-              <option value="True">True</option>
-              <option value="False">False</option>
-            </select>
-          </div>
-          } @else if (entry.entryType() === contextEntryType.Int) {
-          <input type="number" class="form-control editValue" inputmode="numeric" pattern="[0-9]*" step="1"
-            [ngModel]="entry.entryValue() !== '' ? +entry.entryValue() : null"
-            (ngModelChange)="entry.entryValue.set(($event ?? '').toString())" />
-          } @else if (entry.entryType() === contextEntryType.Double) {
-          <input type="number" class="form-control editValue" inputmode="decimal" step="any"
-            [ngModel]="entry.entryValue() !== '' ? +entry.entryValue() : null"
-            (ngModelChange)="entry.entryValue.set(($event ?? '').toString())" />
-          } @else if (entry.entryType() === contextEntryType.AssetRef) {
-          <div class="editValue asset-selection">
-            <button class="btn btn-outline-primary" type="button" (click)="openAssetPicker(entry, 'single')">Select</button>
-            <input type="text"
-                   class="form-control asset-selection-label"
-                   [value]="getSelectedAssetLabel(entry) || 'No asset selected'"
-                   [title]="getSelectedAssetLabel(entry)"
-                   readonly />
-          </div>
-          } @else if (entry.entryType() === contextEntryType.AssetRefList) {
-          <div class="editValue asset-selection">
-            <button class="btn btn-outline-primary" type="button" (click)="openAssetPicker(entry, 'multi')">Select</button>
-            <input type="text"
-                   class="form-control asset-selection-label"
-                   [value]="getSelectedAssetListLabel(entry) || 'No assets selected'"
-                   [title]="getSelectedAssetListLabel(entry)"
-                   readonly />
-          </div>
-          } @else {
-          <input type="text" class="form-control editValue" [ngModel]="entry.entryValue()"
-            (ngModelChange)="entry.entryValue.set($event)" />
-          }
         </div>
-        }
-      </div>
       }
     </div>
   </ng-template>
 
   <ng-template #outputTab>
     <div class="bg-body-tertiary flex-grow-1 d-flex flex-column p-3 h-100">
-      <app-context-viewer [contexts]="outputContexts()" mode="simple"></app-context-viewer>
+      <app-context-viewer
+        [contexts]="outputContexts()"
+        mode="simple"
+      ></app-context-viewer>
     </div>
   </ng-template>
 
   <ng-template #assetsTab>
-    <div class="bg-body-tertiary flex-grow-1 d-flex flex-column p-3 h-100 run-assets">
+    <div
+      class="bg-body-tertiary flex-grow-1 d-flex flex-column p-3 h-100 run-assets"
+    >
       <div class="d-flex align-items-center justify-content-between mb-3">
-        <div class="fw-semibold">Assets ({{ workflowService.runAssets().length }})</div>
+        <div class="fw-semibold">
+          Assets ({{ workflowService.runAssets().length }})
+        </div>
       </div>
       @if (workflowService.runAssets().length === 0) {
         <div class="empty-state text-body-secondary">
           <div class="empty-icon"><i class="bi bi-images"></i></div>
           <div class="empty-title">No run assets</div>
-          <div class="empty-subtitle">This run did not generate any assets.</div>
+          <div class="empty-subtitle">
+            This run did not generate any assets.
+          </div>
         </div>
       } @else {
         <div class="table-responsive run-assets-table">
@@ -126,16 +231,33 @@
             <tbody>
               @for (asset of workflowService.runAssets(); track asset.assetId) {
                 <tr>
-                  <td class="col-name text-truncate" title="{{ asset.name }}">{{ asset.name }}</td>
-                  <td class="col-type text-truncate" title="{{ asset.mediaType }}">{{ asset.mediaType }}</td>
+                  <td class="col-name text-truncate" title="{{ asset.name }}">
+                    {{ asset.name }}
+                  </td>
+                  <td
+                    class="col-type text-truncate"
+                    title="{{ asset.mediaType }}"
+                  >
+                    {{ asset.mediaType }}
+                  </td>
                   <td class="col-size">{{ formatSize(asset.sizeBytes) }}</td>
                   <td class="col-actions text-end">
                     <div class="d-inline-flex gap-2">
                       @if (isImageAsset(asset)) {
-                        <button class="btn btn-sm btn-outline-primary" (click)="openAssetPreview(asset)">View</button>
+                        <button
+                          class="btn btn-sm btn-outline-primary"
+                          (click)="openAssetPreview(asset)"
+                        >
+                          View
+                        </button>
                       }
                       @if (isViewableTextAsset(asset)) {
-                        <button class="btn btn-sm btn-outline-primary" (click)="openAssetViewer(asset)">View</button>
+                        <button
+                          class="btn btn-sm btn-outline-primary"
+                          (click)="openAssetViewer(asset)"
+                        >
+                          View
+                        </button>
                       }
                     </div>
                   </td>

@@ -1,14 +1,25 @@
 <div class="modal-header">
   <h4 class="modal-title">{{ title }}</h4>
-  <button type="button" class="btn-close" aria-label="Close" (click)="stay()"></button>
+  <button
+    type="button"
+    class="btn-close"
+    aria-label="Close"
+    (click)="stay()"
+  ></button>
 </div>
 <div class="modal-body">
   <p class="mb-0">{{ message }}</p>
 </div>
 <div class="modal-footer d-flex justify-content-between">
-  <button type="button" class="btn btn-outline-secondary" (click)="stay()">Keep editing</button>
+  <button type="button" class="btn btn-outline-secondary" (click)="stay()">
+    Keep editing
+  </button>
   <div class="d-flex gap-2">
-    <button type="button" class="btn btn-outline-danger" (click)="discard()">Discard and leave</button>
-    <button type="button" class="btn btn-primary" (click)="saveAndLeave()">Save and leave</button>
+    <button type="button" class="btn btn-outline-danger" (click)="discard()">
+      Discard and leave
+    </button>
+    <button type="button" class="btn btn-primary" (click)="saveAndLeave()">
+      Save and leave
+    </button>
   </div>
 </div>

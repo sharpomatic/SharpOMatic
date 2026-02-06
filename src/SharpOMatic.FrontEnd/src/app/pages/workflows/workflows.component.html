@@ -1,18 +1,37 @@
 <div class="container-fluid p-0 workflows-page">
-  <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary">
-    <h2 class=""><i class="bi bi-share pe-3 icon-sm"></i>Workflows ({{ workflowsTotal || workflows.length }})</h2>
+  <div
+    class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary"
+  >
+    <h2 class="">
+      <i class="bi bi-share pe-3 icon-sm"></i>Workflows ({{
+        workflowsTotal || workflows.length
+      }})
+    </h2>
     <div class="d-flex align-items-center gap-2">
       <button class="btn btn-primary" (click)="newWorkflow()">New</button>
       @if (sampleNames().length > 0) {
         <div class="dropdown" dropdown>
-          <button class="btn btn-primary dropdown-toggle" type="button"
-            id="samples-dropdown" aria-expanded="false" dropdownToggle>
+          <button
+            class="btn btn-primary dropdown-toggle"
+            type="button"
+            id="samples-dropdown"
+            aria-expanded="false"
+            dropdownToggle
+          >
             Samples
           </button>
-          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="samples-dropdown" *dropdownMenu>
+          <ul
+            class="dropdown-menu dropdown-menu-end"
+            aria-labelledby="samples-dropdown"
+            *dropdownMenu
+          >
             @for (sampleName of sampleNames(); track sampleName) {
               <li>
-                <a class="dropdown-item" (click)="createWorkflowFromSample(sampleName)">{{ sampleName }}</a>
+                <a
+                  class="dropdown-item"
+                  (click)="createWorkflowFromSample(sampleName)"
+                  >{{ sampleName }}</a
+                >
               </li>
             }
           </ul>
@@ -20,7 +39,7 @@
       }
     </div>
   </div>
-  <hr class="m-0"/>
+  <hr class="m-0" />
   <div class="p-3 bg-body-tertiary h-100 d-flex flex-column workflows-body">
     <div class="workflows-toolbar d-flex align-items-center gap-2 mb-3">
       <div class="input-group workflows-search">
@@ -32,7 +51,8 @@
           placeholder="Search by name"
           [value]="searchText"
           (input)="onSearchChange($event)"
-          (keyup.enter)="applySearch()" />
+          (keyup.enter)="applySearch()"
+        />
       </div>
     </div>
     @if (!isLoading && workflowsTotal === 0 && workflows.length === 0) {
@@ -40,10 +60,14 @@
         <div class="empty-icon"><i class="bi bi-share"></i></div>
         @if (searchText) {
           <div class="empty-title">No matching workflows</div>
-          <div class="empty-subtitle">Try a different search to find workflows by name.</div>
+          <div class="empty-subtitle">
+            Try a different search to find workflows by name.
+          </div>
         } @else {
           <div class="empty-title">No workflows yet</div>
-          <div class="empty-subtitle">Create a workflow to start building automations.</div>
+          <div class="empty-subtitle">
+            Create a workflow to start building automations.
+          </div>
         }
       </div>
     } @else {
@@ -55,48 +79,104 @@
             </div>
             <div class="card-body">
               <p class="card-text">{{ workflow.description() }}</p>
-              <button class="btn btn-secondary" [routerLink]="['/workflows', workflow.id]" [queryParams]="{ tab: 'design' }">Open</button>
-              <button class="btn btn-secondary ms-2" (click)="copyWorkflow(workflow)">Copy</button>
-              <button class="btn btn-outline-danger ms-2" (click)="deleteWorkflow(workflow)">Delete</button>
+              <button
+                class="btn btn-secondary"
+                [routerLink]="['/workflows', workflow.id]"
+                [queryParams]="{ tab: 'design' }"
+              >
+                Open
+              </button>
+              <button
+                class="btn btn-secondary ms-2"
+                (click)="copyWorkflow(workflow)"
+              >
+                Copy
+              </button>
+              <button
+                class="btn btn-outline-danger ms-2"
+                (click)="deleteWorkflow(workflow)"
+              >
+                Delete
+              </button>
             </div>
           </div>
         }
       </div>
       @if (workflowsTotal > 0) {
-        <div class="d-flex align-items-center justify-content-between workflows-pagination">
+        <div
+          class="d-flex align-items-center justify-content-between workflows-pagination"
+        >
           <div class="text-muted small">
-            Page {{ workflowsPage }} of {{ workflowsPageCount() }} ({{ workflowsTotal }} total workflows)
+            Page {{ workflowsPage }} of {{ workflowsPageCount() }} ({{
+              workflowsTotal
+            }}
+            total workflows)
           </div>
           @if (workflowsPageCount() > 1) {
             <nav aria-label="Workflows pagination">
               <ul class="pagination pagination-sm mb-0">
                 <li class="page-item" [class.disabled]="workflowsPage === 1">
-                  <button class="page-link" type="button" [disabled]="workflowsPage === 1" aria-label="First"
-                    (click)="onWorkflowsPageChange(1)">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="workflowsPage === 1"
+                    aria-label="First"
+                    (click)="onWorkflowsPageChange(1)"
+                  >
                     <span aria-hidden="true">&laquo;</span>
                   </button>
                 </li>
                 <li class="page-item" [class.disabled]="workflowsPage === 1">
-                  <button class="page-link" type="button" [disabled]="workflowsPage === 1" aria-label="Previous"
-                    (click)="onWorkflowsPageChange(workflowsPage - 1)">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="workflowsPage === 1"
+                    aria-label="Previous"
+                    (click)="onWorkflowsPageChange(workflowsPage - 1)"
+                  >
                     <span aria-hidden="true">&lsaquo;</span>
                   </button>
                 </li>
                 @for (page of workflowsPageNumbers(); track page) {
-                  <li class="page-item" [class.active]="page === workflowsPage"
-                    [attr.aria-current]="page === workflowsPage ? 'page' : null">
-                    <button class="page-link" type="button" (click)="onWorkflowsPageChange(page)">{{ page }}</button>
+                  <li
+                    class="page-item"
+                    [class.active]="page === workflowsPage"
+                    [attr.aria-current]="page === workflowsPage ? 'page' : null"
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      (click)="onWorkflowsPageChange(page)"
+                    >
+                      {{ page }}
+                    </button>
                   </li>
                 }
-                <li class="page-item" [class.disabled]="workflowsPage >= workflowsPageCount()">
-                  <button class="page-link" type="button" [disabled]="workflowsPage >= workflowsPageCount()"
-                    aria-label="Next" (click)="onWorkflowsPageChange(workflowsPage + 1)">
+                <li
+                  class="page-item"
+                  [class.disabled]="workflowsPage >= workflowsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="workflowsPage >= workflowsPageCount()"
+                    aria-label="Next"
+                    (click)="onWorkflowsPageChange(workflowsPage + 1)"
+                  >
                     <span aria-hidden="true">&rsaquo;</span>
                   </button>
                 </li>
-                <li class="page-item" [class.disabled]="workflowsPage >= workflowsPageCount()">
-                  <button class="page-link" type="button" [disabled]="workflowsPage >= workflowsPageCount()"
-                    aria-label="Last" (click)="onWorkflowsPageChange(workflowsPageCount())">
+                <li
+                  class="page-item"
+                  [class.disabled]="workflowsPage >= workflowsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="workflowsPage >= workflowsPageCount()"
+                    aria-label="Last"
+                    (click)="onWorkflowsPageChange(workflowsPageCount())"
+                  >
                     <span aria-hidden="true">&raquo;</span>
                   </button>
                 </li>

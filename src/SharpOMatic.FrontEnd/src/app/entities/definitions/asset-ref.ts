@@ -11,10 +11,12 @@ const isAssetRef = (value: unknown): value is AssetRef => {
   }
 
   const candidate = value as AssetRef;
-  return typeof candidate.assetId === 'string'
-    && typeof candidate.name === 'string'
-    && typeof candidate.mediaType === 'string'
-    && typeof candidate.sizeBytes === 'number';
+  return (
+    typeof candidate.assetId === 'string' &&
+    typeof candidate.name === 'string' &&
+    typeof candidate.mediaType === 'string' &&
+    typeof candidate.sizeBytes === 'number'
+  );
 };
 
 export const parseAssetRefValue = (value: string): AssetRef | null => {

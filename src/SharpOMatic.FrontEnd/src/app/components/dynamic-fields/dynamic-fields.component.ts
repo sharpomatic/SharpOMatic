@@ -14,10 +14,7 @@ export interface DynamicFieldsCapabilityContext {
 @Component({
   selector: 'app-dynamic-fields',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-  ],
+  imports: [CommonModule, FormsModule],
   templateUrl: './dynamic-fields.component.html',
   styleUrls: ['./dynamic-fields.component.scss'],
 })
@@ -46,13 +43,19 @@ export class DynamicFieldsComponent {
     }
 
     if (this.allowedCapabilities && this.allowedCapabilities.length) {
-      if (!field.capability || !this.allowedCapabilities.includes(field.capability)) {
+      if (
+        !field.capability ||
+        !this.allowedCapabilities.includes(field.capability)
+      ) {
         return false;
       }
     }
 
     if (this.ignoredCapabilities && this.ignoredCapabilities.length) {
-      if (field.capability && this.ignoredCapabilities.includes(field.capability)) {
+      if (
+        field.capability &&
+        this.ignoredCapabilities.includes(field.capability)
+      ) {
         return false;
       }
     }
@@ -66,7 +69,9 @@ export class DynamicFieldsComponent {
       return true;
     }
 
-    const capabilityExists = context.capabilities.some(c => c.name === field.capability);
+    const capabilityExists = context.capabilities.some(
+      (c) => c.name === field.capability,
+    );
     if (!capabilityExists) {
       return false;
     }
@@ -110,7 +115,7 @@ export class DynamicFieldsComponent {
   public onStringChange(field: FieldDescriptor, value: string): void {
     this.emitValues({
       ...this.values,
-      [field.name]: value === '' ? null : value ?? '',
+      [field.name]: value === '' ? null : (value ?? ''),
     });
   }
 
@@ -134,14 +139,19 @@ export class DynamicFieldsComponent {
   public onNumericChange(field: FieldDescriptor, value: string | number): void {
     this.emitValues({
       ...this.values,
-      [field.name]: value === '' || value === null || value === undefined ? null : String(value),
+      [field.name]:
+        value === '' || value === null || value === undefined
+          ? null
+          : String(value),
     });
   }
 
   public onNumericBlur(field: FieldDescriptor, rawValue: string | null): void {
     if (rawValue === null || rawValue === '') {
       const shouldApplyDefault = field.isRequired && field.defaultValue != null;
-      const defaultValue = shouldApplyDefault ? String(field.defaultValue) : null;
+      const defaultValue = shouldApplyDefault
+        ? String(field.defaultValue)
+        : null;
       this.emitValues({
         ...this.values,
         [field.name]: defaultValue,

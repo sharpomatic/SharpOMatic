@@ -1,5 +1,5 @@
-import { XhrFactory } from "@angular/common";
-import { signal, Signal, WritableSignal } from "@angular/core";
+import { XhrFactory } from '@angular/common';
+import { signal, Signal, WritableSignal } from '@angular/core';
 
 export interface EntitySnapshot {
   id: string;
@@ -21,7 +21,7 @@ export abstract class Entity<T extends EntitySnapshot> {
   }
 
   public markClean(): void {
-    this.snapshot.set({ ...this.toSnapshot()});
+    this.snapshot.set({ ...this.toSnapshot() });
   }
 
   public abstract toSnapshot(): T;
@@ -30,6 +30,6 @@ export abstract class Entity<T extends EntitySnapshot> {
     return {
       id: crypto.randomUUID(),
       version: Entity.DEFAULT_VERSION,
-    }
+    };
   }
 }

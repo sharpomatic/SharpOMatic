@@ -1,9 +1,15 @@
 <div class="container-fluid p-0 connections-page">
-  <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary">
-    <h2 class=""><i class="bi bi-plug pe-3 icon-sm"></i>Connectors ({{ connectorsTotal || connectors.length }})</h2>
-        <button class="btn btn-primary" (click)="newConnector()">New</button>
+  <div
+    class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary"
+  >
+    <h2 class="">
+      <i class="bi bi-plug pe-3 icon-sm"></i>Connectors ({{
+        connectorsTotal || connectors.length
+      }})
+    </h2>
+    <button class="btn btn-primary" (click)="newConnector()">New</button>
   </div>
-  <hr class="m-0"/>
+  <hr class="m-0" />
   <div class="p-3 bg-body-tertiary h-100 d-flex flex-column connections-body">
     <div class="connections-toolbar d-flex align-items-center gap-2 mb-3">
       <div class="input-group connections-search">
@@ -15,7 +21,8 @@
           placeholder="Search by name"
           [value]="searchText"
           (input)="onSearchChange($event)"
-          (keyup.enter)="applySearch()" />
+          (keyup.enter)="applySearch()"
+        />
       </div>
     </div>
     @if (!isLoading && connectorsTotal === 0 && connectors.length === 0) {
@@ -23,10 +30,14 @@
         <div class="empty-icon"><i class="bi bi-plug"></i></div>
         @if (searchText) {
           <div class="empty-title">No matching connectors</div>
-          <div class="empty-subtitle">Try a different search to find connectors by name.</div>
+          <div class="empty-subtitle">
+            Try a different search to find connectors by name.
+          </div>
         } @else {
           <div class="empty-title">No connectors yet</div>
-          <div class="empty-subtitle">Create a connector to start wiring services.</div>
+          <div class="empty-subtitle">
+            Create a connector to start wiring services.
+          </div>
         }
       </div>
     } @else {
@@ -38,47 +49,99 @@
             </div>
             <div class="card-body">
               <p class="card-text">{{ connector.description }}</p>
-              <button class="btn btn-secondary" [routerLink]="['/connectors', connector.connectorId]">Open</button>
-              <button class="btn btn-outline-danger ms-2" (click)="deleteConnector(connector)">Delete</button>
+              <button
+                class="btn btn-secondary"
+                [routerLink]="['/connectors', connector.connectorId]"
+              >
+                Open
+              </button>
+              <button
+                class="btn btn-outline-danger ms-2"
+                (click)="deleteConnector(connector)"
+              >
+                Delete
+              </button>
             </div>
           </div>
         }
       </div>
       @if (connectorsTotal > 0) {
-        <div class="d-flex align-items-center justify-content-between connections-pagination">
+        <div
+          class="d-flex align-items-center justify-content-between connections-pagination"
+        >
           <div class="text-muted small">
-            Page {{ connectorsPage }} of {{ connectorsPageCount() }} ({{ connectorsTotal }} total connectors)
+            Page {{ connectorsPage }} of {{ connectorsPageCount() }} ({{
+              connectorsTotal
+            }}
+            total connectors)
           </div>
           @if (connectorsPageCount() > 1) {
             <nav aria-label="Connectors pagination">
               <ul class="pagination pagination-sm mb-0">
                 <li class="page-item" [class.disabled]="connectorsPage === 1">
-                  <button class="page-link" type="button" [disabled]="connectorsPage === 1" aria-label="First"
-                    (click)="onConnectorsPageChange(1)">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="connectorsPage === 1"
+                    aria-label="First"
+                    (click)="onConnectorsPageChange(1)"
+                  >
                     <span aria-hidden="true">&laquo;</span>
                   </button>
                 </li>
                 <li class="page-item" [class.disabled]="connectorsPage === 1">
-                  <button class="page-link" type="button" [disabled]="connectorsPage === 1" aria-label="Previous"
-                    (click)="onConnectorsPageChange(connectorsPage - 1)">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="connectorsPage === 1"
+                    aria-label="Previous"
+                    (click)="onConnectorsPageChange(connectorsPage - 1)"
+                  >
                     <span aria-hidden="true">&lsaquo;</span>
                   </button>
                 </li>
                 @for (page of connectorsPageNumbers(); track page) {
-                  <li class="page-item" [class.active]="page === connectorsPage"
-                    [attr.aria-current]="page === connectorsPage ? 'page' : null">
-                    <button class="page-link" type="button" (click)="onConnectorsPageChange(page)">{{ page }}</button>
+                  <li
+                    class="page-item"
+                    [class.active]="page === connectorsPage"
+                    [attr.aria-current]="
+                      page === connectorsPage ? 'page' : null
+                    "
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      (click)="onConnectorsPageChange(page)"
+                    >
+                      {{ page }}
+                    </button>
                   </li>
                 }
-                <li class="page-item" [class.disabled]="connectorsPage >= connectorsPageCount()">
-                  <button class="page-link" type="button" [disabled]="connectorsPage >= connectorsPageCount()"
-                    aria-label="Next" (click)="onConnectorsPageChange(connectorsPage + 1)">
+                <li
+                  class="page-item"
+                  [class.disabled]="connectorsPage >= connectorsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="connectorsPage >= connectorsPageCount()"
+                    aria-label="Next"
+                    (click)="onConnectorsPageChange(connectorsPage + 1)"
+                  >
                     <span aria-hidden="true">&rsaquo;</span>
                   </button>
                 </li>
-                <li class="page-item" [class.disabled]="connectorsPage >= connectorsPageCount()">
-                  <button class="page-link" type="button" [disabled]="connectorsPage >= connectorsPageCount()"
-                    aria-label="Last" (click)="onConnectorsPageChange(connectorsPageCount())">
+                <li
+                  class="page-item"
+                  [class.disabled]="connectorsPage >= connectorsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="connectorsPage >= connectorsPageCount()"
+                    aria-label="Last"
+                    (click)="onConnectorsPageChange(connectorsPageCount())"
+                  >
                     <span aria-hidden="true">&raquo;</span>
                   </button>
                 </li>

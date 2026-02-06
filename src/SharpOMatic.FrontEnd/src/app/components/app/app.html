@@ -1,120 +1,163 @@
 <!-- Left Column -->
-<div class="left-column d-flex flex-column bg-body-secondary" [class.closed]="isSidebarClosed">
-  <div class="d-flex justify-content-between align-items-center ps-3 pe-1 pt-2 pb-1">
-    <h2 class="productName">{{ !isSidebarClosed ? 'SharpOMatic' : '|' }}</h2>
+<div
+  class="left-column d-flex flex-column bg-body-secondary"
+  [class.closed]="isSidebarClosed"
+>
+  <div
+    class="d-flex justify-content-between align-items-center ps-3 pe-1 pt-2 pb-1"
+  >
+    <h2 class="productName">{{ !isSidebarClosed ? "SharpOMatic" : "|" }}</h2>
     <button class="btn" (click)="toggleSidebar()">
-      <i class="bi" [class.bi-layout-sidebar]="!isSidebarClosed" [class.bi-layout-sidebar-inset]="isSidebarClosed"></i>
+      <i
+        class="bi"
+        [class.bi-layout-sidebar]="!isSidebarClosed"
+        [class.bi-layout-sidebar-inset]="isSidebarClosed"
+      ></i>
     </button>
   </div>
 
   <!-- Separator -->
-  <hr class="m-0"/>
+  <hr class="m-0" />
 
   <ul class="nav nav-pills mb-auto p-3">
     <li class="nav-item w-100">
-      <button class="nav-link w-100 d-flex" routerLink="/workflows" routerLinkActive="active"
-          #workflowsLink="routerLinkActive"
-          [class.active]="workflowsLink.isActive"
-          [class.link-body-emphasis]="!workflowsLink.isActive">
-          <i class="bi bi-share" [class.me-3]="!isSidebarClosed"></i>
-          @if(!isSidebarClosed) {
-            <span>Workflows</span>
-          }
-        </button>
+      <button
+        class="nav-link w-100 d-flex"
+        routerLink="/workflows"
+        routerLinkActive="active"
+        #workflowsLink="routerLinkActive"
+        [class.active]="workflowsLink.isActive"
+        [class.link-body-emphasis]="!workflowsLink.isActive"
+      >
+        <i class="bi bi-share" [class.me-3]="!isSidebarClosed"></i>
+        @if (!isSidebarClosed) {
+          <span>Workflows</span>
+        }
+      </button>
     </li>
     <li class="nav-item w-100">
-      <button class="nav-link w-100 d-flex" routerLink="/connectors" routerLinkActive="active"
-          #connectorsLink="routerLinkActive"
-          [class.active]="connectorsLink.isActive"
-          [class.link-body-emphasis]="!connectorsLink.isActive">
-          <i class="bi bi-plug" [class.me-3]="!isSidebarClosed"></i>
-          @if(!isSidebarClosed) {
-            <span>Connectors</span>
-          }
-        </button>
+      <button
+        class="nav-link w-100 d-flex"
+        routerLink="/connectors"
+        routerLinkActive="active"
+        #connectorsLink="routerLinkActive"
+        [class.active]="connectorsLink.isActive"
+        [class.link-body-emphasis]="!connectorsLink.isActive"
+      >
+        <i class="bi bi-plug" [class.me-3]="!isSidebarClosed"></i>
+        @if (!isSidebarClosed) {
+          <span>Connectors</span>
+        }
+      </button>
     </li>
     <li class="nav-item w-100">
-      <button class="nav-link w-100 d-flex" routerLink="/models" routerLinkActive="active"
-          #modelsLink="routerLinkActive"
-          [class.active]="modelsLink.isActive"
-          [class.link-body-emphasis]="!modelsLink.isActive">
-          <i class="bi bi-chat-text" [class.me-3]="!isSidebarClosed"></i>
-          @if(!isSidebarClosed) {
-            <span>Models</span>
-          }
-        </button>
+      <button
+        class="nav-link w-100 d-flex"
+        routerLink="/models"
+        routerLinkActive="active"
+        #modelsLink="routerLinkActive"
+        [class.active]="modelsLink.isActive"
+        [class.link-body-emphasis]="!modelsLink.isActive"
+      >
+        <i class="bi bi-chat-text" [class.me-3]="!isSidebarClosed"></i>
+        @if (!isSidebarClosed) {
+          <span>Models</span>
+        }
+      </button>
     </li>
     <li class="nav-item w-100">
-      <button class="nav-link w-100 d-flex" routerLink="/evaluations" routerLinkActive="active"
-          #evaluationsLink="routerLinkActive"
-          [class.active]="evaluationsLink.isActive"
-          [class.link-body-emphasis]="!evaluationsLink.isActive">
-          <i class="bi bi-clipboard-check" [class.me-3]="!isSidebarClosed"></i>
-          @if(!isSidebarClosed) {
-            <span>Evaluations</span>
-          }
-        </button>
+      <button
+        class="nav-link w-100 d-flex"
+        routerLink="/evaluations"
+        routerLinkActive="active"
+        #evaluationsLink="routerLinkActive"
+        [class.active]="evaluationsLink.isActive"
+        [class.link-body-emphasis]="!evaluationsLink.isActive"
+      >
+        <i class="bi bi-clipboard-check" [class.me-3]="!isSidebarClosed"></i>
+        @if (!isSidebarClosed) {
+          <span>Evaluations</span>
+        }
+      </button>
     </li>
     <li class="nav-item w-100">
-      <button class="nav-link w-100 d-flex" routerLink="/assets" routerLinkActive="active"
-          #assetsLink="routerLinkActive"
-          [class.active]="assetsLink.isActive"
-          [class.link-body-emphasis]="!assetsLink.isActive">
-          <i class="bi bi-images" [class.me-3]="!isSidebarClosed"></i>
-          @if(!isSidebarClosed) {
-            <span>Assets</span>
-          }
-        </button>
+      <button
+        class="nav-link w-100 d-flex"
+        routerLink="/assets"
+        routerLinkActive="active"
+        #assetsLink="routerLinkActive"
+        [class.active]="assetsLink.isActive"
+        [class.link-body-emphasis]="!assetsLink.isActive"
+      >
+        <i class="bi bi-images" [class.me-3]="!isSidebarClosed"></i>
+        @if (!isSidebarClosed) {
+          <span>Assets</span>
+        }
+      </button>
     </li>
     <li class="nav-item w-100">
-      <button class="nav-link w-100 d-flex" routerLink="/transfer" routerLinkActive="active"
-          #transferLink="routerLinkActive"
-          [class.active]="transferLink.isActive"
-          [class.link-body-emphasis]="!transferLink.isActive">
-          <i class="bi bi-arrow-left-right" [class.me-3]="!isSidebarClosed"></i>
-          @if(!isSidebarClosed) {
-            <span>Transfer</span>
-          }
-        </button>
+      <button
+        class="nav-link w-100 d-flex"
+        routerLink="/transfer"
+        routerLinkActive="active"
+        #transferLink="routerLinkActive"
+        [class.active]="transferLink.isActive"
+        [class.link-body-emphasis]="!transferLink.isActive"
+      >
+        <i class="bi bi-arrow-left-right" [class.me-3]="!isSidebarClosed"></i>
+        @if (!isSidebarClosed) {
+          <span>Transfer</span>
+        }
+      </button>
     </li>
     <li class="nav-item w-100">
-      <button class="nav-link w-100 d-flex" routerLink="/settings" routerLinkActive="active"
-          #settingsLink="routerLinkActive"
-          [class.active]="settingsLink.isActive"
-          [class.link-body-emphasis]="!settingsLink.isActive">
-          <i class="bi bi-activity" [class.me-3]="!isSidebarClosed"></i>
-          @if(!isSidebarClosed) {
-            <span >Settings</span>
-          }
-        </button>
+      <button
+        class="nav-link w-100 d-flex"
+        routerLink="/settings"
+        routerLinkActive="active"
+        #settingsLink="routerLinkActive"
+        [class.active]="settingsLink.isActive"
+        [class.link-body-emphasis]="!settingsLink.isActive"
+      >
+        <i class="bi bi-activity" [class.me-3]="!isSidebarClosed"></i>
+        @if (!isSidebarClosed) {
+          <span>Settings</span>
+        }
+      </button>
     </li>
   </ul>
 </div>
 
 <!-- Select Page -->
-<div class="right-column d-flex flex-column flex-grow-1  bg-body-tertiary">
-    <router-outlet></router-outlet>
+<div class="right-column d-flex flex-column flex-grow-1 bg-body-tertiary">
+  <router-outlet></router-outlet>
 </div>
 
 <div class="toast-container position-fixed bottom-0 end-0 p-3">
   @for (toast of toastService.toasts(); track toast.id) {
-    <div class="toast show fade align-items-center text-white shadow"
-         [class.text-bg-success]="toast.type === 'success'"
-         [class.text-bg-danger]="toast.type === 'error'"
-         role="alert"
-         aria-live="assertive"
-         aria-atomic="true">
+    <div
+      class="toast show fade align-items-center text-white shadow"
+      [class.text-bg-success]="toast.type === 'success'"
+      [class.text-bg-danger]="toast.type === 'error'"
+      role="alert"
+      aria-live="assertive"
+      aria-atomic="true"
+    >
       <div class="d-flex">
         <div class="toast-body d-flex align-items-center gap-2">
-          <i class="bi"
-             [class.bi-check-circle-fill]="toast.type === 'success'"
-             [class.bi-exclamation-triangle-fill]="toast.type === 'error'"></i>
+          <i
+            class="bi"
+            [class.bi-check-circle-fill]="toast.type === 'success'"
+            [class.bi-exclamation-triangle-fill]="toast.type === 'error'"
+          ></i>
           <span>{{ toast.message }}</span>
         </div>
-        <button type="button"
-                class="btn-close btn-close-white me-2 m-auto"
-                aria-label="Close"
-                (click)="toastService.dismiss(toast.id)"></button>
+        <button
+          type="button"
+          class="btn-close btn-close-white me-2 m-auto"
+          aria-label="Close"
+          (click)="toastService.dismiss(toast.id)"
+        ></button>
       </div>
     </div>
   }

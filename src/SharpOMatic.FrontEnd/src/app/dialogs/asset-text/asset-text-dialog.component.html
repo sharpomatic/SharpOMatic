@@ -1,11 +1,29 @@
-<div class="modal-header d-flex justify-content-between align-items-center bg-body-secondary">
+<div
+  class="modal-header d-flex justify-content-between align-items-center bg-body-secondary"
+>
   <h4 class="modal-title">{{ title }}</h4>
   <div class="d-flex align-items-center gap-2">
     @if (!readOnly) {
-      <button type="button" class="btn btn-primary" [disabled]="!canSave()" (click)="save()">Save</button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="!canSave()"
+        (click)="save()"
+      >
+        Save
+      </button>
     }
-    <button type="button" class="btn btn-primary" [disabled]="isLoading" (click)="download()">Download</button>
-    <button type="button" class="btn btn-primary" (click)="close()">Close</button>
+    <button
+      type="button"
+      class="btn btn-primary"
+      [disabled]="isLoading"
+      (click)="download()"
+    >
+      Download
+    </button>
+    <button type="button" class="btn btn-primary" (click)="close()">
+      Close
+    </button>
   </div>
 </div>
 <div class="modal-body asset-text-body bg-body-tertiary">
@@ -15,5 +33,6 @@
     [readonly]="readOnly"
     [disabled]="isLoading || isSaving"
     [placeholder]="isLoading ? 'Loading...' : ''"
-    (input)="onContentChange($event)"></textarea>
+    (input)="onContentChange($event)"
+  ></textarea>
 </div>

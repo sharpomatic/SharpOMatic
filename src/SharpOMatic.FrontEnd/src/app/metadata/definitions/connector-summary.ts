@@ -8,14 +8,16 @@ export class ConnectorSummary {
   constructor(
     public readonly connectorId: string,
     public readonly name: string,
-    public readonly description: string
+    public readonly description: string,
   ) {}
 
-  public static fromSnapshot(snapshot: ConnectorSummarySnapshot): ConnectorSummary {
+  public static fromSnapshot(
+    snapshot: ConnectorSummarySnapshot,
+  ): ConnectorSummary {
     return new ConnectorSummary(
       snapshot.connectorId,
       snapshot.name,
-      snapshot.description
+      snapshot.description,
     );
   }
 }

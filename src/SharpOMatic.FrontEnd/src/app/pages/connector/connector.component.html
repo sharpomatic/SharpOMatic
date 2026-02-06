@@ -1,17 +1,32 @@
 <div class="container-fluid p-0 connection-page">
-  <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary">
-    <h2 class=""><i class="bi bi-plug pe-3 icon-sm"></i>{{ connector.name() }}</h2>
-    <button class="btn btn-primary" [disabled]="!connector.isDirty()"
-          (click)="save()">Save</button>
+  <div
+    class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary"
+  >
+    <h2 class="">
+      <i class="bi bi-plug pe-3 icon-sm"></i>{{ connector.name() }}
+    </h2>
+    <button
+      class="btn btn-primary"
+      [disabled]="!connector.isDirty()"
+      (click)="save()"
+    >
+      Save
+    </button>
   </div>
 
-  <hr class="m-0"/>
-  
+  <hr class="m-0" />
+
   <div class="p-3 details bg-body-tertiary">
     <div class="mb-3 form-line">
       <label for="connector-id" class="form-label field-label">Id</label>
       <div class="flex-fill control-column short">
-        <input type="text" class="form-control w-100" id="connector-id" [ngModel]="connector.connectorId" readonly />
+        <input
+          type="text"
+          class="form-control w-100"
+          id="connector-id"
+          [ngModel]="connector.connectorId"
+          readonly
+        />
       </div>
     </div>
     <div class="mb-3 form-line">
@@ -22,11 +37,12 @@
           class="form-select w-100"
           [ngModel]="connector.configId()"
           (ngModelChange)="onConnectorConfigChange($event)"
-          [disabled]="!connectorConfigs().length">
-          @for(config of connectorConfigs(); track config.configId) {
-          <option [ngValue]="config.configId">
-            {{ config.displayName }}
-          </option>
+          [disabled]="!connectorConfigs().length"
+        >
+          @for (config of connectorConfigs(); track config.configId) {
+            <option [ngValue]="config.configId">
+              {{ config.displayName }}
+            </option>
           }
         </select>
       </div>
@@ -35,30 +51,45 @@
       <div class="mb-3 form-line">
         <label for="connection-name" class="form-label field-label">Name</label>
         <div class="flex-fill control-column short">
-          <input type="text" class="form-control w-100" id="connection-name" [ngModel]="connector.name()"
-              (ngModelChange)="connector.name.set($event)" />
+          <input
+            type="text"
+            class="form-control w-100"
+            id="connection-name"
+            [ngModel]="connector.name()"
+            (ngModelChange)="connector.name.set($event)"
+          />
         </div>
-      </div>  
+      </div>
       <div class="mb-3 form-line">
-        <label for="connection-description" class="form-label field-label">Description</label>
+        <label for="connection-description" class="form-label field-label"
+          >Description</label
+        >
         <div class="flex-fill control-column long">
-          <input type="text" class="form-control w-100" id="connection-description" [ngModel]="connector.description()"
-              (ngModelChange)="connector.description.set($event)" />
+          <input
+            type="text"
+            class="form-control w-100"
+            id="connection-description"
+            [ngModel]="connector.description()"
+            (ngModelChange)="connector.description.set($event)"
+          />
         </div>
-      </div>      
+      </div>
       <div class="mb-3 form-line">
-        <label for="authentication-mode" class="form-label field-label">Authentication</label>
+        <label for="authentication-mode" class="form-label field-label"
+          >Authentication</label
+        >
         <div class="flex-fill control-column short">
           <select
             id="authentication-mode"
             class="form-select w-100"
             [ngModel]="connector.authenticationModeId()"
             (ngModelChange)="connector.authenticationModeId.set($event)"
-            [disabled]="!connectorConfig.authModes.length">
-            @for(mode of connectorConfig.authModes; track mode.id) {
-            <option [ngValue]="mode.id">
-              {{ mode.displayName }}
-            </option>
+            [disabled]="!connectorConfig.authModes.length"
+          >
+            @for (mode of connectorConfig.authModes; track mode.id) {
+              <option [ngValue]="mode.id">
+                {{ mode.displayName }}
+              </option>
             }
           </select>
         </div>
@@ -66,7 +97,8 @@
       <app-dynamic-fields
         [fields]="selectedAuthMode?.fields ?? []"
         [values]="connectorFieldValuesRecord"
-        (valuesChange)="onConnectorFieldValuesChange($event)">
+        (valuesChange)="onConnectorFieldValuesChange($event)"
+      >
       </app-dynamic-fields>
     }
   </div>

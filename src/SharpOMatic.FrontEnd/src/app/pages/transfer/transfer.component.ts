@@ -1,6 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { HttpResponse } from '@angular/common/http';
-import { Component, OnInit, TemplateRef, ViewChild, inject } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  TemplateRef,
+  ViewChild,
+  inject,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { InformationDialogComponent } from '../../dialogs/information/information-dialog.component';
@@ -35,10 +41,14 @@ type SelectionMode = 'all' | 'none' | 'custom';
 export class TransferComponent implements OnInit {
   @ViewChild('importTab', { static: true }) importTab!: TemplateRef<unknown>;
   @ViewChild('exportTab', { static: true }) exportTab!: TemplateRef<unknown>;
-  @ViewChild('workflowsExportTab', { static: true }) workflowsExportTab!: TemplateRef<unknown>;
-  @ViewChild('connectorsExportTab', { static: true }) connectorsExportTab!: TemplateRef<unknown>;
-  @ViewChild('modelsExportTab', { static: true }) modelsExportTab!: TemplateRef<unknown>;
-  @ViewChild('assetsExportTab', { static: true }) assetsExportTab!: TemplateRef<unknown>;
+  @ViewChild('workflowsExportTab', { static: true })
+  workflowsExportTab!: TemplateRef<unknown>;
+  @ViewChild('connectorsExportTab', { static: true })
+  connectorsExportTab!: TemplateRef<unknown>;
+  @ViewChild('modelsExportTab', { static: true })
+  modelsExportTab!: TemplateRef<unknown>;
+  @ViewChild('assetsExportTab', { static: true })
+  assetsExportTab!: TemplateRef<unknown>;
 
   private readonly serverRepository = inject(ServerRepositoryService);
   private readonly modalService = inject(BsModalService);
@@ -139,7 +149,7 @@ export class TransferComponent implements OnInit {
       error: (error) => {
         this.isExporting = false;
         this.showExportFailure(error);
-      }
+      },
     });
   }
 
@@ -180,12 +190,13 @@ export class TransferComponent implements OnInit {
         this.isImporting = false;
         resetInput();
         this.showImportFailure(error);
-      }
+      },
     });
   }
 
   private showImportSuccess(result: TransferImportResult): void {
-    const message = `Imported ${result.workflowsImported} workflows, ` +
+    const message =
+      `Imported ${result.workflowsImported} workflows, ` +
       `${result.connectorsImported} connectors, ${result.modelsImported} models, ` +
       `${result.assetsImported} assets.`;
     this.showInfoDialog('Import Complete', message);
@@ -248,7 +259,10 @@ export class TransferComponent implements OnInit {
   }
 
   connectorsPageNumbers(): number[] {
-    return this.buildPageNumbers(this.connectorsPage, this.connectorsPageCount());
+    return this.buildPageNumbers(
+      this.connectorsPage,
+      this.connectorsPageCount(),
+    );
   }
 
   modelsPageNumbers(): number[] {
@@ -313,9 +327,10 @@ export class TransferComponent implements OnInit {
 
   onWorkflowsSortChange(field: WorkflowSortField): void {
     if (this.workflowsSortField === field) {
-      this.workflowsSortDirection = this.workflowsSortDirection === SortDirection.Descending
-        ? SortDirection.Ascending
-        : SortDirection.Descending;
+      this.workflowsSortDirection =
+        this.workflowsSortDirection === SortDirection.Descending
+          ? SortDirection.Ascending
+          : SortDirection.Descending;
     } else {
       this.workflowsSortField = field;
       this.workflowsSortDirection = SortDirection.Ascending;
@@ -327,9 +342,10 @@ export class TransferComponent implements OnInit {
 
   onConnectorsSortChange(field: ConnectorSortField): void {
     if (this.connectorsSortField === field) {
-      this.connectorsSortDirection = this.connectorsSortDirection === SortDirection.Descending
-        ? SortDirection.Ascending
-        : SortDirection.Descending;
+      this.connectorsSortDirection =
+        this.connectorsSortDirection === SortDirection.Descending
+          ? SortDirection.Ascending
+          : SortDirection.Descending;
     } else {
       this.connectorsSortField = field;
       this.connectorsSortDirection = SortDirection.Ascending;
@@ -341,9 +357,10 @@ export class TransferComponent implements OnInit {
 
   onModelsSortChange(field: ModelSortField): void {
     if (this.modelsSortField === field) {
-      this.modelsSortDirection = this.modelsSortDirection === SortDirection.Descending
-        ? SortDirection.Ascending
-        : SortDirection.Descending;
+      this.modelsSortDirection =
+        this.modelsSortDirection === SortDirection.Descending
+          ? SortDirection.Ascending
+          : SortDirection.Descending;
     } else {
       this.modelsSortField = field;
       this.modelsSortDirection = SortDirection.Ascending;
@@ -355,9 +372,10 @@ export class TransferComponent implements OnInit {
 
   onAssetsSortChange(field: AssetSortField): void {
     if (this.assetsSortField === field) {
-      this.assetsSortDirection = this.assetsSortDirection === SortDirection.Descending
-        ? SortDirection.Ascending
-        : SortDirection.Descending;
+      this.assetsSortDirection =
+        this.assetsSortDirection === SortDirection.Descending
+          ? SortDirection.Ascending
+          : SortDirection.Descending;
     } else {
       this.assetsSortField = field;
       this.assetsSortDirection = SortDirection.Ascending;
@@ -432,10 +450,12 @@ export class TransferComponent implements OnInit {
   }
 
   canExport(): boolean {
-    return this.hasSelection(this.workflowsMode, this.selectedWorkflows) ||
+    return (
+      this.hasSelection(this.workflowsMode, this.selectedWorkflows) ||
       this.hasSelection(this.connectorsMode, this.selectedConnectors) ||
       this.hasSelection(this.modelsMode, this.selectedModels) ||
-      this.hasSelection(this.assetsMode, this.selectedAssets);
+      this.hasSelection(this.assetsMode, this.selectedAssets)
+    );
   }
 
   private hasSelection(mode: SelectionMode, selected: Set<string>): boolean {
@@ -462,12 +482,18 @@ export class TransferComponent implements OnInit {
       includeSecrets: this.includeSecrets,
     };
 
-    const workflows = this.buildSelection(this.workflowsMode, this.selectedWorkflows);
+    const workflows = this.buildSelection(
+      this.workflowsMode,
+      this.selectedWorkflows,
+    );
     if (workflows) {
       request.workflows = workflows;
     }
 
-    const connectors = this.buildSelection(this.connectorsMode, this.selectedConnectors);
+    const connectors = this.buildSelection(
+      this.connectorsMode,
+      this.selectedConnectors,
+    );
     if (connectors) {
       request.connectors = connectors;
     }
@@ -485,7 +511,10 @@ export class TransferComponent implements OnInit {
     return request;
   }
 
-  private buildSelection(mode: SelectionMode, selected: Set<string>): TransferSelection | null {
+  private buildSelection(
+    mode: SelectionMode,
+    selected: Set<string>,
+  ): TransferSelection | null {
     if (mode === 'all') {
       return { all: true, ids: [] };
     }
@@ -522,7 +551,9 @@ export class TransferComponent implements OnInit {
       return null;
     }
 
-    const fileNameStar = /filename\*\s*=\s*(?:UTF-8'')?([^;]+)/i.exec(contentDisposition);
+    const fileNameStar = /filename\*\s*=\s*(?:UTF-8'')?([^;]+)/i.exec(
+      contentDisposition,
+    );
     if (fileNameStar?.[1]) {
       return decodeURIComponent(fileNameStar[1].trim().replace(/^"|"$/g, ''));
     }
@@ -539,32 +570,61 @@ export class TransferComponent implements OnInit {
     this.exportTabs = [
       {
         id: 'workflows',
-        title: this.exportTabTitle('Workflows', this.workflowsMode, this.selectedWorkflows, this.workflowsTotal),
+        title: this.exportTabTitle(
+          'Workflows',
+          this.workflowsMode,
+          this.selectedWorkflows,
+          this.workflowsTotal,
+        ),
         content: this.workflowsExportTab,
       },
       {
         id: 'connectors',
-        title: this.exportTabTitle('Connectors', this.connectorsMode, this.selectedConnectors, this.connectorsTotal),
+        title: this.exportTabTitle(
+          'Connectors',
+          this.connectorsMode,
+          this.selectedConnectors,
+          this.connectorsTotal,
+        ),
         content: this.connectorsExportTab,
       },
       {
         id: 'models',
-        title: this.exportTabTitle('Models', this.modelsMode, this.selectedModels, this.modelsTotal),
+        title: this.exportTabTitle(
+          'Models',
+          this.modelsMode,
+          this.selectedModels,
+          this.modelsTotal,
+        ),
         content: this.modelsExportTab,
       },
       {
         id: 'assets',
-        title: this.exportTabTitle('Assets', this.assetsMode, this.selectedAssets, this.assetsTotal),
+        title: this.exportTabTitle(
+          'Assets',
+          this.assetsMode,
+          this.selectedAssets,
+          this.assetsTotal,
+        ),
         content: this.assetsExportTab,
       },
     ];
   }
 
-  private exportTabTitle(label: string, mode: SelectionMode, selected: Set<string>, total: number): string {
+  private exportTabTitle(
+    label: string,
+    mode: SelectionMode,
+    selected: Set<string>,
+    total: number,
+  ): string {
     return `${label} (${this.selectionCount(mode, selected, total)})`;
   }
 
-  private selectionCount(mode: SelectionMode, selected: Set<string>, total: number): number {
+  private selectionCount(
+    mode: SelectionMode,
+    selected: Set<string>,
+    total: number,
+  ): number {
     switch (mode) {
       case 'all':
         return total;
@@ -578,26 +638,28 @@ export class TransferComponent implements OnInit {
   private refreshWorkflows(): void {
     const search = this.workflowsSearchText.trim();
     if (!search) {
-      this.serverRepository.getWorkflowCount().subscribe(total => {
+      this.serverRepository.getWorkflowCount().subscribe((total) => {
         this.workflowsTotal = total;
         this.workflowsFilteredTotal = total;
         const totalPages = this.workflowsPageCount();
-        const nextPage = totalPages === 0 ? 1 : Math.min(this.workflowsPage, totalPages);
+        const nextPage =
+          totalPages === 0 ? 1 : Math.min(this.workflowsPage, totalPages);
         this.loadWorkflowsPage(nextPage);
         this.updateExportTabs();
       });
       return;
     }
 
-    this.serverRepository.getWorkflowCount().subscribe(total => {
+    this.serverRepository.getWorkflowCount().subscribe((total) => {
       this.workflowsTotal = total;
       this.updateExportTabs();
     });
 
-    this.serverRepository.getWorkflowCount(search).subscribe(total => {
+    this.serverRepository.getWorkflowCount(search).subscribe((total) => {
       this.workflowsFilteredTotal = total;
       const totalPages = this.workflowsPageCount();
-      const nextPage = totalPages === 0 ? 1 : Math.min(this.workflowsPage, totalPages);
+      const nextPage =
+        totalPages === 0 ? 1 : Math.min(this.workflowsPage, totalPages);
       this.loadWorkflowsPage(nextPage);
     });
   }
@@ -605,26 +667,28 @@ export class TransferComponent implements OnInit {
   private refreshConnectors(): void {
     const search = this.connectorsSearchText.trim();
     if (!search) {
-      this.serverRepository.getConnectorCount().subscribe(total => {
+      this.serverRepository.getConnectorCount().subscribe((total) => {
         this.connectorsTotal = total;
         this.connectorsFilteredTotal = total;
         const totalPages = this.connectorsPageCount();
-        const nextPage = totalPages === 0 ? 1 : Math.min(this.connectorsPage, totalPages);
+        const nextPage =
+          totalPages === 0 ? 1 : Math.min(this.connectorsPage, totalPages);
         this.loadConnectorsPage(nextPage);
         this.updateExportTabs();
       });
       return;
     }
 
-    this.serverRepository.getConnectorCount().subscribe(total => {
+    this.serverRepository.getConnectorCount().subscribe((total) => {
       this.connectorsTotal = total;
       this.updateExportTabs();
     });
 
-    this.serverRepository.getConnectorCount(search).subscribe(total => {
+    this.serverRepository.getConnectorCount(search).subscribe((total) => {
       this.connectorsFilteredTotal = total;
       const totalPages = this.connectorsPageCount();
-      const nextPage = totalPages === 0 ? 1 : Math.min(this.connectorsPage, totalPages);
+      const nextPage =
+        totalPages === 0 ? 1 : Math.min(this.connectorsPage, totalPages);
       this.loadConnectorsPage(nextPage);
     });
   }
@@ -632,26 +696,28 @@ export class TransferComponent implements OnInit {
   private refreshModels(): void {
     const search = this.modelsSearchText.trim();
     if (!search) {
-      this.serverRepository.getModelCount().subscribe(total => {
+      this.serverRepository.getModelCount().subscribe((total) => {
         this.modelsTotal = total;
         this.modelsFilteredTotal = total;
         const totalPages = this.modelsPageCount();
-        const nextPage = totalPages === 0 ? 1 : Math.min(this.modelsPage, totalPages);
+        const nextPage =
+          totalPages === 0 ? 1 : Math.min(this.modelsPage, totalPages);
         this.loadModelsPage(nextPage);
         this.updateExportTabs();
       });
       return;
     }
 
-    this.serverRepository.getModelCount().subscribe(total => {
+    this.serverRepository.getModelCount().subscribe((total) => {
       this.modelsTotal = total;
       this.updateExportTabs();
     });
 
-    this.serverRepository.getModelCount(search).subscribe(total => {
+    this.serverRepository.getModelCount(search).subscribe((total) => {
       this.modelsFilteredTotal = total;
       const totalPages = this.modelsPageCount();
-      const nextPage = totalPages === 0 ? 1 : Math.min(this.modelsPage, totalPages);
+      const nextPage =
+        totalPages === 0 ? 1 : Math.min(this.modelsPage, totalPages);
       this.loadModelsPage(nextPage);
     });
   }
@@ -659,89 +725,105 @@ export class TransferComponent implements OnInit {
   private refreshAssets(): void {
     const search = this.assetsSearchText.trim();
     if (!search) {
-      this.serverRepository.getAssetsCount(AssetScope.Library).subscribe(total => {
-        this.assetsTotal = total;
-        this.assetsFilteredTotal = total;
-        const totalPages = this.assetsPageCount();
-        const nextPage = totalPages === 0 ? 1 : Math.min(this.assetsPage, totalPages);
-        this.loadAssetsPage(nextPage);
-        this.updateExportTabs();
-      });
+      this.serverRepository
+        .getAssetsCount(AssetScope.Library)
+        .subscribe((total) => {
+          this.assetsTotal = total;
+          this.assetsFilteredTotal = total;
+          const totalPages = this.assetsPageCount();
+          const nextPage =
+            totalPages === 0 ? 1 : Math.min(this.assetsPage, totalPages);
+          this.loadAssetsPage(nextPage);
+          this.updateExportTabs();
+        });
       return;
     }
 
-    this.serverRepository.getAssetsCount(AssetScope.Library).subscribe(total => {
-      this.assetsTotal = total;
-      this.updateExportTabs();
-    });
+    this.serverRepository
+      .getAssetsCount(AssetScope.Library)
+      .subscribe((total) => {
+        this.assetsTotal = total;
+        this.updateExportTabs();
+      });
 
-    this.serverRepository.getAssetsCount(AssetScope.Library, search).subscribe(total => {
-      this.assetsFilteredTotal = total;
-      const totalPages = this.assetsPageCount();
-      const nextPage = totalPages === 0 ? 1 : Math.min(this.assetsPage, totalPages);
-      this.loadAssetsPage(nextPage);
-    });
+    this.serverRepository
+      .getAssetsCount(AssetScope.Library, search)
+      .subscribe((total) => {
+        this.assetsFilteredTotal = total;
+        const totalPages = this.assetsPageCount();
+        const nextPage =
+          totalPages === 0 ? 1 : Math.min(this.assetsPage, totalPages);
+        this.loadAssetsPage(nextPage);
+      });
   }
 
   private loadWorkflowsPage(page: number): void {
     const skip = (page - 1) * this.exportPageSize;
     const search = this.workflowsSearchText.trim();
-    this.serverRepository.getWorkflowSummaries(
-      search,
-      skip,
-      this.exportPageSize,
-      this.workflowsSortField,
-      this.workflowsSortDirection
-    ).subscribe(workflows => {
-      this.workflows = workflows;
-      this.workflowsPage = page;
-    });
+    this.serverRepository
+      .getWorkflowSummaries(
+        search,
+        skip,
+        this.exportPageSize,
+        this.workflowsSortField,
+        this.workflowsSortDirection,
+      )
+      .subscribe((workflows) => {
+        this.workflows = workflows;
+        this.workflowsPage = page;
+      });
   }
 
   private loadConnectorsPage(page: number): void {
     const skip = (page - 1) * this.exportPageSize;
     const search = this.connectorsSearchText.trim();
-    this.serverRepository.getConnectorSummaries(
-      search,
-      skip,
-      this.exportPageSize,
-      this.connectorsSortField,
-      this.connectorsSortDirection
-    ).subscribe(connectors => {
-      this.connectors = connectors;
-      this.connectorsPage = page;
-    });
+    this.serverRepository
+      .getConnectorSummaries(
+        search,
+        skip,
+        this.exportPageSize,
+        this.connectorsSortField,
+        this.connectorsSortDirection,
+      )
+      .subscribe((connectors) => {
+        this.connectors = connectors;
+        this.connectorsPage = page;
+      });
   }
 
   private loadModelsPage(page: number): void {
     const skip = (page - 1) * this.exportPageSize;
     const search = this.modelsSearchText.trim();
-    this.serverRepository.getModelSummaries(
-      search,
-      skip,
-      this.exportPageSize,
-      this.modelsSortField,
-      this.modelsSortDirection
-    ).subscribe(models => {
-      this.models = models;
-      this.modelsPage = page;
-    });
+    this.serverRepository
+      .getModelSummaries(
+        search,
+        skip,
+        this.exportPageSize,
+        this.modelsSortField,
+        this.modelsSortDirection,
+      )
+      .subscribe((models) => {
+        this.models = models;
+        this.modelsPage = page;
+      });
   }
 
   private loadAssetsPage(page: number): void {
     const skip = (page - 1) * this.exportPageSize;
     const search = this.assetsSearchText.trim();
-    this.serverRepository.getAssets(
-      AssetScope.Library,
-      skip,
-      this.exportPageSize,
-      this.assetsSortField,
-      this.assetsSortDirection,
-      search
-    ).subscribe(assets => {
-      this.assets = assets;
-      this.assetsPage = page;
-    });
+    this.serverRepository
+      .getAssets(
+        AssetScope.Library,
+        skip,
+        this.exportPageSize,
+        this.assetsSortField,
+        this.assetsSortDirection,
+        search,
+      )
+      .subscribe((assets) => {
+        this.assets = assets;
+        this.assetsPage = page;
+      });
   }
 
   private buildPageNumbers(currentPage: number, totalPages: number): number[] {
@@ -766,8 +848,8 @@ export class TransferComponent implements OnInit {
     this.infoModalRef = this.modalService.show(InformationDialogComponent, {
       initialState: {
         title,
-        message
-      }
+        message,
+      },
     });
   }
 
@@ -776,7 +858,10 @@ export class TransferComponent implements OnInit {
       clearTimeout(this.workflowsSearchDebounceId);
     }
 
-    this.workflowsSearchDebounceId = setTimeout(() => this.applyWorkflowsSearch(), 250);
+    this.workflowsSearchDebounceId = setTimeout(
+      () => this.applyWorkflowsSearch(),
+      250,
+    );
   }
 
   private scheduleConnectorsSearch(): void {
@@ -784,7 +869,10 @@ export class TransferComponent implements OnInit {
       clearTimeout(this.connectorsSearchDebounceId);
     }
 
-    this.connectorsSearchDebounceId = setTimeout(() => this.applyConnectorsSearch(), 250);
+    this.connectorsSearchDebounceId = setTimeout(
+      () => this.applyConnectorsSearch(),
+      250,
+    );
   }
 
   private scheduleModelsSearch(): void {
@@ -792,7 +880,10 @@ export class TransferComponent implements OnInit {
       clearTimeout(this.modelsSearchDebounceId);
     }
 
-    this.modelsSearchDebounceId = setTimeout(() => this.applyModelsSearch(), 250);
+    this.modelsSearchDebounceId = setTimeout(
+      () => this.applyModelsSearch(),
+      250,
+    );
   }
 
   private scheduleAssetsSearch(): void {
@@ -800,6 +891,9 @@ export class TransferComponent implements OnInit {
       clearTimeout(this.assetsSearchDebounceId);
     }
 
-    this.assetsSearchDebounceId = setTimeout(() => this.applyAssetsSearch(), 250);
+    this.assetsSearchDebounceId = setTimeout(
+      () => this.applyAssetsSearch(),
+      250,
+    );
   }
 }

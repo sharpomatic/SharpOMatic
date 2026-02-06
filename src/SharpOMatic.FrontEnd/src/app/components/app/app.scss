@@ -1,35 +1,35 @@
 :host {
-    display: flex;
-    height: 100vh;
-    overflow: hidden;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .left-column {
-    width: 170px;
-    border-right: 1px solid var(--bs-border-color);
+  width: 170px;
+  border-right: 1px solid var(--bs-border-color);
 }
 
 .left-column.closed {
-    width: 80px;
+  width: 80px;
 
-    h2 {
-      color: transparent;
-    }
+  h2 {
+    color: transparent;
+  }
 
-    .nav-link {
-        justify-content: center;
-    }
+  .nav-link {
+    justify-content: center;
+  }
 }
 
 .right-column {
-    min-width: 0;
+  min-width: 0;
 }
 
 .productName {
-    font-size: 15px;
-    padding-top: 8px;
+  font-size: 15px;
+  padding-top: 8px;
 }
 
 .toast-container {
-    z-index: 1080;
+  z-index: 1080;
 }

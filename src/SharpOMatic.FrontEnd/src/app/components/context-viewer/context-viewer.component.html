@@ -1,17 +1,19 @@
 <div>
-  @if (mode === 'full') {
+  @if (mode === "full") {
     <div class="form-line">
-      <label for="select-context" class="form-label field-label">Select Context</label>
+      <label for="select-context" class="form-label field-label"
+        >Select Context</label
+      >
       <div class="flex-fill control-column context">
-        <select class="form-select selectContext"
-                id="select-context"
-                [disabled]="contexts.length === 0"
-                [ngModel]="selectedIndex()"
-                (ngModelChange)="onSelectedIndexChange($event)">
+        <select
+          class="form-select selectContext"
+          id="select-context"
+          [disabled]="contexts.length === 0"
+          [ngModel]="selectedIndex()"
+          (ngModelChange)="onSelectedIndexChange($event)"
+        >
           @for (context of contexts; track $index; let i = $index) {
-            <option [ngValue]="i">
-              Call {{ i + 1 }}
-            </option>
+            <option [ngValue]="i">Call {{ i + 1 }}</option>
           }
           @if (contexts.length === 0) {
             <option [ngValue]="-1">(none)</option>
@@ -20,7 +22,7 @@
       </div>
     </div>
 
-    <hr/>
+    <hr />
 
     <label for="select-context" class="form-label">Context Contents</label>
   }
@@ -37,11 +39,20 @@
             <div class="tree-row" [style.paddingLeft.px]="level * 16">
               <span class="toggle">
                 @if (node.children.length > 0) {
-                  <button type="button"
-                          class="btn btn-link btn-sm p-0 me-2"
-                          (click)="toggleNode(node)"
-                          [attr.aria-expanded]="node.expanded">
-                    <i class="bi" [ngClass]="node.expanded ? 'bi-caret-down-fill' : 'bi-caret-right-fill'"></i>
+                  <button
+                    type="button"
+                    class="btn btn-link btn-sm p-0 me-2"
+                    (click)="toggleNode(node)"
+                    [attr.aria-expanded]="node.expanded"
+                  >
+                    <i
+                      class="bi"
+                      [ngClass]="
+                        node.expanded
+                          ? 'bi-caret-down-fill'
+                          : 'bi-caret-right-fill'
+                      "
+                    ></i>
                   </button>
                 } @else {
                   <span class="toggle-spacer me-2"></span>
@@ -50,23 +61,39 @@
               <span class="type text-muted">{{ node.type }}</span>
               <span class="name">{{ node.name }}</span>
               <div class="value">
-                <code class="context-value">{{ node.showFull ? node.fullValue : node.displayValue }}</code>
+                <code class="context-value">{{
+                  node.showFull ? node.fullValue : node.displayValue
+                }}</code>
                 @if (node.isTruncated) {
-                  <button type="button"
-                          class="btn btn-link btn-sm p-0 value-toggle"
-                          (click)="toggleValue(node)">
-                    {{ node.showFull ? 'Hide full' : 'Show full' }} ({{ node.displayLength }})
+                  <button
+                    type="button"
+                    class="btn btn-link btn-sm p-0 value-toggle"
+                    (click)="toggleValue(node)"
+                  >
+                    {{ node.showFull ? "Hide full" : "Show full" }} ({{
+                      node.displayLength
+                    }})
                   </button>
                 }
               </div>
             </div>
             @if (node.expanded && node.children.length > 0) {
-              <ng-container *ngTemplateOutlet="renderNodes; context: { nodes: node.children, level: level + 1 }"></ng-container>
+              <ng-container
+                *ngTemplateOutlet="
+                  renderNodes;
+                  context: { nodes: node.children, level: level + 1 }
+                "
+              ></ng-container>
             }
           }
         </ng-template>
 
-        <ng-container *ngTemplateOutlet="renderNodes; context: { nodes: contextTree(), level: 0 }"></ng-container>
+        <ng-container
+          *ngTemplateOutlet="
+            renderNodes;
+            context: { nodes: contextTree(), level: 0 }
+          "
+        ></ng-container>
       </div>
     }
   }

@@ -17,16 +17,22 @@ export class EvalDataStore {
     this.initialByKey.clear();
     this.editsByKey.clear();
 
-    (snapshots ?? []).forEach(snapshot => {
+    (snapshots ?? []).forEach((snapshot) => {
       const normalized = EvalDataStore.normalizeSnapshot(snapshot);
-      const key = EvalDataStore.buildKey(normalized.evalRowId, normalized.evalColumnId);
+      const key = EvalDataStore.buildKey(
+        normalized.evalRowId,
+        normalized.evalColumnId,
+      );
       this.initialByKey.set(key, normalized);
     });
 
     this.dirtyCount.set(0);
   }
 
-  public getSnapshot(evalRowId: string, evalColumnId: string): EvalDataSnapshot | null {
+  public getSnapshot(
+    evalRowId: string,
+    evalColumnId: string,
+  ): EvalDataSnapshot | null {
     const key = EvalDataStore.buildKey(evalRowId, evalColumnId);
     const edited = this.editsByKey.get(key);
     if (edited) {
@@ -39,7 +45,10 @@ export class EvalDataStore {
 
   public upsert(snapshot: EvalDataSnapshot): void {
     const normalized = EvalDataStore.normalizeSnapshot(snapshot);
-    const key = EvalDataStore.buildKey(normalized.evalRowId, normalized.evalColumnId);
+    const key = EvalDataStore.buildKey(
+      normalized.evalRowId,
+      normalized.evalColumnId,
+    );
     const initial = this.initialByKey.get(key);
 
     if (initial && EvalDataStore.areSnapshotsEqual(initial, normalized)) {
@@ -70,14 +79,18 @@ export class EvalDataStore {
   }
 
   public getDirtySnapshots(): EvalDataSnapshot[] {
-    return Array.from(this.editsByKey.values()).map(snapshot => ({ ...snapshot }));
+    return Array.from(this.editsByKey.values()).map((snapshot) => ({
+      ...snapshot,
+    }));
   }
 
   private static buildKey(evalRowId: string, evalColumnId: string): string {
     return `${evalRowId}|${evalColumnId}`;
   }
 
-  private static normalizeSnapshot(snapshot: EvalDataSnapshot): EvalDataSnapshot {
+  private static normalizeSnapshot(
+    snapshot: EvalDataSnapshot,
+  ): EvalDataSnapshot {
     return {
       evalDataId: snapshot.evalDataId,
       evalRowId: snapshot.evalRowId,
@@ -89,20 +102,27 @@ export class EvalDataStore {
     };
   }
 
-  private static areSnapshotsEqual(left: EvalDataSnapshot, right: EvalDataSnapshot): boolean {
-    return left.evalDataId === right.evalDataId &&
-           left.evalRowId === right.evalRowId &&
-           left.evalColumnId === right.evalColumnId &&
-           left.stringValue === right.stringValue &&
-           left.intValue === right.intValue &&
-           left.doubleValue === right.doubleValue &&
-           left.boolValue === right.boolValue;
+  private static areSnapshotsEqual(
+    left: EvalDataSnapshot,
+    right: EvalDataSnapshot,
+  ): boolean {
+    return (
+      left.evalDataId === right.evalDataId &&
+      left.evalRowId === right.evalRowId &&
+      left.evalColumnId === right.evalColumnId &&
+      left.stringValue === right.stringValue &&
+      left.intValue === right.intValue &&
+      left.doubleValue === right.doubleValue &&
+      left.boolValue === right.boolValue
+    );
   }
 
   private static isSnapshotEmpty(snapshot: EvalDataSnapshot): boolean {
-    return snapshot.stringValue === null &&
-           snapshot.intValue === null &&
-           snapshot.doubleValue === null &&
-           snapshot.boolValue === null;
+    return (
+      snapshot.stringValue === null &&
+      snapshot.intValue === null &&
+      snapshot.doubleValue === null &&
+      snapshot.boolValue === null
+    );
   }
 }

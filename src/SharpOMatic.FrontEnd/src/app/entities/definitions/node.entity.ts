@@ -58,25 +58,33 @@ export abstract class NodeEntity<T extends NodeSnapshot> extends Entity<T> {
       const currentOutputs = this.outputs();
 
       // Must touch all connector dirty signals
-      const currentInputsDirty = currentInputs.reduce((dirty, input) => input.isDirty() || dirty, false);
-      const currentOutputssDirty = currentOutputs.reduce((dirty, output) => output.isDirty() || dirty, false);
+      const currentInputsDirty = currentInputs.reduce(
+        (dirty, input) => input.isDirty() || dirty,
+        false,
+      );
+      const currentOutputssDirty = currentOutputs.reduce(
+        (dirty, output) => output.isDirty() || dirty,
+        false,
+      );
 
-      const needsRecalc = (currentHeight !== snapshot.height) ||
-        (currentInputs.length !== snapshotInputs.length) ||
-        (currentOutputs.length !== snapshotOutputs.length) ||
+      const needsRecalc =
+        currentHeight !== snapshot.height ||
+        currentInputs.length !== snapshotInputs.length ||
+        currentOutputs.length !== snapshotOutputs.length ||
         currentInputsDirty ||
         currentOutputssDirty;
 
-      const isDirty = needsRecalc ||
-        (currentTitle !== snapshot.title) ||
-        (currentTop !== snapshot.top) ||
-        (currentLeft !== snapshot.left) ||
-        (currentWidth !== snapshot.width);
+      const isDirty =
+        needsRecalc ||
+        currentTitle !== snapshot.title ||
+        currentTop !== snapshot.top ||
+        currentLeft !== snapshot.left ||
+        currentWidth !== snapshot.width;
 
       if (needsRecalc) {
         setTimeout(() => {
           this.pushIdentifiers();
-          this.calculateConnectors()
+          this.calculateConnectors();
         }, 0);
       }
 
@@ -86,8 +94,8 @@ export abstract class NodeEntity<T extends NodeSnapshot> extends Entity<T> {
 
   public override markClean(): void {
     super.markClean();
-    this.inputs().forEach(connector => connector.markClean());
-    this.outputs().forEach(connector => connector.markClean());
+    this.inputs().forEach((connector) => connector.markClean());
+    this.outputs().forEach((connector) => connector.markClean());
   }
 
   public toNodeSnapshot(): NodeSnapshot {
@@ -100,8 +108,8 @@ export abstract class NodeEntity<T extends NodeSnapshot> extends Entity<T> {
       left: this.left(),
       width: this.width(),
       height: this.height(),
-      inputs: this.inputs().map(connector => connector.toSnapshot()),
-      outputs: this.outputs().map(connector => connector.toSnapshot())
+      inputs: this.inputs().map((connector) => connector.toSnapshot()),
+      outputs: this.outputs().map((connector) => connector.toSnapshot()),
     };
   }
 
@@ -112,16 +120,16 @@ export abstract class NodeEntity<T extends NodeSnapshot> extends Entity<T> {
       title: '',
       top: 0,
       left: 0,
-      width: (ConnectorEntity.DISPLAY_SIZE * 4),
-      height: (ConnectorEntity.DISPLAY_SIZE * 4),
+      width: ConnectorEntity.DISPLAY_SIZE * 4,
+      height: ConnectorEntity.DISPLAY_SIZE * 4,
       inputs: [],
-      outputs: []
-    }
+      outputs: [],
+    };
   }
 
   private pushIdentifiers(): void {
-    this.inputs().forEach(connector => connector.nodeId = this.id);
-    this.outputs().forEach(connector => connector.nodeId = this.id);
+    this.inputs().forEach((connector) => (connector.nodeId = this.id));
+    this.outputs().forEach((connector) => (connector.nodeId = this.id));
   }
 
   private calculateConnectors(): void {
@@ -144,7 +152,7 @@ export abstract class NodeEntity<T extends NodeSnapshot> extends Entity<T> {
 
       const topOffset = ConnectorEntity.DISPLAY_SIZE + allocateOffset - 3;
       connectors.forEach((output, index) => {
-        output.boxOffset.set(topOffset + (index * allocateHeight));
+        output.boxOffset.set(topOffset + index * allocateHeight);
         console.log(`Connector: ${output.name} offset:${output.boxOffset()}`);
         output.labelOffsetV.set(output.boxOffset() - 7);
         output.labelOffsetH.set(this.width() + ConnectorEntity.DISPLAY_SIZE);

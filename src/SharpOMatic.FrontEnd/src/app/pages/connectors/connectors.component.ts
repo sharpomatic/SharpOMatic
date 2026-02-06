@@ -1,4 +1,10 @@
-import { AfterViewInit, Component, ElementRef, ViewChild, inject } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  ViewChild,
+  inject,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { Router, RouterLink } from '@angular/router';
@@ -10,21 +16,18 @@ import { Connector } from '../../metadata/definitions/connector';
 @Component({
   selector: 'app-connectors',
   standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink
-  ],
+  imports: [CommonModule, RouterLink],
   templateUrl: './connectors.component.html',
   styleUrls: ['./connectors.component.scss'],
-  providers: [BsModalService]
+  providers: [BsModalService],
 })
 export class ConnectorsComponent implements AfterViewInit {
-  private readonly serverWorkflow = inject(ServerRepositoryService);  
+  private readonly serverWorkflow = inject(ServerRepositoryService);
   private readonly modalService = inject(BsModalService);
-  private readonly router = inject(Router);  
+  private readonly router = inject(Router);
   private confirmModalRef: BsModalRef<ConfirmDialogComponent> | undefined;
   @ViewChild('searchInput') private searchInput?: ElementRef<HTMLInputElement>;
-  
+
   public connectors: ConnectorSummary[] = [];
   public connectorsPage = 1;
   public connectorsTotal = 0;
@@ -58,15 +61,17 @@ export class ConnectorsComponent implements AfterViewInit {
     this.confirmModalRef = this.modalService.show(ConfirmDialogComponent, {
       initialState: {
         title: 'Delete Connector',
-        message: `Are you sure you want to delete the connector '${connector.name}'?`
-      }
+        message: `Are you sure you want to delete the connector '${connector.name}'?`,
+      },
     });
 
     this.confirmModalRef.onHidden?.subscribe(() => {
       if (this.confirmModalRef?.content?.result) {
-        this.serverWorkflow.deleteConnector(connector.connectorId).subscribe(() => {
-          this.refreshConnectors();
-        });
+        this.serverWorkflow
+          .deleteConnector(connector.connectorId)
+          .subscribe(() => {
+            this.refreshConnectors();
+          });
       }
     });
   }
@@ -127,10 +132,11 @@ export class ConnectorsComponent implements AfterViewInit {
   private refreshConnectors(): void {
     this.isLoading = true;
     const search = this.searchText.trim();
-    this.serverWorkflow.getConnectorCount(search).subscribe(total => {
+    this.serverWorkflow.getConnectorCount(search).subscribe((total) => {
       this.connectorsTotal = total;
       const totalPages = this.connectorsPageCount();
-      const nextPage = totalPages === 0 ? 1 : Math.min(this.connectorsPage, totalPages);
+      const nextPage =
+        totalPages === 0 ? 1 : Math.min(this.connectorsPage, totalPages);
       this.loadConnectorsPage(nextPage);
     });
   }
@@ -139,16 +145,18 @@ export class ConnectorsComponent implements AfterViewInit {
     this.isLoading = true;
     const skip = (page - 1) * this.connectorsPageSize;
     const search = this.searchText.trim();
-    this.serverWorkflow.getConnectorSummaries(search, skip, this.connectorsPageSize).subscribe({
-      next: (connectors) => {
-        this.connectors = connectors;
-        this.connectorsPage = page;
-        this.isLoading = false;
-      },
-      error: () => {
-        this.isLoading = false;
-      },
-    });
+    this.serverWorkflow
+      .getConnectorSummaries(search, skip, this.connectorsPageSize)
+      .subscribe({
+        next: (connectors) => {
+          this.connectors = connectors;
+          this.connectorsPage = page;
+          this.isLoading = false;
+        },
+        error: () => {
+          this.isLoading = false;
+        },
+      });
   }
 
   private scheduleSearch(): void {

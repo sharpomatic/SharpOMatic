@@ -7,7 +7,7 @@ import {
   OnInit,
   Output,
   SimpleChanges,
-  TemplateRef
+  TemplateRef,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
@@ -23,7 +23,7 @@ export interface TabItem {
   styleUrls: ['./tab.component.scss'],
   standalone: true,
   imports: [CommonModule],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TabComponent implements OnInit, OnChanges {
   @Input() tabs: TabItem[] = [];
@@ -63,7 +63,8 @@ export class TabComponent implements OnInit, OnChanges {
       return;
     }
 
-    const next = this.tabs.find(t => t.id === this.activeTabId) ?? this.tabs[0];
+    const next =
+      this.tabs.find((t) => t.id === this.activeTabId) ?? this.tabs[0];
     this.activeTab = next;
     this.activeTabId = next.id;
   }

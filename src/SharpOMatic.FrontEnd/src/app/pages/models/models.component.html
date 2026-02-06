@@ -1,9 +1,15 @@
 <div class="container-fluid p-0 models-page">
-  <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary">
-    <h2 class=""><i class="bi bi-chat-text pe-3 icon-sm"></i>Models ({{ modelsTotal || models.length }})</h2>
+  <div
+    class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary"
+  >
+    <h2 class="">
+      <i class="bi bi-chat-text pe-3 icon-sm"></i>Models ({{
+        modelsTotal || models.length
+      }})
+    </h2>
     <button class="btn btn-primary" (click)="newModel()">New</button>
   </div>
-  <hr class="m-0"/>
+  <hr class="m-0" />
   <div class="p-3 bg-body-tertiary h-100 d-flex flex-column models-body">
     <div class="models-toolbar d-flex align-items-center gap-2 mb-3">
       <div class="input-group models-search">
@@ -15,7 +21,8 @@
           placeholder="Search by name"
           [value]="searchText"
           (input)="onSearchChange($event)"
-          (keyup.enter)="applySearch()" />
+          (keyup.enter)="applySearch()"
+        />
       </div>
     </div>
     @if (!isLoading && modelsTotal === 0 && models.length === 0) {
@@ -23,10 +30,14 @@
         <div class="empty-icon"><i class="bi bi-chat-text"></i></div>
         @if (searchText) {
           <div class="empty-title">No matching models</div>
-          <div class="empty-subtitle">Try a different search to find models by name.</div>
+          <div class="empty-subtitle">
+            Try a different search to find models by name.
+          </div>
         } @else {
           <div class="empty-title">No models yet</div>
-          <div class="empty-subtitle">Add a model to start configuring AI calls.</div>
+          <div class="empty-subtitle">
+            Add a model to start configuring AI calls.
+          </div>
         }
       </div>
     } @else {
@@ -38,47 +49,97 @@
             </div>
             <div class="card-body">
               <p class="card-text">{{ model.description }}</p>
-              <button class="btn btn-secondary" [routerLink]="['/models', model.modelId]">Open</button>
-              <button class="btn btn-outline-danger ms-2" (click)="deleteModel(model)">Delete</button>
+              <button
+                class="btn btn-secondary"
+                [routerLink]="['/models', model.modelId]"
+              >
+                Open
+              </button>
+              <button
+                class="btn btn-outline-danger ms-2"
+                (click)="deleteModel(model)"
+              >
+                Delete
+              </button>
             </div>
           </div>
         }
       </div>
       @if (modelsTotal > 0) {
-        <div class="d-flex align-items-center justify-content-between models-pagination">
+        <div
+          class="d-flex align-items-center justify-content-between models-pagination"
+        >
           <div class="text-muted small">
-            Page {{ modelsPage }} of {{ modelsPageCount() }} ({{ modelsTotal }} total models)
+            Page {{ modelsPage }} of {{ modelsPageCount() }} ({{
+              modelsTotal
+            }}
+            total models)
           </div>
           @if (modelsPageCount() > 1) {
             <nav aria-label="Models pagination">
               <ul class="pagination pagination-sm mb-0">
                 <li class="page-item" [class.disabled]="modelsPage === 1">
-                  <button class="page-link" type="button" [disabled]="modelsPage === 1" aria-label="First"
-                    (click)="onModelsPageChange(1)">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="modelsPage === 1"
+                    aria-label="First"
+                    (click)="onModelsPageChange(1)"
+                  >
                     <span aria-hidden="true">&laquo;</span>
                   </button>
                 </li>
                 <li class="page-item" [class.disabled]="modelsPage === 1">
-                  <button class="page-link" type="button" [disabled]="modelsPage === 1" aria-label="Previous"
-                    (click)="onModelsPageChange(modelsPage - 1)">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="modelsPage === 1"
+                    aria-label="Previous"
+                    (click)="onModelsPageChange(modelsPage - 1)"
+                  >
                     <span aria-hidden="true">&lsaquo;</span>
                   </button>
                 </li>
                 @for (page of modelsPageNumbers(); track page) {
-                  <li class="page-item" [class.active]="page === modelsPage"
-                    [attr.aria-current]="page === modelsPage ? 'page' : null">
-                    <button class="page-link" type="button" (click)="onModelsPageChange(page)">{{ page }}</button>
+                  <li
+                    class="page-item"
+                    [class.active]="page === modelsPage"
+                    [attr.aria-current]="page === modelsPage ? 'page' : null"
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      (click)="onModelsPageChange(page)"
+                    >
+                      {{ page }}
+                    </button>
                   </li>
                 }
-                <li class="page-item" [class.disabled]="modelsPage >= modelsPageCount()">
-                  <button class="page-link" type="button" [disabled]="modelsPage >= modelsPageCount()"
-                    aria-label="Next" (click)="onModelsPageChange(modelsPage + 1)">
+                <li
+                  class="page-item"
+                  [class.disabled]="modelsPage >= modelsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="modelsPage >= modelsPageCount()"
+                    aria-label="Next"
+                    (click)="onModelsPageChange(modelsPage + 1)"
+                  >
                     <span aria-hidden="true">&rsaquo;</span>
                   </button>
                 </li>
-                <li class="page-item" [class.disabled]="modelsPage >= modelsPageCount()">
-                  <button class="page-link" type="button" [disabled]="modelsPage >= modelsPageCount()"
-                    aria-label="Last" (click)="onModelsPageChange(modelsPageCount())">
+                <li
+                  class="page-item"
+                  [class.disabled]="modelsPage >= modelsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="modelsPage >= modelsPageCount()"
+                    aria-label="Last"
+                    (click)="onModelsPageChange(modelsPageCount())"
+                  >
                     <span aria-hidden="true">&raquo;</span>
                   </button>
                 </li>

@@ -1,6 +1,9 @@
 import { computed, signal, WritableSignal } from '@angular/core';
 import { ConnectorEntity } from './connector.entity';
-import { ContextEntryListEntity, ContextEntryListSnapshot } from './context-entry-list.entity';
+import {
+  ContextEntryListEntity,
+  ContextEntryListSnapshot,
+} from './context-entry-list.entity';
 import { NodeEntity, NodeSnapshot } from './node.entity';
 import { NodeType } from '../enumerations/node-type';
 
@@ -22,8 +25,7 @@ export class EditNodeEntity extends NodeEntity<EditNodeSnapshot> {
       const currentIsNodeDirty = isNodeDirty();
       const currentEditsDirty = this.edits().isDirty();
 
-      return currentIsNodeDirty ||
-        currentEditsDirty;
+      return currentIsNodeDirty || currentEditsDirty;
     });
   }
 
@@ -46,7 +48,7 @@ export class EditNodeEntity extends NodeEntity<EditNodeSnapshot> {
       inputs: [ConnectorEntity.defaultSnapshot()],
       outputs: [ConnectorEntity.defaultSnapshot()],
       edits: ContextEntryListEntity.defaultSnapshot(),
-    }
+    };
   }
 
   public static create(top: number, left: number): EditNodeEntity {

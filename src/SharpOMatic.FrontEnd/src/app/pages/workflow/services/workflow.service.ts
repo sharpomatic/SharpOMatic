@@ -1,4 +1,12 @@
-import { Injectable, OnDestroy, WritableSignal, effect, inject, signal, untracked } from '@angular/core';
+import {
+  Injectable,
+  OnDestroy,
+  WritableSignal,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { ServerRepositoryService } from '../../../services/server.repository.service';
 import { WorkflowEntity } from '../../../entities/definitions/workflow.entity';
 import { RunProgressModel } from '../interfaces/run-progress-model';
@@ -7,8 +15,14 @@ import { SignalrService } from '../../../services/signalr.service';
 import { RunStatus } from '../../../enumerations/run-status';
 import { NodeStatus } from '../../../enumerations/node-status';
 import { Observable, map } from 'rxjs';
-import { ContextEntryListEntity, ContextEntryListSnapshot } from '../../../entities/definitions/context-entry-list.entity';
-import { ContextEntryEntity, ContextEntrySnapshot } from '../../../entities/definitions/context-entry.entity';
+import {
+  ContextEntryListEntity,
+  ContextEntryListSnapshot,
+} from '../../../entities/definitions/context-entry-list.entity';
+import {
+  ContextEntryEntity,
+  ContextEntrySnapshot,
+} from '../../../entities/definitions/context-entry.entity';
 import { StartNodeEntity } from '../../../entities/definitions/start-node.entity';
 import { ToastService } from '../../../services/toast.service';
 import { RunSortField } from '../../../enumerations/run-sort-field';
@@ -20,7 +34,7 @@ import { AssetSortField } from '../../../enumerations/asset-sort-field';
 @Injectable({
   providedIn: 'root',
 })
-export class WorkflowService implements OnDestroy  {
+export class WorkflowService implements OnDestroy {
   private readonly serverWorkflowService = inject(ServerRepositoryService);
   private readonly toastService = inject(ToastService);
   public readonly signalrService = inject(SignalrService);
@@ -40,11 +54,15 @@ export class WorkflowService implements OnDestroy  {
   private lastStartInputsSnapshot?: ContextEntryListSnapshot;
 
   // Create a stable references for listener functions, so they run in correct zone
-  private readonly runProgressListener = (data: RunProgressModel) => this.onRunProgress(data);
-  private readonly traceProgressListener = (data: TraceProgressModel) => this.onTraceProgress(data);
+  private readonly runProgressListener = (data: RunProgressModel) =>
+    this.onRunProgress(data);
+  private readonly traceProgressListener = (data: TraceProgressModel) =>
+    this.onTraceProgress(data);
 
   constructor() {
-    this.workflow = signal(new WorkflowEntity(WorkflowEntity.defaultSnapshot()));
+    this.workflow = signal(
+      new WorkflowEntity(WorkflowEntity.defaultSnapshot()),
+    );
     this.runProgress = signal(undefined);
     this.traces = signal([]);
     this.runAssets = signal([]);
@@ -54,7 +72,11 @@ export class WorkflowService implements OnDestroy  {
     this.runsSortField = signal(RunSortField.Created);
     this.runsSortDirection = signal(SortDirection.Descending);
     this.isRunning = signal(false);
-    this.runInputs = signal(ContextEntryListEntity.fromSnapshot(ContextEntryListEntity.defaultSnapshot()));
+    this.runInputs = signal(
+      ContextEntryListEntity.fromSnapshot(
+        ContextEntryListEntity.defaultSnapshot(),
+      ),
+    );
 
     effect(() => {
       if (this.signalrService.isConnected()) {
@@ -66,8 +88,14 @@ export class WorkflowService implements OnDestroy  {
 
     effect(() => {
       const workflow = this.workflow();
-      const startNode = workflow.nodes().find((node): node is StartNodeEntity => node instanceof StartNodeEntity);
-      const snapshot = startNode ? startNode.initializing().toSnapshot() : undefined;
+      const startNode = workflow
+        .nodes()
+        .find(
+          (node): node is StartNodeEntity => node instanceof StartNodeEntity,
+        );
+      const snapshot = startNode
+        ? startNode.initializing().toSnapshot()
+        : undefined;
       this.syncRunInputsWithStartSnapshot(snapshot);
     });
   }
@@ -78,9 +106,11 @@ export class WorkflowService implements OnDestroy  {
   }
 
   load(id: string) {
-    this.serverWorkflowService.getWorkflow(id).subscribe(workflow => {
+    this.serverWorkflowService.getWorkflow(id).subscribe((workflow) => {
       this.workflow.set(workflow as WorkflowEntity);
-      this.workflow().nodes().forEach(nodeEntity => nodeEntity.displayState.set(NodeStatus.None));
+      this.workflow()
+        .nodes()
+        .forEach((nodeEntity) => nodeEntity.displayState.set(NodeStatus.None));
       this.runProgress.set(undefined);
       this.runsTotal.set(0);
       this.runsPage.set(1);
@@ -90,42 +120,47 @@ export class WorkflowService implements OnDestroy  {
       this.updateRunInputsFromWorkflow();
       this.workflow().markClean();
       this.loadRunsPageForWorkflow(id, 1);
-      this.serverWorkflowService.getLatestWorkflowRun(id).subscribe(run => {
+      this.serverWorkflowService.getLatestWorkflowRun(id).subscribe((run) => {
         if (run) {
           this.runProgress.set(run);
-          this.updateRunInputsFromLatestRun();          
-          this.serverWorkflowService.getRunTraces(run.runId).subscribe(traces => {
-            if (traces) {
-              this.traces.set(traces);
-              const nodes = this.workflow().nodes();
-              traces.forEach(t => {
-                const nodeEntity = nodes.find(n => n.id == t.nodeEntityId);
-                if (nodeEntity) {
-                  nodeEntity.displayState.set(t.nodeStatus);
-                }
-              })
-            }
-          });
+          this.updateRunInputsFromLatestRun();
+          this.serverWorkflowService
+            .getRunTraces(run.runId)
+            .subscribe((traces) => {
+              if (traces) {
+                this.traces.set(traces);
+                const nodes = this.workflow().nodes();
+                traces.forEach((t) => {
+                  const nodeEntity = nodes.find((n) => n.id == t.nodeEntityId);
+                  if (nodeEntity) {
+                    nodeEntity.displayState.set(t.nodeStatus);
+                  }
+                });
+              }
+            });
           this.updateRunAssetsForRun(run);
           return;
         }
         this.runAssets.set([]);
       });
     });
-  };
+  }
 
   save(): Observable<void> {
     return this.serverWorkflowService.upsertWorkflow(this.workflow()).pipe(
       map(() => {
         this.workflow().markClean();
         return;
-      })
+      }),
     );
   }
 
   run(): Observable<string | undefined> {
     this.isRunning.set(true);
-    return this.serverWorkflowService.runWorkflow(this.workflow().id, this.runInputs());
+    return this.serverWorkflowService.runWorkflow(
+      this.workflow().id,
+      this.runInputs(),
+    );
   }
 
   markClean(): void {
@@ -134,25 +169,35 @@ export class WorkflowService implements OnDestroy  {
   }
 
   addListeners(): void {
-    this.signalrService.addListener("RunProgress", this.runProgressListener);
-    this.signalrService.addListener("TraceProgress", this.traceProgressListener);
+    this.signalrService.addListener('RunProgress', this.runProgressListener);
+    this.signalrService.addListener(
+      'TraceProgress',
+      this.traceProgressListener,
+    );
   }
 
   removeListeners(): void {
-    this.signalrService.removeListener("RunProgress", this.runProgressListener);
-    this.signalrService.removeListener("TraceProgress", this.traceProgressListener);
+    this.signalrService.removeListener('RunProgress', this.runProgressListener);
+    this.signalrService.removeListener(
+      'TraceProgress',
+      this.traceProgressListener,
+    );
   }
 
   onRunProgress(data: RunProgressModel) {
     const workflow = this.workflow();
     if (workflow) {
-      switch(data.runStatus) {
+      switch (data.runStatus) {
         case RunStatus.Created: {
-            workflow.nodes().forEach(nodeEntity => nodeEntity.displayState.set(NodeStatus.None));
-            this.runProgress.set(data);
-            this.traces.set([]);
-            this.runAssets.set([]);
-            break;
+          workflow
+            .nodes()
+            .forEach((nodeEntity) =>
+              nodeEntity.displayState.set(NodeStatus.None),
+            );
+          this.runProgress.set(data);
+          this.traces.set([]);
+          this.runAssets.set([]);
+          break;
         }
         case RunStatus.Running: {
           this.runProgress.set(data);
@@ -172,7 +217,9 @@ export class WorkflowService implements OnDestroy  {
           this.isRunning.set(false);
           const workflowName = workflow.name();
           const errorMessage = (data.error ?? '').trim();
-          const failureMessage = errorMessage ? `${workflowName} failed: ${errorMessage}` : `${workflowName} failed.`;
+          const failureMessage = errorMessage
+            ? `${workflowName} failed: ${errorMessage}`
+            : `${workflowName} failed.`;
           this.toastService.error(failureMessage);
           this.updateRunAssetsForRun(data);
           break;
@@ -184,15 +231,17 @@ export class WorkflowService implements OnDestroy  {
   onTraceProgress(data: TraceProgressModel) {
     const workflow = this.workflow();
     if (workflow) {
-      const nodeEntity = workflow.nodes().find(n => n.id == data.nodeEntityId);
+      const nodeEntity = workflow
+        .nodes()
+        .find((n) => n.id == data.nodeEntityId);
       if (nodeEntity) {
-            nodeEntity.displayState.set(data.nodeStatus);
+        nodeEntity.displayState.set(data.nodeStatus);
       }
       if (data.nodeStatus === NodeStatus.Running) {
-        this.traces.update(traces => [...traces, data]);
+        this.traces.update((traces) => [...traces, data]);
       } else {
         const traces = this.traces();
-        const idx = traces.findIndex(t => t.traceId === data.traceId);
+        const idx = traces.findIndex((t) => t.traceId === data.traceId);
         if (idx >= 0) {
           traces[idx] = data;
           this.traces.set([...traces]);
@@ -203,13 +252,19 @@ export class WorkflowService implements OnDestroy  {
 
   private updateRunInputsFromWorkflow(): void {
     const workflow = this.workflow();
-    const startNode = workflow.nodes().find((node): node is StartNodeEntity => node instanceof StartNodeEntity);
+    const startNode = workflow
+      .nodes()
+      .find((node): node is StartNodeEntity => node instanceof StartNodeEntity);
 
     if (startNode) {
       const snapshot = startNode.initializing().toSnapshot();
       this.runInputs.set(ContextEntryListEntity.fromSnapshot(snapshot));
     } else {
-      this.runInputs.set(ContextEntryListEntity.fromSnapshot(ContextEntryListEntity.defaultSnapshot()));
+      this.runInputs.set(
+        ContextEntryListEntity.fromSnapshot(
+          ContextEntryListEntity.defaultSnapshot(),
+        ),
+      );
     }
   }
 
@@ -224,7 +279,11 @@ export class WorkflowService implements OnDestroy  {
 
     try {
       const parsed = JSON.parse(inputEntriesJson);
-      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.entries)) {
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        Array.isArray(parsed.entries)
+      ) {
         snapshot = parsed as ContextEntryListSnapshot;
       }
     } catch {
@@ -238,26 +297,28 @@ export class WorkflowService implements OnDestroy  {
 
     const previousInputs = ContextEntryListEntity.fromSnapshot(snapshot);
     const previousEntriesByPath = new Map<string, ContextEntryEntity>();
-    previousInputs.entries().forEach(entry => {
+    previousInputs.entries().forEach((entry) => {
       previousEntriesByPath.set(entry.inputPath(), entry);
     });
 
-    this.runInputs().entries().forEach(entry => {
-      const previousEntry = previousEntriesByPath.get(entry.inputPath());
-      if (!previousEntry) {
-        return;
-      }
+    this.runInputs()
+      .entries()
+      .forEach((entry) => {
+        const previousEntry = previousEntriesByPath.get(entry.inputPath());
+        if (!previousEntry) {
+          return;
+        }
 
-      if (!entry.optional()) {
-        entry.entryType.set(previousEntry.entryType());
-        entry.entryValue.set(previousEntry.entryValue());
-        return;
-      }
+        if (!entry.optional()) {
+          entry.entryType.set(previousEntry.entryType());
+          entry.entryValue.set(previousEntry.entryValue());
+          return;
+        }
 
-      if (entry.entryType() === previousEntry.entryType()) {
-        entry.entryValue.set(previousEntry.entryValue());
-      }
-    });
+        if (entry.entryType() === previousEntry.entryType()) {
+          entry.entryValue.set(previousEntry.entryValue());
+        }
+      });
   }
 
   public loadRunsPage(page: number): void {
@@ -266,16 +327,19 @@ export class WorkflowService implements OnDestroy  {
       return;
     }
 
-    const normalizedPage = Number.isFinite(page) ? Math.max(1, Math.floor(page)) : 1;
+    const normalizedPage = Number.isFinite(page)
+      ? Math.max(1, Math.floor(page))
+      : 1;
     this.loadRunsPageForWorkflow(workflowId, normalizedPage);
   }
 
   public updateRunsSort(field: RunSortField): void {
     const workflowId = this.workflow().id;
     if (this.runsSortField() === field) {
-      const nextDirection = this.runsSortDirection() === SortDirection.Descending
-        ? SortDirection.Ascending
-        : SortDirection.Descending;
+      const nextDirection =
+        this.runsSortDirection() === SortDirection.Descending
+          ? SortDirection.Ascending
+          : SortDirection.Descending;
       this.runsSortDirection.set(nextDirection);
     } else {
       this.runsSortField.set(field);
@@ -292,24 +356,32 @@ export class WorkflowService implements OnDestroy  {
   private loadRunsPageForWorkflow(workflowId: string, page: number): void {
     const sortBy = this.runsSortField();
     const sortDirection = this.runsSortDirection();
-    this.serverWorkflowService.getLatestWorkflowRuns(workflowId, page, this.runsPageSize, sortBy, sortDirection).subscribe(result => {
-      if (!result) {
-        this.runs.set([]);
-        this.runsTotal.set(0);
-        return;
-      }
+    this.serverWorkflowService
+      .getLatestWorkflowRuns(
+        workflowId,
+        page,
+        this.runsPageSize,
+        sortBy,
+        sortDirection,
+      )
+      .subscribe((result) => {
+        if (!result) {
+          this.runs.set([]);
+          this.runsTotal.set(0);
+          return;
+        }
 
-      const totalCount = result.totalCount ?? 0;
-      const totalPages = this.getRunsPageCount(totalCount);
-      if (totalPages > 0 && page > totalPages) {
-        this.loadRunsPageForWorkflow(workflowId, totalPages);
-        return;
-      }
+        const totalCount = result.totalCount ?? 0;
+        const totalPages = this.getRunsPageCount(totalCount);
+        if (totalPages > 0 && page > totalPages) {
+          this.loadRunsPageForWorkflow(workflowId, totalPages);
+          return;
+        }
 
-      this.runs.set(result.runs ?? []);
-      this.runsTotal.set(totalCount);
-      this.runsPage.set(page);
-    });
+        this.runs.set(result.runs ?? []);
+        this.runsTotal.set(totalCount);
+        this.runsPage.set(page);
+      });
   }
 
   public getRunsPageCount(totalCount = this.runsTotal()): number {
@@ -320,7 +392,9 @@ export class WorkflowService implements OnDestroy  {
     return Math.ceil(totalCount / this.runsPageSize);
   }
 
-  private syncRunInputsWithStartSnapshot(snapshot?: ContextEntryListSnapshot): void {
+  private syncRunInputsWithStartSnapshot(
+    snapshot?: ContextEntryListSnapshot,
+  ): void {
     if (!snapshot) {
       this.lastStartInputsSnapshot = undefined;
       return;
@@ -332,16 +406,22 @@ export class WorkflowService implements OnDestroy  {
       const runInputs = this.runInputs();
       const currentEntries = runInputs.entries();
       const currentEntriesByPath = new Map<string, ContextEntryEntity>();
-      currentEntries.forEach(entry => currentEntriesByPath.set(entry.inputPath(), entry));
+      currentEntries.forEach((entry) =>
+        currentEntriesByPath.set(entry.inputPath(), entry),
+      );
       const previousEntriesByPath = new Map<string, ContextEntrySnapshot>();
-      previousSnapshot?.entries.forEach(entry => previousEntriesByPath.set(entry.inputPath, entry));
+      previousSnapshot?.entries.forEach((entry) =>
+        previousEntriesByPath.set(entry.inputPath, entry),
+      );
 
       let needsUpdate = currentEntries.length !== snapshot.entries.length;
       const nextEntries: ContextEntryEntity[] = [];
 
       snapshot.entries.forEach((entrySnapshot, index) => {
         const existingEntry = currentEntriesByPath.get(entrySnapshot.inputPath);
-        const previousEntrySnapshot = previousEntriesByPath.get(entrySnapshot.inputPath);
+        const previousEntrySnapshot = previousEntriesByPath.get(
+          entrySnapshot.inputPath,
+        );
         let entry: ContextEntryEntity;
 
         if (existingEntry) {
@@ -352,7 +432,11 @@ export class WorkflowService implements OnDestroy  {
           needsUpdate = true;
         }
 
-        const entryUpdated = this.applyEntrySnapshot(entry, entrySnapshot, previousEntrySnapshot);
+        const entryUpdated = this.applyEntrySnapshot(
+          entry,
+          entrySnapshot,
+          previousEntrySnapshot,
+        );
         needsUpdate = needsUpdate || entryUpdated;
 
         if (!needsUpdate && currentEntries[index] !== entry) {
@@ -374,7 +458,11 @@ export class WorkflowService implements OnDestroy  {
     this.lastStartInputsSnapshot = snapshot;
   }
 
-  private applyEntrySnapshot(entry: ContextEntryEntity, snapshot: ContextEntrySnapshot, previousSnapshot?: ContextEntrySnapshot): boolean {
+  private applyEntrySnapshot(
+    entry: ContextEntryEntity,
+    snapshot: ContextEntrySnapshot,
+    previousSnapshot?: ContextEntrySnapshot,
+  ): boolean {
     let changed = false;
 
     if (entry.purpose() !== snapshot.purpose) {
@@ -423,21 +511,26 @@ export class WorkflowService implements OnDestroy  {
       return;
     }
 
-    if (run.runStatus !== RunStatus.Success && run.runStatus !== RunStatus.Failed) {
+    if (
+      run.runStatus !== RunStatus.Success &&
+      run.runStatus !== RunStatus.Failed
+    ) {
       this.runAssets.set([]);
       return;
     }
 
-    this.serverWorkflowService.getAssets(
-      AssetScope.Run,
-      0,
-      0,
-      AssetSortField.Created,
-      SortDirection.Descending,
-      '',
-      run.runId
-    ).subscribe(assets => {
-      this.runAssets.set(assets ?? []);
-    });
+    this.serverWorkflowService
+      .getAssets(
+        AssetScope.Run,
+        0,
+        0,
+        AssetSortField.Created,
+        SortDirection.Descending,
+        '',
+        run.runId,
+      )
+      .subscribe((assets) => {
+        this.runAssets.set(assets ?? []);
+      });
   }
 }

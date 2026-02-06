@@ -6,7 +6,7 @@ export type UnsavedChangesDecision = 'save' | 'discard' | 'stay';
 @Component({
   selector: 'app-unsaved-changes-dialog',
   standalone: true,
-  templateUrl: './unsaved-changes-dialog.component.html'
+  templateUrl: './unsaved-changes-dialog.component.html',
 })
 export class UnsavedChangesDialogComponent {
   public title = 'Unsaved changes';

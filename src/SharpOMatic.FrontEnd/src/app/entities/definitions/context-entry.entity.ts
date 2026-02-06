@@ -9,7 +9,7 @@ export interface ContextEntrySnapshot extends EntitySnapshot {
   outputPath: string;
   optional: boolean;
   entryType: ContextEntryType;
-  entryValue: string
+  entryValue: string;
 }
 
 export class ContextEntryEntity extends Entity<ContextEntrySnapshot> {
@@ -42,12 +42,14 @@ export class ContextEntryEntity extends Entity<ContextEntrySnapshot> {
       const currentEntryType = this.entryType();
       const currentEntryValue = this.entryValue();
 
-      return (currentPurpose !== snapshot.purpose) ||
-             (currentInputPath !== snapshot.inputPath) ||
-             (currentOutputPath !== snapshot.outputPath) ||
-             (currentOptional !== snapshot.optional) ||
-             (currentEntryType !== snapshot.entryType) ||
-             (currentEntryValue !== snapshot.entryValue);
+      return (
+        currentPurpose !== snapshot.purpose ||
+        currentInputPath !== snapshot.inputPath ||
+        currentOutputPath !== snapshot.outputPath ||
+        currentOptional !== snapshot.optional ||
+        currentEntryType !== snapshot.entryType ||
+        currentEntryValue !== snapshot.entryValue
+      );
     });
   }
 
@@ -64,7 +66,9 @@ export class ContextEntryEntity extends Entity<ContextEntrySnapshot> {
     };
   }
 
-  public static fromSnapshot(snapshot: ContextEntrySnapshot): ContextEntryEntity {
+  public static fromSnapshot(
+    snapshot: ContextEntrySnapshot,
+  ): ContextEntryEntity {
     return new ContextEntryEntity(snapshot);
   }
 
@@ -76,7 +80,7 @@ export class ContextEntryEntity extends Entity<ContextEntrySnapshot> {
       outputPath: '',
       optional: false,
       entryType: ContextEntryType.String,
-      entryValue: ''
+      entryValue: '',
     };
   }
 }

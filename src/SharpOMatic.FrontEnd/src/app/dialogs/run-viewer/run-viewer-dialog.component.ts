@@ -1,14 +1,29 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Inject, OnInit, Output, TemplateRef, ViewChild, inject } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Inject,
+  OnInit,
+  Output,
+  TemplateRef,
+  ViewChild,
+  inject,
+} from '@angular/core';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import { FormsModule } from '@angular/forms';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { TabComponent, TabItem } from '../../components/tab/tab.component';
 import { ContextViewerComponent } from '../../components/context-viewer/context-viewer.component';
-import { ContextEntryListEntity, ContextEntryListSnapshot } from '../../entities/definitions/context-entry-list.entity';
+import {
+  ContextEntryListEntity,
+  ContextEntryListSnapshot,
+} from '../../entities/definitions/context-entry-list.entity';
 import { ContextEntryEntity } from '../../entities/definitions/context-entry.entity';
 import { ContextEntryType } from '../../entities/enumerations/context-entry-type';
-import { parseAssetRefListValue, parseAssetRefValue } from '../../entities/definitions/asset-ref';
+import {
+  parseAssetRefListValue,
+  parseAssetRefValue,
+} from '../../entities/definitions/asset-ref';
 import { RunStatus } from '../../enumerations/run-status';
 import { AssetScope } from '../../enumerations/asset-scope';
 import { AssetSortField } from '../../enumerations/asset-sort-field';
@@ -41,11 +56,11 @@ interface RunPropertyRow {
     MonacoEditorModule,
     TabComponent,
     ContextViewerComponent,
-    TraceViewerComponent
+    TraceViewerComponent,
   ],
   templateUrl: './run-viewer-dialog.component.html',
   styleUrls: ['./run-viewer-dialog.component.scss'],
-  providers: [BsModalService]
+  providers: [BsModalService],
 })
 export class RunViewerDialogComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
@@ -59,7 +74,9 @@ export class RunViewerDialogComponent implements OnInit {
   public tabs: TabItem[] = [];
   public activeTabId = 'run';
   public runProperties: RunPropertyRow[] = [];
-  public runInputs = ContextEntryListEntity.fromSnapshot(ContextEntryListEntity.defaultSnapshot());
+  public runInputs = ContextEntryListEntity.fromSnapshot(
+    ContextEntryListEntity.defaultSnapshot(),
+  );
   public outputContexts: string[] = [];
   public traces: TraceProgressModel[] = [];
   public isLoadingTraces = true;
@@ -69,8 +86,14 @@ export class RunViewerDialogComponent implements OnInit {
 
   private readonly serverRepository = inject(ServerRepositoryService);
   private readonly modalService = inject(BsModalService);
-  private readonly jsonViewerOptions = { ...MonacoService.editorOptionsJson, readOnly: true };
-  private readonly csharpViewerOptions = { ...MonacoService.editorOptionsCSharp, readOnly: true };
+  private readonly jsonViewerOptions = {
+    ...MonacoService.editorOptionsJson,
+    readOnly: true,
+  };
+  private readonly csharpViewerOptions = {
+    ...MonacoService.editorOptionsCSharp,
+    readOnly: true,
+  };
   private readonly viewableTextMediaTypes = new Set([
     'text/plain',
     'text/markdown',
@@ -87,7 +110,9 @@ export class RunViewerDialogComponent implements OnInit {
 
   constructor(@Inject(DIALOG_DATA) data: { run: RunProgressModel }) {
     this.run = data.run;
-    this.outputContexts = this.run.outputContext ? [this.run.outputContext] : [];
+    this.outputContexts = this.run.outputContext
+      ? [this.run.outputContext]
+      : [];
   }
 
   ngOnInit(): void {
@@ -96,7 +121,7 @@ export class RunViewerDialogComponent implements OnInit {
       { id: 'input', title: 'Input', content: this.inputTab },
       { id: 'output', title: 'Output', content: this.outputTab },
       { id: 'trace', title: 'Trace', content: this.traceTab },
-      { id: 'assets', title: 'Assets', content: this.assetsTab }
+      { id: 'assets', title: 'Assets', content: this.assetsTab },
     ];
 
     this.runInputs = this.loadInputEntries();
@@ -138,7 +163,9 @@ export class RunViewerDialogComponent implements OnInit {
     }
 
     if (entry.entryType() === ContextEntryType.AssetRefList) {
-      return parseAssetRefListValue(entry.entryValue()).map(asset => asset.name).join(', ');
+      return parseAssetRefListValue(entry.entryValue())
+        .map((asset) => asset.name)
+        .join(', ');
     }
 
     return entry.entryValue();
@@ -193,24 +220,34 @@ export class RunViewerDialogComponent implements OnInit {
   private loadInputEntries(): ContextEntryListEntity {
     const rawEntries = this.run.inputEntries;
     if (!rawEntries) {
-      return ContextEntryListEntity.fromSnapshot(ContextEntryListEntity.defaultSnapshot());
+      return ContextEntryListEntity.fromSnapshot(
+        ContextEntryListEntity.defaultSnapshot(),
+      );
     }
 
     try {
       const parsed = JSON.parse(rawEntries);
-      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.entries)) {
-        return ContextEntryListEntity.fromSnapshot(parsed as ContextEntryListSnapshot);
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        Array.isArray(parsed.entries)
+      ) {
+        return ContextEntryListEntity.fromSnapshot(
+          parsed as ContextEntryListSnapshot,
+        );
       }
     } catch {
       // Ignore invalid payloads.
     }
 
-    return ContextEntryListEntity.fromSnapshot(ContextEntryListEntity.defaultSnapshot());
+    return ContextEntryListEntity.fromSnapshot(
+      ContextEntryListEntity.defaultSnapshot(),
+    );
   }
 
   private loadTraces(): void {
     this.isLoadingTraces = true;
-    this.serverRepository.getRunTraces(this.run.runId).subscribe(traces => {
+    this.serverRepository.getRunTraces(this.run.runId).subscribe((traces) => {
       this.traces = traces ?? [];
       this.isLoadingTraces = false;
     });
@@ -222,39 +259,59 @@ export class RunViewerDialogComponent implements OnInit {
       return;
     }
 
-    this.serverRepository.getAssets(
-      AssetScope.Run,
-      0,
-      0,
-      AssetSortField.Created,
-      SortDirection.Descending,
-      '',
-      this.run.runId
-    ).subscribe(assets => {
-      this.runAssets = assets ?? [];
-    });
+    this.serverRepository
+      .getAssets(
+        AssetScope.Run,
+        0,
+        0,
+        AssetSortField.Created,
+        SortDirection.Descending,
+        '',
+        this.run.runId,
+      )
+      .subscribe((assets) => {
+        this.runAssets = assets ?? [];
+      });
   }
 
   private buildRunProperties(): RunPropertyRow[] {
     return [
       { label: 'Created', value: this.run.created ?? '', date: true },
-      { label: 'Status', value: this.formatRunStatus(this.run.runStatus), status: true },
-      { label: 'Duration', value: this.formatDuration(this.run.started, this.run.stopped) },
+      {
+        label: 'Status',
+        value: this.formatRunStatus(this.run.runStatus),
+        status: true,
+      },
+      {
+        label: 'Duration',
+        value: this.formatDuration(this.run.started, this.run.stopped),
+      },
       { label: 'Started', value: this.run.started ?? '', date: true },
       { label: 'Stopped', value: this.run.stopped ?? '', date: true },
       { label: 'Message', value: this.formatValue(this.run.message) },
-      { label: 'Error', value: this.formatValue(this.run.error), multiline: true }
+      {
+        label: 'Error',
+        value: this.formatValue(this.run.error),
+        multiline: true,
+      },
     ];
   }
 
-  private formatDuration(started?: string | null, stopped?: string | null): string {
+  private formatDuration(
+    started?: string | null,
+    stopped?: string | null,
+  ): string {
     if (!started || !stopped) {
       return '';
     }
 
     const startedMs = Date.parse(started);
     const stoppedMs = Date.parse(stopped);
-    if (!Number.isFinite(startedMs) || !Number.isFinite(stoppedMs) || stoppedMs < startedMs) {
+    if (
+      !Number.isFinite(startedMs) ||
+      !Number.isFinite(stoppedMs) ||
+      stoppedMs < startedMs
+    ) {
       return '';
     }
 

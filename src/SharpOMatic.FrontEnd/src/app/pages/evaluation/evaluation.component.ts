@@ -1,5 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit, TemplateRef, ViewChild, inject } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  OnInit,
+  TemplateRef,
+  ViewChild,
+  inject,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, forkJoin, map, of, switchMap } from 'rxjs';
@@ -16,11 +23,7 @@ import { ServerRepositoryService } from '../../services/server.repository.servic
 @Component({
   selector: 'app-evaluation',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    TabComponent,
-  ],
+  imports: [CommonModule, FormsModule, TabComponent],
   templateUrl: './evaluation.component.html',
   styleUrls: ['./evaluation.component.scss'],
 })
@@ -48,8 +51,10 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
       { id: 'graders', title: 'Graders', content: this.gradersTab },
     ];
 
-    this.activeTabId = this.resolveTabId(this.route.snapshot.queryParamMap.get('tab'));
-    this.route.queryParamMap.subscribe(params => {
+    this.activeTabId = this.resolveTabId(
+      this.route.snapshot.queryParamMap.get('tab'),
+    );
+    this.route.queryParamMap.subscribe((params) => {
       const nextTabId = this.resolveTabId(params.get('tab'));
       if (nextTabId !== this.activeTabId) {
         this.activeTabId = nextTabId;
@@ -108,7 +113,9 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
       return null;
     }
 
-    const exists = this.workflowSummaries.some(workflow => workflow.id === workflowId);
+    const exists = this.workflowSummaries.some(
+      (workflow) => workflow.id === workflowId,
+    );
     return exists ? workflowId : null;
   }
 
@@ -118,13 +125,18 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
       return null;
     }
 
-    const exists = this.workflowSummaries.some(workflow => workflow.id === workflowId);
+    const exists = this.workflowSummaries.some(
+      (workflow) => workflow.id === workflowId,
+    );
     return exists ? workflowId : null;
   }
 
   appendGrader(): void {
     const graders = this.evalConfig.graders();
-    const snapshot = EvalGrader.defaultSnapshot(graders.length, this.evalConfig.evalConfigId);
+    const snapshot = EvalGrader.defaultSnapshot(
+      graders.length,
+      this.evalConfig.evalConfigId,
+    );
     const next = [...graders, EvalGrader.fromSnapshot(snapshot)];
     this.evalConfig.graders.set(next);
   }
@@ -181,26 +193,35 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   saveChanges(): Observable<void> {
-    const graderSnapshots = this.evalConfig.graders().map((grader, index) =>
-      grader.toSnapshot(index, this.evalConfig.evalConfigId)
-    );
+    const graderSnapshots = this.evalConfig
+      .graders()
+      .map((grader, index) =>
+        grader.toSnapshot(index, this.evalConfig.evalConfigId),
+      );
     const deletedGraderIds = this.evalConfig.getDeletedGraderIds();
 
     return this.serverRepository.upsertEvalConfig(this.evalConfig).pipe(
-      switchMap(() => this.serverRepository.upsertEvalGraders(this.evalConfig.evalConfigId, graderSnapshots)),
+      switchMap(() =>
+        this.serverRepository.upsertEvalGraders(
+          this.evalConfig.evalConfigId,
+          graderSnapshots,
+        ),
+      ),
       switchMap(() => {
         if (deletedGraderIds.length === 0) {
           return of(undefined);
         }
 
-        return forkJoin(deletedGraderIds.map(id => this.serverRepository.deleteEvalGrader(id))).pipe(
-          map(() => undefined)
-        );
+        return forkJoin(
+          deletedGraderIds.map((id) =>
+            this.serverRepository.deleteEvalGrader(id),
+          ),
+        ).pipe(map(() => undefined));
       }),
       map(() => {
         this.evalConfig.markClean();
         return;
-      })
+      }),
     );
   }
 
@@ -213,7 +234,7 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   private loadEvalConfig(id: string): void {
-    this.serverRepository.getEvalConfigDetail(id).subscribe(detail => {
+    this.serverRepository.getEvalConfigDetail(id).subscribe((detail) => {
       if (!detail) {
         void this.router.navigate(['/evaluations']);
         return;
@@ -226,7 +247,9 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
     });
   }
 
-  private createEvalConfigFromDetail(detail: EvalConfigDetailSnapshot): EvalConfig {
+  private createEvalConfigFromDetail(
+    detail: EvalConfigDetailSnapshot,
+  ): EvalConfig {
     const snapshot = {
       ...detail.evalConfig,
       graders: detail.graders,
@@ -238,28 +261,36 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   private loadWorkflows(): void {
-    this.serverRepository.getWorkflowSummaries(
-      '',
-      0,
-      0,
-      WorkflowSortField.Name,
-      SortDirection.Ascending
-    ).subscribe(workflows => {
-      this.workflowSummaries = workflows;
-      this.hasLoadedWorkflows = true;
-      this.tryNormalizeWorkflowSelection();
-    });
+    this.serverRepository
+      .getWorkflowSummaries(
+        '',
+        0,
+        0,
+        WorkflowSortField.Name,
+        SortDirection.Ascending,
+      )
+      .subscribe((workflows) => {
+        this.workflowSummaries = workflows;
+        this.hasLoadedWorkflows = true;
+        this.tryNormalizeWorkflowSelection();
+      });
   }
 
   private tryNormalizeWorkflowSelection(): void {
-    if (this.normalizedWorkflowSelection || !this.hasLoadedConfig || !this.hasLoadedWorkflows) {
+    if (
+      this.normalizedWorkflowSelection ||
+      !this.hasLoadedConfig ||
+      !this.hasLoadedWorkflows
+    ) {
       return;
     }
 
     this.normalizedWorkflowSelection = true;
     const workflowId = this.evalConfig.workflowId();
     if (workflowId) {
-      const exists = this.workflowSummaries.some(workflow => workflow.id === workflowId);
+      const exists = this.workflowSummaries.some(
+        (workflow) => workflow.id === workflowId,
+      );
       if (!exists) {
         this.evalConfig.workflowId.set(null);
       }
@@ -276,13 +307,15 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
     }
 
     let changed = false;
-    graders.forEach(grader => {
+    graders.forEach((grader) => {
       const workflowId = grader.workflowId();
       if (!workflowId) {
         return;
       }
 
-      const exists = this.workflowSummaries.some(workflow => workflow.id === workflowId);
+      const exists = this.workflowSummaries.some(
+        (workflow) => workflow.id === workflowId,
+      );
       if (!exists) {
         grader.workflowId.set(null);
         changed = true;
@@ -315,8 +348,7 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { tab: tabId },
-      queryParamsHandling: 'merge'
+      queryParamsHandling: 'merge',
     });
   }
-
 }

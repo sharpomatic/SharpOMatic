@@ -3,7 +3,7 @@
   position: relative;
   width: 100%;
   height: 100%;
-  background-color: #212529;;
+  background-color: #212529;
   background-image: radial-gradient(circle, #444444 1px, transparent 1px);
   background-size: 16px 16px;
   overflow: hidden;
@@ -69,7 +69,7 @@
 
 .node {
   position: absolute;
-  color: #CED4DA;
+  color: #ced4da;
   background-color: #495057;
   border: 4px solid #495057;
   border-radius: 12px;
@@ -77,21 +77,21 @@
   cursor: grab;
 
   &.selected {
-    color: #FFFFFF;
-    background-color: #3184FD;
-    border-color: #0D6EFD;
+    color: #ffffff;
+    background-color: #3184fd;
+    border-color: #0d6efd;
   }
 
   &.dragging {
-    color: #FFFFFF;
-    background-color: #3184FD;
-    border-color: #0D6EFD;
+    color: #ffffff;
+    background-color: #3184fd;
+    border-color: #0d6efd;
     cursor: grabbing;
     z-index: 1000;
   }
 
   &.running {
-    border-color: #FF8654;
+    border-color: #ff8654;
   }
 
   &.success {
@@ -99,7 +99,7 @@
   }
 
   &.failed {
-    border-color: #FF5454;
+    border-color: #ff5454;
   }
 }
 
@@ -109,7 +109,7 @@
   left: 50%;
   transform: translate(-50%, -100%);
   padding-bottom: 4px;
-  color: #FFFFFF;
+  color: #ffffff;
   pointer-events: none;
   white-space: nowrap;
   font-size: 14px;
@@ -127,8 +127,8 @@
 
 .connector {
   position: absolute;
-  background-color: #343A40;
-  border: 2px solid #DEE2E6;
+  background-color: #343a40;
+  border: 2px solid #dee2e6;
   border-radius: 4px;
   cursor: crosshair;
   z-index: 10;
@@ -144,8 +144,8 @@
   }
 
   &:hover {
-    border-color: #0D6EFD;
-    background-color: #3184FD;
+    border-color: #0d6efd;
+    background-color: #3184fd;
   }
 }
 
@@ -160,7 +160,7 @@
 
 .connector-path {
   fill: none;
-  stroke: #DEE2E6;
+  stroke: #dee2e6;
   stroke-width: 2px;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -171,7 +171,7 @@
   }
 
   &.selected {
-    stroke: #3184FD;
+    stroke: #3184fd;
   }
 }
 
@@ -190,26 +190,26 @@
 
 .connection-path {
   fill: none;
-  stroke: #DEE2E6;
+  stroke: #dee2e6;
   stroke-width: 2px;
   stroke-linecap: round;
   stroke-linejoin: round;
   pointer-events: none; // Clicks are handled by the hit area
 
   &.pending {
-    stroke: #3184FD;
+    stroke: #3184fd;
     stroke-dasharray: 5, 5;
     pointer-events: none;
   }
 
   &.selected {
-    stroke: #3184FD;
+    stroke: #3184fd;
   }
 }
 
 .connector-label {
   position: absolute;
-  color: #DEE2E6;
+  color: #dee2e6;
   background-color: #2d2e2e88;
   border-radius: 6px;
   padding: 3px;

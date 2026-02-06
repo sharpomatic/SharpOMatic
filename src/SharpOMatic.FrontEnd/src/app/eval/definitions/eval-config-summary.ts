@@ -8,14 +8,16 @@ export class EvalConfigSummary {
   constructor(
     public readonly evalConfigId: string,
     public readonly name: string,
-    public readonly description: string
+    public readonly description: string,
   ) {}
 
-  public static fromSnapshot(snapshot: EvalConfigSummarySnapshot): EvalConfigSummary {
+  public static fromSnapshot(
+    snapshot: EvalConfigSummarySnapshot,
+  ): EvalConfigSummary {
     return new EvalConfigSummary(
       snapshot.evalConfigId,
       snapshot.name,
-      snapshot.description
+      snapshot.description,
     );
   }
 }

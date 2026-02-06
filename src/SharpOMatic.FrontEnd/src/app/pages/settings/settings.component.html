@@ -1,24 +1,31 @@
 <div class="container-fluid p-0 settings-page">
-  <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary">
+  <div
+    class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary"
+  >
     <h2><i class="bi bi-activity pe-3 icon-sm"></i>Settings</h2>
   </div>
-  <hr class="m-0"/>
+  <hr class="m-0" />
   <div class="p-3 details">
     <div class="mb-3 server form-line">
       <label for="server-url" class="form-label field-label">Server</label>
       <div class="flex-fill control-column">
-        <input type="text"
-               class="form-control w-100"
-               id="server-url"
-               [(ngModel)]="apiUrlValue"
-               (ngModelChange)="onApiUrlChange($event)"
-               placeholder="API base URL"/>
+        <input
+          type="text"
+          class="form-control w-100"
+          id="server-url"
+          [(ngModel)]="apiUrlValue"
+          (ngModelChange)="onApiUrlChange($event)"
+          placeholder="API base URL"
+        />
       </div>
     </div>
     <div class="settings-list">
       @for (setting of settings; track setting.settingId) {
         <div class="mb-3 form-line">
-          <label class="form-label field-label" [attr.for]="settingInputId(setting)">
+          <label
+            class="form-label field-label"
+            [attr.for]="settingInputId(setting)"
+          >
             {{ setting.displayName }}
           </label>
           <div class="flex-fill control-column">
@@ -28,7 +35,8 @@
                 type="text"
                 class="form-control long"
                 [(ngModel)]="setting.valueString"
-                (blur)="onStringBlur(setting)"/>
+                (blur)="onStringBlur(setting)"
+              />
             }
 
             @if (setting.settingType === settingType.Boolean) {
@@ -38,7 +46,8 @@
                   class="form-check-input long"
                   type="checkbox"
                   [ngModel]="setting.valueBoolean ?? false"
-                  (ngModelChange)="onBooleanChange(setting, $event)">
+                  (ngModelChange)="onBooleanChange(setting, $event)"
+                />
               </div>
             }
 
@@ -49,7 +58,8 @@
                 class="form-control tiny"
                 step="1"
                 [(ngModel)]="setting.valueInteger"
-                (blur)="onIntegerBlur(setting)"/>
+                (blur)="onIntegerBlur(setting)"
+              />
             }
 
             @if (setting.settingType === settingType.Double) {
@@ -59,7 +69,8 @@
                 class="form-control tiny"
                 step="any"
                 [(ngModel)]="setting.valueDouble"
-                (blur)="onDoubleBlur(setting)"/>
+                (blur)="onDoubleBlur(setting)"
+              />
             }
           </div>
         </div>

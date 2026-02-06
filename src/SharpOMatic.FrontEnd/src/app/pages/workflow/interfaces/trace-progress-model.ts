@@ -1,5 +1,5 @@
-import { NodeStatus } from "../../../enumerations/node-status";
-import { NodeType } from "../../../entities/enumerations/node-type";
+import { NodeStatus } from '../../../enumerations/node-status';
+import { NodeType } from '../../../entities/enumerations/node-type';
 
 export interface TraceProgressModel {
   traceId: string;
@@ -16,4 +16,3 @@ export interface TraceProgressModel {
   message?: string;
   error?: string;
 }
-

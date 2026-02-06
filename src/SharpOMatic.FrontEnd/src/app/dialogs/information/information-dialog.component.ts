@@ -4,7 +4,7 @@ import { BsModalRef } from 'ngx-bootstrap/modal';
 @Component({
   selector: 'app-information-dialog',
   standalone: true,
-  templateUrl: './information-dialog.component.html'
+  templateUrl: './information-dialog.component.html',
 })
 export class InformationDialogComponent {
   public title = '';

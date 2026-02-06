@@ -1,22 +1,49 @@
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { catchError, map, Observable, of } from 'rxjs';
-import { Connector, ConnectorSnapshot } from '../metadata/definitions/connector';
-import { WorkflowEntity, WorkflowSnapshot } from '../entities/definitions/workflow.entity';
-import { WorkflowSummaryEntity, WorkflowSummarySnapshot } from '../entities/definitions/workflow.summary.entity';
+import {
+  Connector,
+  ConnectorSnapshot,
+} from '../metadata/definitions/connector';
+import {
+  WorkflowEntity,
+  WorkflowSnapshot,
+} from '../entities/definitions/workflow.entity';
+import {
+  WorkflowSummaryEntity,
+  WorkflowSummarySnapshot,
+} from '../entities/definitions/workflow.summary.entity';
 import { RunProgressModel } from '../pages/workflow/interfaces/run-progress-model';
 import { WorkflowRunPageResult } from '../pages/workflow/interfaces/workflow-run-page-result';
 import { TraceProgressModel } from '../pages/workflow/interfaces/trace-progress-model';
 import { Setting } from '../pages/settings/interfaces/setting';
 import { ContextEntryListEntity } from '../entities/definitions/context-entry-list.entity';
-import { ConnectorConfig, ConnectorConfigSnapshot } from '../metadata/definitions/connector-config';
-import { ConnectorSummary, ConnectorSummarySnapshot } from '../metadata/definitions/connector-summary';
-import { ModelConfig, ModelConfigSnapshot } from '../metadata/definitions/model-config';
-import { ModelSummary, ModelSummarySnapshot } from '../metadata/definitions/model-summary';
+import {
+  ConnectorConfig,
+  ConnectorConfigSnapshot,
+} from '../metadata/definitions/connector-config';
+import {
+  ConnectorSummary,
+  ConnectorSummarySnapshot,
+} from '../metadata/definitions/connector-summary';
+import {
+  ModelConfig,
+  ModelConfigSnapshot,
+} from '../metadata/definitions/model-config';
+import {
+  ModelSummary,
+  ModelSummarySnapshot,
+} from '../metadata/definitions/model-summary';
 import { Model, ModelSnapshot } from '../metadata/definitions/model';
-import { EvalConfig, EvalConfigSnapshot } from '../eval/definitions/eval-config';
+import {
+  EvalConfig,
+  EvalConfigSnapshot,
+} from '../eval/definitions/eval-config';
 import { EvalConfigDetailSnapshot } from '../eval/definitions/eval-config-detail';
-import { EvalConfigSummary, EvalConfigSummarySnapshot } from '../eval/definitions/eval-config-summary';
+import {
+  EvalConfigSummary,
+  EvalConfigSummarySnapshot,
+} from '../eval/definitions/eval-config-summary';
 import { EvalGraderSnapshot } from '../eval/definitions/eval-grader';
 import { EvalColumnSnapshot } from '../eval/definitions/eval-column';
 import { EvalRowSnapshot } from '../eval/definitions/eval-row';
@@ -49,7 +76,7 @@ export class ServerRepositoryService {
     skip = 0,
     take = 0,
     sortBy: WorkflowSortField = WorkflowSortField.Name,
-    sortDirection: SortDirection = SortDirection.Ascending
+    sortDirection: SortDirection = SortDirection.Ascending,
   ): Observable<WorkflowSummaryEntity[]> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams()
@@ -61,13 +88,15 @@ export class ServerRepositoryService {
       params = params.set('search', search.trim());
     }
 
-    return this.http.get<WorkflowSummarySnapshot[]>(`${apiUrl}/api/workflow`, { params }).pipe(
-      map(snapshots => snapshots.map(WorkflowSummaryEntity.fromSnapshot)),
-      catchError((error) => {
-        this.notifyError('Loading workflows', error);
-        return of([]);
-      })
-    );
+    return this.http
+      .get<WorkflowSummarySnapshot[]>(`${apiUrl}/api/workflow`, { params })
+      .pipe(
+        map((snapshots) => snapshots.map(WorkflowSummaryEntity.fromSnapshot)),
+        catchError((error) => {
+          this.notifyError('Loading workflows', error);
+          return of([]);
+        }),
+      );
   }
 
   public getWorkflowCount(search = ''): Observable<number> {
@@ -77,43 +106,52 @@ export class ServerRepositoryService {
       params = params.set('search', search.trim());
     }
 
-    return this.http.get<number>(`${apiUrl}/api/workflow/count`, { params }).pipe(
-      catchError((error) => {
-        this.notifyError('Loading workflow count', error);
-        return of(0);
-      })
-    );
+    return this.http
+      .get<number>(`${apiUrl}/api/workflow/count`, { params })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading workflow count', error);
+          return of(0);
+        }),
+      );
   }
 
   public getWorkflow(id: string): Observable<WorkflowEntity | null> {
     const apiUrl = this.settingsService.apiUrl();
     return this.http.get<WorkflowSnapshot>(`${apiUrl}/api/workflow/${id}`).pipe(
-      map(snapshot => WorkflowEntity.fromSnapshot(snapshot)),
+      map((snapshot) => WorkflowEntity.fromSnapshot(snapshot)),
       catchError((error) => {
         this.notifyError('Loading workflow', error);
         return of(null);
-      })
+      }),
     );
   }
 
   public upsertWorkflow(workflow: WorkflowEntity): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.post<void>(`${apiUrl}/api/workflow`, workflow.toSnapshot()).pipe(
-      catchError((error) => {
-        this.notifyError('Saving workflow', error);
-        return of(undefined);
-      })
-    );
+    return this.http
+      .post<void>(`${apiUrl}/api/workflow`, workflow.toSnapshot())
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Saving workflow', error);
+          return of(undefined);
+        }),
+      );
   }
 
-  public runWorkflow(id: string, entryList: ContextEntryListEntity): Observable<string | undefined>  {
+  public runWorkflow(
+    id: string,
+    entryList: ContextEntryListEntity,
+  ): Observable<string | undefined> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.post<string>(`${apiUrl}/api/workflow/run/${id}`, entryList.toSnapshot()).pipe(
-      catchError((error) => {
-        this.notifyError('Starting workflow run', error);
-        return of(undefined);
-      })
-    );
+    return this.http
+      .post<string>(`${apiUrl}/api/workflow/run/${id}`, entryList.toSnapshot())
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Starting workflow run', error);
+          return of(undefined);
+        }),
+      );
   }
 
   public deleteWorkflow(id: string): Observable<void> {
@@ -122,18 +160,20 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Deleting workflow', error);
         return of(undefined);
-      })
+      }),
     );
   }
 
   public copyWorkflow(id: string): Observable<string | undefined> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.post<string>(`${apiUrl}/api/workflow/copy/${id}`, null).pipe(
-      catchError((error) => {
-        this.notifyError('Copying workflow', error);
-        return of(undefined);
-      })
-    );
+    return this.http
+      .post<string>(`${apiUrl}/api/workflow/copy/${id}`, null)
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Copying workflow', error);
+          return of(undefined);
+        }),
+      );
   }
 
   public getSampleWorkflowNames(): Observable<string[]> {
@@ -142,29 +182,35 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Loading workflow samples', error);
         return of([]);
-      })
+      }),
     );
   }
 
-  public createWorkflowFromSample(sampleName: string): Observable<string | undefined> {
+  public createWorkflowFromSample(
+    sampleName: string,
+  ): Observable<string | undefined> {
     const apiUrl = this.settingsService.apiUrl();
     const encodedSampleName = encodeURIComponent(sampleName);
-    return this.http.post<string>(`${apiUrl}/api/samples/${encodedSampleName}`, null).pipe(
-      catchError((error) => {
-        this.notifyError('Creating workflow from sample', error);
-        return of(undefined);
-      })
-    );
+    return this.http
+      .post<string>(`${apiUrl}/api/samples/${encodedSampleName}`, null)
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Creating workflow from sample', error);
+          return of(undefined);
+        }),
+      );
   }
 
   public getLatestWorkflowRun(id: string): Observable<RunProgressModel | null> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<RunProgressModel>(`${apiUrl}/api/run/latestforworkflow/${id}`).pipe(
-      catchError((error: any) => {
-        this.notifyError('Loading latest workflow run', error);
-        return of(null);
-      })
-    );
+    return this.http
+      .get<RunProgressModel>(`${apiUrl}/api/run/latestforworkflow/${id}`)
+      .pipe(
+        catchError((error: any) => {
+          this.notifyError('Loading latest workflow run', error);
+          return of(null);
+        }),
+      );
   }
 
   public getLatestWorkflowRuns(
@@ -172,28 +218,35 @@ export class ServerRepositoryService {
     page: number,
     count: number,
     sortBy: RunSortField,
-    sortDirection: SortDirection
+    sortDirection: SortDirection,
   ): Observable<WorkflowRunPageResult | null> {
     const apiUrl = this.settingsService.apiUrl();
     const params = new HttpParams()
       .set('sortBy', sortBy)
       .set('sortDirection', sortDirection);
-    return this.http.get<WorkflowRunPageResult>(`${apiUrl}/api/run/latestforworkflow/${id}/${page}/${count}`, { params }).pipe(
-      catchError((error) => {
-        this.notifyError('Loading latest workflow runs', error);
-        return of(null);
-      })
-    );
+    return this.http
+      .get<WorkflowRunPageResult>(
+        `${apiUrl}/api/run/latestforworkflow/${id}/${page}/${count}`,
+        { params },
+      )
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading latest workflow runs', error);
+          return of(null);
+        }),
+      );
   }
 
   public getRunTraces(id: string): Observable<TraceProgressModel[] | null> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<TraceProgressModel[]>(`${apiUrl}/api/trace/forrun/${id}`).pipe(
-      catchError((error) => {
-        this.notifyError('Loading run traces', error);
-        return of(null);
-      })
-    );
+    return this.http
+      .get<TraceProgressModel[]>(`${apiUrl}/api/trace/forrun/${id}`)
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading run traces', error);
+          return of(null);
+        }),
+      );
   }
 
   public getSettings(): Observable<Setting[]> {
@@ -202,7 +255,7 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Loading settings', error);
         return of([]);
-      })
+      }),
     );
   }
 
@@ -212,19 +265,23 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Saving setting', error);
         return of(undefined);
-      })
+      }),
     );
   }
 
   public getConnectorConfigs(): Observable<ConnectorConfig[]> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<ConnectorConfigSnapshot[]>(`${apiUrl}/api/metadata/connector-configs`).pipe(
-      map(snapshots => snapshots.map(ConnectorConfig.fromSnapshot)),
-      catchError((error) => {
-        this.notifyError('Loading connector configs', error);
-        return of([]);
-      })
-    );
+    return this.http
+      .get<
+        ConnectorConfigSnapshot[]
+      >(`${apiUrl}/api/metadata/connector-configs`)
+      .pipe(
+        map((snapshots) => snapshots.map(ConnectorConfig.fromSnapshot)),
+        catchError((error) => {
+          this.notifyError('Loading connector configs', error);
+          return of([]);
+        }),
+      );
   }
 
   public getConnectorSummaries(
@@ -232,7 +289,7 @@ export class ServerRepositoryService {
     skip = 0,
     take = 0,
     sortBy: ConnectorSortField = ConnectorSortField.Name,
-    sortDirection: SortDirection = SortDirection.Ascending
+    sortDirection: SortDirection = SortDirection.Ascending,
   ): Observable<ConnectorSummary[]> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams()
@@ -244,13 +301,17 @@ export class ServerRepositoryService {
       params = params.set('search', search.trim());
     }
 
-    return this.http.get<ConnectorSummarySnapshot[]>(`${apiUrl}/api/metadata/connectors`, { params }).pipe(
-      map(snapshots => snapshots.map(ConnectorSummary.fromSnapshot)),
-      catchError((error) => {
-        this.notifyError('Loading connectors', error);
-        return of([]);
-      })
-    );
+    return this.http
+      .get<
+        ConnectorSummarySnapshot[]
+      >(`${apiUrl}/api/metadata/connectors`, { params })
+      .pipe(
+        map((snapshots) => snapshots.map(ConnectorSummary.fromSnapshot)),
+        catchError((error) => {
+          this.notifyError('Loading connectors', error);
+          return of([]);
+        }),
+      );
   }
 
   public getConnectorCount(search = ''): Observable<number> {
@@ -260,54 +321,64 @@ export class ServerRepositoryService {
       params = params.set('search', search.trim());
     }
 
-    return this.http.get<number>(`${apiUrl}/api/metadata/connectors/count`, { params }).pipe(
-      catchError((error) => {
-        this.notifyError('Loading connector count', error);
-        return of(0);
-      })
-    );
+    return this.http
+      .get<number>(`${apiUrl}/api/metadata/connectors/count`, { params })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading connector count', error);
+          return of(0);
+        }),
+      );
   }
 
   public getConnector(id: string): Observable<Connector | null> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<ConnectorSnapshot>(`${apiUrl}/api/metadata/connectors/${id}`).pipe(
-      map(Connector.fromSnapshot),
-      catchError((error) => {
-        this.notifyError('Loading connector', error);
-        return of(null);
-      })
-    );
+    return this.http
+      .get<ConnectorSnapshot>(`${apiUrl}/api/metadata/connectors/${id}`)
+      .pipe(
+        map(Connector.fromSnapshot),
+        catchError((error) => {
+          this.notifyError('Loading connector', error);
+          return of(null);
+        }),
+      );
   }
 
   public upsertConnector(connector: Connector): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.post<void>(`${apiUrl}/api/metadata/connectors`, connector.toSnapshot()).pipe(
-      catchError((error) => {
-        this.notifyError('Saving connector', error);
-        return of(undefined);
-      })
-    );
+    return this.http
+      .post<void>(`${apiUrl}/api/metadata/connectors`, connector.toSnapshot())
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Saving connector', error);
+          return of(undefined);
+        }),
+      );
   }
 
   public deleteConnector(id: string): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.delete<void>(`${apiUrl}/api/metadata/connectors/${id}`).pipe(
-      catchError((error) => {
-        this.notifyError('Deleting connector', error);
-        return of(undefined);
-      })
-    );
+    return this.http
+      .delete<void>(`${apiUrl}/api/metadata/connectors/${id}`)
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Deleting connector', error);
+          return of(undefined);
+        }),
+      );
   }
 
   public getModelConfigs(): Observable<ModelConfig[]> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<ModelConfigSnapshot[]>(`${apiUrl}/api/metadata/model-configs`).pipe(
-      map(snapshots => snapshots.map(ModelConfig.fromSnapshot)),
-      catchError((error) => {
-        this.notifyError('Loading model configs', error);
-        return of([]);
-      })
-    );
+    return this.http
+      .get<ModelConfigSnapshot[]>(`${apiUrl}/api/metadata/model-configs`)
+      .pipe(
+        map((snapshots) => snapshots.map(ModelConfig.fromSnapshot)),
+        catchError((error) => {
+          this.notifyError('Loading model configs', error);
+          return of([]);
+        }),
+      );
   }
 
   public getModelSummaries(
@@ -315,7 +386,7 @@ export class ServerRepositoryService {
     skip = 0,
     take = 0,
     sortBy: ModelSortField = ModelSortField.Name,
-    sortDirection: SortDirection = SortDirection.Ascending
+    sortDirection: SortDirection = SortDirection.Ascending,
   ): Observable<ModelSummary[]> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams()
@@ -327,13 +398,15 @@ export class ServerRepositoryService {
       params = params.set('search', search.trim());
     }
 
-    return this.http.get<ModelSummarySnapshot[]>(`${apiUrl}/api/metadata/models`, { params }).pipe(
-      map(snapshots => snapshots.map(ModelSummary.fromSnapshot)),
-      catchError((error) => {
-        this.notifyError('Loading models', error);
-        return of([]);
-      })
-    );
+    return this.http
+      .get<ModelSummarySnapshot[]>(`${apiUrl}/api/metadata/models`, { params })
+      .pipe(
+        map((snapshots) => snapshots.map(ModelSummary.fromSnapshot)),
+        catchError((error) => {
+          this.notifyError('Loading models', error);
+          return of([]);
+        }),
+      );
   }
 
   public getModelCount(search = ''): Observable<number> {
@@ -343,33 +416,39 @@ export class ServerRepositoryService {
       params = params.set('search', search.trim());
     }
 
-    return this.http.get<number>(`${apiUrl}/api/metadata/models/count`, { params }).pipe(
-      catchError((error) => {
-        this.notifyError('Loading model count', error);
-        return of(0);
-      })
-    );
+    return this.http
+      .get<number>(`${apiUrl}/api/metadata/models/count`, { params })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading model count', error);
+          return of(0);
+        }),
+      );
   }
 
   public getModel(id: string): Observable<Model | null> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<ModelSnapshot>(`${apiUrl}/api/metadata/models/${id}`).pipe(
-      map(Model.fromSnapshot),
-      catchError((error) => {
-        this.notifyError('Loading model', error);
-        return of(null);
-      })
-    );
+    return this.http
+      .get<ModelSnapshot>(`${apiUrl}/api/metadata/models/${id}`)
+      .pipe(
+        map(Model.fromSnapshot),
+        catchError((error) => {
+          this.notifyError('Loading model', error);
+          return of(null);
+        }),
+      );
   }
 
   public upsertModel(model: Model): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.post<void>(`${apiUrl}/api/metadata/models`, model.toSnapshot()).pipe(
-      catchError((error) => {
-        this.notifyError('Saving model', error);
-        return of(undefined);
-      })
-    );
+    return this.http
+      .post<void>(`${apiUrl}/api/metadata/models`, model.toSnapshot())
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Saving model', error);
+          return of(undefined);
+        }),
+      );
   }
 
   public deleteModel(id: string): Observable<void> {
@@ -378,7 +457,7 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Deleting model', error);
         return of(undefined);
-      })
+      }),
     );
   }
 
@@ -387,7 +466,7 @@ export class ServerRepositoryService {
     skip = 0,
     take = 0,
     sortBy: EvalConfigSortField = EvalConfigSortField.Name,
-    sortDirection: SortDirection = SortDirection.Ascending
+    sortDirection: SortDirection = SortDirection.Ascending,
   ): Observable<EvalConfigSummary[]> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams()
@@ -399,13 +478,17 @@ export class ServerRepositoryService {
       params = params.set('search', search.trim());
     }
 
-    return this.http.get<EvalConfigSummarySnapshot[]>(`${apiUrl}/api/eval/configs`, { params }).pipe(
-      map(snapshots => snapshots.map(EvalConfigSummary.fromSnapshot)),
-      catchError((error) => {
-        this.notifyError('Loading eval configs', error);
-        return of([]);
-      })
-    );
+    return this.http
+      .get<
+        EvalConfigSummarySnapshot[]
+      >(`${apiUrl}/api/eval/configs`, { params })
+      .pipe(
+        map((snapshots) => snapshots.map(EvalConfigSummary.fromSnapshot)),
+        catchError((error) => {
+          this.notifyError('Loading eval configs', error);
+          return of([]);
+        }),
+      );
   }
 
   public getEvalConfigCount(search = ''): Observable<number> {
@@ -415,43 +498,53 @@ export class ServerRepositoryService {
       params = params.set('search', search.trim());
     }
 
-    return this.http.get<number>(`${apiUrl}/api/eval/configs/count`, { params }).pipe(
-      catchError((error) => {
-        this.notifyError('Loading eval config count', error);
-        return of(0);
-      })
-    );
+    return this.http
+      .get<number>(`${apiUrl}/api/eval/configs/count`, { params })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading eval config count', error);
+          return of(0);
+        }),
+      );
   }
 
   public getEvalConfig(id: string): Observable<EvalConfig | null> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<EvalConfigSnapshot>(`${apiUrl}/api/eval/configs/${id}`).pipe(
-      map(EvalConfig.fromSnapshot),
-      catchError((error) => {
-        this.notifyError('Loading eval config', error);
-        return of(null);
-      })
-    );
+    return this.http
+      .get<EvalConfigSnapshot>(`${apiUrl}/api/eval/configs/${id}`)
+      .pipe(
+        map(EvalConfig.fromSnapshot),
+        catchError((error) => {
+          this.notifyError('Loading eval config', error);
+          return of(null);
+        }),
+      );
   }
 
-  public getEvalConfigDetail(id: string): Observable<EvalConfigDetailSnapshot | null> {
+  public getEvalConfigDetail(
+    id: string,
+  ): Observable<EvalConfigDetailSnapshot | null> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<EvalConfigDetailSnapshot>(`${apiUrl}/api/eval/configs/${id}/detail`).pipe(
-      catchError((error) => {
-        this.notifyError('Loading eval config detail', error);
-        return of(null);
-      })
-    );
+    return this.http
+      .get<EvalConfigDetailSnapshot>(`${apiUrl}/api/eval/configs/${id}/detail`)
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading eval config detail', error);
+          return of(null);
+        }),
+      );
   }
 
   public upsertEvalConfig(evalConfig: EvalConfig): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.post<void>(`${apiUrl}/api/eval/configs`, evalConfig.toSnapshot()).pipe(
-      catchError((error) => {
-        this.notifyError('Saving eval config', error);
-        return of(undefined);
-      })
-    );
+    return this.http
+      .post<void>(`${apiUrl}/api/eval/configs`, evalConfig.toSnapshot())
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Saving eval config', error);
+          return of(undefined);
+        }),
+      );
   }
 
   public deleteEvalConfig(id: string): Observable<void> {
@@ -460,18 +553,23 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Deleting eval config', error);
         return of(undefined);
-      })
+      }),
     );
   }
 
-  public upsertEvalGraders(evalConfigId: string, graders: EvalGraderSnapshot[]): Observable<void> {
+  public upsertEvalGraders(
+    evalConfigId: string,
+    graders: EvalGraderSnapshot[],
+  ): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/graders`, graders).pipe(
-      catchError((error) => {
-        this.notifyError('Saving eval graders', error);
-        return of(undefined);
-      })
-    );
+    return this.http
+      .post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/graders`, graders)
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Saving eval graders', error);
+          return of(undefined);
+        }),
+      );
   }
 
   public deleteEvalGrader(id: string): Observable<void> {
@@ -480,18 +578,23 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Deleting eval grader', error);
         return of(undefined);
-      })
+      }),
     );
   }
 
-  public upsertEvalColumns(evalConfigId: string, columns: EvalColumnSnapshot[]): Observable<void> {
+  public upsertEvalColumns(
+    evalConfigId: string,
+    columns: EvalColumnSnapshot[],
+  ): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/columns`, columns).pipe(
-      catchError((error) => {
-        this.notifyError('Saving eval columns', error);
-        return of(undefined);
-      })
-    );
+    return this.http
+      .post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/columns`, columns)
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Saving eval columns', error);
+          return of(undefined);
+        }),
+      );
   }
 
   public deleteEvalColumn(id: string): Observable<void> {
@@ -500,18 +603,23 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Deleting eval column', error);
         return of(undefined);
-      })
+      }),
     );
   }
 
-  public upsertEvalRows(evalConfigId: string, rows: EvalRowSnapshot[]): Observable<void> {
+  public upsertEvalRows(
+    evalConfigId: string,
+    rows: EvalRowSnapshot[],
+  ): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/rows`, rows).pipe(
-      catchError((error) => {
-        this.notifyError('Saving eval rows', error);
-        return of(undefined);
-      })
-    );
+    return this.http
+      .post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/rows`, rows)
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Saving eval rows', error);
+          return of(undefined);
+        }),
+      );
   }
 
   public deleteEvalRow(id: string): Observable<void> {
@@ -520,18 +628,23 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Deleting eval row', error);
         return of(undefined);
-      })
+      }),
     );
   }
 
-  public upsertEvalData(evalConfigId: string, data: EvalDataSnapshot[]): Observable<void> {
+  public upsertEvalData(
+    evalConfigId: string,
+    data: EvalDataSnapshot[],
+  ): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/data`, data).pipe(
-      catchError((error) => {
-        this.notifyError('Saving eval data', error);
-        return of(undefined);
-      })
-    );
+    return this.http
+      .post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/data`, data)
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Saving eval data', error);
+          return of(undefined);
+        }),
+      );
   }
 
   public deleteEvalData(id: string): Observable<void> {
@@ -540,7 +653,7 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Deleting eval data', error);
         return of(undefined);
-      })
+      }),
     );
   }
 
@@ -550,7 +663,7 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Loading schema type names', error);
         return of([]);
-      })
+      }),
     );
   }
 
@@ -560,7 +673,7 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Loading schema type', error);
         return of(null);
-      })
+      }),
     );
   }
 
@@ -570,7 +683,7 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Loading tool display names', error);
         return of([]);
-      })
+      }),
     );
   }
 
@@ -581,7 +694,7 @@ export class ServerRepositoryService {
     sortBy = AssetSortField.Name,
     sortDirection = SortDirection.Descending,
     search = '',
-    runId?: string
+    runId?: string,
   ): Observable<AssetSummary[]> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams()
@@ -596,15 +709,21 @@ export class ServerRepositoryService {
     if (runId) {
       params = params.set('runId', runId);
     }
-    return this.http.get<AssetSummary[]>(`${apiUrl}/api/assets`, { params }).pipe(
-      catchError((error) => {
-        this.notifyError('Loading assets', error);
-        return of([]);
-      })
-    );
+    return this.http
+      .get<AssetSummary[]>(`${apiUrl}/api/assets`, { params })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading assets', error);
+          return of([]);
+        }),
+      );
   }
 
-  public getAssetsCount(scope: AssetScope = AssetScope.Library, search = '', runId?: string): Observable<number> {
+  public getAssetsCount(
+    scope: AssetScope = AssetScope.Library,
+    search = '',
+    runId?: string,
+  ): Observable<number> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams().set('scope', scope);
     if (search.trim().length > 0) {
@@ -617,11 +736,16 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Loading asset count', error);
         return of(0);
-      })
+      }),
     );
   }
 
-  public uploadAsset(file: File, name: string, scope: AssetScope, runId?: string): Observable<AssetSummary | null> {
+  public uploadAsset(
+    file: File,
+    name: string,
+    scope: AssetScope,
+    runId?: string,
+  ): Observable<AssetSummary | null> {
     const apiUrl = this.settingsService.apiUrl();
     const formData = new FormData();
     formData.append('file', file);
@@ -635,7 +759,7 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Uploading asset', error);
         return of(null);
-      })
+      }),
     );
   }
 
@@ -645,39 +769,48 @@ export class ServerRepositoryService {
       catchError((error) => {
         this.notifyError('Deleting asset', error);
         return of(undefined);
-      })
+      }),
     );
   }
 
   public getAssetContent(assetId: string): Observable<Blob | null> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get(`${apiUrl}/api/assets/${assetId}/content`, { responseType: 'blob' }).pipe(
-      catchError((error) => {
-        this.notifyError('Downloading asset', error);
-        return of(null);
-      })
-    );
+    return this.http
+      .get(`${apiUrl}/api/assets/${assetId}/content`, { responseType: 'blob' })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Downloading asset', error);
+          return of(null);
+        }),
+      );
   }
 
   public getAssetText(assetId: string): Observable<AssetText | null> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<AssetText>(`${apiUrl}/api/assets/${assetId}/text`).pipe(
-      catchError((error) => {
-        this.notifyError('Loading asset text', error);
-        return of(null);
-      })
-    );
+    return this.http
+      .get<AssetText>(`${apiUrl}/api/assets/${assetId}/text`)
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading asset text', error);
+          return of(null);
+        }),
+      );
   }
 
-  public updateAssetText(assetId: string, content: string): Observable<boolean> {
+  public updateAssetText(
+    assetId: string,
+    content: string,
+  ): Observable<boolean> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.put<void>(`${apiUrl}/api/assets/${assetId}/text`, { content }).pipe(
-      map(() => true),
-      catchError((error) => {
-        this.notifyError('Saving asset text', error);
-        return of(false);
-      })
-    );
+    return this.http
+      .put<void>(`${apiUrl}/api/assets/${assetId}/text`, { content })
+      .pipe(
+        map(() => true),
+        catchError((error) => {
+          this.notifyError('Saving asset text', error);
+          return of(false);
+        }),
+      );
   }
 
   public getAssetContentUrl(assetId: string): string {
@@ -690,10 +823,15 @@ export class ServerRepositoryService {
     const formData = new FormData();
     formData.append('file', file);
 
-    return this.http.post<TransferImportResult>(`${apiUrl}/api/transfer/import`, formData);
+    return this.http.post<TransferImportResult>(
+      `${apiUrl}/api/transfer/import`,
+      formData,
+    );
   }
 
-  public exportTransfer(request: TransferExportRequest): Observable<HttpResponse<Blob>> {
+  public exportTransfer(
+    request: TransferExportRequest,
+  ): Observable<HttpResponse<Blob>> {
     const apiUrl = this.settingsService.apiUrl();
     return this.http.post(`${apiUrl}/api/transfer/export`, request, {
       observe: 'response',
@@ -703,7 +841,9 @@ export class ServerRepositoryService {
 
   private notifyError(operation: string, error: unknown): void {
     const detail = this.toastService.extractErrorDetail(error);
-    const message = detail ? `${operation} failed: ${detail}` : `${operation} failed.`;
+    const message = detail
+      ? `${operation} failed: ${detail}`
+      : `${operation} failed.`;
     this.toastService.error(message);
   }
 }

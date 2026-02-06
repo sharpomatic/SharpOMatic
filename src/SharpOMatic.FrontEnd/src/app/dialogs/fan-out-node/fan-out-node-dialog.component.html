@@ -1,7 +1,11 @@
 <div class="d-flex flex-column dialog-overlay bg-body-secondary">
   <div class="d-flex flex-column dialog-content">
-    <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1">
-      <h2 class=""><i class="bi-box-arrow-right pe-3 icon-sm"></i>{{ node.title() }}</h2>
+    <div
+      class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1"
+    >
+      <h2 class="">
+        <i class="bi-box-arrow-right pe-3 icon-sm"></i>{{ node.title() }}
+      </h2>
       <button class="btn btn-primary" (click)="onClose()">Close</button>
     </div>
     <div class="tab-shell">
@@ -10,26 +14,49 @@
     <ng-template #detailsTab>
       <div class="p-3 details">
         <div class="mb-3 form-line">
-          <label for="workflow-title" class="form-label field-label">Title</label>
+          <label for="workflow-title" class="form-label field-label"
+            >Title</label
+          >
           <div class="flex-fill control-column title">
-            <input type="text" class="form-control w-100" id="workflow-title" [ngModel]="node.title()" (ngModelChange)="node.title.set($event)"/>
+            <input
+              type="text"
+              class="form-control w-100"
+              id="workflow-title"
+              [ngModel]="node.title()"
+              (ngModelChange)="node.title.set($event)"
+            />
           </div>
         </div>
 
-        <hr/>
+        <hr />
 
         <div class="mb-3">
           <label class="form-label mb-4">Outputs</label>
           @for (name of node.names(); track $index; let i = $index) {
             <div class="d-flex align-items-start gap-2 mb-2">
-              <input type="text" class="form-control editName" [ngModel]="name" (ngModelChange)="onUpdateOutput(i, $event)" />
-              <button class="btn btn-outline-danger" [disabled]="i === 0" (click)="onDeleteOutput(i)">
+              <input
+                type="text"
+                class="form-control editName"
+                [ngModel]="name"
+                (ngModelChange)="onUpdateOutput(i, $event)"
+              />
+              <button
+                class="btn btn-outline-danger"
+                [disabled]="i === 0"
+                (click)="onDeleteOutput(i)"
+              >
                 <i class="bi bi-trash"></i>
               </button>
             </div>
-          }  
+          }
 
-          <button class="btn btn-primary mt-2" type="button" (click)="onAddOutput()">Add</button>
+          <button
+            class="btn btn-primary mt-2"
+            type="button"
+            (click)="onAddOutput()"
+          >
+            Add
+          </button>
         </div>
       </div>
     </ng-template>
@@ -43,6 +70,6 @@
       <div class="bg-body-tertiary p-3">
         <app-context-viewer [contexts]="outputTraces"></app-context-viewer>
       </div>
-    </ng-template>    
+    </ng-template>
   </div>
-</div> 
+</div>

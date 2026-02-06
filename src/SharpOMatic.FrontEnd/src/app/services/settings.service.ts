@@ -1,4 +1,10 @@
-import { Injectable, Signal, WritableSignal, inject, signal } from '@angular/core';
+import {
+  Injectable,
+  Signal,
+  WritableSignal,
+  inject,
+  signal,
+} from '@angular/core';
 import { API_URL } from '../components/app/app.tokens';
 
 @Injectable({
@@ -33,15 +39,13 @@ export class SettingsService {
       if (stored && stored.trim().length) {
         return stored.trim();
       }
-    } catch {
-    }
+    } catch {}
     return null;
   }
 
   private writeStoredApiUrl(value: string): void {
     try {
       localStorage.setItem(this.storageKey, value);
-    } catch {
-    }
+    } catch {}
   }
 }

@@ -1,5 +1,11 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { AfterViewInit, Component, ElementRef, ViewChild, inject } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  ViewChild,
+  inject,
+} from '@angular/core';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { forkJoin } from 'rxjs';
 import { AssetPreviewDialogComponent } from '../../dialogs/asset-preview/asset-preview-dialog.component';
@@ -15,10 +21,7 @@ import { AssetSummary } from './interfaces/asset-summary';
 @Component({
   selector: 'app-assets',
   standalone: true,
-  imports: [
-    CommonModule,
-    DatePipe,
-  ],
+  imports: [CommonModule, DatePipe],
   templateUrl: './assets.component.html',
   styleUrls: ['./assets.component.scss'],
   providers: [BsModalService],
@@ -78,7 +81,9 @@ export class AssetsComponent implements AfterViewInit {
     }
 
     this.isUploading = true;
-    const uploads = files.map(file => this.serverRepository.uploadAsset(file, file.name, AssetScope.Library));
+    const uploads = files.map((file) =>
+      this.serverRepository.uploadAsset(file, file.name, AssetScope.Library),
+    );
     forkJoin(uploads).subscribe(() => {
       this.isUploading = false;
       this.refreshAssets();
@@ -203,9 +208,10 @@ export class AssetsComponent implements AfterViewInit {
 
   onAssetsSortChange(field: AssetSortField): void {
     if (this.assetsSortField === field) {
-      this.assetsSortDirection = this.assetsSortDirection === SortDirection.Descending
-        ? SortDirection.Ascending
-        : SortDirection.Descending;
+      this.assetsSortDirection =
+        this.assetsSortDirection === SortDirection.Descending
+          ? SortDirection.Ascending
+          : SortDirection.Descending;
     } else {
       this.assetsSortField = field;
       this.assetsSortDirection = SortDirection.Descending;
@@ -242,28 +248,33 @@ export class AssetsComponent implements AfterViewInit {
 
   private refreshAssets(): void {
     const search = this.searchText.trim();
-    this.serverRepository.getAssetsCount(AssetScope.Library, search).subscribe(total => {
-      this.assetsTotal = total;
-      const totalPages = this.assetsPageCount();
-      const nextPage = totalPages === 0 ? 1 : Math.min(this.assetsPage, totalPages);
-      this.loadAssetsPage(nextPage);
-    });
+    this.serverRepository
+      .getAssetsCount(AssetScope.Library, search)
+      .subscribe((total) => {
+        this.assetsTotal = total;
+        const totalPages = this.assetsPageCount();
+        const nextPage =
+          totalPages === 0 ? 1 : Math.min(this.assetsPage, totalPages);
+        this.loadAssetsPage(nextPage);
+      });
   }
 
   private loadAssetsPage(page: number): void {
     const skip = (page - 1) * this.assetsPageSize;
     const search = this.searchText.trim();
-    this.serverRepository.getAssets(
-      AssetScope.Library,
-      skip,
-      this.assetsPageSize,
-      this.assetsSortField,
-      this.assetsSortDirection,
-      search
-    ).subscribe(assets => {
-      this.assets = assets;
-      this.assetsPage = page;
-    });
+    this.serverRepository
+      .getAssets(
+        AssetScope.Library,
+        skip,
+        this.assetsPageSize,
+        this.assetsSortField,
+        this.assetsSortDirection,
+        search,
+      )
+      .subscribe((assets) => {
+        this.assets = assets;
+        this.assetsPage = page;
+      });
   }
 
   private scheduleSearch(): void {

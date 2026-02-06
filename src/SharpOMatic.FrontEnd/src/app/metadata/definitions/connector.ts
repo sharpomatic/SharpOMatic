@@ -53,13 +53,18 @@ export class Connector {
       const currentAuthenticationModeId = this.authenticationModeId();
       const currentFieldValues = this.fieldValues();
 
-      const fieldValuesChanged = !Connector.areFieldValuesEqual(currentFieldValues, this.initialFieldValues);
+      const fieldValuesChanged = !Connector.areFieldValuesEqual(
+        currentFieldValues,
+        this.initialFieldValues,
+      );
 
-      return currentName !== this.initialName ||
-             currentDescription !== this.initialDescription ||
-             currentConfigId !== this.initialConfigId ||
-             currentAuthenticationModeId !== this.initialAuthenticationModeId ||
-             fieldValuesChanged;
+      return (
+        currentName !== this.initialName ||
+        currentDescription !== this.initialDescription ||
+        currentConfigId !== this.initialConfigId ||
+        currentAuthenticationModeId !== this.initialAuthenticationModeId ||
+        fieldValuesChanged
+      );
     });
   }
 
@@ -97,17 +102,21 @@ export class Connector {
     this.initialConfigId = this.configId();
     this.initialAuthenticationModeId = this.authenticationModeId();
     this.initialFieldValues = new Map(this.fieldValues());
-    this.cleanVersion.update(v => v + 1);
+    this.cleanVersion.update((v) => v + 1);
   }
 
-  private static mapFromSnapshot(fieldValues: ConnectorSnapshot['fieldValues'] | undefined): Map<string, string | null> {
-    const entries = Object.entries(fieldValues ?? {}).map(([key, value]) => [key, value ?? null] as const);
+  private static mapFromSnapshot(
+    fieldValues: ConnectorSnapshot['fieldValues'] | undefined,
+  ): Map<string, string | null> {
+    const entries = Object.entries(fieldValues ?? {}).map(
+      ([key, value]) => [key, value ?? null] as const,
+    );
     return new Map<string, string | null>(entries);
   }
 
   private static areFieldValuesEqual(
     current: Map<string, string | null>,
-    initial: Map<string, string | null>
+    initial: Map<string, string | null>,
   ): boolean {
     if (current.size !== initial.size) {
       return false;
@@ -122,12 +131,16 @@ export class Connector {
     return true;
   }
 
-  private static snapshotFromMap(fieldValues: Map<string, string | null> | undefined): ConnectorSnapshot['fieldValues'] {
+  private static snapshotFromMap(
+    fieldValues: Map<string, string | null> | undefined,
+  ): ConnectorSnapshot['fieldValues'] {
     if (!fieldValues) {
       return {};
     }
 
-    const entries = Array.from(fieldValues.entries()).map(([key, value]) => [key, value ?? null] as const);
+    const entries = Array.from(fieldValues.entries()).map(
+      ([key, value]) => [key, value ?? null] as const,
+    );
     return Object.fromEntries(entries) as Record<string, string | null>;
   }
 }

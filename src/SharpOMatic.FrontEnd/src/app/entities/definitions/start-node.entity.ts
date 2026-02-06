@@ -1,7 +1,10 @@
 import { ConnectorEntity } from './connector.entity';
 import { NodeEntity, NodeSnapshot } from './node.entity';
 import { NodeType } from '../enumerations/node-type';
-import { ContextEntryListEntity, ContextEntryListSnapshot } from './context-entry-list.entity';
+import {
+  ContextEntryListEntity,
+  ContextEntryListSnapshot,
+} from './context-entry-list.entity';
 import { computed, signal, WritableSignal } from '@angular/core';
 
 export interface StartNodeSnapshot extends NodeSnapshot {
@@ -17,7 +20,9 @@ export class StartNodeEntity extends NodeEntity<StartNodeSnapshot> {
     super(snapshot);
 
     this.applyInitialization = signal(snapshot.applyInitialization);
-    this.initializing = signal(ContextEntryListEntity.fromSnapshot(snapshot.initializing));
+    this.initializing = signal(
+      ContextEntryListEntity.fromSnapshot(snapshot.initializing),
+    );
 
     const isNodeDirty = this.isDirty;
     this.isDirty = computed(() => {
@@ -28,9 +33,11 @@ export class StartNodeEntity extends NodeEntity<StartNodeSnapshot> {
       const currentApplyInitialization = this.applyInitialization();
       const currentInitsDirty = this.initializing().isDirty();
 
-      return currentIsNodeDirty ||
-        (currentApplyInitialization !== snapshot.applyInitialization) ||
-        currentInitsDirty;
+      return (
+        currentIsNodeDirty ||
+        currentApplyInitialization !== snapshot.applyInitialization ||
+        currentInitsDirty
+      );
     });
   }
 
@@ -51,7 +58,7 @@ export class StartNodeEntity extends NodeEntity<StartNodeSnapshot> {
       outputs: [ConnectorEntity.defaultSnapshot()],
       applyInitialization: false,
       initializing: ContextEntryListEntity.defaultSnapshot(),
-    }
+    };
   }
 
   public static fromSnapshot(snapshot: StartNodeSnapshot): StartNodeEntity {

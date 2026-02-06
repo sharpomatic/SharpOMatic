@@ -11,7 +11,7 @@ import { SettingType } from '../../enumerations/setting-type';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './settings.component.html',
-  styleUrls: ['./settings.component.scss']
+  styleUrls: ['./settings.component.scss'],
 })
 export class SettingsComponent implements OnInit {
   private readonly settingsService = inject(SettingsService);
@@ -75,8 +75,8 @@ export class SettingsComponent implements OnInit {
   }
 
   private loadSettings(): void {
-    this.serverRepository.getSettings().subscribe(settings => {
-      this.settings = settings.filter(setting => setting.userEditable);
+    this.serverRepository.getSettings().subscribe((settings) => {
+      this.settings = settings.filter((setting) => setting.userEditable);
     });
   }
 

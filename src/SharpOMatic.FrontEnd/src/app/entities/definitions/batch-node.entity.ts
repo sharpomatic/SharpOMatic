@@ -30,10 +30,12 @@ export class BatchNodeEntity extends NodeEntity<BatchNodeSnapshot> {
       const currentBatchSize = this.batchSize();
       const currentParallelBatches = this.parallelBatches();
 
-      return currentIsNodeDirty ||
-        (currentInputArrayPath !== snapshot.inputArrayPath) ||
-        (currentBatchSize !== snapshot.batchSize) ||
-        (currentParallelBatches !== snapshot.parallelBatches);
+      return (
+        currentIsNodeDirty ||
+        currentInputArrayPath !== snapshot.inputArrayPath ||
+        currentBatchSize !== snapshot.batchSize ||
+        currentParallelBatches !== snapshot.parallelBatches
+      );
     });
   }
 

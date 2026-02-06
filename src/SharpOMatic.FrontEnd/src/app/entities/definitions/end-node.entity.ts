@@ -1,7 +1,10 @@
 import { ConnectorEntity } from './connector.entity';
 import { NodeEntity, NodeSnapshot } from './node.entity';
 import { NodeType } from '../enumerations/node-type';
-import { ContextEntryListEntity, ContextEntryListSnapshot } from './context-entry-list.entity';
+import {
+  ContextEntryListEntity,
+  ContextEntryListSnapshot,
+} from './context-entry-list.entity';
 import { computed, signal, WritableSignal } from '@angular/core';
 
 export interface EndNodeSnapshot extends NodeSnapshot {
@@ -17,7 +20,9 @@ export class EndNodeEntity extends NodeEntity<EndNodeSnapshot> {
     super(snapshot);
 
     this.applyMappings = signal(snapshot.applyMappings);
-    this.mappings = signal(ContextEntryListEntity.fromSnapshot(snapshot.mappings));
+    this.mappings = signal(
+      ContextEntryListEntity.fromSnapshot(snapshot.mappings),
+    );
 
     const isNodeDirty = this.isDirty;
     this.isDirty = computed(() => {
@@ -28,9 +33,11 @@ export class EndNodeEntity extends NodeEntity<EndNodeSnapshot> {
       const currentApplyMappings = this.applyMappings();
       const currentInitsDirty = this.mappings().isDirty();
 
-      return currentIsNodeDirty ||
-        (currentApplyMappings !== snapshot.applyMappings) ||
-        currentInitsDirty;
+      return (
+        currentIsNodeDirty ||
+        currentApplyMappings !== snapshot.applyMappings ||
+        currentInitsDirty
+      );
     });
   }
 
@@ -55,7 +62,7 @@ export class EndNodeEntity extends NodeEntity<EndNodeSnapshot> {
       outputs: [],
       applyMappings: false,
       mappings: ContextEntryListEntity.defaultSnapshot(),
-    }
+    };
   }
 
   public static create(top: number, left: number): EndNodeEntity {

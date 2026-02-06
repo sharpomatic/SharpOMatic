@@ -1,4 +1,13 @@
-import { Component, EventEmitter, Inject, OnInit, Output, TemplateRef, ViewChild, inject } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Inject,
+  OnInit,
+  Output,
+  TemplateRef,
+  ViewChild,
+  inject,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DIALOG_DATA, DialogService } from '../services/dialog.service';
@@ -14,7 +23,13 @@ import { ContextEntryType } from '../../entities/enumerations/context-entry-type
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { MonacoService } from '../../services/monaco.service';
 import { AssetPickerDialogComponent } from '../asset-picker/asset-picker-dialog.component';
-import { AssetRef, buildAssetRefListValue, buildAssetRefValue, parseAssetRefListValue, parseAssetRefValue } from '../../entities/definitions/asset-ref';
+import {
+  AssetRef,
+  buildAssetRefListValue,
+  buildAssetRefValue,
+  parseAssetRefListValue,
+  parseAssetRefValue,
+} from '../../entities/definitions/asset-ref';
 
 @Component({
   selector: 'app-gosub-node-dialog',
@@ -47,13 +62,20 @@ export class GosubNodeDialogComponent implements OnInit {
   public contextEntryTypeKeys: string[] = [];
 
   constructor(
-    @Inject(DIALOG_DATA) data: { node: GosubNodeEntity, nodeTraces: TraceProgressModel[] },
-    private readonly dialogService: DialogService
+    @Inject(DIALOG_DATA)
+    data: { node: GosubNodeEntity; nodeTraces: TraceProgressModel[] },
+    private readonly dialogService: DialogService,
   ) {
     this.node = data.node;
-    this.inputTraces = (data.nodeTraces ?? []).map(trace => trace.inputContext).filter((context): context is string => context != null);
-    this.outputTraces = (data.nodeTraces ?? []).map(trace => trace.outputContext).filter((context): context is string => context != null);
-    this.contextEntryTypeKeys = Object.keys(this.contextEntryType).filter(k => isNaN(Number(k)));
+    this.inputTraces = (data.nodeTraces ?? [])
+      .map((trace) => trace.inputContext)
+      .filter((context): context is string => context != null);
+    this.outputTraces = (data.nodeTraces ?? [])
+      .map((trace) => trace.outputContext)
+      .filter((context): context is string => context != null);
+    this.contextEntryTypeKeys = Object.keys(this.contextEntryType).filter((k) =>
+      isNaN(Number(k)),
+    );
   }
 
   ngOnInit(): void {
@@ -63,9 +85,11 @@ export class GosubNodeDialogComponent implements OnInit {
       { id: 'outputs', title: 'Outputs', content: this.outputsTab },
     ];
 
-    this.serverRepository.getWorkflowSummaries('', 0, 0).subscribe(workflows => {
-      this.workflows = workflows;
-    });
+    this.serverRepository
+      .getWorkflowSummaries('', 0, 0)
+      .subscribe((workflows) => {
+        this.workflows = workflows;
+      });
   }
 
   onClose(): void {
@@ -105,7 +129,9 @@ export class GosubNodeDialogComponent implements OnInit {
   }
 
   onAppendInputEntry(): void {
-    this.node.inputMappings().appendEntry({ purpose: ContextEntryPurpose.Input });
+    this.node
+      .inputMappings()
+      .appendEntry({ purpose: ContextEntryPurpose.Input });
   }
 
   onDeleteInputEntry(entryId: string): void {
@@ -129,7 +155,9 @@ export class GosubNodeDialogComponent implements OnInit {
   }
 
   onAppendOutputEntry(): void {
-    this.node.outputMappings().appendEntry({ purpose: ContextEntryPurpose.Output });
+    this.node
+      .outputMappings()
+      .appendEntry({ purpose: ContextEntryPurpose.Output });
   }
 
   onDeleteOutputEntry(entryId: string): void {
@@ -137,7 +165,11 @@ export class GosubNodeDialogComponent implements OnInit {
   }
 
   canMoveOutputEntryUp(entry: ContextEntryEntity): boolean {
-    return this.hasSiblingEntry(this.node.outputMappings().entries(), entry, -1);
+    return this.hasSiblingEntry(
+      this.node.outputMappings().entries(),
+      entry,
+      -1,
+    );
   }
 
   canMoveOutputEntryDown(entry: ContextEntryEntity): boolean {
@@ -163,7 +195,7 @@ export class GosubNodeDialogComponent implements OnInit {
     }
 
     if (assets.length <= 3) {
-      return assets.map(asset => asset.name).join(', ');
+      return assets.map((asset) => asset.name).join(', ');
     }
 
     return `${assets.length} assets selected`;
@@ -171,9 +203,12 @@ export class GosubNodeDialogComponent implements OnInit {
 
   openAssetPicker(entry: ContextEntryEntity, mode: 'single' | 'multi'): void {
     const selected = parseAssetRefValue(entry.entryValue());
-    const initialSelection = mode === 'single'
-      ? (selected ? [selected] : [])
-      : parseAssetRefListValue(entry.entryValue());
+    const initialSelection =
+      mode === 'single'
+        ? selected
+          ? [selected]
+          : []
+        : parseAssetRefListValue(entry.entryValue());
 
     this.dialogService.open(AssetPickerDialogComponent, {
       allowStack: true,
@@ -187,12 +222,16 @@ export class GosubNodeDialogComponent implements OnInit {
         }
 
         entry.entryValue.set(buildAssetRefListValue(assets));
-      }
+      },
     });
   }
 
-  private hasSiblingEntry(entries: ContextEntryEntity[], entry: ContextEntryEntity, step: number): boolean {
-    const index = entries.findIndex(e => e.id === entry.id);
+  private hasSiblingEntry(
+    entries: ContextEntryEntity[],
+    entry: ContextEntryEntity,
+    step: number,
+  ): boolean {
+    const index = entries.findIndex((e) => e.id === entry.id);
     if (index === -1) {
       return false;
     }

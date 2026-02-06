@@ -2,8 +2,7 @@ import { ConnectorEntity } from './connector.entity';
 import { NodeEntity, NodeSnapshot } from './node.entity';
 import { NodeType } from '../enumerations/node-type';
 
-export interface InputNodeSnapshot extends NodeSnapshot {
-}
+export interface InputNodeSnapshot extends NodeSnapshot {}
 
 export class InputNodeEntity extends NodeEntity<InputNodeSnapshot> {
   constructor(snapshot: InputNodeSnapshot) {

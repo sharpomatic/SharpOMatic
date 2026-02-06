@@ -1,7 +1,11 @@
 <div class="d-flex flex-column dialog-overlay bg-body-secondary">
   <div class="d-flex flex-column dialog-content">
-    <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1">
-      <h2 class=""><i class="bi bi-chat-text pe-3 icon-sm"></i>{{ node.title() }}</h2>
+    <div
+      class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1"
+    >
+      <h2 class="">
+        <i class="bi bi-chat-text pe-3 icon-sm"></i>{{ node.title() }}
+      </h2>
       <button class="btn btn-primary" (click)="onClose()">Close</button>
     </div>
 
@@ -12,21 +16,32 @@
     <ng-template #detailsTab>
       <div class="p-3 details">
         <div class="mb-3 form-line">
-          <label for="model-call-title" class="form-label field-label">Title</label>
+          <label for="model-call-title" class="form-label field-label"
+            >Title</label
+          >
           <div class="flex-fill control-column short">
-            <input type="text" class="form-control w-100" id="model-call-title" [ngModel]="node.title()" (ngModelChange)="node.title.set($event)"/>
+            <input
+              type="text"
+              class="form-control w-100"
+              id="model-call-title"
+              [ngModel]="node.title()"
+              (ngModelChange)="node.title.set($event)"
+            />
           </div>
         </div>
 
         <div class="mb-3 form-line">
-          <label for="model-call-model" class="form-label field-label">Model</label>
+          <label for="model-call-model" class="form-label field-label"
+            >Model</label
+          >
           <div class="flex-fill control-column short">
             <select
               id="model-call-model"
               class="form-select w-100"
               [ngModel]="selectedModelId"
               (ngModelChange)="onModelSelectionChange($event)"
-              [disabled]="!availableModels.length">
+              [disabled]="!availableModels.length"
+            >
               <option [ngValue]="null"></option>
               @for (model of availableModels; track model.modelId) {
                 <option [ngValue]="model.modelId">
@@ -41,69 +56,104 @@
           [fields]="modelConfig?.parameterFields ?? []"
           [values]="node.parameterValues()"
           [capabilityContext]="capabilityContext"
-          [ignoredCapabilities]="['SupportsTextIn', 'SupportsTextOut', 'SupportsImageIn', 'SupportsImageOut', 'SupportsToolCalling', 'SupportsStructuredOutput']"
+          [ignoredCapabilities]="[
+            'SupportsTextIn',
+            'SupportsTextOut',
+            'SupportsImageIn',
+            'SupportsImageOut',
+            'SupportsToolCalling',
+            'SupportsStructuredOutput',
+          ]"
           [includeNonCallDefined]="false"
-          (valuesChange)="onParameterValuesChange($event)">
+          (valuesChange)="onParameterValuesChange($event)"
+        >
         </app-dynamic-fields>
       </div>
     </ng-template>
     <ng-template #chatTab>
       <div class="bg-body-tertiary p-3">
         <div class="mb-3 form-line">
-          <label for="model-call-chat-input" class="form-label field-label">Chat Input Path</label>
+          <label for="model-call-chat-input" class="form-label field-label"
+            >Chat Input Path</label
+          >
           <div class="flex-fill control-column short">
             <input
               type="text"
               class="form-control w-100"
               id="model-call-chat-input"
               [ngModel]="node.chatInputPath()"
-              (ngModelChange)="node.chatInputPath.set($event)" />
+              (ngModelChange)="node.chatInputPath.set($event)"
+            />
           </div>
         </div>
 
         <div class="mb-3 form-line">
-          <label for="model-call-chat-output" class="form-label field-label">Chat Output Path</label>
+          <label for="model-call-chat-output" class="form-label field-label"
+            >Chat Output Path</label
+          >
           <div class="flex-fill control-column short">
             <input
               type="text"
               class="form-control w-100"
               id="model-call-chat-output"
               [ngModel]="node.chatOutputPath()"
-              (ngModelChange)="node.chatOutputPath.set($event)" />
+              (ngModelChange)="node.chatOutputPath.set($event)"
+            />
           </div>
         </div>
-
-        
       </div>
     </ng-template>
     <ng-template #textTab>
       <div class="bg-body-tertiary p-3">
         @if (showTextOutFields) {
           <div class="mb-3 form-line">
-            <label for="model-call-text-output" class="form-label field-label">Text Output Path</label>
+            <label for="model-call-text-output" class="form-label field-label"
+              >Text Output Path</label
+            >
             <div class="flex-fill control-column short">
               <input
                 type="text"
                 class="form-control w-100"
                 id="model-call-text-output"
                 [ngModel]="node.textOutputPath()"
-                (ngModelChange)="node.textOutputPath.set($event)" />
+                (ngModelChange)="node.textOutputPath.set($event)"
+              />
             </div>
           </div>
         }
 
         @if (showTextInFields) {
           <div class="mb-3 form-line">
-            <label for="model-call-instructions" class="form-label field-label align-top">Instructions</label>
+            <label
+              for="model-call-instructions"
+              class="form-label field-label align-top"
+              >Instructions</label
+            >
             <div class="flex-fill control-column extra-long">
-              <textarea class="form-control w-100" id="model-call-instructions" rows="16" [ngModel]="node.instructions()" (ngModelChange)="node.instructions.set($event)"></textarea>
+              <textarea
+                class="form-control w-100"
+                id="model-call-instructions"
+                rows="16"
+                [ngModel]="node.instructions()"
+                (ngModelChange)="node.instructions.set($event)"
+              ></textarea>
             </div>
           </div>
 
           <div class="mb-3 form-line">
-            <label for="model-call-prompt" class="form-label field-label align-top">Prompt</label>
+            <label
+              for="model-call-prompt"
+              class="form-label field-label align-top"
+              >Prompt</label
+            >
             <div class="flex-fill control-column extra-long">
-              <textarea class="form-control w-100" id="model-call-prompt" rows="30" [ngModel]="node.prompt()" (ngModelChange)="node.prompt.set($event)"></textarea>
+              <textarea
+                class="form-control w-100"
+                id="model-call-prompt"
+                rows="30"
+                [ngModel]="node.prompt()"
+                (ngModelChange)="node.prompt.set($event)"
+              ></textarea>
             </div>
           </div>
         }
@@ -115,7 +165,8 @@
           [includeCallDefined]="true"
           [includeNonCallDefined]="false"
           [allowedCapabilities]="['SupportsTextIn', 'SupportsTextOut']"
-          (valuesChange)="onParameterValuesChange($event)">
+          (valuesChange)="onParameterValuesChange($event)"
+        >
         </app-dynamic-fields>
       </div>
     </ng-template>
@@ -124,28 +175,34 @@
       <div class="bg-body-tertiary p-3">
         @if (supportsImageIn) {
           <div class="mb-3 form-line">
-            <label for="model-call-image-input" class="form-label field-label">Image Input Path</label>
+            <label for="model-call-image-input" class="form-label field-label"
+              >Image Input Path</label
+            >
             <div class="flex-fill control-column short">
               <input
                 type="text"
                 class="form-control w-100"
                 id="model-call-image-input"
                 [ngModel]="node.imageInputPath()"
-                (ngModelChange)="node.imageInputPath.set($event)" />
+                (ngModelChange)="node.imageInputPath.set($event)"
+              />
             </div>
           </div>
         }
 
         @if (supportsImageOut) {
           <div class="mb-3 form-line">
-            <label for="model-call-image-output" class="form-label field-label">Image Output Path</label>
+            <label for="model-call-image-output" class="form-label field-label"
+              >Image Output Path</label
+            >
             <div class="flex-fill control-column short">
               <input
                 type="text"
                 class="form-control w-100"
                 id="model-call-image-output"
                 [ngModel]="node.imageOutputPath()"
-                (ngModelChange)="node.imageOutputPath.set($event)" />
+                (ngModelChange)="node.imageOutputPath.set($event)"
+              />
             </div>
           </div>
         }
@@ -157,7 +214,8 @@
           [includeCallDefined]="true"
           [includeNonCallDefined]="false"
           [allowedCapabilities]="['SupportsImageIn', 'SupportsImageOut']"
-          (valuesChange)="onParameterValuesChange($event)">
+          (valuesChange)="onParameterValuesChange($event)"
+        >
         </app-dynamic-fields>
       </div>
     </ng-template>
@@ -165,25 +223,33 @@
     <ng-template #toolCallingTab>
       <div class="bg-body-tertiary p-3">
         <div class="mb-3 form-line">
-          <label class="form-label field-label align-top">Available Tools</label>
+          <label class="form-label field-label align-top"
+            >Available Tools</label
+          >
           <div class="flex-fill control-column long">
-          @if (toolDisplayNames.length) {
-            @for (toolName of toolDisplayNames; track toolName) {
-              <div class="form-check">
-                <input
-                  class="form-check-input"
-                  type="checkbox"
-                  [id]="toolId(toolName)"
-                  [checked]="isToolSelected(toolName)"
-                  (change)="onToolSelectionChange(toolName, $any($event.target).checked)">
-                <label class="form-check-label" [for]="toolId(toolName)">
-                  {{ toolName }}
-                </label>
-              </div>
+            @if (toolDisplayNames.length) {
+              @for (toolName of toolDisplayNames; track toolName) {
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    [id]="toolId(toolName)"
+                    [checked]="isToolSelected(toolName)"
+                    (change)="
+                      onToolSelectionChange(
+                        toolName,
+                        $any($event.target).checked
+                      )
+                    "
+                  />
+                  <label class="form-check-label" [for]="toolId(toolName)">
+                    {{ toolName }}
+                  </label>
+                </div>
+              }
+            } @else {
+              <em>(no tools)</em>
             }
-          } @else {
-            <em>(no tools)</em>
-          }
           </div>
         </div>
 
@@ -194,7 +260,8 @@
           [includeCallDefined]="true"
           [includeNonCallDefined]="false"
           [allowedCapabilities]="['SupportsToolCalling']"
-          (valuesChange)="onParameterValuesChange($event)">
+          (valuesChange)="onParameterValuesChange($event)"
+        >
         </app-dynamic-fields>
       </div>
     </ng-template>
@@ -208,7 +275,8 @@
           [includeCallDefined]="true"
           [includeNonCallDefined]="false"
           [allowedCapabilities]="['SupportsStructuredOutput']"
-          (valuesChange)="onParameterValuesChange($event)">
+          (valuesChange)="onParameterValuesChange($event)"
+        >
         </app-dynamic-fields>
 
         @if (isConfiguredTypeMode) {
@@ -218,9 +286,14 @@
               <div class="flex-fill control-column short">
                 <select
                   class="form-select w-100"
-                  [ngModel]="node.parameterValues()['structured_output_configured_type'] ?? null"
+                  [ngModel]="
+                    node.parameterValues()[
+                      'structured_output_configured_type'
+                    ] ?? null
+                  "
                   (ngModelChange)="onStructuredSchemaTypeChange($event)"
-                  [disabled]="!typeSchemaNames.length">
+                  [disabled]="!typeSchemaNames.length"
+                >
                   <option [ngValue]="null"></option>
                   @for (typeName of typeSchemaNames; track typeName) {
                     <option [ngValue]="typeName">{{ typeName }}</option>
@@ -235,19 +308,30 @@
                 <input
                   type="text"
                   class="form-control w-100"
-                  [ngModel]="node.parameterValues()['structured_output_schema_name'] ?? ''"
-                  (ngModelChange)="onStructuredSchemaNameChange($event)" />
+                  [ngModel]="
+                    node.parameterValues()['structured_output_schema_name'] ??
+                    ''
+                  "
+                  (ngModelChange)="onStructuredSchemaNameChange($event)"
+                />
               </div>
             </div>
 
             <div class="mb-2 form-line align-top">
-              <label class="form-label field-label align-top">Schema Description</label>
+              <label class="form-label field-label align-top"
+                >Schema Description</label
+              >
               <div class="flex-fill control-column extra-long">
                 <textarea
                   class="form-control w-100"
                   rows="3"
-                  [ngModel]="node.parameterValues()['structured_output_schema_description'] ?? ''"
-                  (ngModelChange)="onStructuredSchemaDescriptionChange($event)"></textarea>
+                  [ngModel]="
+                    node.parameterValues()[
+                      'structured_output_schema_description'
+                    ] ?? ''
+                  "
+                  (ngModelChange)="onStructuredSchemaDescriptionChange($event)"
+                ></textarea>
               </div>
             </div>
           </div>
@@ -261,19 +345,30 @@
                 <input
                   type="text"
                   class="form-control w-100"
-                  [ngModel]="node.parameterValues()['structured_output_schema_name'] ?? ''"
-                  (ngModelChange)="onStructuredSchemaNameChange($event)" />
+                  [ngModel]="
+                    node.parameterValues()['structured_output_schema_name'] ??
+                    ''
+                  "
+                  (ngModelChange)="onStructuredSchemaNameChange($event)"
+                />
               </div>
             </div>
 
             <div class="mb-2 form-line align-top">
-              <label class="form-label field-label align-top">Schema Description</label>
+              <label class="form-label field-label align-top"
+                >Schema Description</label
+              >
               <div class="flex-fill control-column extra-long">
                 <textarea
                   class="form-control w-100"
                   rows="3"
-                  [ngModel]="node.parameterValues()['structured_output_schema_description'] ?? ''"
-                  (ngModelChange)="onStructuredSchemaDescriptionChange($event)"></textarea>
+                  [ngModel]="
+                    node.parameterValues()[
+                      'structured_output_schema_description'
+                    ] ?? ''
+                  "
+                  (ngModelChange)="onStructuredSchemaDescriptionChange($event)"
+                ></textarea>
               </div>
             </div>
 
@@ -283,8 +378,11 @@
                 <ngx-monaco-editor
                   class="editJson"
                   [options]="structuredSchemaEditorOptions"
-                  [ngModel]="node.parameterValues()['structured_output_schema'] ?? ''"
-                  (ngModelChange)="onStructuredSchemaChange($event)">
+                  [ngModel]="
+                    node.parameterValues()['structured_output_schema'] ?? ''
+                  "
+                  (ngModelChange)="onStructuredSchemaChange($event)"
+                >
                 </ngx-monaco-editor>
               </div>
             </div>

@@ -23,8 +23,7 @@ export class CodeNodeEntity extends NodeEntity<CodeNodeSnapshot> {
       const currentIsNodeDirty = isNodeDirty();
       const currentCode = this.code();
 
-      return currentIsNodeDirty ||
-        (currentCode !== snapshot.code);
+      return currentIsNodeDirty || currentCode !== snapshot.code;
     });
   }
 
@@ -47,7 +46,7 @@ export class CodeNodeEntity extends NodeEntity<CodeNodeSnapshot> {
       inputs: [ConnectorEntity.defaultSnapshot()],
       outputs: [ConnectorEntity.defaultSnapshot()],
       code: '',
-    }
+    };
   }
 
   public static create(top: number, left: number): CodeNodeEntity {

@@ -1,4 +1,4 @@
-import * as monaco from 'monaco-editor'
+import * as monaco from 'monaco-editor';
 
 export interface CodeCheckResult {
   severity: monaco.MarkerSeverity;

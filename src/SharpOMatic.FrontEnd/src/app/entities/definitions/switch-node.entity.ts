@@ -14,13 +14,18 @@ export class SwitchNodeEntity extends NodeEntity<SwitchNodeSnapshot> {
   constructor(snapshot: SwitchNodeSnapshot) {
     super(snapshot);
 
-    this.switches = signal(snapshot.switches.map(SwitchEntryEntity.fromSnapshot));
+    this.switches = signal(
+      snapshot.switches.map(SwitchEntryEntity.fromSnapshot),
+    );
 
     const isNodeDirty = this.isDirty;
     this.isDirty = computed(() => {
       // Must touch all property signals
       const currentIsNodeDirty = isNodeDirty();
-      const currentSwitchesDirty = this.switches().reduce((dirty, node) => node.isDirty() || dirty, false);
+      const currentSwitchesDirty = this.switches().reduce(
+        (dirty, node) => node.isDirty() || dirty,
+        false,
+      );
 
       // Copy across the name from switch definition to the connector
       const switches = this.switches();
@@ -29,8 +34,7 @@ export class SwitchNodeEntity extends NodeEntity<SwitchNodeSnapshot> {
         connectors[i].name = switches[i].name;
       }
 
-      return currentIsNodeDirty ||
-        currentSwitchesDirty;
+      return currentIsNodeDirty || currentSwitchesDirty;
     });
   }
 
@@ -38,56 +42,86 @@ export class SwitchNodeEntity extends NodeEntity<SwitchNodeSnapshot> {
     const switches = this.switches();
     const connectors = this.outputs();
 
-    const addSwitch = SwitchEntryEntity.fromSnapshot(SwitchEntryEntity.defaultSnapshot());
-    const addConnector = ConnectorEntity.fromSnapshot(ConnectorEntity.defaultSnapshot());
+    const addSwitch = SwitchEntryEntity.fromSnapshot(
+      SwitchEntryEntity.defaultSnapshot(),
+    );
+    const addConnector = ConnectorEntity.fromSnapshot(
+      ConnectorEntity.defaultSnapshot(),
+    );
 
     addConnector.nodeId = this.id;
     addConnector.name.set(addSwitch.name());
 
-    this.switches.update(s => [...switches.slice(0, -1), addSwitch, switches[switches.length - 1]]);
-    this.outputs.update(o => [...connectors.slice(0, -1), addConnector, connectors[connectors.length - 1]]);
+    this.switches.update((s) => [
+      ...switches.slice(0, -1),
+      addSwitch,
+      switches[switches.length - 1],
+    ]);
+    this.outputs.update((o) => [
+      ...connectors.slice(0, -1),
+      addConnector,
+      connectors[connectors.length - 1],
+    ]);
   }
 
   public deleteSwitch(switchId: string): void {
     const switches = this.switches();
     const connectors = this.outputs();
 
-    const index = switches.findIndex(s => s.id === switchId);
+    const index = switches.findIndex((s) => s.id === switchId);
 
-    this.switches.update(s => [...switches.slice(0, index), ...switches.slice(index + 1)]);
-    this.outputs.update(o => [...connectors.slice(0, index), ...connectors.slice(index + 1)]);
+    this.switches.update((s) => [
+      ...switches.slice(0, index),
+      ...switches.slice(index + 1),
+    ]);
+    this.outputs.update((o) => [
+      ...connectors.slice(0, index),
+      ...connectors.slice(index + 1),
+    ]);
   }
 
   public upSwitch(switchId: string): void {
     const switches = this.switches();
     const connectors = this.outputs();
 
-    const index = switches.findIndex(s => s.id === switchId);
+    const index = switches.findIndex((s) => s.id === switchId);
 
-    [switches[index - 1], switches[index]] = [switches[index], switches[index - 1]];
-    [connectors[index - 1], connectors[index]] = [connectors[index], connectors[index - 1]];
+    [switches[index - 1], switches[index]] = [
+      switches[index],
+      switches[index - 1],
+    ];
+    [connectors[index - 1], connectors[index]] = [
+      connectors[index],
+      connectors[index - 1],
+    ];
 
-    this.switches.update(s => [...switches]);
-    this.outputs.update(o => [...connectors]);
+    this.switches.update((s) => [...switches]);
+    this.outputs.update((o) => [...connectors]);
   }
 
   public downSwitch(switchId: string): void {
     const switches = this.switches();
     const connectors = this.outputs();
 
-    const index = switches.findIndex(s => s.id === switchId);
+    const index = switches.findIndex((s) => s.id === switchId);
 
-    [switches[index], switches[index + 1]] = [switches[index + 1], switches[index]];
-    [connectors[index], connectors[index + 1]] = [connectors[index + 1], connectors[index]];
+    [switches[index], switches[index + 1]] = [
+      switches[index + 1],
+      switches[index],
+    ];
+    [connectors[index], connectors[index + 1]] = [
+      connectors[index + 1],
+      connectors[index],
+    ];
 
-    this.switches.update(s => [...switches]);
-    this.outputs.update(o => [...connectors]);
+    this.switches.update((s) => [...switches]);
+    this.outputs.update((o) => [...connectors]);
   }
 
   public override toSnapshot(): SwitchNodeSnapshot {
     return {
       ...super.toNodeSnapshot(),
-      switches: this.switches().map(entry => entry.toSnapshot()),
+      switches: this.switches().map((entry) => entry.toSnapshot()),
     };
   }
 
@@ -96,16 +130,16 @@ export class SwitchNodeEntity extends NodeEntity<SwitchNodeSnapshot> {
   }
 
   public static override defaultSnapshot() {
-    const matchOutput = ConnectorEntity.defaultSnapshot()
+    const matchOutput = ConnectorEntity.defaultSnapshot();
     const matchSwitch = SwitchEntryEntity.defaultSnapshot();
 
-    matchOutput.name = "match";
+    matchOutput.name = 'match';
     matchSwitch.name = matchOutput.name;
 
-    const defaultOutput = ConnectorEntity.defaultSnapshot()
+    const defaultOutput = ConnectorEntity.defaultSnapshot();
     const defaultSwitch = SwitchEntryEntity.defaultSnapshot();
 
-    defaultOutput.name = "default";
+    defaultOutput.name = 'default';
     defaultSwitch.name = defaultOutput.name;
 
     return {
@@ -114,8 +148,8 @@ export class SwitchNodeEntity extends NodeEntity<SwitchNodeSnapshot> {
       title: 'Switch',
       inputs: [ConnectorEntity.defaultSnapshot()],
       outputs: [matchOutput, defaultOutput],
-      switches: [matchSwitch, defaultSwitch]
-    }
+      switches: [matchSwitch, defaultSwitch],
+    };
   }
 
   public static create(top: number, left: number): SwitchNodeEntity {
@@ -128,6 +162,6 @@ export class SwitchNodeEntity extends NodeEntity<SwitchNodeSnapshot> {
 
   public override markClean(): void {
     super.markClean();
-    this.switches().forEach(entry => entry.markClean());
+    this.switches().forEach((entry) => entry.markClean());
   }
 }

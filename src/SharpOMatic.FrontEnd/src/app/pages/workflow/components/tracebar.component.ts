@@ -1,12 +1,29 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, TemplateRef, ViewChild, computed, inject } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  OnDestroy,
+  OnInit,
+  Output,
+  TemplateRef,
+  ViewChild,
+  computed,
+  inject,
+} from '@angular/core';
 import { RunStatus } from '../../../enumerations/run-status';
 import { WorkflowService } from '../services/workflow.service';
 import { ContextEntryType } from '../../../entities/enumerations/context-entry-type';
 import { FormsModule } from '@angular/forms';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { ContextEntryEntity } from '../../../entities/definitions/context-entry.entity';
-import { AssetRef, buildAssetRefListValue, buildAssetRefValue, parseAssetRefListValue, parseAssetRefValue } from '../../../entities/definitions/asset-ref';
+import {
+  AssetRef,
+  buildAssetRefListValue,
+  buildAssetRefValue,
+  parseAssetRefListValue,
+  parseAssetRefValue,
+} from '../../../entities/definitions/asset-ref';
 import { MonacoService } from '../../../services/monaco.service';
 import { TabComponent, TabItem } from '../../../components/tab/tab.component';
 import { ContextViewerComponent } from '../../../components/context-viewer/context-viewer.component';
@@ -23,10 +40,17 @@ import { ServerRepositoryService } from '../../../services/server.repository.ser
 @Component({
   selector: 'app-tracebar',
   standalone: true,
-  imports: [CommonModule, FormsModule, MonacoEditorModule, TabComponent, ContextViewerComponent, TraceViewerComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MonacoEditorModule,
+    TabComponent,
+    ContextViewerComponent,
+    TraceViewerComponent,
+  ],
   templateUrl: './tracebar.component.html',
   styleUrl: './tracebar.component.scss',
-  providers: [BsModalService]
+  providers: [BsModalService],
 })
 export class TracebarComponent implements OnInit, OnDestroy {
   @ViewChild('inputTab', { static: true }) inputTab!: TemplateRef<unknown>;
@@ -40,7 +64,9 @@ export class TracebarComponent implements OnInit, OnDestroy {
   private readonly dialogService = inject(DialogService);
   private readonly modalService = inject(BsModalService);
   public readonly contextEntryType = ContextEntryType;
-  public readonly contextEntryTypeKeys = Object.keys(ContextEntryType).filter(k => isNaN(Number(k)));
+  public readonly contextEntryTypeKeys = Object.keys(ContextEntryType).filter(
+    (k) => isNaN(Number(k)),
+  );
   public readonly RunStatus = RunStatus;
   public isResizing = false;
   public tabs: TabItem[] = [];
@@ -58,7 +84,8 @@ export class TracebarComponent implements OnInit, OnDestroy {
   private startWidth = this.tracebarWidth;
   private readonly storageKey = 'tracebarWidth';
 
-  private readonly onMouseMove = (event: MouseEvent) => this.handleDrag(event.clientX);
+  private readonly onMouseMove = (event: MouseEvent) =>
+    this.handleDrag(event.clientX);
   private readonly onTouchMove = (event: TouchEvent) => {
     if (event.cancelable) {
       event.preventDefault();
@@ -69,9 +96,16 @@ export class TracebarComponent implements OnInit, OnDestroy {
   };
 
   private readonly onStopResize = () => this.stopResize();
-  private readonly mouseListenerOptions: AddEventListenerOptions = { capture: true };
-  private readonly touchMoveListenerOptions: AddEventListenerOptions = { passive: false, capture: true };
-  private readonly touchEndListenerOptions: AddEventListenerOptions = { capture: true };
+  private readonly mouseListenerOptions: AddEventListenerOptions = {
+    capture: true,
+  };
+  private readonly touchMoveListenerOptions: AddEventListenerOptions = {
+    passive: false,
+    capture: true,
+  };
+  private readonly touchEndListenerOptions: AddEventListenerOptions = {
+    capture: true,
+  };
   private readonly viewableTextMediaTypes = new Set([
     'text/plain',
     'text/markdown',
@@ -118,7 +152,7 @@ export class TracebarComponent implements OnInit, OnDestroy {
       { id: 'input', title: 'Input', content: this.inputTab },
       { id: 'output', title: 'Output', content: this.outputTab },
       { id: 'assets', title: 'Assets', content: this.assetsTab },
-      { id: 'trace', title: 'Trace', content: this.traceTab }
+      { id: 'trace', title: 'Trace', content: this.traceTab },
     ];
 
     this.loadStoredWidth();
@@ -144,11 +178,31 @@ export class TracebarComponent implements OnInit, OnDestroy {
     this.isResizing = true;
     this.startX = clientX;
     this.startWidth = this.tracebarWidth;
-    window.addEventListener('mousemove', this.onMouseMove, this.mouseListenerOptions);
-    window.addEventListener('mouseup', this.onStopResize, this.mouseListenerOptions);
-    window.addEventListener('touchmove', this.onTouchMove, this.touchMoveListenerOptions);
-    window.addEventListener('touchend', this.onStopResize, this.touchEndListenerOptions);
-    window.addEventListener('touchcancel', this.onStopResize, this.touchEndListenerOptions);
+    window.addEventListener(
+      'mousemove',
+      this.onMouseMove,
+      this.mouseListenerOptions,
+    );
+    window.addEventListener(
+      'mouseup',
+      this.onStopResize,
+      this.mouseListenerOptions,
+    );
+    window.addEventListener(
+      'touchmove',
+      this.onTouchMove,
+      this.touchMoveListenerOptions,
+    );
+    window.addEventListener(
+      'touchend',
+      this.onStopResize,
+      this.touchEndListenerOptions,
+    );
+    window.addEventListener(
+      'touchcancel',
+      this.onStopResize,
+      this.touchEndListenerOptions,
+    );
   }
 
   private stopResize(): void {
@@ -188,11 +242,31 @@ export class TracebarComponent implements OnInit, OnDestroy {
   }
 
   private cleanupListeners(): void {
-    window.removeEventListener('mousemove', this.onMouseMove, this.mouseListenerOptions);
-    window.removeEventListener('mouseup', this.onStopResize, this.mouseListenerOptions);
-    window.removeEventListener('touchmove', this.onTouchMove, this.touchMoveListenerOptions);
-    window.removeEventListener('touchend', this.onStopResize, this.touchEndListenerOptions);
-    window.removeEventListener('touchcancel', this.onStopResize, this.touchEndListenerOptions);
+    window.removeEventListener(
+      'mousemove',
+      this.onMouseMove,
+      this.mouseListenerOptions,
+    );
+    window.removeEventListener(
+      'mouseup',
+      this.onStopResize,
+      this.mouseListenerOptions,
+    );
+    window.removeEventListener(
+      'touchmove',
+      this.onTouchMove,
+      this.touchMoveListenerOptions,
+    );
+    window.removeEventListener(
+      'touchend',
+      this.onStopResize,
+      this.touchEndListenerOptions,
+    );
+    window.removeEventListener(
+      'touchcancel',
+      this.onStopResize,
+      this.touchEndListenerOptions,
+    );
   }
 
   private loadStoredWidth(): void {
@@ -207,8 +281,7 @@ export class TracebarComponent implements OnInit, OnDestroy {
       if (!isNaN(parsedWidth)) {
         this.tracebarWidth = this.clampWidth(parsedWidth);
       }
-    } catch {
-    }
+    } catch {}
   }
 
   private saveWidth(width: number): void {
@@ -218,12 +291,14 @@ export class TracebarComponent implements OnInit, OnDestroy {
 
     try {
       window.localStorage.setItem(this.storageKey, width.toString());
-    } catch {
-    }
+    } catch {}
   }
 
   private canUseLocalStorage(): boolean {
-    return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+    return (
+      typeof window !== 'undefined' &&
+      typeof window.localStorage !== 'undefined'
+    );
   }
 
   private emitWidth(width: number = this.tracebarWidth): void {
@@ -241,17 +316,23 @@ export class TracebarComponent implements OnInit, OnDestroy {
     }
 
     if (assets.length <= 3) {
-      return assets.map(asset => asset.name).join(', ');
+      return assets.map((asset) => asset.name).join(', ');
     }
 
     return `${assets.length} assets selected`;
   }
 
-  public openAssetPicker(entry: ContextEntryEntity, mode: 'single' | 'multi'): void {
+  public openAssetPicker(
+    entry: ContextEntryEntity,
+    mode: 'single' | 'multi',
+  ): void {
     const selected = parseAssetRefValue(entry.entryValue());
-    const initialSelection = mode === 'single'
-      ? (selected ? [selected] : [])
-      : parseAssetRefListValue(entry.entryValue());
+    const initialSelection =
+      mode === 'single'
+        ? selected
+          ? [selected]
+          : []
+        : parseAssetRefListValue(entry.entryValue());
 
     this.dialogService.open(AssetPickerDialogComponent, {
       allowStack: true,
@@ -265,7 +346,7 @@ export class TracebarComponent implements OnInit, OnDestroy {
         }
 
         entry.entryValue.set(buildAssetRefListValue(assets));
-      }
+      },
     });
   }
 

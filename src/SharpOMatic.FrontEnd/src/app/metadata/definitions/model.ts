@@ -39,15 +39,23 @@ export class Model {
     this.initialDescription = snapshot.description;
     this.initialConnectorId = snapshot.connectorId ?? null;
     this.initialConfigId = snapshot.configId;
-    this.initialCustomCapabilities = Model.capabilitiesFromSnapshot(snapshot.customCapabilities);
-    this.initialParameterValues = Model.mapFromSnapshot(snapshot.parameterValues);
+    this.initialCustomCapabilities = Model.capabilitiesFromSnapshot(
+      snapshot.customCapabilities,
+    );
+    this.initialParameterValues = Model.mapFromSnapshot(
+      snapshot.parameterValues,
+    );
 
     this.name = signal(snapshot.name);
     this.description = signal(snapshot.description);
     this.connectorId = signal(snapshot.connectorId ?? null);
     this.configId = signal(snapshot.configId);
-    this.customCapabilities = signal(Model.capabilitiesFromSnapshot(snapshot.customCapabilities));
-    this.parameterValues = signal(Model.mapFromSnapshot(snapshot.parameterValues));
+    this.customCapabilities = signal(
+      Model.capabilitiesFromSnapshot(snapshot.customCapabilities),
+    );
+    this.parameterValues = signal(
+      Model.mapFromSnapshot(snapshot.parameterValues),
+    );
 
     this.isDirty = computed(() => {
       this.cleanVersion();
@@ -69,12 +77,14 @@ export class Model {
         this.initialCustomCapabilities,
       );
 
-      return currentName !== this.initialName ||
-             currentDescription !== this.initialDescription ||
-             currentConnectorId !== this.initialConnectorId ||
-             currentConfigId !== this.initialConfigId ||
-             capabilitiesChanged ||
-             parameterValuesChanged;
+      return (
+        currentName !== this.initialName ||
+        currentDescription !== this.initialDescription ||
+        currentConnectorId !== this.initialConnectorId ||
+        currentConfigId !== this.initialConfigId ||
+        capabilitiesChanged ||
+        parameterValuesChanged
+      );
     });
   }
 
@@ -86,7 +96,9 @@ export class Model {
       description: this.description(),
       connectorId: this.connectorId() ?? null,
       configId: this.configId(),
-      customCapabilities: Model.capabilitiesToSnapshot(this.customCapabilities()),
+      customCapabilities: Model.capabilitiesToSnapshot(
+        this.customCapabilities(),
+      ),
       parameterValues: Model.snapshotFromMap(this.parameterValues()),
     };
   }
@@ -115,28 +127,40 @@ export class Model {
     this.initialConfigId = this.configId();
     this.initialCustomCapabilities = new Set(this.customCapabilities());
     this.initialParameterValues = new Map(this.parameterValues());
-    this.cleanVersion.update(v => v + 1);
+    this.cleanVersion.update((v) => v + 1);
   }
 
-  private static mapFromSnapshot(parameterValues: ModelSnapshot['parameterValues'] | undefined): Map<string, string | null> {
-    const entries = Object.entries(parameterValues ?? {}).map(([key, value]) => [key, value ?? null] as const);
+  private static mapFromSnapshot(
+    parameterValues: ModelSnapshot['parameterValues'] | undefined,
+  ): Map<string, string | null> {
+    const entries = Object.entries(parameterValues ?? {}).map(
+      ([key, value]) => [key, value ?? null] as const,
+    );
     return new Map<string, string | null>(entries);
   }
 
-  private static snapshotFromMap(parameterValues: Map<string, string | null> | undefined): ModelSnapshot['parameterValues'] {
+  private static snapshotFromMap(
+    parameterValues: Map<string, string | null> | undefined,
+  ): ModelSnapshot['parameterValues'] {
     if (!parameterValues) {
       return {};
     }
 
-    const entries = Array.from(parameterValues.entries()).map(([key, value]) => [key, value ?? null] as const);
+    const entries = Array.from(parameterValues.entries()).map(
+      ([key, value]) => [key, value ?? null] as const,
+    );
     return Object.fromEntries(entries) as Record<string, string | null>;
   }
 
-  private static capabilitiesFromSnapshot(capabilities: ModelSnapshot['customCapabilities'] | undefined): Set<string> {
+  private static capabilitiesFromSnapshot(
+    capabilities: ModelSnapshot['customCapabilities'] | undefined,
+  ): Set<string> {
     return new Set(capabilities ?? []);
   }
 
-  private static capabilitiesToSnapshot(capabilities: Set<string> | undefined): ModelSnapshot['customCapabilities'] {
+  private static capabilitiesToSnapshot(
+    capabilities: Set<string> | undefined,
+  ): ModelSnapshot['customCapabilities'] {
     if (!capabilities) {
       return [];
     }
@@ -146,7 +170,7 @@ export class Model {
 
   private static areCapabilitiesEqual(
     current: Set<string>,
-    initial: Set<string>
+    initial: Set<string>,
   ): boolean {
     if (current.size !== initial.size) {
       return false;
@@ -163,7 +187,7 @@ export class Model {
 
   private static areParameterValuesEqual(
     current: Map<string, string | null>,
-    initial: Map<string, string | null>
+    initial: Map<string, string | null>,
   ): boolean {
     if (current.size !== initial.size) {
       return false;

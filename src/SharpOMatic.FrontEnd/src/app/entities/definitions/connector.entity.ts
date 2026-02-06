@@ -35,10 +35,12 @@ export class ConnectorEntity extends Entity<ConnectorSnapshot> {
       const currentLabelOffsetV = this.labelOffsetV();
       const currentLabelOffsetH = this.labelOffsetH();
 
-      return (currentName !== snapshot.name) ||
-             (currentBoxOffset !== snapshot.boxOffset) ||
-             (currentLabelOffsetV !== snapshot.labelOffsetV) ||
-             (currentLabelOffsetH !== snapshot.labelOffsetH);
+      return (
+        currentName !== snapshot.name ||
+        currentBoxOffset !== snapshot.boxOffset ||
+        currentLabelOffsetV !== snapshot.labelOffsetV ||
+        currentLabelOffsetH !== snapshot.labelOffsetH
+      );
     });
   }
 
@@ -64,6 +66,6 @@ export class ConnectorEntity extends Entity<ConnectorSnapshot> {
       boxOffset: 0,
       labelOffsetV: 0,
       labelOffsetH: 0,
-    }
+    };
   }
 }

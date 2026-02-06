@@ -1,14 +1,29 @@
 <div class="d-flex flex-column bg-body-secondary h-100 evaluation-page">
   <div class="flex-shrink-0">
-    <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-0">
-      <h2 class=""><i class="bi bi-clipboard-check pe-3 icon-sm"></i>{{ evalConfig.name() || 'Evaluation' }}</h2>
-      <button class="btn btn-primary" [disabled]="!evalConfig.isDirty()" (click)="save()">Save</button>
+    <div
+      class="d-flex justify-content-between align-items-center p-3 pt-2 pb-0"
+    >
+      <h2 class="">
+        <i class="bi bi-clipboard-check pe-3 icon-sm"></i
+        >{{ evalConfig.name() || "Evaluation" }}
+      </h2>
+      <button
+        class="btn btn-primary"
+        [disabled]="!evalConfig.isDirty()"
+        (click)="save()"
+      >
+        Save
+      </button>
     </div>
   </div>
 
   <div class="tab-shell mt-1">
-    <app-tab [tabs]="tabs" [(activeTabId)]="activeTabId" (activeTabChange)="onActiveTabChange($event)"
-      [preventOverflow]="true"></app-tab>
+    <app-tab
+      [tabs]="tabs"
+      [(activeTabId)]="activeTabId"
+      (activeTabChange)="onActiveTabChange($event)"
+      [preventOverflow]="true"
+    ></app-tab>
   </div>
 
   <ng-template #detailsTab>
@@ -16,32 +31,53 @@
       <div class="mb-3 form-line">
         <label for="eval-id" class="form-label field-label">Id</label>
         <div class="flex-fill control-column short">
-          <input type="text" class="form-control w-100" id="eval-id" [ngModel]="evalConfig.evalConfigId" readonly />
+          <input
+            type="text"
+            class="form-control w-100"
+            id="eval-id"
+            [ngModel]="evalConfig.evalConfigId"
+            readonly
+          />
         </div>
       </div>
       <div class="mb-3 form-line">
         <label for="eval-title" class="form-label field-label">Title</label>
         <div class="flex-fill control-column short">
-          <input type="text" class="form-control w-100" id="eval-title" [ngModel]="evalConfig.name()"
-            (ngModelChange)="evalConfig.name.set($event)" />
+          <input
+            type="text"
+            class="form-control w-100"
+            id="eval-title"
+            [ngModel]="evalConfig.name()"
+            (ngModelChange)="evalConfig.name.set($event)"
+          />
         </div>
       </div>
       <div class="mb-3 form-line">
-        <label for="eval-description" class="form-label field-label">Description</label>
+        <label for="eval-description" class="form-label field-label"
+          >Description</label
+        >
         <div class="flex-fill control-column long">
-          <input type="text" class="form-control w-100" id="eval-description" [ngModel]="evalConfig.description()"
-            (ngModelChange)="evalConfig.description.set($event)" />
+          <input
+            type="text"
+            class="form-control w-100"
+            id="eval-description"
+            [ngModel]="evalConfig.description()"
+            (ngModelChange)="evalConfig.description.set($event)"
+          />
         </div>
       </div>
       <div class="mb-3 form-line">
-        <label for="eval-workflow" class="form-label field-label">Workflow</label>
+        <label for="eval-workflow" class="form-label field-label"
+          >Workflow</label
+        >
         <div class="flex-fill control-column long">
           <select
             id="eval-workflow"
             class="form-select w-100"
             [ngModel]="workflowSelectionId"
             (ngModelChange)="onWorkflowChange($event)"
-            [disabled]="!workflowSummaries.length">
+            [disabled]="!workflowSummaries.length"
+          >
             <option [ngValue]="null">(None)</option>
             @for (workflow of workflowSummaries; track workflow.id) {
               <option [ngValue]="workflow.id">
@@ -52,7 +88,9 @@
         </div>
       </div>
       <div class="mb-3 form-line">
-        <label for="eval-max-parallel" class="form-label field-label">Max Parallel</label>
+        <label for="eval-max-parallel" class="form-label field-label"
+          >Max Parallel</label
+        >
         <div class="flex-fill control-column tiny">
           <input
             id="eval-max-parallel"
@@ -62,7 +100,8 @@
             step="1"
             inputmode="numeric"
             [ngModel]="evalConfig.maxParallel()"
-            (ngModelChange)="onMaxParallelChange($event)" />
+            (ngModelChange)="onMaxParallelChange($event)"
+          />
         </div>
       </div>
     </div>
@@ -81,14 +120,18 @@
         }
         @for (grader of evalConfig.graders(); track grader.evalGraderId) {
           <div class="d-flex align-items-start gap-2 mb-2 grader-row">
-            <input type="text"
-                  class="form-control grader-name"
-                  [ngModel]="grader.label()"
-                  (ngModelChange)="grader.label.set($event)"/>
-            <select class="form-select grader-workflow"
-                    [ngModel]="graderWorkflowSelectionId(grader)"
-                    (ngModelChange)="onGraderWorkflowChange(grader, $event)"
-                    [disabled]="!workflowSummaries.length">
+            <input
+              type="text"
+              class="form-control grader-name"
+              [ngModel]="grader.label()"
+              (ngModelChange)="grader.label.set($event)"
+            />
+            <select
+              class="form-select grader-workflow"
+              [ngModel]="graderWorkflowSelectionId(grader)"
+              (ngModelChange)="onGraderWorkflowChange(grader, $event)"
+              [disabled]="!workflowSummaries.length"
+            >
               <option [ngValue]="null">(None)</option>
               @for (workflow of workflowSummaries; track workflow.id) {
                 <option [ngValue]="workflow.id">
@@ -96,28 +139,39 @@
                 </option>
               }
             </select>
-            <input type="number"
-                  class="form-control grader-threshold"
-                  inputmode="decimal"
-                  step="any"
-                  [ngModel]="grader.passThreshold()"
-                  (ngModelChange)="onPassThresholdChange(grader, $event)"/>
-            <button class="btn btn-outline-primary"
-                    [disabled]="!canMoveGraderUp(grader)"
-                    (click)="onMoveGraderUp(grader)">
+            <input
+              type="number"
+              class="form-control grader-threshold"
+              inputmode="decimal"
+              step="any"
+              [ngModel]="grader.passThreshold()"
+              (ngModelChange)="onPassThresholdChange(grader, $event)"
+            />
+            <button
+              class="btn btn-outline-primary"
+              [disabled]="!canMoveGraderUp(grader)"
+              (click)="onMoveGraderUp(grader)"
+            >
               <i class="bi bi-arrow-up"></i>
             </button>
-            <button class="btn btn-outline-primary"
-                    [disabled]="!canMoveGraderDown(grader)"
-                    (click)="onMoveGraderDown(grader)">
+            <button
+              class="btn btn-outline-primary"
+              [disabled]="!canMoveGraderDown(grader)"
+              (click)="onMoveGraderDown(grader)"
+            >
               <i class="bi bi-arrow-down"></i>
             </button>
-            <button class="btn btn-outline-danger" (click)="onDeleteGrader(grader)">
+            <button
+              class="btn btn-outline-danger"
+              (click)="onDeleteGrader(grader)"
+            >
               <i class="bi bi-trash"></i>
             </button>
           </div>
         }
-        <button class="btn btn-primary mt-2" (click)="appendGrader()">Add</button>
+        <button class="btn btn-primary mt-2" (click)="appendGrader()">
+          Add
+        </button>
       </div>
     </div>
   </ng-template>

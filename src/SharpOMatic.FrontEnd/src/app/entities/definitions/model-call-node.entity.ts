@@ -55,7 +55,8 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       const currentImageOutputPath = this.imageOutputPath();
       const currentParameterValues = this.parameterValues();
 
-      return currentIsDirty ||
+      return (
+        currentIsDirty ||
         currentModelId !== snapshot.modelId ||
         currentInstructions !== snapshot.instructions ||
         currentPrompt !== snapshot.prompt ||
@@ -64,7 +65,11 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
         currentTextOutputPath !== snapshot.textOutputPath ||
         currentImageInputPath !== snapshot.imageInputPath ||
         currentImageOutputPath !== snapshot.imageOutputPath ||
-        !ModelCallNodeEntity.areParameterValuesEqual(currentParameterValues, snapshot.parameterValues);
+        !ModelCallNodeEntity.areParameterValuesEqual(
+          currentParameterValues,
+          snapshot.parameterValues,
+        )
+      );
     });
   }
 
@@ -83,7 +88,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
     };
   }
 
-  public static fromSnapshot(snapshot: ModelCallNodeSnapshot): ModelCallNodeEntity {
+  public static fromSnapshot(
+    snapshot: ModelCallNodeSnapshot,
+  ): ModelCallNodeEntity {
     return new ModelCallNodeEntity(snapshot);
   }
 
@@ -125,6 +132,8 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       return false;
     }
 
-    return currentEntries.every(([key, value]) => (snapshot ?? {})[key] === value);
+    return currentEntries.every(
+      ([key, value]) => (snapshot ?? {})[key] === value,
+    );
   }
 }

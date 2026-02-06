@@ -13,11 +13,7 @@ import { DynamicFieldsComponent } from '../../components/dynamic-fields/dynamic-
 @Component({
   selector: 'app-connector',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    DynamicFieldsComponent,
-  ],
+  imports: [CommonModule, FormsModule, DynamicFieldsComponent],
   templateUrl: './connector.component.html',
   styleUrls: ['./connector.component.scss'],
 })
@@ -33,7 +29,7 @@ export class ConnectorComponent implements OnInit, CanLeaveWithUnsavedChanges {
   ngOnInit(): void {
     const connectorId = this.route.snapshot.paramMap.get('id');
     if (connectorId) {
-      this.serverRepository.getConnector(connectorId).subscribe(connector => {
+      this.serverRepository.getConnector(connectorId).subscribe((connector) => {
         if (connector) {
           this.connector = connector;
           this.setConnectorConfig(connector.configId(), false);
@@ -55,11 +51,16 @@ export class ConnectorComponent implements OnInit, CanLeaveWithUnsavedChanges {
     return this.mapToRecord(this.connector.fieldValues());
   }
 
-  public onConnectorFieldValuesChange(values: Record<string, string | null>): void {
+  public onConnectorFieldValuesChange(
+    values: Record<string, string | null>,
+  ): void {
     this.connector.fieldValues.set(this.recordToMap(values));
   }
 
-  private setConnectorConfig(configId: string, resetFieldValues: boolean): void {
+  private setConnectorConfig(
+    configId: string,
+    resetFieldValues: boolean,
+  ): void {
     if (!configId) {
       this.connectorConfig = null;
       this.connector.configId.set('');
@@ -71,7 +72,8 @@ export class ConnectorComponent implements OnInit, CanLeaveWithUnsavedChanges {
     }
 
     const configs = this.connectorConfigs();
-    this.connectorConfig = configs.find(config => config.configId === configId) ?? null;
+    this.connectorConfig =
+      configs.find((config) => config.configId === configId) ?? null;
     this.connector.configId.set(this.connectorConfig?.configId ?? '');
 
     this.ensureAuthMode(resetFieldValues);
@@ -90,7 +92,9 @@ export class ConnectorComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
   public get selectedAuthMode() {
     const authModeId = this.connector.authenticationModeId();
-    return this.connectorConfig?.authModes.find(mode => mode.id === authModeId);
+    return this.connectorConfig?.authModes.find(
+      (mode) => mode.id === authModeId,
+    );
   }
 
   private ensureAuthMode(resetFieldValues: boolean): void {
@@ -104,7 +108,7 @@ export class ConnectorComponent implements OnInit, CanLeaveWithUnsavedChanges {
     }
 
     let current = this.connector.authenticationModeId();
-    if (!current || !authModes.some(mode => mode.id === current)) {
+    if (!current || !authModes.some((mode) => mode.id === current)) {
       current = authModes[0].id;
       this.connector.authenticationModeId.set(current);
     }
@@ -122,7 +126,7 @@ export class ConnectorComponent implements OnInit, CanLeaveWithUnsavedChanges {
     }
 
     const next = new Map<string, string | null>();
-    mode.fields.forEach(field => {
+    mode.fields.forEach((field) => {
       if (field.defaultValue === null || field.defaultValue === undefined) {
         next.set(field.name, null);
       } else {
@@ -133,13 +137,21 @@ export class ConnectorComponent implements OnInit, CanLeaveWithUnsavedChanges {
     this.connector.fieldValues.set(next);
   }
 
-  private mapToRecord(values: Map<string, string | null>): Record<string, string | null> {
-    const entries = Array.from(values.entries()).map(([key, value]) => [key, value ?? null] as const);
+  private mapToRecord(
+    values: Map<string, string | null>,
+  ): Record<string, string | null> {
+    const entries = Array.from(values.entries()).map(
+      ([key, value]) => [key, value ?? null] as const,
+    );
     return Object.fromEntries(entries);
   }
 
-  private recordToMap(values: Record<string, string | null>): Map<string, string | null> {
-    const entries = Object.entries(values ?? {}).map(([key, value]) => [key, value ?? null] as const);
+  private recordToMap(
+    values: Record<string, string | null>,
+  ): Map<string, string | null> {
+    const entries = Object.entries(values ?? {}).map(
+      ([key, value]) => [key, value ?? null] as const,
+    );
     return new Map(entries);
   }
 
@@ -148,13 +160,12 @@ export class ConnectorComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   saveChanges(): Observable<void> {
-    return this.serverRepository.upsertConnector(this.connector)
-      .pipe(
-        map(() => {
-          this.connector?.markClean();
-          return;
-        })
-      );
+    return this.serverRepository.upsertConnector(this.connector).pipe(
+      map(() => {
+        this.connector?.markClean();
+        return;
+      }),
+    );
   }
 
   @HostListener('window:beforeunload', ['$event'])

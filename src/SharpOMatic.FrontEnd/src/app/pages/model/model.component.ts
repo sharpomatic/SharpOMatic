@@ -1,5 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit, Signal, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  OnInit,
+  Signal,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { ConnectorSummary } from '../../metadata/definitions/connector-summary';
@@ -12,17 +21,16 @@ import { ServerRepositoryService } from '../../services/server.repository.servic
 import { Connector } from '../../metadata/definitions/connector';
 import { CanLeaveWithUnsavedChanges } from '../../helper/unsaved-changes.guard';
 import { Observable, map } from 'rxjs';
-import { DynamicFieldsCapabilityContext, DynamicFieldsComponent } from '../../components/dynamic-fields/dynamic-fields.component';
+import {
+  DynamicFieldsCapabilityContext,
+  DynamicFieldsComponent,
+} from '../../components/dynamic-fields/dynamic-fields.component';
 import { FieldDescriptorType } from '../../metadata/enumerations/field-descriptor-type';
 
 @Component({
   selector: 'app-model',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    DynamicFieldsComponent,
-  ],
+  imports: [CommonModule, FormsModule, DynamicFieldsComponent],
   templateUrl: './model.component.html',
   styleUrls: ['./model.component.scss'],
 })
@@ -47,7 +55,7 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
       }
 
       return this.modelConfigs()
-        .filter(cfg => cfg.connectorConfigId === configId)
+        .filter((cfg) => cfg.connectorConfigId === configId)
         .slice()
         .sort((a, b) => {
           if (a.isCustom && !b.isCustom) {
@@ -91,26 +99,27 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
         return;
       }
 
-      const isValid = configs.some(c => c.configId === currentConfigId);
+      const isValid = configs.some((c) => c.configId === currentConfigId);
       if (!isValid) {
         this.onModelConfigChange(configs[0].configId);
       }
     });
-
   }
 
   ngOnInit(): void {
-    this.serverRepository.getConnectorSummaries().subscribe(connectors => {
-      this.connectorSummaries = [...connectors].sort((a, b) => a.name.localeCompare(b.name));
+    this.serverRepository.getConnectorSummaries().subscribe((connectors) => {
+      this.connectorSummaries = [...connectors].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      );
     });
 
     const modelId = this.route.snapshot.paramMap.get('id');
     if (modelId) {
-      this.serverRepository.getModel(modelId).subscribe(model => {
+      this.serverRepository.getModel(modelId).subscribe((model) => {
         if (model) {
           this.model = model;
           this.setModelConfig(model.configId(), false);
-          this.modelVersion.update(v => v + 1);
+          this.modelVersion.update((v) => v + 1);
         }
       });
     }
@@ -145,19 +154,22 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
     this.model.parameterValues.set(this.recordToMap(values));
   }
 
-  public capabilityEntries(): { capability: ModelCapability; selected: boolean }[] {
+  public capabilityEntries(): {
+    capability: ModelCapability;
+    selected: boolean;
+  }[] {
     if (!this.modelConfig) {
       return [];
     }
 
-    return this.modelConfig.capabilities.map(capability => ({
+    return this.modelConfig.capabilities.map((capability) => ({
       capability,
       selected: this.isCustomCapabilityEnabled(capability.name),
     }));
   }
 
   public onCapabilityChange(capability: string, enabled: boolean): void {
-    this.model.customCapabilities.update(set => {
+    this.model.customCapabilities.update((set) => {
       const next = new Set(set);
       if (enabled) {
         next.add(capability);
@@ -169,7 +181,9 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   public isCapabilityEnabled(capability: string): boolean {
-    return Boolean(this.modelConfig?.capabilities.some(c => c.name === capability));
+    return Boolean(
+      this.modelConfig?.capabilities.some((c) => c.name === capability),
+    );
   }
 
   public isCustomCapabilityEnabled(capability: string): boolean {
@@ -190,14 +204,22 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
     const previousValues = new Map(this.model.parameterValues());
 
     const availableConfigs = this.availableModelConfigs();
-    const searchConfigs = availableConfigs.length ? availableConfigs : this.modelConfigs();
-    this.modelConfig = searchConfigs.find(config => config.configId === configId) ?? null;
-    this.model.configId.set(this.modelConfig?.configId ?? (availableConfigs.length ? '' : configId));
+    const searchConfigs = availableConfigs.length
+      ? availableConfigs
+      : this.modelConfigs();
+    this.modelConfig =
+      searchConfigs.find((config) => config.configId === configId) ?? null;
+    this.model.configId.set(
+      this.modelConfig?.configId ?? (availableConfigs.length ? '' : configId),
+    );
 
     if (resetValues && this.modelConfig) {
-      const capabilityNames = this.modelConfig.capabilities.map(c => c.name);
+      const capabilityNames = this.modelConfig.capabilities.map((c) => c.name);
       this.model.customCapabilities.set(new Set(capabilityNames));
-      const nextValues = this.buildParameterValuesForConfig(this.modelConfig, previousValues);
+      const nextValues = this.buildParameterValuesForConfig(
+        this.modelConfig,
+        previousValues,
+      );
       this.model.parameterValues.set(nextValues);
     }
   }
@@ -213,19 +235,32 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
     }
   }
 
-  private buildParameterValuesForConfig(config: ModelConfig, previousValues: Map<string, string | null>): Map<string, string | null> {
+  private buildParameterValuesForConfig(
+    config: ModelConfig,
+    previousValues: Map<string, string | null>,
+  ): Map<string, string | null> {
     // Start with all previous values so switching away and back preserves user input
     const next = new Map<string, string | null>(previousValues);
-    config.parameterFields.forEach(field => {
-      const capabilityOk = !field.capability || (this.isCapabilityEnabled(field.capability) && (!config.isCustom || this.isCustomCapabilityEnabled(field.capability)));
+    config.parameterFields.forEach((field) => {
+      const capabilityOk =
+        !field.capability ||
+        (this.isCapabilityEnabled(field.capability) &&
+          (!config.isCustom ||
+            this.isCustomCapabilityEnabled(field.capability)));
       if (!capabilityOk) {
         return;
       }
 
       if (previousValues.has(field.name)) {
-        const constrained = this.applyFieldConstraints(field, previousValues.get(field.name) ?? null);
+        const constrained = this.applyFieldConstraints(
+          field,
+          previousValues.get(field.name) ?? null,
+        );
         next.set(field.name, constrained);
-      } else if (field.defaultValue === null || field.defaultValue === undefined) {
+      } else if (
+        field.defaultValue === null ||
+        field.defaultValue === undefined
+      ) {
         next.set(field.name, null);
       } else {
         next.set(field.name, String(field.defaultValue));
@@ -234,12 +269,17 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
     return next;
   }
 
-  private applyFieldConstraints(field: FieldDescriptor, value: string | null): string | null {
+  private applyFieldConstraints(
+    field: FieldDescriptor,
+    value: string | null,
+  ): string | null {
     if (value === null) {
       return null;
     }
 
-    const isNumericField = field.type === FieldDescriptorType.Integer || field.type === FieldDescriptorType.Double;
+    const isNumericField =
+      field.type === FieldDescriptorType.Integer ||
+      field.type === FieldDescriptorType.Double;
     if (!isNumericField) {
       return value;
     }
@@ -270,18 +310,28 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
       return;
     }
 
-    this.serverRepository.getConnector(connectorId).subscribe((connector: Connector | null) => {
-      this.connectorConfigId.set(connector?.configId() ?? null);
-    });
+    this.serverRepository
+      .getConnector(connectorId)
+      .subscribe((connector: Connector | null) => {
+        this.connectorConfigId.set(connector?.configId() ?? null);
+      });
   }
 
-  private mapToRecord(values: Map<string, string | null>): Record<string, string | null> {
-    const entries = Array.from(values.entries()).map(([key, value]) => [key, value ?? null] as const);
+  private mapToRecord(
+    values: Map<string, string | null>,
+  ): Record<string, string | null> {
+    const entries = Array.from(values.entries()).map(
+      ([key, value]) => [key, value ?? null] as const,
+    );
     return Object.fromEntries(entries);
   }
 
-  private recordToMap(values: Record<string, string | null>): Map<string, string | null> {
-    const entries = Object.entries(values ?? {}).map(([key, value]) => [key, value ?? null] as const);
+  private recordToMap(
+    values: Record<string, string | null>,
+  ): Map<string, string | null> {
+    const entries = Object.entries(values ?? {}).map(
+      ([key, value]) => [key, value ?? null] as const,
+    );
     return new Map(entries);
   }
 
@@ -294,7 +344,7 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
       map(() => {
         this.model?.markClean();
         return;
-      })
+      }),
     );
   }
 

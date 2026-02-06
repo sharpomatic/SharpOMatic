@@ -1,5 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Inject, OnInit, Output, TemplateRef, ViewChild, inject } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Inject,
+  OnInit,
+  Output,
+  TemplateRef,
+  ViewChild,
+  inject,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ContextViewerComponent } from '../../components/context-viewer/context-viewer.component';
 import { TabComponent, TabItem } from '../../components/tab/tab.component';
@@ -12,7 +21,10 @@ import { Model } from '../../metadata/definitions/model';
 import { ModelConfig } from '../../metadata/definitions/model-config';
 import { FieldDescriptor } from '../../metadata/definitions/field-descriptor';
 import { FieldDescriptorType } from '../../metadata/enumerations/field-descriptor-type';
-import { DynamicFieldsCapabilityContext, DynamicFieldsComponent } from '../../components/dynamic-fields/dynamic-fields.component';
+import {
+  DynamicFieldsCapabilityContext,
+  DynamicFieldsComponent,
+} from '../../components/dynamic-fields/dynamic-fields.component';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { MonacoService } from '../../services/monaco.service';
 
@@ -38,8 +50,10 @@ export class ModelCallNodeDialogComponent implements OnInit {
   @ViewChild('outputsTab', { static: true }) outputsTab!: TemplateRef<unknown>;
   @ViewChild('textTab', { static: true }) textTab!: TemplateRef<unknown>;
   @ViewChild('imageTab', { static: true }) imageTab!: TemplateRef<unknown>;
-  @ViewChild('toolCallingTab', { static: true }) toolCallingTab!: TemplateRef<unknown>;
-  @ViewChild('structuredTab', { static: true }) structuredTab!: TemplateRef<unknown>;
+  @ViewChild('toolCallingTab', { static: true })
+  toolCallingTab!: TemplateRef<unknown>;
+  @ViewChild('structuredTab', { static: true })
+  structuredTab!: TemplateRef<unknown>;
 
   public node: ModelCallNodeEntity;
   public inputTraces: string[];
@@ -73,10 +87,20 @@ export class ModelCallNodeDialogComponent implements OnInit {
 
   private readonly serverRepository = inject(ServerRepositoryService);
 
-  constructor(@Inject(DIALOG_DATA) data: { node: ModelCallNodeEntity, nodeTraces: TraceProgressModel[] }) {
+  constructor(
+    @Inject(DIALOG_DATA)
+    data: {
+      node: ModelCallNodeEntity;
+      nodeTraces: TraceProgressModel[];
+    },
+  ) {
     this.node = data.node;
-    this.inputTraces = (data.nodeTraces ?? []).map(trace => trace.inputContext).filter((context): context is string => context != null);
-    this.outputTraces = (data.nodeTraces ?? []).map(trace => trace.outputContext).filter((context): context is string => context != null);
+    this.inputTraces = (data.nodeTraces ?? [])
+      .map((trace) => trace.inputContext)
+      .filter((context): context is string => context != null);
+    this.outputTraces = (data.nodeTraces ?? [])
+      .map((trace) => trace.outputContext)
+      .filter((context): context is string => context != null);
   }
 
   ngOnInit(): void {
@@ -96,25 +120,29 @@ export class ModelCallNodeDialogComponent implements OnInit {
     this.showTextInFields = false;
     this.showTextOutFields = false;
 
-    if (!modelId || modelId === "") {
+    if (!modelId || modelId === '') {
       this.node.modelId.set(null);
       return;
     }
 
-    const summary = this.availableModels.find(model => model.modelId === modelId);
+    const summary = this.availableModels.find(
+      (model) => model.modelId === modelId,
+    );
     this.node.modelId.set(summary?.modelId ?? modelId);
     this.loadModel(modelId);
   }
 
   private loadAvailableModels(): void {
-    this.serverRepository.getModelSummaries().subscribe(models => {
+    this.serverRepository.getModelSummaries().subscribe((models) => {
       this.availableModels = models;
       this.syncSelectedModel();
     });
   }
 
   private syncSelectedModel(): void {
-    const matchedModel = this.availableModels.find(model => model.modelId === this.node.modelId());
+    const matchedModel = this.availableModels.find(
+      (model) => model.modelId === this.node.modelId(),
+    );
 
     if (matchedModel) {
       this.selectedModelId = matchedModel.modelId;
@@ -133,7 +161,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
   }
 
   private loadModel(modelId: string): void {
-    this.serverRepository.getModel(modelId).subscribe(model => {
+    this.serverRepository.getModel(modelId).subscribe((model) => {
       this.loadedModel = model;
       this.showTextInFields = false;
 
@@ -149,7 +177,8 @@ export class ModelCallNodeDialogComponent implements OnInit {
 
   private loadModelConfig(configId: string): void {
     const applyConfig = (configs: ModelConfig[]) => {
-      this.modelConfig = configs.find(config => config.configId === configId) ?? null;
+      this.modelConfig =
+        configs.find((config) => config.configId === configId) ?? null;
       this.updateTextFieldVisibility();
       this.syncCallParameterValues();
       this.refreshTabs();
@@ -160,7 +189,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
       return;
     }
 
-    this.serverRepository.getModelConfigs().subscribe(configs => {
+    this.serverRepository.getModelConfigs().subscribe((configs) => {
       this.modelConfigsCache = configs;
       applyConfig(configs);
     });
@@ -172,7 +201,9 @@ export class ModelCallNodeDialogComponent implements OnInit {
   }
 
   public isCapabilityEnabled(capability: string): boolean {
-    return Boolean(this.modelConfig?.capabilities.some(c => c.name === capability));
+    return Boolean(
+      this.modelConfig?.capabilities.some((c) => c.name === capability),
+    );
   }
 
   public isCustomCapabilityEnabled(capability: string): boolean {
@@ -199,28 +230,28 @@ export class ModelCallNodeDialogComponent implements OnInit {
   }
 
   public onStructuredSchemaChange(value: string): void {
-    this.node.parameterValues.update(v => ({
+    this.node.parameterValues.update((v) => ({
       ...v,
       structured_output_schema: value ?? '',
     }));
   }
 
   public onStructuredSchemaNameChange(value: string): void {
-    this.node.parameterValues.update(v => ({
+    this.node.parameterValues.update((v) => ({
       ...v,
       structured_output_schema_name: value ?? '',
     }));
   }
 
   public onStructuredSchemaDescriptionChange(value: string): void {
-    this.node.parameterValues.update(v => ({
+    this.node.parameterValues.update((v) => ({
       ...v,
       structured_output_schema_description: value ?? '',
     }));
   }
 
   public onStructuredSchemaTypeChange(value: string | null): void {
-    this.node.parameterValues.update(v => ({
+    this.node.parameterValues.update((v) => ({
       ...v,
       structured_output_configured_type: value ?? '',
     }));
@@ -232,7 +263,10 @@ export class ModelCallNodeDialogComponent implements OnInit {
     }
 
     const currentValues = this.node.parameterValues();
-    const nextValues = this.buildParameterValuesForConfig(this.modelConfig, currentValues);
+    const nextValues = this.buildParameterValuesForConfig(
+      this.modelConfig,
+      currentValues,
+    );
     this.node.parameterValues.set(nextValues);
     this.ensureTypeSchemaNamesLoaded();
   }
@@ -243,21 +277,30 @@ export class ModelCallNodeDialogComponent implements OnInit {
   ): Record<string, string | null> {
     const next: Record<string, string | null> = { ...previousValues };
 
-    config.parameterFields.forEach(field => {
+    config.parameterFields.forEach((field) => {
       if (!field.callDefined) {
         return;
       }
 
-      const capabilityOk = !field.capability || (this.isCapabilityEnabled(field.capability) &&
-        (!config.isCustom || this.isCustomCapabilityEnabled(field.capability)));
+      const capabilityOk =
+        !field.capability ||
+        (this.isCapabilityEnabled(field.capability) &&
+          (!config.isCustom ||
+            this.isCustomCapabilityEnabled(field.capability)));
 
       if (!capabilityOk) {
         return;
       }
 
       if (field.name in previousValues) {
-        next[field.name] = this.applyFieldConstraints(field, previousValues[field.name]);
-      } else if (field.defaultValue === null || field.defaultValue === undefined) {
+        next[field.name] = this.applyFieldConstraints(
+          field,
+          previousValues[field.name],
+        );
+      } else if (
+        field.defaultValue === null ||
+        field.defaultValue === undefined
+      ) {
         next[field.name] = null;
       } else {
         next[field.name] = String(field.defaultValue);
@@ -267,12 +310,17 @@ export class ModelCallNodeDialogComponent implements OnInit {
     return next;
   }
 
-  private applyFieldConstraints(field: FieldDescriptor, value: string | null): string | null {
+  private applyFieldConstraints(
+    field: FieldDescriptor,
+    value: string | null,
+  ): string | null {
     if (value === null) {
       return null;
     }
 
-    const isNumericField = field.type === FieldDescriptorType.Integer || field.type === FieldDescriptorType.Double;
+    const isNumericField =
+      field.type === FieldDescriptorType.Integer ||
+      field.type === FieldDescriptorType.Double;
     if (!isNumericField) {
       return value;
     }
@@ -326,7 +374,9 @@ export class ModelCallNodeDialogComponent implements OnInit {
       return false;
     }
 
-    const hasCapability = this.modelConfig.capabilities.some(c => c.name === capabilityName);
+    const hasCapability = this.modelConfig.capabilities.some(
+      (c) => c.name === capabilityName,
+    );
     if (!hasCapability) {
       return false;
     }
@@ -348,7 +398,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
     }
 
     this.typeSchemaNamesLoaded = true;
-    this.serverRepository.getSchemaTypeNames().subscribe(names => {
+    this.serverRepository.getSchemaTypeNames().subscribe((names) => {
       this.typeSchemaNames = names ?? [];
     });
   }
@@ -363,7 +413,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
     }
 
     this.toolDisplayNamesLoaded = true;
-    this.serverRepository.getToolDisplayNames().subscribe(names => {
+    this.serverRepository.getToolDisplayNames().subscribe((names) => {
       this.toolDisplayNames = names ?? [];
     });
   }
@@ -380,10 +430,12 @@ export class ModelCallNodeDialogComponent implements OnInit {
       selectedTools.delete(toolName);
     }
 
-    const ordered = this.toolDisplayNames.filter(name => selectedTools.has(name));
+    const ordered = this.toolDisplayNames.filter((name) =>
+      selectedTools.has(name),
+    );
     const value = ordered.join(',');
 
-    this.node.parameterValues.update(v => ({
+    this.node.parameterValues.update((v) => ({
       ...v,
       selected_tools: value,
     }));
@@ -395,7 +447,10 @@ export class ModelCallNodeDialogComponent implements OnInit {
 
   private getSelectedTools(): Set<string> {
     const raw = this.node.parameterValues()['selected_tools'] ?? '';
-    const parts = raw.split(',').map(p => p.trim()).filter(p => p.length > 0);
+    const parts = raw
+      .split(',')
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0);
     return new Set(parts);
   }
 
@@ -416,11 +471,19 @@ export class ModelCallNodeDialogComponent implements OnInit {
 
     if (this.supportsToolCalling) {
       this.ensureToolDisplayNamesLoaded();
-      newTabs.push({ id: 'tool-calling', title: 'Tool Calling', content: this.toolCallingTab });
+      newTabs.push({
+        id: 'tool-calling',
+        title: 'Tool Calling',
+        content: this.toolCallingTab,
+      });
     }
 
     if (this.supportsStructuredOutput) {
-      newTabs.push({ id: 'structured', title: 'Structured Output', content: this.structuredTab });
+      newTabs.push({
+        id: 'structured',
+        title: 'Structured Output',
+        content: this.structuredTab,
+      });
     }
 
     newTabs.push(
@@ -430,7 +493,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
 
     this.tabs = newTabs;
 
-    const hasActive = newTabs.some(t => t.id === this.activeTabId);
+    const hasActive = newTabs.some((t) => t.id === this.activeTabId);
     if (!hasActive) {
       this.activeTabId = 'details';
     }

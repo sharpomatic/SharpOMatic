@@ -18,7 +18,9 @@ export class AuthenticationModeConfig {
     public readonly fields: FieldDescriptor[],
   ) {}
 
-  public static fromSnapshot(snapshot: AuthenticationModeConfigSnapshot): AuthenticationModeConfig {
+  public static fromSnapshot(
+    snapshot: AuthenticationModeConfigSnapshot,
+  ): AuthenticationModeConfig {
     return new AuthenticationModeConfig(
       snapshot.id,
       snapshot.displayName,

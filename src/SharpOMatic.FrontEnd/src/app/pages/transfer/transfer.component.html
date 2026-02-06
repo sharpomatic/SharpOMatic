@@ -3,7 +3,11 @@
     <h2><i class="bi bi-arrow-left-right pe-3 icon-sm"></i>Transfer</h2>
   </div>
   <div class="tab-shell mt-1">
-    <app-tab [tabs]="tabs" [activeTabId]="activeTabId" (activeTabIdChange)="onActiveTabIdChange($event)"></app-tab>
+    <app-tab
+      [tabs]="tabs"
+      [activeTabId]="activeTabId"
+      (activeTabIdChange)="onActiveTabIdChange($event)"
+    ></app-tab>
   </div>
 </div>
 
@@ -14,9 +18,20 @@
       Import workflows, connectors, models, and assets from a transfer package.
     </p>
     <div class="d-flex align-items-center gap-2 flex-wrap">
-      <input #importInput type="file" class="d-none" accept=".zip" (change)="onImportFileSelected($event)" />
-      <button class="btn btn-primary" type="button" [disabled]="isImporting" (click)="triggerImport(importInput)">
-        {{ isImporting ? 'Importing...' : 'Choose Zip' }}
+      <input
+        #importInput
+        type="file"
+        class="d-none"
+        accept=".zip"
+        (change)="onImportFileSelected($event)"
+      />
+      <button
+        class="btn btn-primary"
+        type="button"
+        [disabled]="isImporting"
+        (click)="triggerImport(importInput)"
+      >
+        {{ isImporting ? "Importing..." : "Choose Zip" }}
       </button>
       @if (selectedFileName) {
         <span class="text-body-secondary small">{{ selectedFileName }}</span>
@@ -28,7 +43,9 @@
 <ng-template #exportTab>
   <div class="transfer-panel bg-body-tertiary export-panel">
     <div class="export-header p-3">
-      <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 pb-3">
+      <div
+        class="d-flex flex-wrap align-items-start justify-content-between gap-3 pb-3"
+      >
         <div>
           <h5 class="mb-2">Export a transfer package</h5>
           <p class="text-body-secondary mb-0">
@@ -37,17 +54,29 @@
         </div>
         <div class="d-flex flex-wrap align-items-center gap-3">
           <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="include-secrets" [(ngModel)]="includeSecrets" />
-            <label class="form-check-label" for="include-secrets">Include secrets</label>
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="include-secrets"
+              [(ngModel)]="includeSecrets"
+            />
+            <label class="form-check-label" for="include-secrets"
+              >Include secrets</label
+            >
           </div>
-          <button class="btn btn-primary" type="button" [disabled]="!canExport() || isExporting" (click)="exportTransfer()">
-            {{ isExporting ? 'Exporting...' : 'Export' }}
+          <button
+            class="btn btn-primary"
+            type="button"
+            [disabled]="!canExport() || isExporting"
+            (click)="exportTransfer()"
+          >
+            {{ isExporting ? "Exporting..." : "Export" }}
           </button>
         </div>
       </div>
     </div>
 
-    <hr class="m-0"/>
+    <hr class="m-0" />
 
     <div class="export-tabs bg-body-secondary">
       <app-tab
@@ -55,7 +84,8 @@
         [activeTabId]="exportActiveTabId"
         [contentClass]="'bg-body-secondary'"
         [preventOverflow]="true"
-        (activeTabIdChange)="onExportTabIdChange($event)"></app-tab>
+        (activeTabIdChange)="onExportTabIdChange($event)"
+      ></app-tab>
     </div>
   </div>
 </ng-template>
@@ -63,20 +93,50 @@
 <ng-template #workflowsExportTab>
   <div class="transfer-section bg-body-tertiary">
     <div class="selection-toolbar">
-      <div class="selection-modes btn-group" role="group" aria-label="Workflow selection">
-        <input class="btn-check" type="radio" name="workflows-mode" id="workflows-all" value="all"
-          [(ngModel)]="workflowsMode" (ngModelChange)="updateExportTabs()" autocomplete="off" />
+      <div
+        class="selection-modes btn-group"
+        role="group"
+        aria-label="Workflow selection"
+      >
+        <input
+          class="btn-check"
+          type="radio"
+          name="workflows-mode"
+          id="workflows-all"
+          value="all"
+          [(ngModel)]="workflowsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
         <label class="btn btn-outline-primary" for="workflows-all">All</label>
 
-        <input class="btn-check" type="radio" name="workflows-mode" id="workflows-none" value="none"
-          [(ngModel)]="workflowsMode" (ngModelChange)="updateExportTabs()" autocomplete="off" />
+        <input
+          class="btn-check"
+          type="radio"
+          name="workflows-mode"
+          id="workflows-none"
+          value="none"
+          [(ngModel)]="workflowsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
         <label class="btn btn-outline-primary" for="workflows-none">None</label>
 
-        <input class="btn-check" type="radio" name="workflows-mode" id="workflows-custom" value="custom"
-          [(ngModel)]="workflowsMode" (ngModelChange)="updateExportTabs()" autocomplete="off" />
-        <label class="btn btn-outline-primary" for="workflows-custom">Custom</label>
+        <input
+          class="btn-check"
+          type="radio"
+          name="workflows-mode"
+          id="workflows-custom"
+          value="custom"
+          [(ngModel)]="workflowsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
+        <label class="btn btn-outline-primary" for="workflows-custom"
+          >Custom</label
+        >
       </div>
-      @if (workflowsMode === 'custom') {
+      @if (workflowsMode === "custom") {
         <div class="input-group export-search">
           <span class="input-group-text"><i class="bi bi-search"></i></span>
           <input
@@ -85,11 +145,12 @@
             placeholder="Search by name"
             [value]="workflowsSearchText"
             (input)="onWorkflowsSearchChange($event)"
-            (keyup.enter)="applyWorkflowsSearch()" />
+            (keyup.enter)="applyWorkflowsSearch()"
+          />
         </div>
       }
     </div>
-    @if (workflowsMode === 'custom') {
+    @if (workflowsMode === "custom") {
       @if (workflowsFilteredTotal === 0) {
         <div class="text-body-secondary small">No workflows available.</div>
       } @else {
@@ -99,24 +160,44 @@
               <tr>
                 <th scope="col" class="col-select"></th>
                 <th scope="col" class="col-name">
-                  <button class="btn btn-link p-0 export-sort" type="button"
-                    (click)="onWorkflowsSortChange(WorkflowSortField.Name)">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="onWorkflowsSortChange(WorkflowSortField.Name)"
+                  >
                     Name
                     @if (workflowsSortField === WorkflowSortField.Name) {
-                      <i class="bi"
-                        [class.bi-arrow-down]="workflowsSortDirection === SortDirection.Descending"
-                        [class.bi-arrow-up]="workflowsSortDirection === SortDirection.Ascending"></i>
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          workflowsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          workflowsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
                     }
                   </button>
                 </th>
                 <th scope="col" class="col-description">
-                  <button class="btn btn-link p-0 export-sort" type="button"
-                    (click)="onWorkflowsSortChange(WorkflowSortField.Description)">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="
+                      onWorkflowsSortChange(WorkflowSortField.Description)
+                    "
+                  >
                     Description
                     @if (workflowsSortField === WorkflowSortField.Description) {
-                      <i class="bi"
-                        [class.bi-arrow-down]="workflowsSortDirection === SortDirection.Descending"
-                        [class.bi-arrow-up]="workflowsSortDirection === SortDirection.Ascending"></i>
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          workflowsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          workflowsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
                     }
                   </button>
                 </th>
@@ -126,51 +207,111 @@
               @for (workflow of workflows; track workflow.id) {
                 <tr>
                   <td class="col-select">
-                    <input class="form-check-input" type="checkbox" [id]="'workflow-' + workflow.id"
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      [id]="'workflow-' + workflow.id"
                       [checked]="selectedWorkflows.has(workflow.id)"
-                      (change)="onSelectionChange(selectedWorkflows, workflow.id, $event)" />
+                      (change)="
+                        onSelectionChange(
+                          selectedWorkflows,
+                          workflow.id,
+                          $event
+                        )
+                      "
+                    />
                   </td>
-                  <td class="col-name text-truncate" title="{{ workflow.name() }}">{{ workflow.name() }}</td>
-                  <td class="col-description text-truncate" title="{{ workflow.description() }}">{{ workflow.description() }}</td>
+                  <td
+                    class="col-name text-truncate"
+                    title="{{ workflow.name() }}"
+                  >
+                    {{ workflow.name() }}
+                  </td>
+                  <td
+                    class="col-description text-truncate"
+                    title="{{ workflow.description() }}"
+                  >
+                    {{ workflow.description() }}
+                  </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
-        <div class="d-flex align-items-center justify-content-between export-pagination">
+        <div
+          class="d-flex align-items-center justify-content-between export-pagination"
+        >
           <div class="text-muted small">
-            Page {{ workflowsPage }} of {{ workflowsPageCount() }} ({{ workflowsFilteredTotal }} total workflows)
+            Page {{ workflowsPage }} of {{ workflowsPageCount() }} ({{
+              workflowsFilteredTotal
+            }}
+            total workflows)
           </div>
           @if (workflowsPageCount() > 1) {
             <nav aria-label="Workflows pagination">
               <ul class="pagination pagination-sm mb-0">
                 <li class="page-item" [class.disabled]="workflowsPage === 1">
-                  <button class="page-link" type="button" [disabled]="workflowsPage === 1" aria-label="First"
-                    (click)="onWorkflowsPageChange(1)">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="workflowsPage === 1"
+                    aria-label="First"
+                    (click)="onWorkflowsPageChange(1)"
+                  >
                     <span aria-hidden="true">&laquo;</span>
                   </button>
                 </li>
                 <li class="page-item" [class.disabled]="workflowsPage === 1">
-                  <button class="page-link" type="button" [disabled]="workflowsPage === 1" aria-label="Previous"
-                    (click)="onWorkflowsPageChange(workflowsPage - 1)">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="workflowsPage === 1"
+                    aria-label="Previous"
+                    (click)="onWorkflowsPageChange(workflowsPage - 1)"
+                  >
                     <span aria-hidden="true">&lsaquo;</span>
                   </button>
                 </li>
                 @for (page of workflowsPageNumbers(); track page) {
-                  <li class="page-item" [class.active]="page === workflowsPage"
-                    [attr.aria-current]="page === workflowsPage ? 'page' : null">
-                    <button class="page-link" type="button" (click)="onWorkflowsPageChange(page)">{{ page }}</button>
+                  <li
+                    class="page-item"
+                    [class.active]="page === workflowsPage"
+                    [attr.aria-current]="page === workflowsPage ? 'page' : null"
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      (click)="onWorkflowsPageChange(page)"
+                    >
+                      {{ page }}
+                    </button>
                   </li>
                 }
-                <li class="page-item" [class.disabled]="workflowsPage >= workflowsPageCount()">
-                  <button class="page-link" type="button" [disabled]="workflowsPage >= workflowsPageCount()"
-                    aria-label="Next" (click)="onWorkflowsPageChange(workflowsPage + 1)">
+                <li
+                  class="page-item"
+                  [class.disabled]="workflowsPage >= workflowsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="workflowsPage >= workflowsPageCount()"
+                    aria-label="Next"
+                    (click)="onWorkflowsPageChange(workflowsPage + 1)"
+                  >
                     <span aria-hidden="true">&rsaquo;</span>
                   </button>
                 </li>
-                <li class="page-item" [class.disabled]="workflowsPage >= workflowsPageCount()">
-                  <button class="page-link" type="button" [disabled]="workflowsPage >= workflowsPageCount()"
-                    aria-label="Last" (click)="onWorkflowsPageChange(workflowsPageCount())">
+                <li
+                  class="page-item"
+                  [class.disabled]="workflowsPage >= workflowsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="workflowsPage >= workflowsPageCount()"
+                    aria-label="Last"
+                    (click)="onWorkflowsPageChange(workflowsPageCount())"
+                  >
                     <span aria-hidden="true">&raquo;</span>
                   </button>
                 </li>
@@ -186,20 +327,52 @@
 <ng-template #connectorsExportTab>
   <div class="transfer-section bg-body-tertiary">
     <div class="selection-toolbar">
-      <div class="selection-modes btn-group" role="group" aria-label="Connector selection">
-        <input class="btn-check bg-body-secondary" type="radio" name="connectors-mode" id="connectors-all" value="all"
-          [(ngModel)]="connectorsMode" (ngModelChange)="updateExportTabs()" autocomplete="off" />
+      <div
+        class="selection-modes btn-group"
+        role="group"
+        aria-label="Connector selection"
+      >
+        <input
+          class="btn-check bg-body-secondary"
+          type="radio"
+          name="connectors-mode"
+          id="connectors-all"
+          value="all"
+          [(ngModel)]="connectorsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
         <label class="btn btn-outline-primary" for="connectors-all">All</label>
 
-        <input class="btn-check bg-body-secondary" type="radio" name="connectors-mode" id="connectors-none" value="none"
-          [(ngModel)]="connectorsMode" (ngModelChange)="updateExportTabs()" autocomplete="off" />
-        <label class="btn btn-outline-primary" for="connectors-none">None</label>
+        <input
+          class="btn-check bg-body-secondary"
+          type="radio"
+          name="connectors-mode"
+          id="connectors-none"
+          value="none"
+          [(ngModel)]="connectorsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
+        <label class="btn btn-outline-primary" for="connectors-none"
+          >None</label
+        >
 
-        <input class="btn-check bg-body-secondary" type="radio" name="connectors-mode" id="connectors-custom" value="custom"
-          [(ngModel)]="connectorsMode" (ngModelChange)="updateExportTabs()" autocomplete="off" />
-        <label class="btn btn-outline-primary" for="connectors-custom">Custom</label>
+        <input
+          class="btn-check bg-body-secondary"
+          type="radio"
+          name="connectors-mode"
+          id="connectors-custom"
+          value="custom"
+          [(ngModel)]="connectorsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
+        <label class="btn btn-outline-primary" for="connectors-custom"
+          >Custom</label
+        >
       </div>
-      @if (connectorsMode === 'custom') {
+      @if (connectorsMode === "custom") {
         <div class="input-group export-search">
           <span class="input-group-text"><i class="bi bi-search"></i></span>
           <input
@@ -208,11 +381,12 @@
             placeholder="Search by name"
             [value]="connectorsSearchText"
             (input)="onConnectorsSearchChange($event)"
-            (keyup.enter)="applyConnectorsSearch()" />
+            (keyup.enter)="applyConnectorsSearch()"
+          />
         </div>
       }
     </div>
-    @if (connectorsMode === 'custom') {
+    @if (connectorsMode === "custom") {
       @if (connectorsFilteredTotal === 0) {
         <div class="text-body-secondary small">No connectors available.</div>
       } @else {
@@ -222,24 +396,46 @@
               <tr>
                 <th scope="col" class="col-select"></th>
                 <th scope="col" class="col-name">
-                  <button class="btn btn-link p-0 export-sort" type="button"
-                    (click)="onConnectorsSortChange(ConnectorSortField.Name)">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="onConnectorsSortChange(ConnectorSortField.Name)"
+                  >
                     Name
                     @if (connectorsSortField === ConnectorSortField.Name) {
-                      <i class="bi"
-                        [class.bi-arrow-down]="connectorsSortDirection === SortDirection.Descending"
-                        [class.bi-arrow-up]="connectorsSortDirection === SortDirection.Ascending"></i>
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          connectorsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          connectorsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
                     }
                   </button>
                 </th>
                 <th scope="col" class="col-description">
-                  <button class="btn btn-link p-0 export-sort" type="button"
-                    (click)="onConnectorsSortChange(ConnectorSortField.Description)">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="
+                      onConnectorsSortChange(ConnectorSortField.Description)
+                    "
+                  >
                     Description
-                    @if (connectorsSortField === ConnectorSortField.Description) {
-                      <i class="bi"
-                        [class.bi-arrow-down]="connectorsSortDirection === SortDirection.Descending"
-                        [class.bi-arrow-up]="connectorsSortDirection === SortDirection.Ascending"></i>
+                    @if (
+                      connectorsSortField === ConnectorSortField.Description
+                    ) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          connectorsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          connectorsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
                     }
                   </button>
                 </th>
@@ -249,51 +445,113 @@
               @for (connector of connectors; track connector.connectorId) {
                 <tr>
                   <td class="col-select">
-                    <input class="form-check-input" type="checkbox" [id]="'connector-' + connector.connectorId"
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      [id]="'connector-' + connector.connectorId"
                       [checked]="selectedConnectors.has(connector.connectorId)"
-                      (change)="onSelectionChange(selectedConnectors, connector.connectorId, $event)" />
+                      (change)="
+                        onSelectionChange(
+                          selectedConnectors,
+                          connector.connectorId,
+                          $event
+                        )
+                      "
+                    />
                   </td>
-                  <td class="col-name text-truncate" title="{{ connector.name }}">{{ connector.name }}</td>
-                  <td class="col-description text-truncate" title="{{ connector.description }}">{{ connector.description }}</td>
+                  <td
+                    class="col-name text-truncate"
+                    title="{{ connector.name }}"
+                  >
+                    {{ connector.name }}
+                  </td>
+                  <td
+                    class="col-description text-truncate"
+                    title="{{ connector.description }}"
+                  >
+                    {{ connector.description }}
+                  </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
-        <div class="d-flex align-items-center justify-content-between export-pagination">
+        <div
+          class="d-flex align-items-center justify-content-between export-pagination"
+        >
           <div class="text-muted small">
-            Page {{ connectorsPage }} of {{ connectorsPageCount() }} ({{ connectorsFilteredTotal }} total connectors)
+            Page {{ connectorsPage }} of {{ connectorsPageCount() }} ({{
+              connectorsFilteredTotal
+            }}
+            total connectors)
           </div>
           @if (connectorsPageCount() > 1) {
             <nav aria-label="Connectors pagination">
               <ul class="pagination pagination-sm mb-0">
                 <li class="page-item" [class.disabled]="connectorsPage === 1">
-                  <button class="page-link" type="button" [disabled]="connectorsPage === 1" aria-label="First"
-                    (click)="onConnectorsPageChange(1)">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="connectorsPage === 1"
+                    aria-label="First"
+                    (click)="onConnectorsPageChange(1)"
+                  >
                     <span aria-hidden="true">&laquo;</span>
                   </button>
                 </li>
                 <li class="page-item" [class.disabled]="connectorsPage === 1">
-                  <button class="page-link" type="button" [disabled]="connectorsPage === 1" aria-label="Previous"
-                    (click)="onConnectorsPageChange(connectorsPage - 1)">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="connectorsPage === 1"
+                    aria-label="Previous"
+                    (click)="onConnectorsPageChange(connectorsPage - 1)"
+                  >
                     <span aria-hidden="true">&lsaquo;</span>
                   </button>
                 </li>
                 @for (page of connectorsPageNumbers(); track page) {
-                  <li class="page-item" [class.active]="page === connectorsPage"
-                    [attr.aria-current]="page === connectorsPage ? 'page' : null">
-                    <button class="page-link" type="button" (click)="onConnectorsPageChange(page)">{{ page }}</button>
+                  <li
+                    class="page-item"
+                    [class.active]="page === connectorsPage"
+                    [attr.aria-current]="
+                      page === connectorsPage ? 'page' : null
+                    "
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      (click)="onConnectorsPageChange(page)"
+                    >
+                      {{ page }}
+                    </button>
                   </li>
                 }
-                <li class="page-item" [class.disabled]="connectorsPage >= connectorsPageCount()">
-                  <button class="page-link" type="button" [disabled]="connectorsPage >= connectorsPageCount()"
-                    aria-label="Next" (click)="onConnectorsPageChange(connectorsPage + 1)">
+                <li
+                  class="page-item"
+                  [class.disabled]="connectorsPage >= connectorsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="connectorsPage >= connectorsPageCount()"
+                    aria-label="Next"
+                    (click)="onConnectorsPageChange(connectorsPage + 1)"
+                  >
                     <span aria-hidden="true">&rsaquo;</span>
                   </button>
                 </li>
-                <li class="page-item" [class.disabled]="connectorsPage >= connectorsPageCount()">
-                  <button class="page-link" type="button" [disabled]="connectorsPage >= connectorsPageCount()"
-                    aria-label="Last" (click)="onConnectorsPageChange(connectorsPageCount())">
+                <li
+                  class="page-item"
+                  [class.disabled]="connectorsPage >= connectorsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="connectorsPage >= connectorsPageCount()"
+                    aria-label="Last"
+                    (click)="onConnectorsPageChange(connectorsPageCount())"
+                  >
                     <span aria-hidden="true">&raquo;</span>
                   </button>
                 </li>
@@ -309,20 +567,50 @@
 <ng-template #modelsExportTab>
   <div class="transfer-section bg-body-tertiary">
     <div class="selection-toolbar">
-      <div class="selection-modes btn-group" role="group" aria-label="Model selection">
-        <input class="btn-check" type="radio" name="models-mode" id="models-all" value="all"
-          [(ngModel)]="modelsMode" (ngModelChange)="updateExportTabs()" autocomplete="off" />
+      <div
+        class="selection-modes btn-group"
+        role="group"
+        aria-label="Model selection"
+      >
+        <input
+          class="btn-check"
+          type="radio"
+          name="models-mode"
+          id="models-all"
+          value="all"
+          [(ngModel)]="modelsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
         <label class="btn btn-outline-primary" for="models-all">All</label>
 
-        <input class="btn-check" type="radio" name="models-mode" id="models-none" value="none"
-          [(ngModel)]="modelsMode" (ngModelChange)="updateExportTabs()" autocomplete="off" />
+        <input
+          class="btn-check"
+          type="radio"
+          name="models-mode"
+          id="models-none"
+          value="none"
+          [(ngModel)]="modelsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
         <label class="btn btn-outline-primary" for="models-none">None</label>
 
-        <input class="btn-check" type="radio" name="models-mode" id="models-custom" value="custom"
-          [(ngModel)]="modelsMode" (ngModelChange)="updateExportTabs()" autocomplete="off" />
-        <label class="btn btn-outline-primary" for="models-custom">Custom</label>
+        <input
+          class="btn-check"
+          type="radio"
+          name="models-mode"
+          id="models-custom"
+          value="custom"
+          [(ngModel)]="modelsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
+        <label class="btn btn-outline-primary" for="models-custom"
+          >Custom</label
+        >
       </div>
-      @if (modelsMode === 'custom') {
+      @if (modelsMode === "custom") {
         <div class="input-group export-search">
           <span class="input-group-text"><i class="bi bi-search"></i></span>
           <input
@@ -331,11 +619,12 @@
             placeholder="Search by name"
             [value]="modelsSearchText"
             (input)="onModelsSearchChange($event)"
-            (keyup.enter)="applyModelsSearch()" />
+            (keyup.enter)="applyModelsSearch()"
+          />
         </div>
       }
     </div>
-    @if (modelsMode === 'custom') {
+    @if (modelsMode === "custom") {
       @if (modelsFilteredTotal === 0) {
         <div class="text-body-secondary small">No models available.</div>
       } @else {
@@ -345,24 +634,42 @@
               <tr>
                 <th scope="col" class="col-select"></th>
                 <th scope="col" class="col-name">
-                  <button class="btn btn-link p-0 export-sort" type="button"
-                    (click)="onModelsSortChange(ModelSortField.Name)">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="onModelsSortChange(ModelSortField.Name)"
+                  >
                     Name
                     @if (modelsSortField === ModelSortField.Name) {
-                      <i class="bi"
-                        [class.bi-arrow-down]="modelsSortDirection === SortDirection.Descending"
-                        [class.bi-arrow-up]="modelsSortDirection === SortDirection.Ascending"></i>
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          modelsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          modelsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
                     }
                   </button>
                 </th>
                 <th scope="col" class="col-description">
-                  <button class="btn btn-link p-0 export-sort" type="button"
-                    (click)="onModelsSortChange(ModelSortField.Description)">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="onModelsSortChange(ModelSortField.Description)"
+                  >
                     Description
                     @if (modelsSortField === ModelSortField.Description) {
-                      <i class="bi"
-                        [class.bi-arrow-down]="modelsSortDirection === SortDirection.Descending"
-                        [class.bi-arrow-up]="modelsSortDirection === SortDirection.Ascending"></i>
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          modelsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          modelsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
                     }
                   </button>
                 </th>
@@ -372,51 +679,104 @@
               @for (model of models; track model.modelId) {
                 <tr>
                   <td class="col-select">
-                    <input class="form-check-input" type="checkbox" [id]="'model-' + model.modelId"
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      [id]="'model-' + model.modelId"
                       [checked]="selectedModels.has(model.modelId)"
-                      (change)="onSelectionChange(selectedModels, model.modelId, $event)" />
+                      (change)="
+                        onSelectionChange(selectedModels, model.modelId, $event)
+                      "
+                    />
                   </td>
-                  <td class="col-name text-truncate" title="{{ model.name }}">{{ model.name }}</td>
-                  <td class="col-description text-truncate" title="{{ model.description }}">{{ model.description }}</td>
+                  <td class="col-name text-truncate" title="{{ model.name }}">
+                    {{ model.name }}
+                  </td>
+                  <td
+                    class="col-description text-truncate"
+                    title="{{ model.description }}"
+                  >
+                    {{ model.description }}
+                  </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
-        <div class="d-flex align-items-center justify-content-between export-pagination">
+        <div
+          class="d-flex align-items-center justify-content-between export-pagination"
+        >
           <div class="text-muted small">
-            Page {{ modelsPage }} of {{ modelsPageCount() }} ({{ modelsFilteredTotal }} total models)
+            Page {{ modelsPage }} of {{ modelsPageCount() }} ({{
+              modelsFilteredTotal
+            }}
+            total models)
           </div>
           @if (modelsPageCount() > 1) {
             <nav aria-label="Models pagination">
               <ul class="pagination pagination-sm mb-0">
                 <li class="page-item" [class.disabled]="modelsPage === 1">
-                  <button class="page-link" type="button" [disabled]="modelsPage === 1" aria-label="First"
-                    (click)="onModelsPageChange(1)">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="modelsPage === 1"
+                    aria-label="First"
+                    (click)="onModelsPageChange(1)"
+                  >
                     <span aria-hidden="true">&laquo;</span>
                   </button>
                 </li>
                 <li class="page-item" [class.disabled]="modelsPage === 1">
-                  <button class="page-link" type="button" [disabled]="modelsPage === 1" aria-label="Previous"
-                    (click)="onModelsPageChange(modelsPage - 1)">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="modelsPage === 1"
+                    aria-label="Previous"
+                    (click)="onModelsPageChange(modelsPage - 1)"
+                  >
                     <span aria-hidden="true">&lsaquo;</span>
                   </button>
                 </li>
                 @for (page of modelsPageNumbers(); track page) {
-                  <li class="page-item" [class.active]="page === modelsPage"
-                    [attr.aria-current]="page === modelsPage ? 'page' : null">
-                    <button class="page-link" type="button" (click)="onModelsPageChange(page)">{{ page }}</button>
+                  <li
+                    class="page-item"
+                    [class.active]="page === modelsPage"
+                    [attr.aria-current]="page === modelsPage ? 'page' : null"
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      (click)="onModelsPageChange(page)"
+                    >
+                      {{ page }}
+                    </button>
                   </li>
                 }
-                <li class="page-item" [class.disabled]="modelsPage >= modelsPageCount()">
-                  <button class="page-link" type="button" [disabled]="modelsPage >= modelsPageCount()"
-                    aria-label="Next" (click)="onModelsPageChange(modelsPage + 1)">
+                <li
+                  class="page-item"
+                  [class.disabled]="modelsPage >= modelsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="modelsPage >= modelsPageCount()"
+                    aria-label="Next"
+                    (click)="onModelsPageChange(modelsPage + 1)"
+                  >
                     <span aria-hidden="true">&rsaquo;</span>
                   </button>
                 </li>
-                <li class="page-item" [class.disabled]="modelsPage >= modelsPageCount()">
-                  <button class="page-link" type="button" [disabled]="modelsPage >= modelsPageCount()"
-                    aria-label="Last" (click)="onModelsPageChange(modelsPageCount())">
+                <li
+                  class="page-item"
+                  [class.disabled]="modelsPage >= modelsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="modelsPage >= modelsPageCount()"
+                    aria-label="Last"
+                    (click)="onModelsPageChange(modelsPageCount())"
+                  >
                     <span aria-hidden="true">&raquo;</span>
                   </button>
                 </li>
@@ -432,20 +792,50 @@
 <ng-template #assetsExportTab>
   <div class="transfer-section bg-body-tertiary">
     <div class="selection-toolbar">
-      <div class="selection-modes btn-group" role="group" aria-label="Asset selection">
-        <input class="btn-check" type="radio" name="assets-mode" id="assets-all" value="all"
-          [(ngModel)]="assetsMode" (ngModelChange)="updateExportTabs()" autocomplete="off" />
+      <div
+        class="selection-modes btn-group"
+        role="group"
+        aria-label="Asset selection"
+      >
+        <input
+          class="btn-check"
+          type="radio"
+          name="assets-mode"
+          id="assets-all"
+          value="all"
+          [(ngModel)]="assetsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
         <label class="btn btn-outline-primary" for="assets-all">All</label>
 
-        <input class="btn-check" type="radio" name="assets-mode" id="assets-none" value="none"
-          [(ngModel)]="assetsMode" (ngModelChange)="updateExportTabs()" autocomplete="off" />
+        <input
+          class="btn-check"
+          type="radio"
+          name="assets-mode"
+          id="assets-none"
+          value="none"
+          [(ngModel)]="assetsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
         <label class="btn btn-outline-primary" for="assets-none">None</label>
 
-        <input class="btn-check" type="radio" name="assets-mode" id="assets-custom" value="custom"
-          [(ngModel)]="assetsMode" (ngModelChange)="updateExportTabs()" autocomplete="off" />
-        <label class="btn btn-outline-primary" for="assets-custom">Custom</label>
+        <input
+          class="btn-check"
+          type="radio"
+          name="assets-mode"
+          id="assets-custom"
+          value="custom"
+          [(ngModel)]="assetsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
+        <label class="btn btn-outline-primary" for="assets-custom"
+          >Custom</label
+        >
       </div>
-      @if (assetsMode === 'custom') {
+      @if (assetsMode === "custom") {
         <div class="input-group export-search">
           <span class="input-group-text"><i class="bi bi-search"></i></span>
           <input
@@ -454,11 +844,12 @@
             placeholder="Search by name"
             [value]="assetsSearchText"
             (input)="onAssetsSearchChange($event)"
-            (keyup.enter)="applyAssetsSearch()" />
+            (keyup.enter)="applyAssetsSearch()"
+          />
         </div>
       }
     </div>
-    @if (assetsMode === 'custom') {
+    @if (assetsMode === "custom") {
       @if (assetsFilteredTotal === 0) {
         <div class="text-body-secondary small">No assets available.</div>
       } @else {
@@ -468,46 +859,82 @@
               <tr>
                 <th scope="col" class="col-select"></th>
                 <th scope="col" class="col-name">
-                  <button class="btn btn-link p-0 export-sort" type="button"
-                    (click)="onAssetsSortChange(AssetSortField.Name)">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="onAssetsSortChange(AssetSortField.Name)"
+                  >
                     Name
                     @if (assetsSortField === AssetSortField.Name) {
-                      <i class="bi"
-                        [class.bi-arrow-down]="assetsSortDirection === SortDirection.Descending"
-                        [class.bi-arrow-up]="assetsSortDirection === SortDirection.Ascending"></i>
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          assetsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          assetsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
                     }
                   </button>
                 </th>
                 <th scope="col" class="col-type">
-                  <button class="btn btn-link p-0 export-sort" type="button"
-                    (click)="onAssetsSortChange(AssetSortField.Type)">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="onAssetsSortChange(AssetSortField.Type)"
+                  >
                     Type
                     @if (assetsSortField === AssetSortField.Type) {
-                      <i class="bi"
-                        [class.bi-arrow-down]="assetsSortDirection === SortDirection.Descending"
-                        [class.bi-arrow-up]="assetsSortDirection === SortDirection.Ascending"></i>
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          assetsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          assetsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
                     }
                   </button>
                 </th>
                 <th scope="col" class="col-size">
-                  <button class="btn btn-link p-0 export-sort" type="button"
-                    (click)="onAssetsSortChange(AssetSortField.Size)">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="onAssetsSortChange(AssetSortField.Size)"
+                  >
                     Size
                     @if (assetsSortField === AssetSortField.Size) {
-                      <i class="bi"
-                        [class.bi-arrow-down]="assetsSortDirection === SortDirection.Descending"
-                        [class.bi-arrow-up]="assetsSortDirection === SortDirection.Ascending"></i>
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          assetsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          assetsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
                     }
                   </button>
                 </th>
                 <th scope="col" class="col-created">
-                  <button class="btn btn-link p-0 export-sort" type="button"
-                    (click)="onAssetsSortChange(AssetSortField.Created)">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="onAssetsSortChange(AssetSortField.Created)"
+                  >
                     Created
                     @if (assetsSortField === AssetSortField.Created) {
-                      <i class="bi"
-                        [class.bi-arrow-down]="assetsSortDirection === SortDirection.Descending"
-                        [class.bi-arrow-up]="assetsSortDirection === SortDirection.Ascending"></i>
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          assetsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          assetsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
                     }
                   </button>
                 </th>
@@ -517,53 +944,108 @@
               @for (asset of assets; track asset.assetId) {
                 <tr>
                   <td class="col-select">
-                    <input class="form-check-input" type="checkbox" [id]="'asset-' + asset.assetId"
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      [id]="'asset-' + asset.assetId"
                       [checked]="selectedAssets.has(asset.assetId)"
-                      (change)="onSelectionChange(selectedAssets, asset.assetId, $event)" />
+                      (change)="
+                        onSelectionChange(selectedAssets, asset.assetId, $event)
+                      "
+                    />
                   </td>
-                  <td class="col-name text-truncate" title="{{ asset.name }}">{{ asset.name }}</td>
-                  <td class="col-type text-truncate" title="{{ asset.mediaType }}">{{ asset.mediaType }}</td>
+                  <td class="col-name text-truncate" title="{{ asset.name }}">
+                    {{ asset.name }}
+                  </td>
+                  <td
+                    class="col-type text-truncate"
+                    title="{{ asset.mediaType }}"
+                  >
+                    {{ asset.mediaType }}
+                  </td>
                   <td class="col-size">{{ formatSize(asset.sizeBytes) }}</td>
-                  <td class="col-created">{{ asset.created | date:'short' }}</td>
+                  <td class="col-created">
+                    {{ asset.created | date: "short" }}
+                  </td>
                 </tr>
               }
             </tbody>
           </table>
         </div>
-        <div class="d-flex align-items-center justify-content-between export-pagination">
+        <div
+          class="d-flex align-items-center justify-content-between export-pagination"
+        >
           <div class="text-muted small">
-            Page {{ assetsPage }} of {{ assetsPageCount() }} ({{ assetsFilteredTotal }} total assets)
+            Page {{ assetsPage }} of {{ assetsPageCount() }} ({{
+              assetsFilteredTotal
+            }}
+            total assets)
           </div>
           @if (assetsPageCount() > 1) {
             <nav aria-label="Assets pagination">
               <ul class="pagination pagination-sm mb-0">
                 <li class="page-item" [class.disabled]="assetsPage === 1">
-                  <button class="page-link" type="button" [disabled]="assetsPage === 1" aria-label="First"
-                    (click)="onAssetsPageChange(1)">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="assetsPage === 1"
+                    aria-label="First"
+                    (click)="onAssetsPageChange(1)"
+                  >
                     <span aria-hidden="true">&laquo;</span>
                   </button>
                 </li>
                 <li class="page-item" [class.disabled]="assetsPage === 1">
-                  <button class="page-link" type="button" [disabled]="assetsPage === 1" aria-label="Previous"
-                    (click)="onAssetsPageChange(assetsPage - 1)">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="assetsPage === 1"
+                    aria-label="Previous"
+                    (click)="onAssetsPageChange(assetsPage - 1)"
+                  >
                     <span aria-hidden="true">&lsaquo;</span>
                   </button>
                 </li>
                 @for (page of assetsPageNumbers(); track page) {
-                  <li class="page-item" [class.active]="page === assetsPage"
-                    [attr.aria-current]="page === assetsPage ? 'page' : null">
-                    <button class="page-link" type="button" (click)="onAssetsPageChange(page)">{{ page }}</button>
+                  <li
+                    class="page-item"
+                    [class.active]="page === assetsPage"
+                    [attr.aria-current]="page === assetsPage ? 'page' : null"
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      (click)="onAssetsPageChange(page)"
+                    >
+                      {{ page }}
+                    </button>
                   </li>
                 }
-                <li class="page-item" [class.disabled]="assetsPage >= assetsPageCount()">
-                  <button class="page-link" type="button" [disabled]="assetsPage >= assetsPageCount()"
-                    aria-label="Next" (click)="onAssetsPageChange(assetsPage + 1)">
+                <li
+                  class="page-item"
+                  [class.disabled]="assetsPage >= assetsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="assetsPage >= assetsPageCount()"
+                    aria-label="Next"
+                    (click)="onAssetsPageChange(assetsPage + 1)"
+                  >
                     <span aria-hidden="true">&rsaquo;</span>
                   </button>
                 </li>
-                <li class="page-item" [class.disabled]="assetsPage >= assetsPageCount()">
-                  <button class="page-link" type="button" [disabled]="assetsPage >= assetsPageCount()"
-                    aria-label="Last" (click)="onAssetsPageChange(assetsPageCount())">
+                <li
+                  class="page-item"
+                  [class.disabled]="assetsPage >= assetsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="assetsPage >= assetsPageCount()"
+                    aria-label="Last"
+                    (click)="onAssetsPageChange(assetsPageCount())"
+                  >
                     <span aria-hidden="true">&raquo;</span>
                   </button>
                 </li>

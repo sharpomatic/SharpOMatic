@@ -12,23 +12,23 @@ export interface CanLeaveWithUnsavedChanges {
   saveChanges(): Observable<unknown> | Promise<unknown> | void;
 }
 
-export const unsavedChangesGuard: CanDeactivateFn<CanLeaveWithUnsavedChanges> = (component) => {
+export const unsavedChangesGuard: CanDeactivateFn<
+  CanLeaveWithUnsavedChanges
+> = (component) => {
   if (!component?.hasUnsavedChanges?.() || !component.hasUnsavedChanges()) {
     return true;
   }
 
   const modalService = inject(BsModalService);
-  const modalRef: BsModalRef<UnsavedChangesDialogComponent> | undefined = modalService.show(
-    UnsavedChangesDialogComponent,
-    {
+  const modalRef: BsModalRef<UnsavedChangesDialogComponent> | undefined =
+    modalService.show(UnsavedChangesDialogComponent, {
       initialState: {
         title: 'Unsaved changes',
         message: 'You have unsaved changes. What would you like to do?',
       },
       keyboard: false,
       backdrop: 'static',
-    }
-  );
+    });
 
   if (!modalRef?.onHidden) {
     return false;
@@ -54,11 +54,11 @@ export const unsavedChangesGuard: CanDeactivateFn<CanLeaveWithUnsavedChanges> = 
 
         return from(saveResult).pipe(
           map(() => true),
-          catchError(() => of(false))
+          catchError(() => of(false)),
         );
       } catch {
         return of(false);
       }
-    })
+    }),
   );
 };

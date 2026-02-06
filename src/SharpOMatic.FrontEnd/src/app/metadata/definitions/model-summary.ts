@@ -8,7 +8,7 @@ export class ModelSummary {
   constructor(
     public readonly modelId: string,
     public readonly name: string,
-    public readonly description: string
+    public readonly description: string,
   ) {}
 
   public static fromSnapshot(snapshot: ModelSummarySnapshot): ModelSummary {

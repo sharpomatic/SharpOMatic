@@ -24,8 +24,10 @@ export class WorkflowSummaryEntity extends Entity<WorkflowSummarySnapshot> {
       const currentName = this.name();
       const currentDescription = this.description();
 
-      return (currentName !== snapshot.name) ||
-             (currentDescription !== snapshot.description);
+      return (
+        currentName !== snapshot.name ||
+        currentDescription !== snapshot.description
+      );
     });
   }
 
@@ -43,10 +45,12 @@ export class WorkflowSummaryEntity extends Entity<WorkflowSummarySnapshot> {
       ...Entity.defaultSnapshot(),
       name: 'Untitled',
       description: '',
-    }
+    };
   }
 
-  public static fromSnapshot(snapshot: WorkflowSummarySnapshot): WorkflowSummaryEntity {
+  public static fromSnapshot(
+    snapshot: WorkflowSummarySnapshot,
+  ): WorkflowSummaryEntity {
     return new WorkflowSummaryEntity(snapshot);
   }
 }

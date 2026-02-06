@@ -23,7 +23,10 @@ export class EvalRow {
     return new EvalRow(snapshot);
   }
 
-  public static defaultSnapshot(order: number, evalConfigId: string): EvalRowSnapshot {
+  public static defaultSnapshot(
+    order: number,
+    evalConfigId: string,
+  ): EvalRowSnapshot {
     return {
       evalRowId: crypto.randomUUID(),
       evalConfigId,

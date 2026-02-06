@@ -8,15 +8,10 @@ import { ToastService } from '../../services/toast.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [
-    CommonModule,
-    RouterOutlet,
-    RouterLink,
-    RouterLinkActive,
-  ],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   providers: [BsModalService],
   templateUrl: './app.html',
-  styleUrl: './app.scss'
+  styleUrl: './app.scss',
 })
 export class App implements OnInit, OnDestroy {
   private readonly modalService = inject(BsModalService);
@@ -25,8 +20,7 @@ export class App implements OnInit, OnDestroy {
 
   isSidebarClosed = false;
 
-  constructor() {
-  }
+  constructor() {}
 
   toggleSidebar(): void {
     this.isSidebarClosed = !this.isSidebarClosed;
@@ -41,7 +35,7 @@ export class App implements OnInit, OnDestroy {
     this.modalRef = this.modalService.show(NotConnectedDialogComponent, {
       initialState: {},
       backdrop: 'static',
-      keyboard: false
+      keyboard: false,
     });
   }
 

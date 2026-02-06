@@ -1,4 +1,12 @@
-import { Component, EventEmitter, Inject, OnInit, Output, TemplateRef, ViewChild } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Inject,
+  OnInit,
+  Output,
+  TemplateRef,
+  ViewChild,
+} from '@angular/core';
 import { DIALOG_DATA } from '../services/dialog.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -9,14 +17,9 @@ import { BatchNodeEntity } from '../../entities/definitions/batch-node.entity';
 
 @Component({
   selector: 'app-batch-node-dialog',
-  imports: [
-    CommonModule,
-    FormsModule,
-    TabComponent,
-    ContextViewerComponent
-  ],
+  imports: [CommonModule, FormsModule, TabComponent, ContextViewerComponent],
   templateUrl: './batch-node-dialog.component.html',
-  styleUrls: ['./batch-node-dialog.component.scss']
+  styleUrls: ['./batch-node-dialog.component.scss'],
 })
 export class BatchNodeDialogComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
@@ -30,17 +33,27 @@ export class BatchNodeDialogComponent implements OnInit {
   public tabs: TabItem[] = [];
   public activeTabId = 'details';
 
-  constructor(@Inject(DIALOG_DATA) data: { node: BatchNodeEntity, nodeTraces: TraceProgressModel[] }) {
+  constructor(
+    @Inject(DIALOG_DATA)
+    data: {
+      node: BatchNodeEntity;
+      nodeTraces: TraceProgressModel[];
+    },
+  ) {
     this.node = data.node;
-    this.inputTraces = (data.nodeTraces ?? []).map(trace => trace.inputContext).filter((context): context is string => context != null);
-    this.outputTraces = (data.nodeTraces ?? []).map(trace => trace.outputContext).filter((context): context is string => context != null);
+    this.inputTraces = (data.nodeTraces ?? [])
+      .map((trace) => trace.inputContext)
+      .filter((context): context is string => context != null);
+    this.outputTraces = (data.nodeTraces ?? [])
+      .map((trace) => trace.outputContext)
+      .filter((context): context is string => context != null);
   }
 
   ngOnInit(): void {
     this.tabs = [
       { id: 'details', title: 'Details', content: this.detailsTab },
       { id: 'inputs', title: 'Inputs', content: this.inputsTab },
-      { id: 'outputs', title: 'Outputs', content: this.outputsTab }
+      { id: 'outputs', title: 'Outputs', content: this.outputsTab },
     ];
   }
 
@@ -70,7 +83,11 @@ export class BatchNodeDialogComponent implements OnInit {
     this.close.emit();
   }
 
-  private coerceInteger(rawValue: string | null, min: number, fallback: number): number {
+  private coerceInteger(
+    rawValue: string | null,
+    min: number,
+    fallback: number,
+  ): number {
     if (rawValue === null || rawValue === '') {
       return fallback;
     }

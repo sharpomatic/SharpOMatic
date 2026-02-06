@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { catchError, Observable, of } from 'rxjs';
-import { CodeCheckResult  } from '../dto/code-check-result';
+import { CodeCheckResult } from '../dto/code-check-result';
 import { ToastService } from './toast.service';
 import { SettingsService } from './settings.service';
 
@@ -15,12 +15,16 @@ export class ServerMonacoService {
 
   public codeCheck(code: string): Observable<CodeCheckResult[] | null> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.post<CodeCheckResult[]>(`${apiUrl}/api/monaco/codecheck`, { code: code }).pipe(
-      catchError((error) => {
-        const message = this.toastService.extractErrorDetail(error);
-        this.toastService.error(message ? `Code check failed: ${message}` : 'Code check failed.');
-        return of(null);
-      })
-    );
+    return this.http
+      .post<CodeCheckResult[]>(`${apiUrl}/api/monaco/codecheck`, { code: code })
+      .pipe(
+        catchError((error) => {
+          const message = this.toastService.extractErrorDetail(error);
+          this.toastService.error(
+            message ? `Code check failed: ${message}` : 'Code check failed.',
+          );
+          return of(null);
+        }),
+      );
   }
 }

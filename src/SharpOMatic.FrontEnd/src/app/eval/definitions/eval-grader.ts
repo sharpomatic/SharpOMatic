@@ -37,7 +37,10 @@ export class EvalGrader {
     return new EvalGrader(snapshot);
   }
 
-  public static defaultSnapshot(order: number, evalConfigId: string): EvalGraderSnapshot {
+  public static defaultSnapshot(
+    order: number,
+    evalConfigId: string,
+  ): EvalGraderSnapshot {
     return {
       evalGraderId: crypto.randomUUID(),
       evalConfigId,

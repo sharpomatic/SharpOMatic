@@ -1,7 +1,7 @@
 import { inject, Injectable, NgZone, OnDestroy } from '@angular/core';
 import { Subject } from 'rxjs';
 import { ServerMonacoService } from './server.monaco.service';
-import * as monaco from 'monaco-editor'
+import * as monaco from 'monaco-editor';
 
 type ITextModel = monaco.editor.ITextModel;
 type IDisposable = monaco.IDisposable;
@@ -11,23 +11,25 @@ type IModelContentChangedEvent = monaco.editor.IModelContentChangedEvent;
   providedIn: 'root',
 })
 export class MonacoService implements OnDestroy {
-  public static editorOptionsJson = { 
+  public static editorOptionsJson = {
     theme: 'vs-dark',
     language: 'json',
     automaticLayout: true,
     minimap: { enabled: false },
     scrollBeyondLastLine: false,
     tabSize: 2,
-    insertSpaces: true };
+    insertSpaces: true,
+  };
 
-  public static editorOptionsCSharp = { 
+  public static editorOptionsCSharp = {
     theme: 'vs-dark',
     language: 'csharp',
     automaticLayout: true,
     minimap: { enabled: false },
     scrollBeyondLastLine: false,
     tabSize: 2,
-    insertSpaces: true };  
+    insertSpaces: true,
+  };
 
   private static CODE_CHECK_FREQUENCY = 500;
 
@@ -38,11 +40,10 @@ export class MonacoService implements OnDestroy {
   private codeCheck = new Subject<ITextModel>();
   public readonly codeCheck$ = this.codeCheck.asObservable();
 
-  constructor(private zone: NgZone) {
-  }
+  constructor(private zone: NgZone) {}
 
   public init(): void {
-   if (this.isInitialized) {
+    if (this.isInitialized) {
       return;
     }
 
@@ -57,28 +58,27 @@ export class MonacoService implements OnDestroy {
   }
 
   performCodeCheck(model: ITextModel) {
-    this.serverMonaco.codeCheck(model.getValue()).subscribe((results) =>
-    {
+    this.serverMonaco.codeCheck(model.getValue()).subscribe((results) => {
       this.zone.run(() => {
         let markers: monaco.editor.IMarkerData[] = [];
 
         if (results) {
           for (let result of results) {
-              const posStart = model.getPositionAt(result.from);
-              const posEnd = model.getPositionAt(result.to);
-              markers.push({
-                  severity: result.severity as monaco.MarkerSeverity,
-                  startLineNumber: posStart.lineNumber,
-                  startColumn: posStart.column,
-                  endLineNumber: posEnd.lineNumber,
-                  endColumn: posEnd.column,
-                  message: result.message,
-                  code: result.id
-              });
+            const posStart = model.getPositionAt(result.from);
+            const posEnd = model.getPositionAt(result.to);
+            markers.push({
+              severity: result.severity as monaco.MarkerSeverity,
+              startLineNumber: posStart.lineNumber,
+              startColumn: posStart.column,
+              endLineNumber: posEnd.lineNumber,
+              endColumn: posEnd.column,
+              message: result.message,
+              code: result.id,
+            });
           }
         }
 
-       this.monaco.editor.setModelMarkers(model, 'csharp', markers);
+        this.monaco.editor.setModelMarkers(model, 'csharp', markers);
       });
     });
   }
@@ -90,10 +90,14 @@ export class MonacoService implements OnDestroy {
       }
 
       let handle: number | undefined;
-      const changeListener = model.onDidChangeContent((event: IModelContentChangedEvent) => {
-        clearTimeout(handle);
-        handle = setTimeout(() => { this.zone.run(() => this.codeCheck.next(model)); }, MonacoService.CODE_CHECK_FREQUENCY);
-      });
+      const changeListener = model.onDidChangeContent(
+        (event: IModelContentChangedEvent) => {
+          clearTimeout(handle);
+          handle = setTimeout(() => {
+            this.zone.run(() => this.codeCheck.next(model));
+          }, MonacoService.CODE_CHECK_FREQUENCY);
+        },
+      );
       this.modelListeners.set(model, changeListener);
     });
 
@@ -106,6 +110,6 @@ export class MonacoService implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.modelListeners.forEach(listener => listener.dispose());
+    this.modelListeners.forEach((listener) => listener.dispose());
   }
 }

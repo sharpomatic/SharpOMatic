@@ -1,4 +1,4 @@
-import { RunStatus } from "../../../enumerations/run-status";
+import { RunStatus } from '../../../enumerations/run-status';
 
 export interface RunProgressModel {
   workflowId: string;

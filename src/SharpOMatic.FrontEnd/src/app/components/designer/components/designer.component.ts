@@ -1,4 +1,16 @@
-import { ChangeDetectionStrategy, Component, ElementRef, HostListener, inject, signal, ViewChild, WritableSignal, input, Signal, Input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  HostListener,
+  inject,
+  signal,
+  ViewChild,
+  WritableSignal,
+  input,
+  Signal,
+  Input,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DesignerUpdateService } from '../services/designer-update.service';
 import { Point } from '../interfaces/point';
@@ -7,8 +19,14 @@ import { DesignerSelectionService } from '../services/designer-selection.service
 import { DialogService } from '../../../dialogs/services/dialog.service';
 import { EditNodeDialogComponent } from '../../../dialogs/edit-node/edit-node-dialog.component';
 import { ConnectorEntity } from '../../../entities/definitions/connector.entity';
-import { Entity, EntitySnapshot } from '../../../entities/definitions/entity.entity';
-import { NodeEntity, NodeSnapshot } from '../../../entities/definitions/node.entity';
+import {
+  Entity,
+  EntitySnapshot,
+} from '../../../entities/definitions/entity.entity';
+import {
+  NodeEntity,
+  NodeSnapshot,
+} from '../../../entities/definitions/node.entity';
 import { EditNodeEntity } from '../../../entities/definitions/edit-node.entity';
 import { ConnectionEntity } from '../../../entities/definitions/connection.entity';
 import { CodeNodeEntity } from '../../../entities/definitions/code-node.entity';
@@ -20,7 +38,10 @@ import { StartNodeDialogComponent } from '../../../dialogs/start-node/start-node
 import { StartNodeEntity } from '../../../entities/definitions/start-node.entity';
 import { EndNodeDialogComponent } from '../../../dialogs/end-node/end-node-dialog.component';
 import { NodeStatus } from '../../../enumerations/node-status';
-import { NodeType, getNodeSymbol } from '../../../entities/enumerations/node-type';
+import {
+  NodeType,
+  getNodeSymbol,
+} from '../../../entities/enumerations/node-type';
 import { WorkflowEntity } from '../../../entities/definitions/workflow.entity';
 import { SwitchNodeDialogComponent } from '../../../dialogs/switch-node/switch-node-dialog.component';
 import { SwitchNodeEntity } from '../../../entities/definitions/switch-node.entity';
@@ -42,7 +63,7 @@ import { InputNodeDialogComponent } from '../../../dialogs/input-node/input-node
   imports: [CommonModule],
   templateUrl: './designer.component.html',
   styleUrls: ['./designer.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DesignerComponent {
   @ViewChild('designerSurface') designerSurface!: ElementRef<HTMLDivElement>;
@@ -54,7 +75,10 @@ export class DesignerComponent {
 
   public readonly selectedEntities = this.selectionService.selectedEntities;
   public selectionRect: WritableSignal<Rect | null> = signal(null);
-  public pendingConnection: WritableSignal<{ from: ConnectorEntity, targetPoint: Point } | null> = signal(null);
+  public pendingConnection: WritableSignal<{
+    from: ConnectorEntity;
+    targetPoint: Point;
+  } | null> = signal(null);
   public panOffset: WritableSignal<Point> = signal({ x: 0, y: 0 });
   public zoom: WritableSignal<number> = signal(1);
 
@@ -80,8 +104,12 @@ export class DesignerComponent {
   private selectionConnector: ConnectorEntity | null = null;
 
   private getMouseViewPoint(event: MouseEvent): Point {
-    const surfaceRect = this.designerSurface.nativeElement.getBoundingClientRect();
-    return { x: event.clientX - surfaceRect.left, y: event.clientY - surfaceRect.top };
+    const surfaceRect =
+      this.designerSurface.nativeElement.getBoundingClientRect();
+    return {
+      x: event.clientX - surfaceRect.left,
+      y: event.clientY - surfaceRect.top,
+    };
   }
 
   private getMouseWorldPoint(event: MouseEvent): Point {
@@ -128,8 +156,10 @@ export class DesignerComponent {
 
     if (this.isPanning) {
       this.setPanOffset({
-        x: this.panStartOffset.x + (mouseViewPoint.x - this.panStartViewPoint.x),
-        y: this.panStartOffset.y + (mouseViewPoint.y - this.panStartViewPoint.y),
+        x:
+          this.panStartOffset.x + (mouseViewPoint.x - this.panStartViewPoint.x),
+        y:
+          this.panStartOffset.y + (mouseViewPoint.y - this.panStartViewPoint.y),
       });
       return;
     }
@@ -140,8 +170,7 @@ export class DesignerComponent {
     if (this.isSurfaceEnabled) {
       if (!this.isSurfaceDragging) {
         const maxDelta = Math.max(Math.abs(deltaXView), Math.abs(deltaYView));
-        if (maxDelta < DesignerUpdateService.GRID_SIZE)
-          return;
+        if (maxDelta < DesignerUpdateService.GRID_SIZE) return;
 
         this.isSurfaceDragging = true;
 
@@ -163,30 +192,34 @@ export class DesignerComponent {
       const workflow = this.workflow();
       const pan = this.panOffset();
       const zoom = this.zoom();
-      const selectedNodes = workflow.nodes()
-        .filter(node => {
-          const nodeLeft = (node.left() * zoom) + pan.x;
-          const nodeTop = (node.top() * zoom) + pan.y;
-          const nodeRight = nodeLeft + node.width() * zoom;
-          const nodeBottom = nodeTop + node.height() * zoom;
-          return (
-            nodeLeft >= left &&
-            nodeRight <= left + width &&
-            nodeTop >= top &&
-            nodeBottom <= top + height
-          );
-        });
+      const selectedNodes = workflow.nodes().filter((node) => {
+        const nodeLeft = node.left() * zoom + pan.x;
+        const nodeTop = node.top() * zoom + pan.y;
+        const nodeRight = nodeLeft + node.width() * zoom;
+        const nodeBottom = nodeTop + node.height() * zoom;
+        return (
+          nodeLeft >= left &&
+          nodeRight <= left + width &&
+          nodeTop >= top &&
+          nodeBottom <= top + height
+        );
+      });
 
-      const nodeIds = selectedNodes.map(n => n.id);
-      const selectedConnections = workflow.connections()
-        .filter(connection => {
+      const nodeIds = selectedNodes.map((n) => n.id);
+      const selectedConnections = workflow
+        .connections()
+        .filter((connection) => {
           return (
             nodeIds.includes(connection.from()) ||
             nodeIds.includes(connection.to())
           );
         });
 
-      this.selectionService.setSelection([...this.dragStartSelections, ...selectedNodes, ...selectedConnections]);
+      this.selectionService.setSelection([
+        ...this.dragStartSelections,
+        ...selectedNodes,
+        ...selectedConnections,
+      ]);
       return;
     }
 
@@ -195,8 +228,7 @@ export class DesignerComponent {
         const deltaXWorld = mouseWorldPoint.x - this.dragStartWorldPoint.x;
         const deltaYWorld = mouseWorldPoint.y - this.dragStartWorldPoint.y;
         const maxDelta = Math.max(Math.abs(deltaXWorld), Math.abs(deltaYWorld));
-        if (maxDelta < DesignerUpdateService.GRID_SIZE)
-          return;
+        if (maxDelta < DesignerUpdateService.GRID_SIZE) return;
 
         const selectedEntity = this.selectionNode as Entity<EntitySnapshot>;
         if (!this.selectionService.isSelected(selectedEntity)) {
@@ -208,25 +240,42 @@ export class DesignerComponent {
         }
 
         this.isNodeDragging = true;
-        this.dragStartSelections = this.selectedEntities().filter(entity => entity instanceof NodeEntity) as Entity<EntitySnapshot>[];
-        this.dragStartPositions = this.dragStartSelections.map(entity => {
+        this.dragStartSelections = this.selectedEntities().filter(
+          (entity) => entity instanceof NodeEntity,
+        ) as Entity<EntitySnapshot>[];
+        this.dragStartPositions = this.dragStartSelections.map((entity) => {
           const node = entity as NodeEntity<NodeSnapshot>;
-          return { x: node.left(), y: node.top() }
+          return { x: node.left(), y: node.top() };
         });
       }
 
-      const nodePositions = this.dragStartPositions.map(point => {
-        let newX = Math.round((point.x + (mouseWorldPoint.x - this.dragStartWorldPoint.x)) / DesignerUpdateService.GRID_SIZE) * DesignerUpdateService.GRID_SIZE;
-        let newY = Math.round((point.y + (mouseWorldPoint.y - this.dragStartWorldPoint.y)) / DesignerUpdateService.GRID_SIZE) * DesignerUpdateService.GRID_SIZE;
+      const nodePositions = this.dragStartPositions.map((point) => {
+        let newX =
+          Math.round(
+            (point.x + (mouseWorldPoint.x - this.dragStartWorldPoint.x)) /
+              DesignerUpdateService.GRID_SIZE,
+          ) * DesignerUpdateService.GRID_SIZE;
+        let newY =
+          Math.round(
+            (point.y + (mouseWorldPoint.y - this.dragStartWorldPoint.y)) /
+              DesignerUpdateService.GRID_SIZE,
+          ) * DesignerUpdateService.GRID_SIZE;
         return { x: newX, y: newY };
       });
 
-      this.updateService.updateNodePositions(this.workflow(), this.dragStartSelections as NodeEntity<NodeSnapshot>[], nodePositions);
-      return
+      this.updateService.updateNodePositions(
+        this.workflow(),
+        this.dragStartSelections as NodeEntity<NodeSnapshot>[],
+        nodePositions,
+      );
+      return;
     }
 
     if (this.isConnectorDragging && this.selectionConnector) {
-      this.pendingConnection.set({ from: this.selectionConnector, targetPoint: mouseWorldPoint });
+      this.pendingConnection.set({
+        from: this.selectionConnector,
+        targetPoint: mouseWorldPoint,
+      });
     }
   }
 
@@ -272,8 +321,7 @@ export class DesignerComponent {
     if (event.ctrlKey) {
       if (!this.selectionService.isSelected(node))
         this.selectionService.selectEntities([node]);
-      else
-        this.selectionService.deselectEntities([node]);
+      else this.selectionService.deselectEntities([node]);
     }
   }
 
@@ -293,7 +341,8 @@ export class DesignerComponent {
   }
 
   onNodeDoubleClick(node: NodeEntity<NodeSnapshot>): void {
-    const nodeTraces = this.traces().filter(t => t.nodeEntityId === node.id) ?? [];
+    const nodeTraces =
+      this.traces().filter((t) => t.nodeEntityId === node.id) ?? [];
 
     if (node instanceof StartNodeEntity) {
       this.dialogService.open(StartNodeDialogComponent, { node, nodeTraces });
@@ -302,7 +351,10 @@ export class DesignerComponent {
     } else if (node instanceof CodeNodeEntity) {
       this.dialogService.open(CodeNodeDialogComponent, { node, nodeTraces });
     } else if (node instanceof ModelCallNodeEntity) {
-      this.dialogService.open(ModelCallNodeDialogComponent, { node, nodeTraces });
+      this.dialogService.open(ModelCallNodeDialogComponent, {
+        node,
+        nodeTraces,
+      });
     } else if (node instanceof EditNodeEntity) {
       this.dialogService.open(EditNodeDialogComponent, { node, nodeTraces });
     } else if (node instanceof SwitchNodeEntity) {
@@ -330,7 +382,11 @@ export class DesignerComponent {
     if (this.isConnectorDragging) {
       this.isConnectorDragging = false;
       this.pendingConnection.set(null);
-      this.updateService.addConnection(this.workflow(), this.selectionConnector as ConnectorEntity, connector);
+      this.updateService.addConnection(
+        this.workflow(),
+        this.selectionConnector as ConnectorEntity,
+        connector,
+      );
     }
   }
 
@@ -339,11 +395,18 @@ export class DesignerComponent {
 
     if (event.button !== 0) return;
 
-    if (this.workflow().connections().find(c => c.from() === connector.id) === undefined) {
+    if (
+      this.workflow()
+        .connections()
+        .find((c) => c.from() === connector.id) === undefined
+    ) {
       this.isConnectorDragging = true;
       this.selectionConnector = connector;
       this.dragStartWorldPoint = this.getMouseWorldPoint(event);
-      this.pendingConnection.set({ from: connector, targetPoint: this.dragStartWorldPoint });
+      this.pendingConnection.set({
+        from: connector,
+        targetPoint: this.dragStartWorldPoint,
+      });
     }
   }
 
@@ -363,14 +426,17 @@ export class DesignerComponent {
     if (event.ctrlKey) {
       if (!this.selectionService.isSelected(connection))
         this.selectionService.selectEntities([connection]);
-      else
-        this.selectionService.deselectEntities([connection]);
+      else this.selectionService.deselectEntities([connection]);
     } else {
       this.selectionService.setSelection([connection]);
     }
   }
 
-  getConnectionCurve(connection: ConnectionEntity | { from: ConnectorEntity, targetPoint: Point }): string {
+  getConnectionCurve(
+    connection:
+      | ConnectionEntity
+      | { from: ConnectorEntity; targetPoint: Point },
+  ): string {
     let startX: number;
     let startY: number;
     let endX: number;
@@ -395,10 +461,18 @@ export class DesignerComponent {
         return '';
       }
 
-      startX = (fromNode.left() + fromNode.width()) + 6;
-      startY = (fromNode.top() + fromConnector.boxOffset() + ConnectorEntity.DISPLAY_SIZE / 2) + 2;
+      startX = fromNode.left() + fromNode.width() + 6;
+      startY =
+        fromNode.top() +
+        fromConnector.boxOffset() +
+        ConnectorEntity.DISPLAY_SIZE / 2 +
+        2;
       endX = toNode.left() - 25;
-      endY = (toNode.top() + toConnector.boxOffset() + ConnectorEntity.DISPLAY_SIZE / 2) + 2;
+      endY =
+        toNode.top() +
+        toConnector.boxOffset() +
+        ConnectorEntity.DISPLAY_SIZE / 2 +
+        2;
       sourceTop = fromNode.top();
       sourceBottom = fromNode.top() + fromNode.height();
     } else {
@@ -408,8 +482,12 @@ export class DesignerComponent {
         return '';
       }
 
-      startX = (fromNode.left() + fromNode.width()) + 10;
-      startY = (fromNode.top() + connection.from.boxOffset() + ConnectorEntity.DISPLAY_SIZE / 2) + 2;
+      startX = fromNode.left() + fromNode.width() + 10;
+      startY =
+        fromNode.top() +
+        connection.from.boxOffset() +
+        ConnectorEntity.DISPLAY_SIZE / 2 +
+        2;
       endX = connection.targetPoint.x - 25;
       endY = connection.targetPoint.y + 2;
       sourceTop = fromNode.top();
@@ -426,25 +504,31 @@ export class DesignerComponent {
 
       if (startY >= endY) {
         const routeBottomY = sourceBottom + verticalOffset;
-        return this.buildRoundedPath([
-          { x: startX, y: startY },
-          { x: routeOutX, y: startY },
-          { x: routeOutX, y: routeBottomY },
-          { x: routeInX, y: routeBottomY },
-          { x: routeInX, y: endY },
-          { x: endX, y: endY },
-        ], cornerRadius);
+        return this.buildRoundedPath(
+          [
+            { x: startX, y: startY },
+            { x: routeOutX, y: startY },
+            { x: routeOutX, y: routeBottomY },
+            { x: routeInX, y: routeBottomY },
+            { x: routeInX, y: endY },
+            { x: endX, y: endY },
+          ],
+          cornerRadius,
+        );
       }
 
       const routeTopY = sourceTop - verticalOffset;
-      return this.buildRoundedPath([
-        { x: startX, y: startY },
-        { x: routeOutX, y: startY },
-        { x: routeOutX, y: routeTopY },
-        { x: routeInX, y: routeTopY },
-        { x: routeInX, y: endY },
-        { x: endX, y: endY },
-      ], cornerRadius);
+      return this.buildRoundedPath(
+        [
+          { x: startX, y: startY },
+          { x: routeOutX, y: startY },
+          { x: routeOutX, y: routeTopY },
+          { x: routeInX, y: routeTopY },
+          { x: routeInX, y: endY },
+          { x: endX, y: endY },
+        ],
+        cornerRadius,
+      );
     }
 
     const controlPointOffset = 25; // Adjust this value for more or less curve
@@ -494,10 +578,10 @@ export class DesignerComponent {
       }
 
       const radius = Math.min(cornerRadius, len1 / 2, len2 / 2);
-      const entryX = curr.x - (dir1x * radius);
-      const entryY = curr.y - (dir1y * radius);
-      const exitX = curr.x + (dir2x * radius);
-      const exitY = curr.y + (dir2y * radius);
+      const entryX = curr.x - dir1x * radius;
+      const entryY = curr.y - dir1y * radius;
+      const exitX = curr.x + dir2x * radius;
+      const exitY = curr.y + dir2y * radius;
 
       path += ` L${entryX},${entryY} Q${curr.x},${curr.y} ${exitX},${exitY}`;
     }
@@ -574,8 +658,8 @@ export class DesignerComponent {
     }
 
     const zoom = this.zoom();
-    const maxLeft = Math.max(...nodes.map(n => n.left()));
-    const maxTop = Math.max(...nodes.map(n => n.top()));
+    const maxLeft = Math.max(...nodes.map((n) => n.left()));
+    const maxTop = Math.max(...nodes.map((n) => n.top()));
 
     return {
       x: Math.min(Math.max(offset.x, -maxLeft * zoom), 3000),
@@ -616,7 +700,8 @@ export class DesignerComponent {
   }
 
   private getSurfaceCenterViewPoint(): Point {
-    const surfaceRect = this.designerSurface.nativeElement.getBoundingClientRect();
+    const surfaceRect =
+      this.designerSurface.nativeElement.getBoundingClientRect();
     return { x: surfaceRect.width / 2, y: surfaceRect.height / 2 };
   }
 }

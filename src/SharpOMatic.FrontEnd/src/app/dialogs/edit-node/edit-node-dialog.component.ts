@@ -1,10 +1,24 @@
-import { Component, EventEmitter, Inject, OnInit, Output, TemplateRef, ViewChild } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Inject,
+  OnInit,
+  Output,
+  TemplateRef,
+  ViewChild,
+} from '@angular/core';
 import { DIALOG_DATA, DialogService } from '../services/dialog.service';
 import { FormsModule } from '@angular/forms';
 import { EditNodeEntity } from '../../entities/definitions/edit-node.entity';
 import { ContextEntryEntity } from '../../entities/definitions/context-entry.entity';
 import { ContextEntryType } from '../../entities/enumerations/context-entry-type';
-import { AssetRef, buildAssetRefListValue, buildAssetRefValue, parseAssetRefListValue, parseAssetRefValue } from '../../entities/definitions/asset-ref';
+import {
+  AssetRef,
+  buildAssetRefListValue,
+  buildAssetRefValue,
+  parseAssetRefListValue,
+  parseAssetRefValue,
+} from '../../entities/definitions/asset-ref';
 import { CommonModule } from '@angular/common';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { MonacoService } from '../../services/monaco.service';
@@ -21,10 +35,10 @@ import { AssetPickerDialogComponent } from '../asset-picker/asset-picker-dialog.
     FormsModule,
     MonacoEditorModule,
     TabComponent,
-    ContextViewerComponent
+    ContextViewerComponent,
   ],
   templateUrl: './edit-node-dialog.component.html',
-  styleUrls: ['./edit-node-dialog.component.scss']
+  styleUrls: ['./edit-node-dialog.component.scss'],
 })
 export class EditNodeDialogComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
@@ -42,20 +56,27 @@ export class EditNodeDialogComponent implements OnInit {
   public activeTabId = 'details';
 
   constructor(
-    @Inject(DIALOG_DATA) data: { node: EditNodeEntity, nodeTraces: TraceProgressModel[] },
-    private readonly dialogService: DialogService
+    @Inject(DIALOG_DATA)
+    data: { node: EditNodeEntity; nodeTraces: TraceProgressModel[] },
+    private readonly dialogService: DialogService,
   ) {
     this.node = data.node;
-    this.inputTraces = (data.nodeTraces ?? []).map(trace => trace.inputContext).filter((context): context is string => context != null);
-    this.outputTraces = (data.nodeTraces ?? []).map(trace => trace.outputContext).filter((context): context is string => context != null);  
-    this.contextEntryTypeKeys = Object.keys(this.contextEntryType).filter(k => isNaN(Number(k)));
+    this.inputTraces = (data.nodeTraces ?? [])
+      .map((trace) => trace.inputContext)
+      .filter((context): context is string => context != null);
+    this.outputTraces = (data.nodeTraces ?? [])
+      .map((trace) => trace.outputContext)
+      .filter((context): context is string => context != null);
+    this.contextEntryTypeKeys = Object.keys(this.contextEntryType).filter((k) =>
+      isNaN(Number(k)),
+    );
   }
 
   ngOnInit(): void {
     this.tabs = [
       { id: 'details', title: 'Details', content: this.detailsTab },
       { id: 'inputs', title: 'Inputs', content: this.inputsTab },
-      { id: 'outputs', title: 'Outputs', content: this.outputsTab }
+      { id: 'outputs', title: 'Outputs', content: this.outputsTab },
     ];
   }
 
@@ -88,18 +109,22 @@ export class EditNodeDialogComponent implements OnInit {
 
   onInsertUpsertEntry(): void {
     const entries = this.node.edits().entries();
-    const deleteIndex = entries.findIndex(entry => entry.purpose() === ContextEntryPurpose.Delete);
+    const deleteIndex = entries.findIndex(
+      (entry) => entry.purpose() === ContextEntryPurpose.Delete,
+    );
     const targetIndex = deleteIndex === -1 ? entries.length : deleteIndex;
-    this.node.edits().insertEntry(targetIndex, { purpose: ContextEntryPurpose.Upsert });
+    this.node
+      .edits()
+      .insertEntry(targetIndex, { purpose: ContextEntryPurpose.Upsert });
   }
 
   onAppendDeleteEntry(): void {
     this.node.edits().appendEntry({ purpose: ContextEntryPurpose.Delete });
-  }  
+  }
 
   onDeleteEntry(entryId: string): void {
     this.node.edits().deleteEntry(entryId);
-  }  
+  }
 
   canMoveEntryUp(entry: ContextEntryEntity): boolean {
     return this.hasSiblingEntry(entry, -1);
@@ -132,7 +157,7 @@ export class EditNodeDialogComponent implements OnInit {
     }
 
     if (assets.length <= 3) {
-      return assets.map(asset => asset.name).join(', ');
+      return assets.map((asset) => asset.name).join(', ');
     }
 
     return `${assets.length} assets selected`;
@@ -140,9 +165,12 @@ export class EditNodeDialogComponent implements OnInit {
 
   openAssetPicker(entry: ContextEntryEntity, mode: 'single' | 'multi'): void {
     const selected = parseAssetRefValue(entry.entryValue());
-    const initialSelection = mode === 'single'
-      ? (selected ? [selected] : [])
-      : parseAssetRefListValue(entry.entryValue());
+    const initialSelection =
+      mode === 'single'
+        ? selected
+          ? [selected]
+          : []
+        : parseAssetRefListValue(entry.entryValue());
 
     this.dialogService.open(AssetPickerDialogComponent, {
       allowStack: true,
@@ -156,21 +184,27 @@ export class EditNodeDialogComponent implements OnInit {
         }
 
         entry.entryValue.set(buildAssetRefListValue(assets));
-      }
+      },
     });
   }
 
   hasUpsertEntries(): boolean {
-    return this.node.edits().entries().some(entry => entry.purpose() === ContextEntryPurpose.Upsert);
+    return this.node
+      .edits()
+      .entries()
+      .some((entry) => entry.purpose() === ContextEntryPurpose.Upsert);
   }
 
   hasDeleteEntries(): boolean {
-    return this.node.edits().entries().some(entry => entry.purpose() === ContextEntryPurpose.Delete);
+    return this.node
+      .edits()
+      .entries()
+      .some((entry) => entry.purpose() === ContextEntryPurpose.Delete);
   }
 
   private hasSiblingEntry(entry: ContextEntryEntity, step: number): boolean {
     const entries = this.node.edits().entries();
-    const index = entries.findIndex(e => e.id === entry.id);
+    const index = entries.findIndex((e) => e.id === entry.id);
     if (index === -1) {
       return false;
     }
@@ -186,5 +220,4 @@ export class EditNodeDialogComponent implements OnInit {
 
     return false;
   }
-
 }

@@ -1,4 +1,10 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZoneChangeDetection, importProvidersFrom, APP_INITIALIZER  } from '@angular/core';
+import {
+  ApplicationConfig,
+  provideBrowserGlobalErrorListeners,
+  provideZoneChangeDetection,
+  importProvidersFrom,
+  APP_INITIALIZER,
+} from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { routes } from './app.routes';
@@ -38,18 +44,19 @@ export const appConfig: ApplicationConfig = {
         onMonacoLoad: () => {
           (window as any).monacoServiceInitializer();
         },
-      })
+      }),
     ),
     importProvidersFrom(ModalModule.forRoot()),
     {
       provide: APP_INITIALIZER,
       useFactory: (monacoService: MonacoService) => {
         return () => {
-          (window as any).monacoServiceInitializer = initializeMonacoService(monacoService);
+          (window as any).monacoServiceInitializer =
+            initializeMonacoService(monacoService);
         };
       },
       deps: [MonacoService],
       multi: true,
     },
-  ]
+  ],
 };

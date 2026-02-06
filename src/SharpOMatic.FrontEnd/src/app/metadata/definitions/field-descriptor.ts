@@ -28,10 +28,12 @@ export class FieldDescriptor {
     public readonly enumOptions: string[] | null,
     public readonly min: number | null,
     public readonly max: number | null,
-    public readonly step: number | null
+    public readonly step: number | null,
   ) {}
 
-  public static fromSnapshot(snapshot: FieldDescriptorSnapshot): FieldDescriptor {
+  public static fromSnapshot(
+    snapshot: FieldDescriptorSnapshot,
+  ): FieldDescriptor {
     return new FieldDescriptor(
       snapshot.name,
       snapshot.label,

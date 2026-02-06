@@ -1,30 +1,48 @@
 <div class="container-fluid p-0 model-page">
-  <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary">
-    <h2 class=""><i class="bi bi-chat-text pe-3 icon-sm"></i>{{ model.name() }}</h2>
-    <button class="btn btn-primary" [disabled]="!model.isDirty()"
-          (click)="save()">Save</button>
+  <div
+    class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary"
+  >
+    <h2 class="">
+      <i class="bi bi-chat-text pe-3 icon-sm"></i>{{ model.name() }}
+    </h2>
+    <button
+      class="btn btn-primary"
+      [disabled]="!model.isDirty()"
+      (click)="save()"
+    >
+      Save
+    </button>
   </div>
 
-  <hr class="m-0"/>
+  <hr class="m-0" />
 
   <div class="p-3 details bg-body-tertiary">
     <div class="mb-3 form-line">
       <label for="model-id" class="form-label field-label">Id</label>
       <div class="flex-fill control-column short">
-        <input type="text" class="form-control w-100" id="model-id" [ngModel]="model.modelId" readonly />
+        <input
+          type="text"
+          class="form-control w-100"
+          id="model-id"
+          [ngModel]="model.modelId"
+          readonly
+        />
       </div>
     </div>
     <div class="mb-3 form-line">
-      <label for="model-connector" class="form-label field-label">Connector</label>
+      <label for="model-connector" class="form-label field-label"
+        >Connector</label
+      >
       <div class="flex-fill control-column short">
         <select
           id="model-connector"
           class="form-select w-100"
           [ngModel]="model.connectorId()"
           (ngModelChange)="model.connectorId.set($event)"
-          [disabled]="!connectorSummaries.length">
+          [disabled]="!connectorSummaries.length"
+        >
           <option [ngValue]="null">(None)</option>
-          @for(conector of connectorSummaries; track conector.connectorId) {
+          @for (conector of connectorSummaries; track conector.connectorId) {
             <option [ngValue]="conector.connectorId">
               {{ conector.name }}
             </option>
@@ -42,8 +60,9 @@
             class="form-select w-100"
             [ngModel]="model.configId()"
             (ngModelChange)="onModelConfigChange($event)"
-            [disabled]="!availableModelConfigs().length">
-            @for(config of availableModelConfigs(); track config.configId) {
+            [disabled]="!availableModelConfigs().length"
+          >
+            @for (config of availableModelConfigs(); track config.configId) {
               <option [ngValue]="config.configId">
                 {{ config.displayName }}
               </option>
@@ -56,48 +75,70 @@
         <div class="mb-3 form-line">
           <label for="model-name" class="form-label field-label">Name</label>
           <div class="flex-fill control-column short">
-            <input type="text" class="form-control w-100" id="model-name" [ngModel]="model.name()"
-                (ngModelChange)="model.name.set($event)" />
+            <input
+              type="text"
+              class="form-control w-100"
+              id="model-name"
+              [ngModel]="model.name()"
+              (ngModelChange)="model.name.set($event)"
+            />
           </div>
         </div>
 
         <div class="mb-3 form-line">
-          <label for="model-description" class="form-label field-label">Description</label>
+          <label for="model-description" class="form-label field-label"
+            >Description</label
+          >
           <div class="flex-fill control-column long">
-            <input type="text" class="form-control w-100" id="model-description" [ngModel]="model.description()"
-                (ngModelChange)="model.description.set($event)" />
+            <input
+              type="text"
+              class="form-control w-100"
+              id="model-description"
+              [ngModel]="model.description()"
+              (ngModelChange)="model.description.set($event)"
+            />
           </div>
         </div>
 
-      @if (modelConfig.isCustom) {
-        <div class="mb-3 form-line">
-          <label class="form-label field-label align-top">Capabilities</label>
-          <div class="flex-fill control-column long">
-            @for (cap of capabilityEntries(); track cap.capability.name) {
-              <div class="form-check">
-                <input
-                  class="form-check-input"
-                  type="checkbox"
-                  [id]="'cap-' + cap.capability.name"
-                  [checked]="cap.selected"
-                  (change)="onCapabilityChange(cap.capability.name, $any($event.target).checked)">
-                <label class="form-check-label" [for]="'cap-' + cap.capability.name">
-                  {{ cap.capability.displayName }}
-                </label>
-              </div>
-            }
+        @if (modelConfig.isCustom) {
+          <div class="mb-3 form-line">
+            <label class="form-label field-label align-top">Capabilities</label>
+            <div class="flex-fill control-column long">
+              @for (cap of capabilityEntries(); track cap.capability.name) {
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    [id]="'cap-' + cap.capability.name"
+                    [checked]="cap.selected"
+                    (change)="
+                      onCapabilityChange(
+                        cap.capability.name,
+                        $any($event.target).checked
+                      )
+                    "
+                  />
+                  <label
+                    class="form-check-label"
+                    [for]="'cap-' + cap.capability.name"
+                  >
+                    {{ cap.capability.displayName }}
+                  </label>
+                </div>
+              }
+            </div>
           </div>
-        </div>
+        }
+
+        <app-dynamic-fields
+          [fields]="modelConfig.parameterFields"
+          [values]="parameterValuesRecord"
+          [capabilityContext]="capabilityContext"
+          [includeCallDefined]="false"
+          (valuesChange)="onParameterValuesChange($event)"
+        >
+        </app-dynamic-fields>
       }
-
-      <app-dynamic-fields
-        [fields]="modelConfig.parameterFields"
-        [values]="parameterValuesRecord"
-        [capabilityContext]="capabilityContext"
-        [includeCallDefined]="false"
-        (valuesChange)="onParameterValuesChange($event)">
-      </app-dynamic-fields>
     }
-  }
   </div>
 </div>

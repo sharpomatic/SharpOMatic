@@ -15,12 +15,28 @@ import { unsavedChangesGuard } from '../../helper/unsaved-changes.guard';
 export const routes: Routes = [
   { path: '', redirectTo: '/workflows', pathMatch: 'full' },
   { path: 'workflows', component: WorkflowsComponent },
-  { path: 'workflows/:id', component: WorkflowComponent, canDeactivate: [unsavedChangesGuard] },
-  { path: 'models/:id', component: ModelComponent, canDeactivate: [unsavedChangesGuard] },
+  {
+    path: 'workflows/:id',
+    component: WorkflowComponent,
+    canDeactivate: [unsavedChangesGuard],
+  },
+  {
+    path: 'models/:id',
+    component: ModelComponent,
+    canDeactivate: [unsavedChangesGuard],
+  },
   { path: 'models', component: ModelsComponent },
   { path: 'evaluations', component: EvaluationsComponent },
-  { path: 'evaluations/:id', component: EvaluationComponent, canDeactivate: [unsavedChangesGuard] },
-  { path: 'connectors/:id', component: ConnectorComponent, canDeactivate: [unsavedChangesGuard] },
+  {
+    path: 'evaluations/:id',
+    component: EvaluationComponent,
+    canDeactivate: [unsavedChangesGuard],
+  },
+  {
+    path: 'connectors/:id',
+    component: ConnectorComponent,
+    canDeactivate: [unsavedChangesGuard],
+  },
   { path: 'connectors', component: ConnectorsComponent },
   { path: 'assets', component: AssetsComponent },
   { path: 'transfer', component: TransferComponent },

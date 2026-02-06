@@ -39,7 +39,10 @@ export class EvalConfig {
   private initialRows: EvalRowSnapshot[];
   private readonly cleanVersion = signal(0);
 
-  constructor(snapshot: EvalConfigSnapshot, dataSnapshots: EvalDataSnapshot[] = []) {
+  constructor(
+    snapshot: EvalConfigSnapshot,
+    dataSnapshots: EvalDataSnapshot[] = [],
+  ) {
     this.evalConfigId = snapshot.evalConfigId;
     this.initialWorkflowId = snapshot.workflowId ?? null;
     this.initialName = snapshot.name;
@@ -50,13 +53,26 @@ export class EvalConfig {
     this.name = signal(snapshot.name);
     this.description = signal(snapshot.description);
     this.maxParallel = signal(snapshot.maxParallel);
-    this.graders = signal(EvalConfig.gradersFromSnapshots(snapshot.graders ?? []));
-    this.columns = signal(EvalConfig.columnsFromSnapshots(snapshot.columns ?? []));
+    this.graders = signal(
+      EvalConfig.gradersFromSnapshots(snapshot.graders ?? []),
+    );
+    this.columns = signal(
+      EvalConfig.columnsFromSnapshots(snapshot.columns ?? []),
+    );
     this.rows = signal(EvalConfig.rowsFromSnapshots(snapshot.rows ?? []));
     this.dataStore = new EvalDataStore(dataSnapshots);
-    this.initialGraders = EvalConfig.snapshotsFromGraders(this.graders(), this.evalConfigId);
-    this.initialColumns = EvalConfig.snapshotsFromColumns(this.columns(), this.evalConfigId);
-    this.initialRows = EvalConfig.snapshotsFromRows(this.rows(), this.evalConfigId);
+    this.initialGraders = EvalConfig.snapshotsFromGraders(
+      this.graders(),
+      this.evalConfigId,
+    );
+    this.initialColumns = EvalConfig.snapshotsFromColumns(
+      this.columns(),
+      this.evalConfigId,
+    );
+    this.initialRows = EvalConfig.snapshotsFromRows(
+      this.rows(),
+      this.evalConfigId,
+    );
 
     this.isDirty = computed(() => {
       this.cleanVersion();
@@ -68,22 +84,42 @@ export class EvalConfig {
       const currentGraders = this.graders();
       const currentColumns = this.columns();
       const currentRows = this.rows();
-      const currentGraderSnapshots = EvalConfig.snapshotsFromGraders(currentGraders, this.evalConfigId);
-      const currentColumnSnapshots = EvalConfig.snapshotsFromColumns(currentColumns, this.evalConfigId);
-      const currentRowSnapshots = EvalConfig.snapshotsFromRows(currentRows, this.evalConfigId);
+      const currentGraderSnapshots = EvalConfig.snapshotsFromGraders(
+        currentGraders,
+        this.evalConfigId,
+      );
+      const currentColumnSnapshots = EvalConfig.snapshotsFromColumns(
+        currentColumns,
+        this.evalConfigId,
+      );
+      const currentRowSnapshots = EvalConfig.snapshotsFromRows(
+        currentRows,
+        this.evalConfigId,
+      );
 
-      const gradersChanged = !EvalConfig.areGradersEqual(currentGraderSnapshots, this.initialGraders);
-      const columnsChanged = !EvalConfig.areColumnsEqual(currentColumnSnapshots, this.initialColumns);
-      const rowsChanged = !EvalConfig.areRowsEqual(currentRowSnapshots, this.initialRows);
+      const gradersChanged = !EvalConfig.areGradersEqual(
+        currentGraderSnapshots,
+        this.initialGraders,
+      );
+      const columnsChanged = !EvalConfig.areColumnsEqual(
+        currentColumnSnapshots,
+        this.initialColumns,
+      );
+      const rowsChanged = !EvalConfig.areRowsEqual(
+        currentRowSnapshots,
+        this.initialRows,
+      );
 
-      return currentWorkflowId !== this.initialWorkflowId ||
-             currentName !== this.initialName ||
-             currentDescription !== this.initialDescription ||
-             currentMaxParallel !== this.initialMaxParallel ||
-             gradersChanged ||
-             columnsChanged ||
-             rowsChanged ||
-             this.dataStore.isDirty();
+      return (
+        currentWorkflowId !== this.initialWorkflowId ||
+        currentName !== this.initialName ||
+        currentDescription !== this.initialDescription ||
+        currentMaxParallel !== this.initialMaxParallel ||
+        gradersChanged ||
+        columnsChanged ||
+        rowsChanged ||
+        this.dataStore.isDirty()
+      );
     });
   }
 
@@ -94,8 +130,14 @@ export class EvalConfig {
       name: this.name(),
       description: this.description(),
       maxParallel: this.maxParallel(),
-      graders: EvalConfig.snapshotsFromGraders(this.graders(), this.evalConfigId),
-      columns: EvalConfig.snapshotsFromColumns(this.columns(), this.evalConfigId),
+      graders: EvalConfig.snapshotsFromGraders(
+        this.graders(),
+        this.evalConfigId,
+      ),
+      columns: EvalConfig.snapshotsFromColumns(
+        this.columns(),
+        this.evalConfigId,
+      ),
       rows: EvalConfig.snapshotsFromRows(this.rows(), this.evalConfigId),
     };
   }
@@ -105,18 +147,29 @@ export class EvalConfig {
     this.initialName = this.name();
     this.initialDescription = this.description();
     this.initialMaxParallel = this.maxParallel();
-    this.initialGraders = EvalConfig.snapshotsFromGraders(this.graders(), this.evalConfigId);
-    this.initialColumns = EvalConfig.snapshotsFromColumns(this.columns(), this.evalConfigId);
-    this.initialRows = EvalConfig.snapshotsFromRows(this.rows(), this.evalConfigId);
+    this.initialGraders = EvalConfig.snapshotsFromGraders(
+      this.graders(),
+      this.evalConfigId,
+    );
+    this.initialColumns = EvalConfig.snapshotsFromColumns(
+      this.columns(),
+      this.evalConfigId,
+    );
+    this.initialRows = EvalConfig.snapshotsFromRows(
+      this.rows(),
+      this.evalConfigId,
+    );
     this.dataStore.markClean();
-    this.cleanVersion.update(v => v + 1);
+    this.cleanVersion.update((v) => v + 1);
   }
 
   public getDeletedGraderIds(): string[] {
-    const currentIds = new Set(this.graders().map(grader => grader.evalGraderId));
+    const currentIds = new Set(
+      this.graders().map((grader) => grader.evalGraderId),
+    );
     return this.initialGraders
-      .filter(grader => !currentIds.has(grader.evalGraderId))
-      .map(grader => grader.evalGraderId);
+      .filter((grader) => !currentIds.has(grader.evalGraderId))
+      .map((grader) => grader.evalGraderId);
   }
 
   public static fromSnapshot(snapshot: EvalConfigSnapshot): EvalConfig {
@@ -136,7 +189,9 @@ export class EvalConfig {
     };
   }
 
-  private static gradersFromSnapshots(snapshots: EvalGraderSnapshot[]): EvalGrader[] {
+  private static gradersFromSnapshots(
+    snapshots: EvalGraderSnapshot[],
+  ): EvalGrader[] {
     return (snapshots ?? [])
       .slice()
       .sort((a, b) => a.order - b.order)
@@ -145,7 +200,7 @@ export class EvalConfig {
 
   private static snapshotsFromGraders(
     graders: EvalGrader[] | EvalGraderSnapshot[],
-    evalConfigId: string
+    evalConfigId: string,
   ): EvalGraderSnapshot[] {
     if (!graders) {
       return [];
@@ -156,7 +211,9 @@ export class EvalConfig {
     }
 
     if (graders[0] instanceof EvalGrader) {
-      return (graders as EvalGrader[]).map((grader, index) => grader.toSnapshot(index, evalConfigId));
+      return (graders as EvalGrader[]).map((grader, index) =>
+        grader.toSnapshot(index, evalConfigId),
+      );
     }
 
     return (graders as EvalGraderSnapshot[]).map((grader, index) => ({
@@ -166,7 +223,9 @@ export class EvalConfig {
     }));
   }
 
-  private static columnsFromSnapshots(snapshots: EvalColumnSnapshot[]): EvalColumn[] {
+  private static columnsFromSnapshots(
+    snapshots: EvalColumnSnapshot[],
+  ): EvalColumn[] {
     return (snapshots ?? [])
       .slice()
       .sort((a, b) => a.order - b.order)
@@ -175,7 +234,7 @@ export class EvalConfig {
 
   private static snapshotsFromColumns(
     columns: EvalColumn[] | EvalColumnSnapshot[],
-    evalConfigId: string
+    evalConfigId: string,
   ): EvalColumnSnapshot[] {
     if (!columns) {
       return [];
@@ -186,7 +245,9 @@ export class EvalConfig {
     }
 
     if (columns[0] instanceof EvalColumn) {
-      return (columns as EvalColumn[]).map((column, index) => column.toSnapshot(index, evalConfigId));
+      return (columns as EvalColumn[]).map((column, index) =>
+        column.toSnapshot(index, evalConfigId),
+      );
     }
 
     return (columns as EvalColumnSnapshot[]).map((column, index) => ({
@@ -205,7 +266,7 @@ export class EvalConfig {
 
   private static snapshotsFromRows(
     rows: EvalRow[] | EvalRowSnapshot[],
-    evalConfigId: string
+    evalConfigId: string,
   ): EvalRowSnapshot[] {
     if (!rows) {
       return [];
@@ -216,7 +277,9 @@ export class EvalConfig {
     }
 
     if (rows[0] instanceof EvalRow) {
-      return (rows as EvalRow[]).map((row, index) => row.toSnapshot(index, evalConfigId));
+      return (rows as EvalRow[]).map((row, index) =>
+        row.toSnapshot(index, evalConfigId),
+      );
     }
 
     return (rows as EvalRowSnapshot[]).map((row, index) => ({
@@ -226,7 +289,10 @@ export class EvalConfig {
     }));
   }
 
-  private static areGradersEqual(current: EvalGraderSnapshot[], initial: EvalGraderSnapshot[]): boolean {
+  private static areGradersEqual(
+    current: EvalGraderSnapshot[],
+    initial: EvalGraderSnapshot[],
+  ): boolean {
     if (current.length !== initial.length) {
       return false;
     }
@@ -238,12 +304,14 @@ export class EvalConfig {
         return false;
       }
 
-      if (left.evalGraderId !== right.evalGraderId ||
-          left.evalConfigId !== right.evalConfigId ||
-          left.workflowId !== right.workflowId ||
-          left.label !== right.label ||
-          left.passThreshold !== right.passThreshold ||
-          left.order !== right.order) {
+      if (
+        left.evalGraderId !== right.evalGraderId ||
+        left.evalConfigId !== right.evalConfigId ||
+        left.workflowId !== right.workflowId ||
+        left.label !== right.label ||
+        left.passThreshold !== right.passThreshold ||
+        left.order !== right.order
+      ) {
         return false;
       }
     }
@@ -251,7 +319,10 @@ export class EvalConfig {
     return true;
   }
 
-  private static areColumnsEqual(current: EvalColumnSnapshot[], initial: EvalColumnSnapshot[]): boolean {
+  private static areColumnsEqual(
+    current: EvalColumnSnapshot[],
+    initial: EvalColumnSnapshot[],
+  ): boolean {
     if (current.length !== initial.length) {
       return false;
     }
@@ -263,13 +334,15 @@ export class EvalConfig {
         return false;
       }
 
-      if (left.evalColumnId !== right.evalColumnId ||
-          left.evalConfigId !== right.evalConfigId ||
-          left.name !== right.name ||
-          left.entryType !== right.entryType ||
-          left.optional !== right.optional ||
-          left.inputPath !== right.inputPath ||
-          left.order !== right.order) {
+      if (
+        left.evalColumnId !== right.evalColumnId ||
+        left.evalConfigId !== right.evalConfigId ||
+        left.name !== right.name ||
+        left.entryType !== right.entryType ||
+        left.optional !== right.optional ||
+        left.inputPath !== right.inputPath ||
+        left.order !== right.order
+      ) {
         return false;
       }
     }
@@ -277,7 +350,10 @@ export class EvalConfig {
     return true;
   }
 
-  private static areRowsEqual(current: EvalRowSnapshot[], initial: EvalRowSnapshot[]): boolean {
+  private static areRowsEqual(
+    current: EvalRowSnapshot[],
+    initial: EvalRowSnapshot[],
+  ): boolean {
     if (current.length !== initial.length) {
       return false;
     }
@@ -289,9 +365,11 @@ export class EvalConfig {
         return false;
       }
 
-      if (left.evalRowId !== right.evalRowId ||
-          left.evalConfigId !== right.evalConfigId ||
-          left.order !== right.order) {
+      if (
+        left.evalRowId !== right.evalRowId ||
+        left.evalConfigId !== right.evalConfigId ||
+        left.order !== right.order
+      ) {
         return false;
       }
     }

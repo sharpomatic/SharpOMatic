@@ -1,4 +1,13 @@
-import { Component, EventEmitter, Inject, OnInit, Output, TemplateRef, ViewChild, inject } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Inject,
+  OnInit,
+  Output,
+  TemplateRef,
+  ViewChild,
+  inject,
+} from '@angular/core';
 import { DIALOG_DATA } from '../services/dialog.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -11,14 +20,9 @@ import { WorkflowService } from '../../pages/workflow/services/workflow.service'
 
 @Component({
   selector: 'app-fan-out-node-dialog',
-  imports: [
-    CommonModule,
-    FormsModule,
-    TabComponent,
-    ContextViewerComponent
-  ],
+  imports: [CommonModule, FormsModule, TabComponent, ContextViewerComponent],
   templateUrl: './fan-out-node-dialog.component.html',
-  styleUrls: ['./fan-out-node-dialog.component.scss']
+  styleUrls: ['./fan-out-node-dialog.component.scss'],
 })
 export class FanOutNodeDialogComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
@@ -35,17 +39,27 @@ export class FanOutNodeDialogComponent implements OnInit {
   private readonly designerUpdateService = inject(DesignerUpdateService);
   private readonly workflowService = inject(WorkflowService);
 
-  constructor(@Inject(DIALOG_DATA) data: { node: FanOutNodeEntity, nodeTraces: TraceProgressModel[] }) {
+  constructor(
+    @Inject(DIALOG_DATA)
+    data: {
+      node: FanOutNodeEntity;
+      nodeTraces: TraceProgressModel[];
+    },
+  ) {
     this.node = data.node;
-    this.inputTraces = (data.nodeTraces ?? []).map(trace => trace.inputContext).filter((context): context is string => context != null);
-    this.outputTraces = (data.nodeTraces ?? []).map(trace => trace.outputContext).filter((context): context is string => context != null);
+    this.inputTraces = (data.nodeTraces ?? [])
+      .map((trace) => trace.inputContext)
+      .filter((context): context is string => context != null);
+    this.outputTraces = (data.nodeTraces ?? [])
+      .map((trace) => trace.outputContext)
+      .filter((context): context is string => context != null);
   }
 
   ngOnInit(): void {
     this.tabs = [
       { id: 'details', title: 'Details', content: this.detailsTab },
       { id: 'inputs', title: 'Inputs', content: this.inputsTab },
-      { id: 'outputs', title: 'Outputs', content: this.outputsTab }
+      { id: 'outputs', title: 'Outputs', content: this.outputsTab },
     ];
   }
 
@@ -54,7 +68,11 @@ export class FanOutNodeDialogComponent implements OnInit {
   }
 
   onDeleteOutput(index: number): void {
-    this.designerUpdateService.deleteFanOutOutput(this.workflowService.workflow(), this.node, index);
+    this.designerUpdateService.deleteFanOutOutput(
+      this.workflowService.workflow(),
+      this.node,
+      index,
+    );
   }
 
   onUpdateOutput(index: number, name: string): void {

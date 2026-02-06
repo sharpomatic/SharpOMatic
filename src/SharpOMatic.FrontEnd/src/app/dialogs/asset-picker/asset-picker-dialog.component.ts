@@ -22,7 +22,7 @@ export interface AssetPickerDialogOptions {
   selector: 'app-asset-picker-dialog',
   imports: [CommonModule, FormsModule, DatePipe],
   templateUrl: './asset-picker-dialog.component.html',
-  styleUrls: ['./asset-picker-dialog.component.scss']
+  styleUrls: ['./asset-picker-dialog.component.scss'],
 })
 export class AssetPickerDialogComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
@@ -46,13 +46,14 @@ export class AssetPickerDialogComponent implements OnInit {
 
   constructor(
     @Inject(DIALOG_DATA) data: AssetPickerDialogOptions,
-    private readonly serverRepository: ServerRepositoryService
+    private readonly serverRepository: ServerRepositoryService,
   ) {
     this.isMulti = data.mode === 'multi';
-    this.title = data.title ?? (this.isMulti ? 'Select assets' : 'Select asset');
+    this.title =
+      data.title ?? (this.isMulti ? 'Select assets' : 'Select asset');
     this.onSelect = data.onSelect;
 
-    (data.initialSelection ?? []).forEach(asset => {
+    (data.initialSelection ?? []).forEach((asset) => {
       this.selectedAssetsById.set(asset.assetId, asset);
     });
   }
@@ -138,9 +139,10 @@ export class AssetPickerDialogComponent implements OnInit {
 
   onAssetsSortChange(field: AssetSortField): void {
     if (this.assetsSortField === field) {
-      this.assetsSortDirection = this.assetsSortDirection === SortDirection.Descending
-        ? SortDirection.Ascending
-        : SortDirection.Descending;
+      this.assetsSortDirection =
+        this.assetsSortDirection === SortDirection.Descending
+          ? SortDirection.Ascending
+          : SortDirection.Descending;
     } else {
       this.assetsSortField = field;
       this.assetsSortDirection = SortDirection.Descending;
@@ -169,30 +171,35 @@ export class AssetPickerDialogComponent implements OnInit {
   private refreshAssets(): void {
     this.isLoading = true;
     const search = this.searchText.trim();
-    this.serverRepository.getAssetsCount(AssetScope.Library, search).subscribe(total => {
-      this.assetsTotal = total;
-      const totalPages = this.assetsPageCount();
-      const nextPage = totalPages === 0 ? 1 : Math.min(this.assetsPage, totalPages);
-      this.loadAssetsPage(nextPage);
-    });
+    this.serverRepository
+      .getAssetsCount(AssetScope.Library, search)
+      .subscribe((total) => {
+        this.assetsTotal = total;
+        const totalPages = this.assetsPageCount();
+        const nextPage =
+          totalPages === 0 ? 1 : Math.min(this.assetsPage, totalPages);
+        this.loadAssetsPage(nextPage);
+      });
   }
 
   private loadAssetsPage(page: number): void {
     this.isLoading = true;
     const skip = (page - 1) * this.assetsPageSize;
     const search = this.searchText.trim();
-    this.serverRepository.getAssets(
-      AssetScope.Library,
-      skip,
-      this.assetsPageSize,
-      this.assetsSortField,
-      this.assetsSortDirection,
-      search
-    ).subscribe(assets => {
-      this.assets = assets;
-      this.assetsPage = page;
-      this.isLoading = false;
-    });
+    this.serverRepository
+      .getAssets(
+        AssetScope.Library,
+        skip,
+        this.assetsPageSize,
+        this.assetsSortField,
+        this.assetsSortDirection,
+        search,
+      )
+      .subscribe((assets) => {
+        this.assets = assets;
+        this.assetsPage = page;
+        this.isLoading = false;
+      });
   }
 
   private scheduleSearch(): void {
@@ -213,7 +220,7 @@ export class AssetPickerDialogComponent implements OnInit {
       assetId: asset.assetId,
       name: asset.name,
       mediaType: asset.mediaType,
-      sizeBytes: asset.sizeBytes
+      sizeBytes: asset.sizeBytes,
     };
   }
 }

@@ -1,4 +1,7 @@
-import { ContextEntryEntity, ContextEntrySnapshot } from './context-entry.entity';
+import {
+  ContextEntryEntity,
+  ContextEntrySnapshot,
+} from './context-entry.entity';
 import { ContextEntryPurpose } from '../enumerations/context-entry-purpose';
 import { Entity, EntitySnapshot } from './entity.entity';
 import { computed, signal, Signal, WritableSignal } from '@angular/core';
@@ -14,7 +17,9 @@ export class ContextEntryListEntity extends Entity<ContextEntryListSnapshot> {
   constructor(snapshot: ContextEntryListSnapshot) {
     super(snapshot);
 
-    this.entries = signal(snapshot.entries.map(ContextEntryEntity.fromSnapshot));
+    this.entries = signal(
+      snapshot.entries.map(ContextEntryEntity.fromSnapshot),
+    );
 
     this.isDirty = computed(() => {
       const snapshot = this.snapshot();
@@ -24,44 +29,52 @@ export class ContextEntryListEntity extends Entity<ContextEntryListSnapshot> {
       const currentEntries = this.entries();
 
       // Must touch all entry dirty signals
-      const currentEntriesDirty = currentEntries.reduce((dirty, entry) => entry.isDirty() || dirty, false);
+      const currentEntriesDirty = currentEntries.reduce(
+        (dirty, entry) => entry.isDirty() || dirty,
+        false,
+      );
 
-      return (currentEntries.length !== snaphotEntries.length) ||
-             currentEntriesDirty;
+      return (
+        currentEntries.length !== snaphotEntries.length || currentEntriesDirty
+      );
     });
   }
 
   public appendEntry(overrides: any): void {
     const snapshot = {
       ...ContextEntryEntity.defaultSnapshot(),
-      ...overrides
+      ...overrides,
     };
 
     const newEntry = ContextEntryEntity.fromSnapshot(snapshot);
-    this.entries.update(currentEntries => [...currentEntries, newEntry]);
+    this.entries.update((currentEntries) => [...currentEntries, newEntry]);
   }
 
   public insertEntry(index: number, overrides: any): void {
     const snapshot = {
       ...ContextEntryEntity.defaultSnapshot(),
-      ...overrides
+      ...overrides,
     };
 
     const newEntry = ContextEntryEntity.fromSnapshot(snapshot);
-    this.entries.update(currentEntries => {
+    this.entries.update((currentEntries) => {
       const clampedIndex = Math.max(0, Math.min(index, currentEntries.length));
       return [
         ...currentEntries.slice(0, clampedIndex),
         newEntry,
-        ...currentEntries.slice(clampedIndex)
+        ...currentEntries.slice(clampedIndex),
       ];
     });
   }
 
-  public moveEntry(entryId: string, direction: 'up' | 'down', purpose: ContextEntryPurpose): void {
+  public moveEntry(
+    entryId: string,
+    direction: 'up' | 'down',
+    purpose: ContextEntryPurpose,
+  ): void {
     const delta = direction === 'up' ? -1 : 1;
-    this.entries.update(currentEntries => {
-      const index = currentEntries.findIndex(entry => entry.id === entryId);
+    this.entries.update((currentEntries) => {
+      const index = currentEntries.findIndex((entry) => entry.id === entryId);
       if (index === -1) {
         return currentEntries;
       }
@@ -83,18 +96,22 @@ export class ContextEntryListEntity extends Entity<ContextEntryListSnapshot> {
   }
 
   public deleteEntry(entryId: string): void {
-    this.entries.update(currentEntries => currentEntries.filter(entry => entry.id !== entryId));
+    this.entries.update((currentEntries) =>
+      currentEntries.filter((entry) => entry.id !== entryId),
+    );
   }
 
   public override toSnapshot(): ContextEntryListSnapshot {
     return {
       id: this.id,
       version: this.version,
-      entries: this.entries().map(entry => entry.toSnapshot()),
+      entries: this.entries().map((entry) => entry.toSnapshot()),
     };
   }
 
-  public static fromSnapshot(snapshot: ContextEntryListSnapshot): ContextEntryListEntity {
+  public static fromSnapshot(
+    snapshot: ContextEntryListSnapshot,
+  ): ContextEntryListEntity {
     return new ContextEntryListEntity(snapshot);
   }
 
@@ -102,11 +119,11 @@ export class ContextEntryListEntity extends Entity<ContextEntryListSnapshot> {
     return {
       ...Entity.defaultSnapshot(),
       entries: [],
-    }
+    };
   }
 
   public override markClean(): void {
     super.markClean();
-    this.entries().forEach(entry => entry.markClean());
+    this.entries().forEach((entry) => entry.markClean());
   }
 }

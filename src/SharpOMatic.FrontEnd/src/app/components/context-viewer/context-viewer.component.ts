@@ -1,5 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnChanges, SimpleChanges, signal } from '@angular/core';
+import {
+  Component,
+  Input,
+  OnChanges,
+  SimpleChanges,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { formatByteSize } from '../../helper/format-size';
 
@@ -25,7 +31,7 @@ const MAX_DISPLAY_LENGTH = 1000;
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './context-viewer.component.html',
-  styleUrls: ['./context-viewer.component.scss']
+  styleUrls: ['./context-viewer.component.scss'],
 })
 export class ContextViewerComponent implements OnChanges {
   @Input() contexts: string[] = [];
@@ -86,7 +92,11 @@ export class ContextViewerComponent implements OnChanges {
     try {
       const parsed = JSON.parse(rawContext);
 
-      if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+      if (
+        parsed === null ||
+        Array.isArray(parsed) ||
+        typeof parsed !== 'object'
+      ) {
         this.contextTree.set([]);
         this.errorMessage.set('Context is not an object.');
         return;
@@ -113,7 +123,9 @@ export class ContextViewerComponent implements OnChanges {
   }
 
   private buildNodesFromObject(obj: Record<string, unknown>): ContextNode[] {
-    return Object.entries(obj).map(([name, payload]) => this.toContextNode(name, payload));
+    return Object.entries(obj).map(([name, payload]) =>
+      this.toContextNode(name, payload),
+    );
   }
 
   private toContextNode(name: string, payload: unknown): ContextNode {
@@ -123,7 +135,9 @@ export class ContextViewerComponent implements OnChanges {
     const isArray = Array.isArray(payloadObject.value);
 
     if (isContextObject && this.isPlainObject(payloadObject.value)) {
-      const children = this.buildNodesFromObject(payloadObject.value as Record<string, unknown>);
+      const children = this.buildNodesFromObject(
+        payloadObject.value as Record<string, unknown>,
+      );
       return {
         name,
         type: this.getPayloadType(payloadObject),
@@ -134,13 +148,15 @@ export class ContextViewerComponent implements OnChanges {
         isTruncated: false,
         showFull: false,
         children,
-        expanded: false
+        expanded: false,
       };
     }
 
     if (isContextList && isArray) {
       const arrayValue = payloadObject.value as unknown[];
-      const children = arrayValue.map((item, index) => this.toContextNode(`[${index}]`, item));
+      const children = arrayValue.map((item, index) =>
+        this.toContextNode(`[${index}]`, item),
+      );
       const nameWithLength = `${name}[${arrayValue.length}]`;
       return {
         name: nameWithLength,
@@ -152,7 +168,7 @@ export class ContextViewerComponent implements OnChanges {
         isTruncated: false,
         showFull: false,
         children,
-        expanded: false
+        expanded: false,
       };
     }
 
@@ -167,11 +183,14 @@ export class ContextViewerComponent implements OnChanges {
       isTruncated: formatted.isTruncated,
       showFull: false,
       children: [],
-      expanded: false
+      expanded: false,
     };
   }
 
-  private getPayloadObject(payload: unknown): { $type?: unknown; value: unknown } {
+  private getPayloadObject(payload: unknown): {
+    $type?: unknown;
+    value: unknown;
+  } {
     if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
       const { $type, value } = payload as { $type?: unknown; value?: unknown };
       return { $type, value };
@@ -209,7 +228,8 @@ export class ContextViewerComponent implements OnChanges {
     if (value === null) return this.createDisplayValue('null');
     if (value === undefined) return this.createDisplayValue('undefined');
     if (typeof value === 'string') return this.createDisplayValue(value);
-    if (typeof value === 'number' || typeof value === 'boolean') return this.createDisplayValue(value.toString());
+    if (typeof value === 'number' || typeof value === 'boolean')
+      return this.createDisplayValue(value.toString());
 
     try {
       return this.createDisplayValue(JSON.stringify(value));
@@ -227,11 +247,13 @@ export class ContextViewerComponent implements OnChanges {
   } {
     const isTruncated = value.length > MAX_DISPLAY_LENGTH;
     return {
-      displayValue: isTruncated ? value.substring(0, MAX_DISPLAY_LENGTH) : value,
+      displayValue: isTruncated
+        ? value.substring(0, MAX_DISPLAY_LENGTH)
+        : value,
       fullValue: value,
       fullLength: value.length,
       displayLength: formatByteSize(value.length),
-      isTruncated
+      isTruncated,
     };
   }
 }

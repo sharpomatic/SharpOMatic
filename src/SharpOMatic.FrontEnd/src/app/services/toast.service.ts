@@ -30,7 +30,11 @@ export class ToastService {
   }
 
   extractErrorDetail(error: unknown): string {
-    const maybeError = error as { error?: unknown; message?: unknown; statusText?: unknown };
+    const maybeError = error as {
+      error?: unknown;
+      message?: unknown;
+      statusText?: unknown;
+    };
     const nested = maybeError?.error as { message?: unknown };
     const parts = [
       nested?.message,
@@ -39,16 +43,22 @@ export class ToastService {
       maybeError?.statusText,
     ];
 
-    return parts
-      .map((part) => (typeof part === 'string' ? part.trim() : ''))
-      .find((part) => part.length > 0) ?? '';
+    return (
+      parts
+        .map((part) => (typeof part === 'string' ? part.trim() : ''))
+        .find((part) => part.length > 0) ?? ''
+    );
   }
 
   dismiss(id: number): void {
     this.toasts.update((current) => current.filter((toast) => toast.id !== id));
   }
 
-  private addToast(type: ToastType, message: string, options?: ToastOptions): void {
+  private addToast(
+    type: ToastType,
+    message: string,
+    options?: ToastOptions,
+  ): void {
     const durationMs = options?.durationMs ?? this.defaultDuration;
     const toast: ToastMessage = {
       id: ++this.idCounter,

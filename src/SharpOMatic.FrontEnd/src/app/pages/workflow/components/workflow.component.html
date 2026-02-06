@@ -1,68 +1,188 @@
 <div class="d-flex flex-column bg-body-secondary h-100">
   <!-- Header with title and action buttons -->
   <div class="flex-shrink-0">
-    <div class="d-flex justify-content-between align-items-center p-3 pt-2 pb-0">
-      <h2 class=""><i class="bi bi-share pe-3 icon-sm"></i>{{ workflowService.workflow().name() }}</h2>
+    <div
+      class="d-flex justify-content-between align-items-center p-3 pt-2 pb-0"
+    >
+      <h2 class="">
+        <i class="bi bi-share pe-3 icon-sm"></i
+        >{{ workflowService.workflow().name() }}
+      </h2>
       <div class="d-flex">
-        @if (activeTabId === 'design') {
-        <div class="dropdown" dropdown>
-          <button class="btn btn-primary dropdown-toggle me-2" type="button" id="add-node-dropdown"
-            data-bs-toggle="dropdown" aria-expanded="false" dropdownToggle>Add</button>
-          <ul class="dropdown-menu" aria-labelledby="add-node-dropdown" *dropdownMenu>
-            <li><a class="dropdown-item" [class.disabled]="hasStartNode()" (click)="onAddStartNode($event)"><i
-                  class="dropdown-icon bi bi-chevron-bar-left"></i>Start</a></li>
-            <li><a class="dropdown-item" (click)="updateService.addEndNode(workflowService.workflow())"><i
-                  class="dropdown-icon bi bi-chevron-bar-right"></i>End</a></li>
-            <li><a class="dropdown-item" (click)="updateService.addEditNode(workflowService.workflow())"><i
-                  class="dropdown-icon bi bi-pencil"></i>Edit</a></li>
-            <li><a class="dropdown-item" (click)="updateService.addCodeNode(workflowService.workflow())"><i
-                  class="dropdown-icon bi bi-filetype-cs"></i>Code</a></li>
-            <li><a class="dropdown-item" (click)="updateService.addModelCallNode(workflowService.workflow())"><i
-                  class="dropdown-icon bi bi-chat-text"></i>Model Call</a></li>
-            <li><a class="dropdown-item" (click)="updateService.addSwitchNode(workflowService.workflow())"><i
-                  class="dropdown-icon bi bi-option"></i>Switch</a></li>
-            <li><a class="dropdown-item" (click)="updateService.addFanInNode(workflowService.workflow())"><i
-                  class="dropdown-icon bi bi-box-arrow-in-right"></i>Fan In</a></li>
-            <li><a class="dropdown-item" (click)="updateService.addFanOutNode(workflowService.workflow())"><i
-                  class="dropdown-icon bi bi-box-arrow-right"></i>Fan Out</a></li>
-            <li><a class="dropdown-item" (click)="updateService.addBatchNode(workflowService.workflow())"><i
-                  class="dropdown-icon bi bi-layers"></i>Batch</a></li>
-            <li><a class="dropdown-item" (click)="updateService.addGosubNode(workflowService.workflow())"><i
-                  class="dropdown-icon bi bi-diagram-3"></i>Gosub</a></li>
-            <li><a class="dropdown-item" (click)="updateService.addInputNode(workflowService.workflow())"><i
-                  class="dropdown-icon bi bi-chat-dots"></i>Input</a></li>
-          </ul>
-        </div>
+        @if (activeTabId === "design") {
+          <div class="dropdown" dropdown>
+            <button
+              class="btn btn-primary dropdown-toggle me-2"
+              type="button"
+              id="add-node-dropdown"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+              dropdownToggle
+            >
+              Add
+            </button>
+            <ul
+              class="dropdown-menu"
+              aria-labelledby="add-node-dropdown"
+              *dropdownMenu
+            >
+              <li>
+                <a
+                  class="dropdown-item"
+                  [class.disabled]="hasStartNode()"
+                  (click)="onAddStartNode($event)"
+                  ><i class="dropdown-icon bi bi-chevron-bar-left"></i>Start</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="updateService.addEndNode(workflowService.workflow())"
+                  ><i class="dropdown-icon bi bi-chevron-bar-right"></i>End</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addEditNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-pencil"></i>Edit</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addCodeNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-filetype-cs"></i>Code</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addModelCallNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-chat-text"></i>Model Call</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addSwitchNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-option"></i>Switch</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addFanInNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-box-arrow-in-right"></i>Fan
+                  In</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addFanOutNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-box-arrow-right"></i>Fan Out</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addBatchNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-layers"></i>Batch</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addGosubNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-diagram-3"></i>Gosub</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addInputNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-chat-dots"></i>Input</a
+                >
+              </li>
+            </ul>
+          </div>
         }
-        <button class="btn btn-primary me-2" [disabled]="!workflowService.workflow().isDirty()" (click)="save()">Save</button>
-        @if (activeTabId === 'design') {          
-        <button class="btn btn-primary" [disabled]="workflowService.workflow().isDirty() || workflowService.isRunning()" (click)="run()">Run</button>
+        <button
+          class="btn btn-primary me-2"
+          [disabled]="!workflowService.workflow().isDirty()"
+          (click)="save()"
+        >
+          Save
+        </button>
+        @if (activeTabId === "design") {
+          <button
+            class="btn btn-primary"
+            [disabled]="
+              workflowService.workflow().isDirty() ||
+              workflowService.isRunning()
+            "
+            (click)="run()"
+          >
+            Run
+          </button>
         }
       </div>
     </div>
 
-    @if (activeTabId === 'design') {
-    <button class="btn trace-toggle" (click)="toggleTracebar()">
-      <i class="bi" [class.bi-layout-sidebar]="isTracebarClosed()"
-        [class.bi-layout-sidebar-inset]="!isTracebarClosed()"></i>
-    </button>
+    @if (activeTabId === "design") {
+      <button class="btn trace-toggle" (click)="toggleTracebar()">
+        <i
+          class="bi"
+          [class.bi-layout-sidebar]="isTracebarClosed()"
+          [class.bi-layout-sidebar-inset]="!isTracebarClosed()"
+        ></i>
+      </button>
     }
   </div>
 
   <!-- Tabs for main content-->
   <div class="tab-shell mt-1">
-    <app-tab [tabs]="tabs" [(activeTabId)]="activeTabId" (activeTabChange)="onActiveTabChange($event)"
-      [preventOverflow]="true"></app-tab>
+    <app-tab
+      [tabs]="tabs"
+      [(activeTabId)]="activeTabId"
+      (activeTabChange)="onActiveTabChange($event)"
+      [preventOverflow]="true"
+    ></app-tab>
   </div>
 
   <ng-template #designTab>
     <div class="d-flex flex-row h-100">
-      <app-designer class="flex-grow-1" [workflow]="workflowService.workflow"
-        [traces]="workflowService.traces"></app-designer>
+      <app-designer
+        class="flex-grow-1"
+        [workflow]="workflowService.workflow"
+        [traces]="workflowService.traces"
+      ></app-designer>
       @if (!isTracebarClosed()) {
-      <app-tracebar class="trace-panel flex-shrink-0" [style.width.px]="tracebarWidth()"
-        [(activeTabId)]="tracebarActiveTabId"
-        (tracebarWidthChange)="onTracebarWidthChange($event)"></app-tracebar>
+        <app-tracebar
+          class="trace-panel flex-shrink-0"
+          [style.width.px]="tracebarWidth()"
+          [(activeTabId)]="tracebarActiveTabId"
+          (tracebarWidthChange)="onTracebarWidthChange($event)"
+        ></app-tracebar>
       }
     </div>
   </ng-template>
@@ -72,21 +192,39 @@
       <div class="mb-3 form-line">
         <label for="workflow-id" class="form-label field-label">Id</label>
         <div class="flex-fill control-column title">
-          <input type="text" class="form-control w-100" id="workflow-id" [ngModel]="workflowService.workflow().id" readonly />
+          <input
+            type="text"
+            class="form-control w-100"
+            id="workflow-id"
+            [ngModel]="workflowService.workflow().id"
+            readonly
+          />
         </div>
       </div>
       <div class="mb-3 form-line">
         <label for="workflow-title" class="form-label field-label">Title</label>
         <div class="flex-fill control-column title">
-          <input type="text" class="form-control w-100" id="workflow-title" [ngModel]="workflowService.workflow().name()"
-            (ngModelChange)="workflowService.workflow().name.set($event)" />
+          <input
+            type="text"
+            class="form-control w-100"
+            id="workflow-title"
+            [ngModel]="workflowService.workflow().name()"
+            (ngModelChange)="workflowService.workflow().name.set($event)"
+          />
         </div>
       </div>
       <div class="mb-3 form-line">
-        <label for="workflow-description" class="form-label field-label">Description</label>
+        <label for="workflow-description" class="form-label field-label"
+          >Description</label
+        >
         <div class="flex-fill control-column description">
-          <input type="text" class="form-control w-100" id="workflow-description" [ngModel]="workflowService.workflow().description()"
-              (ngModelChange)="workflowService.workflow().description.set($event)" />          
+          <input
+            type="text"
+            class="form-control w-100"
+            id="workflow-description"
+            [ngModel]="workflowService.workflow().description()"
+            (ngModelChange)="workflowService.workflow().description.set($event)"
+          />
         </div>
       </div>
     </div>
@@ -99,22 +237,50 @@
           <thead>
             <tr>
               <th scope="col" class="col-created">
-                <button class="btn btn-link p-0 runs-sort" type="button" (click)="onRunsSortChange(RunSortField.Created)">
+                <button
+                  class="btn btn-link p-0 runs-sort"
+                  type="button"
+                  (click)="onRunsSortChange(RunSortField.Created)"
+                >
                   Created
-                  @if (workflowService.runsSortField() === RunSortField.Created) {
-                    <i class="bi"
-                      [class.bi-arrow-down]="workflowService.runsSortDirection() === SortDirection.Descending"
-                      [class.bi-arrow-up]="workflowService.runsSortDirection() === SortDirection.Ascending"></i>
+                  @if (
+                    workflowService.runsSortField() === RunSortField.Created
+                  ) {
+                    <i
+                      class="bi"
+                      [class.bi-arrow-down]="
+                        workflowService.runsSortDirection() ===
+                        SortDirection.Descending
+                      "
+                      [class.bi-arrow-up]="
+                        workflowService.runsSortDirection() ===
+                        SortDirection.Ascending
+                      "
+                    ></i>
                   }
                 </button>
               </th>
               <th scope="col" class="col-status">
-                <button class="btn btn-link p-0 runs-sort" type="button" (click)="onRunsSortChange(RunSortField.Status)">
+                <button
+                  class="btn btn-link p-0 runs-sort"
+                  type="button"
+                  (click)="onRunsSortChange(RunSortField.Status)"
+                >
                   Status
-                  @if (workflowService.runsSortField() === RunSortField.Status) {
-                    <i class="bi"
-                      [class.bi-arrow-down]="workflowService.runsSortDirection() === SortDirection.Descending"
-                      [class.bi-arrow-up]="workflowService.runsSortDirection() === SortDirection.Ascending"></i>
+                  @if (
+                    workflowService.runsSortField() === RunSortField.Status
+                  ) {
+                    <i
+                      class="bi"
+                      [class.bi-arrow-down]="
+                        workflowService.runsSortDirection() ===
+                        SortDirection.Descending
+                      "
+                      [class.bi-arrow-up]="
+                        workflowService.runsSortDirection() ===
+                        SortDirection.Ascending
+                      "
+                    ></i>
                   }
                 </button>
               </th>
@@ -125,58 +291,114 @@
           <tbody>
             @for (run of workflowService.runs(); track run.runId) {
               <tr class="run-row" (dblclick)="onRunRowDoubleClick(run)">
-                <td class="col-created">{{ run.created ? (run.created | date:'short') : '' }}</td>
+                <td class="col-created">
+                  {{ run.created ? (run.created | date: "short") : "" }}
+                </td>
                 <td class="col-status">
-                  <span class="run-text" 
+                  <span
+                    class="run-text"
                     [class.created]="run.runStatus === RunStatus.Created"
                     [class.running]="run.runStatus === RunStatus.Running"
                     [class.success]="run.runStatus === RunStatus.Success"
-                    [class.failed]="run.runStatus === RunStatus.Failed">
+                    [class.failed]="run.runStatus === RunStatus.Failed"
+                  >
                     {{ run.message }}
                   </span>
                 </td>
                 <td class="col-duration">{{ getRunDuration(run) }}</td>
-                <td class="col-error">{{ run.error || '' }}</td>
+                <td class="col-error">{{ run.error || "" }}</td>
               </tr>
             }
           </tbody>
         </table>
       </div>
       @if (workflowService.runsTotal() > 0) {
-        <div class="d-flex align-items-center justify-content-between runs-pagination">
+        <div
+          class="d-flex align-items-center justify-content-between runs-pagination"
+        >
           <div class="text-muted small">
-            Page {{ workflowService.runsPage() }} of {{ runsPageCount() }} ({{ workflowService.runsTotal() }} total runs)
+            Page {{ workflowService.runsPage() }} of {{ runsPageCount() }} ({{
+              workflowService.runsTotal()
+            }}
+            total runs)
           </div>
           @if (runsPageCount() > 1) {
             <nav aria-label="Runs pagination">
               <ul class="pagination pagination-sm mb-0">
-                <li class="page-item" [class.disabled]="workflowService.runsPage() === 1">
-                  <button class="page-link" type="button" [disabled]="workflowService.runsPage() === 1" aria-label="First"
-                    (click)="onRunsPageChange(1)">
+                <li
+                  class="page-item"
+                  [class.disabled]="workflowService.runsPage() === 1"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="workflowService.runsPage() === 1"
+                    aria-label="First"
+                    (click)="onRunsPageChange(1)"
+                  >
                     <span aria-hidden="true">&laquo;</span>
                   </button>
                 </li>
-                <li class="page-item" [class.disabled]="workflowService.runsPage() === 1">
-                  <button class="page-link" type="button" [disabled]="workflowService.runsPage() === 1" aria-label="Previous"
-                    (click)="onRunsPageChange(workflowService.runsPage() - 1)">
+                <li
+                  class="page-item"
+                  [class.disabled]="workflowService.runsPage() === 1"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="workflowService.runsPage() === 1"
+                    aria-label="Previous"
+                    (click)="onRunsPageChange(workflowService.runsPage() - 1)"
+                  >
                     <span aria-hidden="true">&lsaquo;</span>
                   </button>
                 </li>
                 @for (page of runsPageNumbers(); track page) {
-                  <li class="page-item" [class.active]="page === workflowService.runsPage()"
-                    [attr.aria-current]="page === workflowService.runsPage() ? 'page' : null">
-                    <button class="page-link" type="button" (click)="onRunsPageChange(page)">{{ page }}</button>
+                  <li
+                    class="page-item"
+                    [class.active]="page === workflowService.runsPage()"
+                    [attr.aria-current]="
+                      page === workflowService.runsPage() ? 'page' : null
+                    "
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      (click)="onRunsPageChange(page)"
+                    >
+                      {{ page }}
+                    </button>
                   </li>
                 }
-                <li class="page-item" [class.disabled]="workflowService.runsPage() >= runsPageCount()">
-                  <button class="page-link" type="button" [disabled]="workflowService.runsPage() >= runsPageCount()"
-                    aria-label="Next" (click)="onRunsPageChange(workflowService.runsPage() + 1)">
+                <li
+                  class="page-item"
+                  [class.disabled]="
+                    workflowService.runsPage() >= runsPageCount()
+                  "
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="workflowService.runsPage() >= runsPageCount()"
+                    aria-label="Next"
+                    (click)="onRunsPageChange(workflowService.runsPage() + 1)"
+                  >
                     <span aria-hidden="true">&rsaquo;</span>
                   </button>
                 </li>
-                <li class="page-item" [class.disabled]="workflowService.runsPage() >= runsPageCount()">
-                  <button class="page-link" type="button" [disabled]="workflowService.runsPage() >= runsPageCount()"
-                    aria-label="Last" (click)="onRunsPageChange(runsPageCount())">
+                <li
+                  class="page-item"
+                  [class.disabled]="
+                    workflowService.runsPage() >= runsPageCount()
+                  "
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="workflowService.runsPage() >= runsPageCount()"
+                    aria-label="Last"
+                    (click)="onRunsPageChange(runsPageCount())"
+                  >
                     <span aria-hidden="true">&raquo;</span>
                   </button>
                 </li>

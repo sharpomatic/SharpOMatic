@@ -4,5 +4,5 @@ export enum FieldDescriptorType {
   Boolean = 2,
   Enum = 3,
   Integer = 4,
-  Double = 5  
+  Double = 5,
 }

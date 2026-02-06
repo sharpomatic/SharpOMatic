@@ -1,4 +1,12 @@
-import { Component, EventEmitter, Inject, OnInit, Output, TemplateRef, ViewChild } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Inject,
+  OnInit,
+  Output,
+  TemplateRef,
+  ViewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DIALOG_DATA } from '../services/dialog.service';
@@ -9,12 +17,7 @@ import { InputNodeEntity } from '../../entities/definitions/input-node.entity';
 
 @Component({
   selector: 'app-input-node-dialog',
-  imports: [
-    CommonModule,
-    FormsModule,
-    TabComponent,
-    ContextViewerComponent,
-  ],
+  imports: [CommonModule, FormsModule, TabComponent, ContextViewerComponent],
   templateUrl: './input-node-dialog.component.html',
   styleUrls: ['./input-node-dialog.component.scss'],
 })
@@ -30,10 +33,20 @@ export class InputNodeDialogComponent implements OnInit {
   public tabs: TabItem[] = [];
   public activeTabId = 'details';
 
-  constructor(@Inject(DIALOG_DATA) data: { node: InputNodeEntity, nodeTraces: TraceProgressModel[] }) {
+  constructor(
+    @Inject(DIALOG_DATA)
+    data: {
+      node: InputNodeEntity;
+      nodeTraces: TraceProgressModel[];
+    },
+  ) {
     this.node = data.node;
-    this.inputTraces = (data.nodeTraces ?? []).map(trace => trace.inputContext).filter((context): context is string => context != null);
-    this.outputTraces = (data.nodeTraces ?? []).map(trace => trace.outputContext).filter((context): context is string => context != null);
+    this.inputTraces = (data.nodeTraces ?? [])
+      .map((trace) => trace.inputContext)
+      .filter((context): context is string => context != null);
+    this.outputTraces = (data.nodeTraces ?? [])
+      .map((trace) => trace.outputContext)
+      .filter((context): context is string => context != null);
   }
 
   ngOnInit(): void {

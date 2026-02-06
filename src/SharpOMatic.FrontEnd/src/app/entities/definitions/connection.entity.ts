@@ -24,8 +24,7 @@ export class ConnectionEntity extends Entity<ConnectionSnapshot> {
       const currentFrom = this.from();
       const currentTo = this.to();
 
-      return (currentFrom !== snapshot.from) ||
-             (currentTo !== snapshot.to);
+      return currentFrom !== snapshot.from || currentTo !== snapshot.to;
     });
   }
 
