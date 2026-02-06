@@ -215,7 +215,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
                     for (var index = 0; index < batchContext.NextBatchIndex; index++)
                     {
                         if (batchContext.BatchOutputs.TryGetValue(index, out var outputValue))
-                            MergeOutputValue(mergedContext, batchContext.OutputArrayPath, outputValue);
+                            threadContext.ProcessContext.MergeOutputValue(mergedContext, batchContext.OutputArrayPath, outputValue);
                     }
                 }
 
@@ -252,39 +252,6 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             slice.Add(items[index]);
 
         return slice;
-    }
-
-    private static void MergeOutputValue(ContextObject target, string outputPath, object? sourceValue)
-    {
-        if (!target.TryGet<object?>(outputPath, out var targetValue))
-        {
-            if (!target.TrySet(outputPath, sourceValue))
-                throw new SharpOMaticException($"Batch node cannot set '{outputPath}' into context.");
-
-            return;
-        }
-
-        if (targetValue is ContextList targetList1 && sourceValue is ContextList sourceList)
-        {
-            targetList1.AddRange(sourceList);
-        }
-        else if (targetValue is ContextList targetList2 && sourceValue is not ContextList)
-        {
-            targetList2.Add(sourceValue);
-        }
-        else if (targetValue is not ContextList && sourceValue is ContextList sourceList2)
-        {
-            var newList = new ContextList { targetValue };
-            newList.AddRange(sourceList2);
-            if (!target.TrySet(outputPath, newList))
-                throw new SharpOMaticException($"Batch node cannot set '{outputPath}' into context.");
-        }
-        else
-        {
-            var newList = new ContextList { targetValue, sourceValue };
-            if (!target.TrySet(outputPath, newList))
-                throw new SharpOMaticException($"Batch node cannot set '{outputPath}' into context.");
-        }
     }
 
     private async Task PruneRunHistory(ProcessContext processContext)

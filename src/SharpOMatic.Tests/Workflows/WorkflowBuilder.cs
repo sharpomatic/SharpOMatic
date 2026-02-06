@@ -152,7 +152,7 @@ public sealed class WorkflowBuilder
         return this;
     }
 
-    public WorkflowBuilder AddFanIn(string title = "fanin")
+    public WorkflowBuilder AddFanIn(string title = "fanin", string mergePath = "output")
     {
         var node = new FanInNodeEntity
         {
@@ -166,6 +166,7 @@ public sealed class WorkflowBuilder
             Height = 80f,
             Inputs = [CreateConnector()],
             Outputs = [CreateConnector()],
+            MergePath = mergePath,
         };
 
         _nodes.Add(node);

@@ -140,6 +140,39 @@ public class ProcessContext : ExecutionContext
         }
     }
 
+    public void MergeOutputValue(ContextObject target, string outputPath, object? sourceValue)
+    {
+        if (!target.TryGet<object?>(outputPath, out var targetValue))
+        {
+            if (!target.TrySet(outputPath, sourceValue))
+                throw new SharpOMaticException($"Could not set '{outputPath}' into context.");
+
+            return;
+        }
+
+        if (targetValue is ContextList targetList1 && sourceValue is ContextList sourceList)
+        {
+            targetList1.AddRange(sourceList);
+        }
+        else if (targetValue is ContextList targetList2 && sourceValue is not ContextList)
+        {
+            targetList2.Add(sourceValue);
+        }
+        else if (targetValue is not ContextList && sourceValue is ContextList sourceList2)
+        {
+            var newList = new ContextList { targetValue };
+            newList.AddRange(sourceList2);
+            if (!target.TrySet(outputPath, newList))
+                throw new SharpOMaticException($"Could not set '{outputPath}' into context.");
+        }
+        else
+        {
+            var newList = new ContextList { targetValue, sourceValue };
+            if (!target.TrySet(outputPath, newList))
+                throw new SharpOMaticException($"Could not set '{outputPath}' into context.");
+        }
+    }
+
     internal void TrackContext(ExecutionContext context)
     {
         _activeContexts.TryAdd(context, 0);

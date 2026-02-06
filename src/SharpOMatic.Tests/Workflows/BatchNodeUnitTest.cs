@@ -83,8 +83,8 @@ public sealed class BatchNodeUnitTest
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddBatch(batchSize: 2, parallelBatches: 2, inputPath: "list")
-            .AddCode("code", "var list = Context.Get<ContextList>(\"list\"); Context.Set(\"output\", list);")
+            .AddBatch(batchSize: 2, parallelBatches: 2, inputPath: "list", outputPath: "result.list")
+            .AddCode("code", "var list = Context.Get<ContextList>(\"list\"); Context.Set(\"result.list\", list);")
             .Connect("start", "batch")
             .Connect("batch.process", "code")
             .Build();
@@ -99,7 +99,7 @@ public sealed class BatchNodeUnitTest
         Assert.NotNull(run.OutputContext);
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.NotNull(outCtx);
-        Assert.True(outCtx.TryGetList("output", out var outputList));
+        Assert.True(outCtx.TryGetList("result.list", out var outputList));
         Assert.NotNull(outputList);
         Assert.Equal(5, outputList.Count);
         Assert.Equal(1, (int)outputList[0]!);

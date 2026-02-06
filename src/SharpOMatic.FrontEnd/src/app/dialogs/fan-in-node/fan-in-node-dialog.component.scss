@@ -51,8 +51,18 @@
 }
 
 .details {
+  .field-label {
+    width: 150px;
+    flex: 0 0 150px;
+  }
+
   .title {
     max-width: 350px;
+    width: 100%;
+  }
+
+  .path {
+    max-width: 500px;
     width: 100%;
   }
 }

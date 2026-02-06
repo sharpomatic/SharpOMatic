@@ -97,6 +97,96 @@ public sealed class FanOutInUnitTests
     }
 
     [Fact]
+    public async Task FanOutIn_merges_custom_merge_path_values()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddFanOut("fanout", ["first", "second"])
+            .AddCode("first", "Context.Set<int>(\"result\", 1);")
+            .AddCode("second", "Context.Set<int>(\"result\", 2);")
+            .AddFanIn("fanin", mergePath: "result")
+            .Connect("start", "fanout")
+            .Connect("fanout.first", "first")
+            .Connect("fanout.second", "second")
+            .Connect("first", "fanin")
+            .Connect("second", "fanin")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        Assert.True(outCtx.TryGetList("result", out var list));
+        Assert.NotNull(list);
+        Assert.Equal(2, list.Count);
+        Assert.Contains(1, list);
+        Assert.Contains(2, list);
+    }
+
+    [Fact]
+    public async Task FanOutIn_merges_nested_merge_path_values()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddFanOut("fanout", ["first", "second"])
+            .AddCode("first", "Context.Set<int>(\"result.items\", 1);")
+            .AddCode("second", "Context.Set<int>(\"result.items\", 2);")
+            .AddFanIn("fanin", mergePath: "result.items")
+            .Connect("start", "fanout")
+            .Connect("fanout.first", "first")
+            .Connect("fanout.second", "second")
+            .Connect("first", "fanin")
+            .Connect("second", "fanin")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        Assert.True(outCtx.TryGetList("result.items", out var list));
+        Assert.NotNull(list);
+        Assert.Equal(2, list.Count);
+        Assert.Contains(1, list);
+        Assert.Contains(2, list);
+    }
+
+    [Fact]
+    public async Task FanOutIn_blank_merge_path_skips_merging()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddFanOut("fanout", ["first", "second"])
+            .AddCode("first", "Context.Set<int>(\"output\", 1);")
+            .AddCode("second", "Context.Set<int>(\"output\", 2);")
+            .AddFanIn("fanin", mergePath: "")
+            .Connect("start", "fanout")
+            .Connect("fanout.first", "first")
+            .Connect("fanout.second", "second")
+            .Connect("first", "fanin")
+            .Connect("second", "fanin")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set<int>("input.value", 10);
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        Assert.Equal(10, outCtx.Get<int>("input.value"));
+        Assert.False(outCtx.TryGetList("output", out var _));
+    }
+
+    [Fact]
     public async Task FanIn_requires_fanout_parent()
     {
         var workflow = new WorkflowBuilder().AddStart().AddFanIn("fanin").Connect("start", "fanin").Build();

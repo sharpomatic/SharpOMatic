@@ -27,7 +27,6 @@
 
 ### Editor
 
-- Fan In need to specify the path to merge with output as default
 - Cut, copy and paste of workflow nodes/connectors
 
 ### ChatClient

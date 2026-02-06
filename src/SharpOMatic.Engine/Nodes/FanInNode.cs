@@ -22,13 +22,15 @@ public class FanInNode(ThreadContext threadContext, FanInNodeEntity node) : RunN
                 throw new SharpOMaticException($"All incoming connections must originate from the same Fan Out.");
             }
 
-            if (ThreadContext.NodeContext.TryGetValue("output", out var outputValue))
+            if (!string.IsNullOrWhiteSpace(Node.MergePath))
             {
-                var tempContext = new ContextObject { { "output", outputValue } };
-                if (fanOutContext.MergedContext is null)
-                    throw new SharpOMaticException("Fan out context is missing a merge target.");
+                if (ThreadContext.NodeContext.TryGet<object?>(Node.MergePath, out var outputValue))
+                {
+                    if (fanOutContext.MergedContext is null)
+                        throw new SharpOMaticException("Fan out context is missing a merge target.");
 
-                ProcessContext.MergeContexts(fanOutContext.MergedContext, tempContext);
+                    ProcessContext.MergeOutputValue(fanOutContext.MergedContext, Node.MergePath, outputValue);
+                }
             }
 
             fanOutContext.FanInArrived++;

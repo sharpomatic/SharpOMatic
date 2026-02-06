@@ -27,6 +27,20 @@
             />
           </div>
         </div>
+        <div class="mb-3 form-line">
+          <label for="fanin-merge-path" class="form-label field-label"
+            >Merge Path</label
+          >
+          <div class="flex-fill control-column path">
+            <input
+              type="text"
+              class="form-control w-100"
+              id="fanin-merge-path"
+              [ngModel]="node.mergePath()"
+              (ngModelChange)="node.mergePath.set($event)"
+            />
+          </div>
+        </div>
       </div>
     </ng-template>
 
