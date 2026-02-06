@@ -1,16 +1,14 @@
-﻿namespace SharpOMatic.Engine.Helpers;
+﻿namespace SharpOMatic.Engine.Contexts;
 
 public static class ContextHelpers
 {
-    private static readonly JsonSerializerOptions AssetRefJsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
+    private static readonly JsonSerializerOptions ContextJsonOptions = new JsonSerializerOptions().BuildOptions();
+    private static readonly JsonSerializerOptions AssetRefJsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public static async Task<object?> ResolveContextEntryValue(
-        IServiceProvider serviceProvider, 
-        ContextObject context, 
-        ContextEntryEntity entry, 
+        IServiceProvider serviceProvider,
+        ContextObject context,
+        ContextEntryEntity entry,
         IScriptOptionsService scriptOptionsService,
         Guid runId)
     {
@@ -187,7 +185,13 @@ public static class ContextHelpers
 
             if (ContextPathResolver.TryGetValue(context, path, false, false, out var value))
             {
-                return value?.ToString() ?? string.Empty;
+                return value switch
+                {
+                    null => string.Empty,
+                    ContextObject => JsonSerializer.Serialize(value, ContextJsonOptions),
+                    ContextList => JsonSerializer.Serialize(value, ContextJsonOptions),
+                    _ => value.ToString() ?? string.Empty
+                };
             }
 
             return string.Empty;

@@ -147,7 +147,8 @@ public class GoogleGenAIModelCaller : BaseModelCaller
         else
             modelName = modelConfig.DisplayName;
 
-        var client = new Client(apiKey: apiKey);
+        var httpOptions = new Google.GenAI.Types.HttpOptions { Timeout = 300_000 };
+        var client = new Client(apiKey: apiKey, httpOptions: httpOptions);
         return client.AsIChatClient(modelName);
     }
 }
