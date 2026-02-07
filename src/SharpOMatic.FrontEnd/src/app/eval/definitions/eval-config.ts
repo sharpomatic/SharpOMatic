@@ -4,6 +4,7 @@ import { EvalDataSnapshot } from './eval-data';
 import { EvalDataStore } from './eval-data-store';
 import { EvalGrader, EvalGraderSnapshot } from './eval-grader';
 import { EvalRow, EvalRowSnapshot } from './eval-row';
+import { ContextEntryType } from '../../entities/enumerations/context-entry-type';
 
 export interface EvalConfigSnapshot {
   evalConfigId: string;
@@ -18,6 +19,7 @@ export interface EvalConfigSnapshot {
 
 export class EvalConfig {
   private static readonly DEFAULT_MAX_PARALLEL = 1;
+  public static readonly REQUIRED_NAME_COLUMN_NAME = 'Name';
 
   public readonly evalConfigId: string;
   public workflowId: WritableSignal<string | null>;
@@ -172,19 +174,98 @@ export class EvalConfig {
       .map((grader) => grader.evalGraderId);
   }
 
+  public getDeletedColumnIds(): string[] {
+    const currentIds = new Set(
+      this.columns().map((column) => column.evalColumnId),
+    );
+    return this.initialColumns
+      .filter((column) => !currentIds.has(column.evalColumnId))
+      .map((column) => column.evalColumnId);
+  }
+
+  public getDeletedRowIds(): string[] {
+    const currentIds = new Set(this.rows().map((row) => row.evalRowId));
+    return this.initialRows
+      .filter((row) => !currentIds.has(row.evalRowId))
+      .map((row) => row.evalRowId);
+  }
+
+  public ensureRequiredNameColumn(): boolean {
+    const currentColumns = this.columns();
+    const normalizedRequiredName = EvalConfig.REQUIRED_NAME_COLUMN_NAME;
+    const requiredColumnIndex = currentColumns.findIndex(
+      (column) =>
+        column.name().trim().toLowerCase() ===
+        normalizedRequiredName.toLowerCase(),
+    );
+
+    let changed = false;
+    let requiredColumn: EvalColumn;
+
+    if (requiredColumnIndex >= 0) {
+      requiredColumn = currentColumns[requiredColumnIndex];
+    } else {
+      requiredColumn = EvalColumn.fromSnapshot(
+        EvalColumn.defaultSnapshot(0, this.evalConfigId),
+      );
+      changed = true;
+    }
+
+    if (requiredColumn.name() !== normalizedRequiredName) {
+      requiredColumn.name.set(normalizedRequiredName);
+      changed = true;
+    }
+
+    if (requiredColumn.entryType() !== ContextEntryType.String) {
+      requiredColumn.entryType.set(ContextEntryType.String);
+      changed = true;
+    }
+
+    if (requiredColumn.optional()) {
+      requiredColumn.optional.set(false);
+      changed = true;
+    }
+
+    if (requiredColumn.inputPath() !== null) {
+      requiredColumn.inputPath.set(null);
+      changed = true;
+    }
+
+    const customColumns = currentColumns.filter(
+      (column) => column.evalColumnId !== requiredColumn.evalColumnId,
+    );
+    const nextColumns = [requiredColumn, ...customColumns];
+    const sameOrder =
+      currentColumns.length === nextColumns.length &&
+      currentColumns.every(
+        (column, index) =>
+          column.evalColumnId === nextColumns[index].evalColumnId,
+      );
+
+    if (!sameOrder || changed) {
+      this.columns.set(nextColumns);
+      return true;
+    }
+
+    return false;
+  }
+
   public static fromSnapshot(snapshot: EvalConfigSnapshot): EvalConfig {
     return new EvalConfig(snapshot);
   }
 
   public static defaultSnapshot(): EvalConfigSnapshot {
+    const evalConfigId = crypto.randomUUID();
+    const nameColumn = EvalColumn.defaultSnapshot(0, evalConfigId);
+    nameColumn.name = EvalConfig.REQUIRED_NAME_COLUMN_NAME;
     return {
-      evalConfigId: crypto.randomUUID(),
+      evalConfigId,
       workflowId: null,
       name: '',
       description: '',
       maxParallel: EvalConfig.DEFAULT_MAX_PARALLEL,
       graders: [],
-      columns: [],
+      columns: [nameColumn],
       rows: [],
     };
   }

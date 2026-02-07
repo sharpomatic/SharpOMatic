@@ -9,7 +9,11 @@
       </h2>
       <button
         class="btn btn-primary"
-        [disabled]="!evalConfig.isDirty()"
+        [disabled]="
+          !evalConfig.isDirty() ||
+          hasColumnValidationErrors() ||
+          hasRowValidationErrors()
+        "
         (click)="save()"
       >
         Save
@@ -103,6 +107,224 @@
             (ngModelChange)="onMaxParallelChange($event)"
           />
         </div>
+      </div>
+    </div>
+  </ng-template>
+
+  <ng-template #columnsTab>
+    <div class="p-3 bg-body-tertiary h-100 columns-tab">
+      <div class="mb-3">
+        <div class="d-flex align-items-start gap-2 mb-2 columns-header">
+          <label class="column-name">Name</label>
+          <label class="column-type">Type</label>
+          <label class="column-optional">Optional</label>
+          <label class="column-input-path">Input Path</label>
+        </div>
+        @if (!evalConfig.columns().length) {
+          <div class="text-muted fst-italic mb-2">(empty)</div>
+        }
+        @for (column of evalConfig.columns(); track column.evalColumnId) {
+          <div class="d-flex align-items-start gap-2 mb-2 column-row">
+            <input
+              type="text"
+              class="form-control column-name"
+              [class.is-invalid]="isColumnNameInvalid(column)"
+              [ngModel]="column.name()"
+              (ngModelChange)="onColumnNameChange(column, $event)"
+              [readonly]="isFixedColumn(column)"
+              [title]="getColumnNameValidationMessage(column)"
+            />
+            <select
+              class="form-select column-type"
+              [ngModel]="column.entryType()"
+              (ngModelChange)="onColumnTypeChange(column, $event)"
+              [disabled]="isFixedColumn(column)"
+            >
+              @for (key of columnTypeKeys; track key) {
+                <option [value]="getEnumValue(key)">
+                  {{ getEnumDisplay(key) }}
+                </option>
+              }
+            </select>
+            <select
+              class="form-select column-optional"
+              [ngModel]="column.optional()"
+              (ngModelChange)="onColumnOptionalChange(column, $event)"
+              [disabled]="isFixedColumn(column)"
+            >
+              <option [ngValue]="false">Mandatory</option>
+              <option [ngValue]="true">Optional</option>
+            </select>
+            <input
+              type="text"
+              class="form-control column-input-path"
+              [ngModel]="column.inputPath()"
+              (ngModelChange)="onColumnInputPathChange(column, $event)"
+              [disabled]="isFixedColumn(column)"
+            />
+            <button
+              class="btn btn-outline-primary"
+              [disabled]="!canMoveColumnUp(column)"
+              (click)="onMoveColumnUp(column)"
+            >
+              <i class="bi bi-arrow-up"></i>
+            </button>
+            <button
+              class="btn btn-outline-primary"
+              [disabled]="!canMoveColumnDown(column)"
+              (click)="onMoveColumnDown(column)"
+            >
+              <i class="bi bi-arrow-down"></i>
+            </button>
+            <button
+              class="btn btn-outline-danger"
+              [disabled]="isFixedColumn(column)"
+              (click)="onDeleteColumn(column)"
+            >
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+        }
+        <button class="btn btn-primary mt-2" (click)="appendColumn()">
+          Add
+        </button>
+      </div>
+    </div>
+  </ng-template>
+
+  <ng-template #rowsTab>
+    <div class="bg-body-tertiary h-100 rows-tab">
+      <div class="rows-master">
+        <div class="rows-master-toolbar">
+          <button class="btn btn-primary btn-sm" (click)="appendRow()">
+            Add
+          </button>
+          <button
+            class="btn btn-outline-primary btn-sm"
+            [disabled]="!canMoveSelectedRowUp()"
+            (click)="onMoveSelectedRowUp()"
+          >
+            <i class="bi bi-arrow-up"></i>
+          </button>
+          <button
+            class="btn btn-outline-primary btn-sm"
+            [disabled]="!canMoveSelectedRowDown()"
+            (click)="onMoveSelectedRowDown()"
+          >
+            <i class="bi bi-arrow-down"></i>
+          </button>
+          <button
+            class="btn btn-outline-danger btn-sm"
+            [disabled]="!selectedRow"
+            (click)="onDeleteSelectedRow()"
+          >
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+        <div class="rows-master-list list-group list-group-flush">
+          @if (!evalConfig.rows().length) {
+            <div class="text-muted fst-italic p-2">(empty)</div>
+          }
+          @for (
+            row of evalConfig.rows();
+            track row.evalRowId;
+            let index = $index
+          ) {
+            <button
+              type="button"
+              class="list-group-item list-group-item-action rows-master-item"
+              [class.active]="isRowSelected(row)"
+              [attr.aria-current]="isRowSelected(row) ? 'true' : null"
+              (click)="selectRow(row)"
+            >
+              <span>{{ getRowListDisplayName(row, index) }}</span>
+            </button>
+          }
+        </div>
+      </div>
+      <div class="rows-detail">
+        @if (selectedRow; as row) {
+          <div class="rows-detail-body p-3">
+            @for (column of evalConfig.columns(); track column.evalColumnId) {
+              <div class="mb-3 form-line">
+                <label class="form-label field-label">{{
+                  column.name()
+                }}</label>
+                <div
+                  class="control-column"
+                  [class.tiny]="
+                    isBooleanColumn(column) ||
+                    isIntColumn(column) ||
+                    isDoubleColumn(column)
+                  "
+                  [class.long]="
+                    !isBooleanColumn(column) &&
+                    !isIntColumn(column) &&
+                    !isDoubleColumn(column)
+                  "
+                >
+                  @if (isJsonColumn(column)) {
+                    <ngx-monaco-editor
+                      class="row-editor row-editor-json"
+                      [options]="getCellEditorOptions(column)"
+                      [ngModel]="getStringCellValue(row, column)"
+                      (ngModelChange)="onStringCellChange(row, column, $event)"
+                    />
+                  } @else if (isExpressionColumn(column)) {
+                    <ngx-monaco-editor
+                      class="row-editor row-editor-expression"
+                      [options]="getCellEditorOptions(column)"
+                      [ngModel]="getStringCellValue(row, column)"
+                      (ngModelChange)="onStringCellChange(row, column, $event)"
+                    />
+                  } @else if (isBooleanColumn(column)) {
+                    <select
+                      class="form-select w-100"
+                      [ngModel]="getBoolCellModelValue(row, column)"
+                      (ngModelChange)="onBoolCellChange(row, column, $event)"
+                    >
+                      @if (column.optional()) {
+                        <option value="">(none)</option>
+                      }
+                      <option value="true">True</option>
+                      <option value="false">False</option>
+                    </select>
+                  } @else if (isIntColumn(column) || isDoubleColumn(column)) {
+                    <input
+                      type="number"
+                      class="form-control w-100"
+                      [attr.step]="isIntColumn(column) ? 1 : 'any'"
+                      [ngModel]="getNumericCellValue(row, column)"
+                      (ngModelChange)="onNumericCellChange(row, column, $event)"
+                      (blur)="
+                        onNumericCellBlur(
+                          row,
+                          column,
+                          $any($event.target).value
+                        )
+                      "
+                    />
+                  } @else {
+                    <input
+                      type="text"
+                      class="form-control w-100"
+                      [class.is-invalid]="isRowNameFieldInvalid(row, column)"
+                      [ngModel]="getStringCellValue(row, column)"
+                      (ngModelChange)="onStringCellChange(row, column, $event)"
+                      (blur)="
+                        onStringCellBlur(row, column, $any($event.target).value)
+                      "
+                    />
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="rows-detail-empty text-muted fst-italic">
+            Add a row to begin editing values.
+          </div>
+        }
       </div>
     </div>
   </ng-template>
