@@ -1017,6 +1017,208 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
+    public async Task<int> GetEvalRunSummaryCount(Guid evalConfigId, string? search)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var evalRuns = dbContext.EvalRuns.AsNoTracking().Where(run => run.EvalConfigId == evalConfigId);
+        evalRuns = ApplyEvalRunSearch(evalRuns, search);
+        return await evalRuns.CountAsync();
+    }
+
+    public async Task<List<EvalRunSummary>> GetEvalRunSummaries(
+        Guid evalConfigId,
+        string? search,
+        EvalRunSortField sortBy,
+        SortDirection sortDirection,
+        int skip,
+        int take
+    )
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var evalRuns = dbContext.EvalRuns.AsNoTracking().Where(run => run.EvalConfigId == evalConfigId);
+        evalRuns = ApplyEvalRunSearch(evalRuns, search);
+        var sorted = GetSortedEvalRuns(evalRuns, sortBy, sortDirection);
+
+        if (skip > 0)
+            sorted = sorted.Skip(skip);
+
+        if (take > 0)
+            sorted = sorted.Take(take);
+
+        return await sorted
+            .Select(run => new EvalRunSummary
+            {
+                EvalRunId = run.EvalRunId,
+                EvalConfigId = run.EvalConfigId,
+                Started = run.Started,
+                Finished = run.Finished,
+                Status = run.Status,
+                Message = run.Message,
+                Error = run.Error,
+                TotalRows = run.TotalRows,
+                CompletedRows = run.CompletedRows,
+                FailedRows = run.FailedRows,
+                CanceledRows = run.CanceledRows,
+            })
+            .ToListAsync();
+    }
+
+    public async Task<EvalRunDetail> GetEvalRunDetail(Guid evalRunId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var evalRun = await dbContext.EvalRuns.AsNoTracking().FirstOrDefaultAsync(run => run.EvalRunId == evalRunId);
+        if (evalRun is null)
+            throw new SharpOMaticException($"EvalRun '{evalRunId}' cannot be found.");
+
+        var evalRunSummary = new EvalRunSummary
+        {
+            EvalRunId = evalRun.EvalRunId,
+            EvalConfigId = evalRun.EvalConfigId,
+            Started = evalRun.Started,
+            Finished = evalRun.Finished,
+            Status = evalRun.Status,
+            Message = evalRun.Message,
+            Error = evalRun.Error,
+            TotalRows = evalRun.TotalRows,
+            CompletedRows = evalRun.CompletedRows,
+            FailedRows = evalRun.FailedRows,
+            CanceledRows = evalRun.CanceledRows,
+        };
+
+        var graderSummaries = await (
+            from summary in dbContext.EvalRunGraderSummaries.AsNoTracking()
+            join grader in dbContext.EvalGraders.AsNoTracking() on summary.EvalGraderId equals grader.EvalGraderId into graderJoin
+            from grader in graderJoin.DefaultIfEmpty()
+            where summary.EvalRunId == evalRunId
+            orderby grader != null ? grader.Order : int.MaxValue, summary.EvalGraderId
+            select new EvalRunGraderSummaryDetail
+            {
+                EvalRunGraderSummaryId = summary.EvalRunGraderSummaryId,
+                EvalRunId = summary.EvalRunId,
+                EvalGraderId = summary.EvalGraderId,
+                Label = grader != null ? grader.Label : $"Grader {summary.EvalGraderId}",
+                Order = grader != null ? grader.Order : int.MaxValue,
+                PassThreshold = grader != null ? grader.PassThreshold : null,
+                TotalCount = summary.TotalCount,
+                CompletedCount = summary.CompletedCount,
+                FailedCount = summary.FailedCount,
+                MinScore = summary.MinScore,
+                MaxScore = summary.MaxScore,
+                AverageScore = summary.AverageScore,
+                MedianScore = summary.MedianScore,
+                StandardDeviation = summary.StandardDeviation,
+                PassRate = summary.PassRate,
+            }
+        ).ToListAsync();
+
+        return new EvalRunDetail
+        {
+            EvalRun = evalRunSummary,
+            GraderSummaries = graderSummaries,
+        };
+    }
+
+    public async Task<int> GetEvalRunRowCount(Guid evalRunId, string? search)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var evalRun = await dbContext.EvalRuns.AsNoTracking().FirstOrDefaultAsync(run => run.EvalRunId == evalRunId);
+        if (evalRun is null)
+            throw new SharpOMaticException($"EvalRun '{evalRunId}' cannot be found.");
+
+        var nameColumnId = await GetEvalRunNameColumnId(dbContext, evalRun.EvalConfigId);
+        var rows = GetEvalRunRowProjections(dbContext, evalRunId, nameColumnId);
+        rows = ApplyEvalRunRowSearch(rows, search);
+        return await rows.CountAsync();
+    }
+
+    public async Task<List<EvalRunRowDetail>> GetEvalRunRows(
+        Guid evalRunId,
+        string? search,
+        EvalRunRowSortField sortBy,
+        SortDirection sortDirection,
+        int skip,
+        int take
+    )
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var evalRun = await dbContext.EvalRuns.AsNoTracking().FirstOrDefaultAsync(run => run.EvalRunId == evalRunId);
+        if (evalRun is null)
+            throw new SharpOMaticException($"EvalRun '{evalRunId}' cannot be found.");
+
+        var nameColumnId = await GetEvalRunNameColumnId(dbContext, evalRun.EvalConfigId);
+        var rows = GetEvalRunRowProjections(dbContext, evalRunId, nameColumnId);
+        rows = ApplyEvalRunRowSearch(rows, search);
+        rows = GetSortedEvalRunRows(rows, sortBy, sortDirection);
+
+        if (skip > 0)
+            rows = rows.Skip(skip);
+
+        if (take > 0)
+            rows = rows.Take(take);
+
+        var rowPage = await rows.ToListAsync();
+
+        var results = rowPage
+            .Select(row => new EvalRunRowDetail
+            {
+                EvalRunRowId = row.EvalRunRowId,
+                EvalRunId = row.EvalRunId,
+                EvalRowId = row.EvalRowId,
+                Name = row.Name,
+                Order = row.Order,
+                Status = row.Status,
+                Started = row.Started,
+                Finished = row.Finished,
+                OutputContext = row.OutputContext,
+                Error = row.Error,
+                Graders = [],
+            })
+            .ToList();
+
+        var evalRunRowIds = results.Select(row => row.EvalRunRowId).ToList();
+        if (evalRunRowIds.Count == 0)
+            return results;
+
+        var graderDetails = await (
+            from runRowGrader in dbContext.EvalRunRowGraders.AsNoTracking()
+            join grader in dbContext.EvalGraders.AsNoTracking() on runRowGrader.EvalGraderId equals grader.EvalGraderId into graderJoin
+            from grader in graderJoin.DefaultIfEmpty()
+            where evalRunRowIds.Contains(runRowGrader.EvalRunRowId)
+            orderby runRowGrader.EvalRunRowId, grader != null ? grader.Order : int.MaxValue, runRowGrader.EvalGraderId
+            select new
+            {
+                runRowGrader.EvalRunRowId,
+                Detail = new EvalRunRowGraderDetail
+                {
+                    EvalRunRowGraderId = runRowGrader.EvalRunRowGraderId,
+                    EvalRunRowId = runRowGrader.EvalRunRowId,
+                    EvalGraderId = runRowGrader.EvalGraderId,
+                    Label = grader != null ? grader.Label : $"Grader {runRowGrader.EvalGraderId}",
+                    Order = grader != null ? grader.Order : int.MaxValue,
+                    Status = runRowGrader.Status,
+                    Started = runRowGrader.Started,
+                    Finished = runRowGrader.Finished,
+                    Score = runRowGrader.Score,
+                    Payload = runRowGrader.Payload,
+                    Error = runRowGrader.Error,
+                },
+            }
+        ).ToListAsync();
+
+        var gradersByRowId = graderDetails.GroupBy(entry => entry.EvalRunRowId).ToDictionary(group => group.Key, group => group.Select(entry => entry.Detail).ToList());
+
+        foreach (var row in results)
+            if (gradersByRowId.TryGetValue(row.EvalRunRowId, out var graders))
+                row.Graders = graders;
+
+        return results;
+    }
+
     private static IQueryable<EvalConfig> ApplyModelSearch(IQueryable<EvalConfig> evalConfigs, string? search)
     {
         if (string.IsNullOrWhiteSpace(search))
@@ -1037,6 +1239,145 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 ? models.OrderBy(model => model.Name).ThenBy(model => model.Description)
                 : models.OrderByDescending(model => model.Name).ThenByDescending(model => model.Description),
         };
+    }
+
+    private static IQueryable<EvalRun> ApplyEvalRunSearch(IQueryable<EvalRun> evalRuns, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+            return evalRuns;
+
+        var trimmedSearch = search.Trim();
+        var normalizedSearch = trimmedSearch.ToLower();
+        if (Guid.TryParse(trimmedSearch, out var parsedRunId))
+        {
+            return evalRuns.Where(
+                run =>
+                    run.EvalRunId == parsedRunId
+                    || (run.Message != null && run.Message.ToLower().Contains(normalizedSearch))
+                    || (run.Error != null && run.Error.ToLower().Contains(normalizedSearch))
+            );
+        }
+
+        return evalRuns.Where(
+            run =>
+                (run.Message != null && run.Message.ToLower().Contains(normalizedSearch))
+                || (run.Error != null && run.Error.ToLower().Contains(normalizedSearch))
+        );
+    }
+
+    private static IQueryable<EvalRun> GetSortedEvalRuns(IQueryable<EvalRun> evalRuns, EvalRunSortField sortBy, SortDirection sortDirection)
+    {
+        return sortBy switch
+        {
+            EvalRunSortField.Status => sortDirection == SortDirection.Ascending
+                ? evalRuns.OrderBy(run => run.Status).ThenByDescending(run => run.Started)
+                : evalRuns.OrderByDescending(run => run.Status).ThenByDescending(run => run.Started),
+            EvalRunSortField.CompletedRows => sortDirection == SortDirection.Ascending
+                ? evalRuns.OrderBy(run => run.CompletedRows).ThenByDescending(run => run.Started)
+                : evalRuns.OrderByDescending(run => run.CompletedRows).ThenByDescending(run => run.Started),
+            EvalRunSortField.FailedRows => sortDirection == SortDirection.Ascending
+                ? evalRuns.OrderBy(run => run.FailedRows).ThenByDescending(run => run.Started)
+                : evalRuns.OrderByDescending(run => run.FailedRows).ThenByDescending(run => run.Started),
+            EvalRunSortField.CanceledRows => sortDirection == SortDirection.Ascending
+                ? evalRuns.OrderBy(run => run.CanceledRows).ThenByDescending(run => run.Started)
+                : evalRuns.OrderByDescending(run => run.CanceledRows).ThenByDescending(run => run.Started),
+            _ => sortDirection == SortDirection.Ascending ? evalRuns.OrderBy(run => run.Started) : evalRuns.OrderByDescending(run => run.Started),
+        };
+    }
+
+    private static async Task<Guid?> GetEvalRunNameColumnId(SharpOMaticDbContext dbContext, Guid evalConfigId)
+    {
+        var nameColumnId = await dbContext
+            .EvalColumns.AsNoTracking()
+            .Where(column => column.EvalConfigId == evalConfigId && column.Name.ToLower() == "name")
+            .OrderBy(column => column.Order)
+            .Select(column => (Guid?)column.EvalColumnId)
+            .FirstOrDefaultAsync();
+
+        if (nameColumnId.HasValue)
+            return nameColumnId;
+
+        return await dbContext
+            .EvalColumns.AsNoTracking()
+            .Where(column => column.EvalConfigId == evalConfigId)
+            .OrderBy(column => column.Order)
+            .Select(column => (Guid?)column.EvalColumnId)
+            .FirstOrDefaultAsync();
+    }
+
+    private static IQueryable<EvalRunRowProjection> GetEvalRunRowProjections(SharpOMaticDbContext dbContext, Guid evalRunId, Guid? nameColumnId)
+    {
+        return (
+            from runRow in dbContext.EvalRunRows.AsNoTracking()
+            join row in dbContext.EvalRows.AsNoTracking() on runRow.EvalRowId equals row.EvalRowId
+            where runRow.EvalRunId == evalRunId
+            select new EvalRunRowProjection
+            {
+                EvalRunRowId = runRow.EvalRunRowId,
+                EvalRunId = runRow.EvalRunId,
+                EvalRowId = runRow.EvalRowId,
+                Name = nameColumnId.HasValue
+                    ? (
+                        from data in dbContext.EvalData.AsNoTracking()
+                        where data.EvalRowId == runRow.EvalRowId && data.EvalColumnId == nameColumnId.Value
+                        select data.StringValue
+                    ).FirstOrDefault() ?? ""
+                    : "",
+                Order = row.Order,
+                Status = runRow.Status,
+                Started = runRow.Started,
+                Finished = runRow.Finished,
+                OutputContext = runRow.OutputContext,
+                Error = runRow.Error,
+            }
+        );
+    }
+
+    private static IQueryable<EvalRunRowProjection> ApplyEvalRunRowSearch(IQueryable<EvalRunRowProjection> rows, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+            return rows;
+
+        var normalizedSearch = search.Trim().ToLower();
+        return rows.Where(
+            row =>
+                row.Name.ToLower().Contains(normalizedSearch)
+                || (row.Error != null && row.Error.ToLower().Contains(normalizedSearch))
+        );
+    }
+
+    private static IQueryable<EvalRunRowProjection> GetSortedEvalRunRows(
+        IQueryable<EvalRunRowProjection> rows,
+        EvalRunRowSortField sortBy,
+        SortDirection sortDirection
+    )
+    {
+        return sortBy switch
+        {
+            EvalRunRowSortField.Status => sortDirection == SortDirection.Ascending
+                ? rows.OrderBy(row => row.Status).ThenBy(row => row.Order)
+                : rows.OrderByDescending(row => row.Status).ThenBy(row => row.Order),
+            EvalRunRowSortField.Started => sortDirection == SortDirection.Ascending
+                ? rows.OrderBy(row => row.Started).ThenBy(row => row.Order)
+                : rows.OrderByDescending(row => row.Started).ThenBy(row => row.Order),
+            _ => sortDirection == SortDirection.Ascending
+                ? rows.OrderBy(row => row.Name).ThenBy(row => row.Order)
+                : rows.OrderByDescending(row => row.Name).ThenBy(row => row.Order),
+        };
+    }
+
+    private sealed class EvalRunRowProjection
+    {
+        public required Guid EvalRunRowId { get; set; }
+        public required Guid EvalRunId { get; set; }
+        public required Guid EvalRowId { get; set; }
+        public required string Name { get; set; }
+        public required int Order { get; set; }
+        public required EvalRunStatus Status { get; set; }
+        public required DateTime Started { get; set; }
+        public DateTime? Finished { get; set; }
+        public string? OutputContext { get; set; }
+        public string? Error { get; set; }
     }
 
     // ------------------------------------------------

@@ -43,6 +43,68 @@ public class EvalController : ControllerBase
         return await repositoryService.GetEvalConfigDetail(id);
     }
 
+    [HttpGet("configs/{id}/runs")]
+    public Task<List<EvalRunSummary>> GetEvalRunSummaries(
+        IRepositoryService repositoryService,
+        Guid id,
+        [FromQuery] string? search = null,
+        [FromQuery] EvalRunSortField sortBy = EvalRunSortField.Started,
+        [FromQuery] SortDirection sortDirection = SortDirection.Descending,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 0
+    )
+    {
+        if (skip < 0)
+            skip = 0;
+
+        if (take < 0)
+            take = 0;
+
+        var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        return repositoryService.GetEvalRunSummaries(id, normalizedSearch, sortBy, sortDirection, skip, take);
+    }
+
+    [HttpGet("configs/{id}/runs/count")]
+    public Task<int> GetEvalRunSummaryCount(IRepositoryService repositoryService, Guid id, [FromQuery] string? search = null)
+    {
+        var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        return repositoryService.GetEvalRunSummaryCount(id, normalizedSearch);
+    }
+
+    [HttpGet("runs/{id}/detail")]
+    public async Task<ActionResult<EvalRunDetail>> GetEvalRunDetail(IRepositoryService repositoryService, Guid id)
+    {
+        return await repositoryService.GetEvalRunDetail(id);
+    }
+
+    [HttpGet("runs/{id}/rows")]
+    public Task<List<EvalRunRowDetail>> GetEvalRunRows(
+        IRepositoryService repositoryService,
+        Guid id,
+        [FromQuery] string? search = null,
+        [FromQuery] EvalRunRowSortField sortBy = EvalRunRowSortField.Name,
+        [FromQuery] SortDirection sortDirection = SortDirection.Ascending,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 0
+    )
+    {
+        if (skip < 0)
+            skip = 0;
+
+        if (take < 0)
+            take = 0;
+
+        var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        return repositoryService.GetEvalRunRows(id, normalizedSearch, sortBy, sortDirection, skip, take);
+    }
+
+    [HttpGet("runs/{id}/rows/count")]
+    public Task<int> GetEvalRunRowCount(IRepositoryService repositoryService, Guid id, [FromQuery] string? search = null)
+    {
+        var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        return repositoryService.GetEvalRunRowCount(id, normalizedSearch);
+    }
+
     [HttpPost("configs")]
     public async Task UpsertEvalConfig(IRepositoryService repositoryService, [FromBody] EvalConfig evalConfig)
     {

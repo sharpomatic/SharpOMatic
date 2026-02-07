@@ -81,6 +81,11 @@ public interface IRepositoryService
     Task DeleteEvalRow(Guid evalRowId);
     Task UpsertEvalData(Guid evalConfigId, List<EvalData> data);
     Task DeleteEvalData(Guid evalDataId);
+    Task<int> GetEvalRunSummaryCount(Guid evalConfigId, string? search);
+    Task<List<EvalRunSummary>> GetEvalRunSummaries(Guid evalConfigId, string? search, EvalRunSortField sortBy, SortDirection sortDirection, int skip, int take);
+    Task<EvalRunDetail> GetEvalRunDetail(Guid evalRunId);
+    Task<int> GetEvalRunRowCount(Guid evalRunId, string? search);
+    Task<List<EvalRunRowDetail>> GetEvalRunRows(Guid evalRunId, string? search, EvalRunRowSortField sortBy, SortDirection sortDirection, int skip, int take);
 
     // ------------------------------------------------
     // Setting Operations
