@@ -101,13 +101,13 @@ public static class ContextHelpers
         return entryValue;
     }
 
-    private static object? FastDeserializeString(string json)
+    public static object? FastDeserializeString(string json)
     {
         var deserializer = new FastJsonDeserializer(json);
         return deserializer.Deserialize();
     }
 
-    private static AssetRef ParseAssetRef(string rawValue, string inputPath)
+    public static AssetRef ParseAssetRef(string rawValue, string inputPath)
     {
         if (string.IsNullOrWhiteSpace(rawValue))
             throw new SharpOMaticException($"Input entry '{inputPath}' asset reference cannot be empty.");
@@ -127,7 +127,7 @@ public static class ContextHelpers
         }
     }
 
-    private static ContextList ParseAssetRefList(string rawValue, string inputPath)
+    public static ContextList ParseAssetRefList(string rawValue, string inputPath)
     {
         if (string.IsNullOrWhiteSpace(rawValue))
             throw new SharpOMaticException($"Input entry '{inputPath}' asset list cannot be empty.");

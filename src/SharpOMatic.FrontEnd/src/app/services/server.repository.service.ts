@@ -58,10 +58,15 @@ import { WorkflowSortField } from '../enumerations/workflow-sort-field';
 import { ConnectorSortField } from '../enumerations/connector-sort-field';
 import { ModelSortField } from '../enumerations/model-sort-field';
 import { EvalConfigSortField } from '../eval/enumerations/eval-config-sort-field';
+import { EvalRunSortField } from '../eval/enumerations/eval-run-sort-field';
+import { EvalRunRowSortField } from '../eval/enumerations/eval-run-row-sort-field';
 import { AssetSummary } from '../pages/assets/interfaces/asset-summary';
 import { AssetText } from '../pages/assets/interfaces/asset-text';
 import { TransferImportResult } from '../pages/transfer/interfaces/transfer-import-result';
 import { TransferExportRequest } from '../pages/transfer/interfaces/transfer-export-request';
+import { EvalRunSummarySnapshot } from '../eval/definitions/eval-run-summary';
+import { EvalRunDetailSnapshot } from '../eval/definitions/eval-run-detail';
+import { EvalRunRowDetailSnapshot } from '../eval/definitions/eval-run-row-detail';
 
 @Injectable({
   providedIn: 'root',
@@ -655,6 +660,127 @@ export class ServerRepositoryService {
         return of(undefined);
       }),
     );
+  }
+
+  public startEvalRun(evalConfigId: string): Observable<string | undefined> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .post<string>(`${apiUrl}/api/eval/configs/${evalConfigId}/runs`, null)
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Starting eval run', error);
+          return of(undefined);
+        }),
+      );
+  }
+
+  public getEvalRunSummaries(
+    evalConfigId: string,
+    search = '',
+    skip = 0,
+    take = 0,
+    sortBy: EvalRunSortField = EvalRunSortField.Started,
+    sortDirection: SortDirection = SortDirection.Descending,
+  ): Observable<EvalRunSummarySnapshot[]> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams()
+      .set('skip', skip)
+      .set('take', take)
+      .set('sortBy', sortBy)
+      .set('sortDirection', sortDirection);
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http
+      .get<EvalRunSummarySnapshot[]>(
+        `${apiUrl}/api/eval/configs/${evalConfigId}/runs`,
+        { params },
+      )
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading eval runs', error);
+          return of([]);
+        }),
+      );
+  }
+
+  public getEvalRunCount(evalConfigId: string, search = ''): Observable<number> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams();
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http
+      .get<number>(`${apiUrl}/api/eval/configs/${evalConfigId}/runs/count`, {
+        params,
+      })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading eval run count', error);
+          return of(0);
+        }),
+      );
+  }
+
+  public getEvalRunDetail(evalRunId: string): Observable<EvalRunDetailSnapshot | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .get<EvalRunDetailSnapshot>(`${apiUrl}/api/eval/runs/${evalRunId}/detail`)
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading eval run detail', error);
+          return of(null);
+        }),
+      );
+  }
+
+  public getEvalRunRows(
+    evalRunId: string,
+    search = '',
+    skip = 0,
+    take = 0,
+    sortBy: EvalRunRowSortField = EvalRunRowSortField.Name,
+    sortDirection: SortDirection = SortDirection.Ascending,
+  ): Observable<EvalRunRowDetailSnapshot[]> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams()
+      .set('skip', skip)
+      .set('take', take)
+      .set('sortBy', sortBy)
+      .set('sortDirection', sortDirection);
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http
+      .get<EvalRunRowDetailSnapshot[]>(`${apiUrl}/api/eval/runs/${evalRunId}/rows`, {
+        params,
+      })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading eval run rows', error);
+          return of([]);
+        }),
+      );
+  }
+
+  public getEvalRunRowCount(evalRunId: string, search = ''): Observable<number> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams();
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http
+      .get<number>(`${apiUrl}/api/eval/runs/${evalRunId}/rows/count`, { params })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading eval run row count', error);
+          return of(0);
+        }),
+      );
   }
 
   public getSchemaTypeNames(): Observable<string[]> {

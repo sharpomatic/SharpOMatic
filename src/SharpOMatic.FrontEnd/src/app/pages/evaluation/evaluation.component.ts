@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import {
   Component,
   HostListener,
+  OnDestroy,
   OnInit,
   TemplateRef,
   ViewChild,
@@ -9,7 +10,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Observable, forkJoin, map, of, switchMap } from 'rxjs';
+import { Observable, forkJoin, map, of, switchMap, take } from 'rxjs';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { TabComponent, TabItem } from '../../components/tab/tab.component';
 import { EvalConfig } from '../../eval/definitions/eval-config';
@@ -25,6 +26,15 @@ import { WorkflowSortField } from '../../enumerations/workflow-sort-field';
 import { SortDirection } from '../../enumerations/sort-direction';
 import { MonacoService } from '../../services/monaco.service';
 import { ServerRepositoryService } from '../../services/server.repository.service';
+import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
+import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
+import { EvalRunStatus } from '../../eval/enumerations/eval-run-status';
+import { EvalRunSortField } from '../../eval/enumerations/eval-run-sort-field';
+import { EvalRunSummarySnapshot } from '../../eval/definitions/eval-run-summary';
+import {
+  EvalRunDetailSnapshot,
+  EvalRunGraderSummaryDetailSnapshot,
+} from '../../eval/definitions/eval-run-detail';
 
 @Component({
   selector: 'app-evaluation',
@@ -32,16 +42,22 @@ import { ServerRepositoryService } from '../../services/server.repository.servic
   imports: [CommonModule, FormsModule, TabComponent, MonacoEditorModule],
   templateUrl: './evaluation.component.html',
   styleUrls: ['./evaluation.component.scss'],
+  providers: [BsModalService],
 })
-export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
+export class EvaluationComponent
+  implements OnInit, OnDestroy, CanLeaveWithUnsavedChanges
+{
   @ViewChild('detailsTab', { static: true }) detailsTab!: TemplateRef<unknown>;
   @ViewChild('columnsTab', { static: true }) columnsTab!: TemplateRef<unknown>;
   @ViewChild('rowsTab', { static: true }) rowsTab!: TemplateRef<unknown>;
   @ViewChild('gradersTab', { static: true }) gradersTab!: TemplateRef<unknown>;
+  @ViewChild('runsTab', { static: true }) runsTab!: TemplateRef<unknown>;
 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly serverRepository = inject(ServerRepositoryService);
+  private readonly modalService = inject(BsModalService);
+  private confirmModalRef: BsModalRef<ConfirmDialogComponent> | undefined;
 
   public evalConfig = EvalConfig.fromSnapshot(EvalConfig.defaultSnapshot());
   public readonly contextEntryType = ContextEntryType;
@@ -49,15 +65,34 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
     (key) =>
       isNaN(Number(key)) && this.isAllowedColumnType(this.getEnumValue(key)),
   );
-  private readonly tabIds = new Set(['details', 'columns', 'rows', 'graders']);
+  public readonly evalRunStatus = EvalRunStatus;
+  private readonly tabIds = new Set([
+    'details',
+    'columns',
+    'rows',
+    'graders',
+    'runs',
+  ]);
   private readonly defaultTabId = 'details';
+  private readonly runsPageSize = 20;
   private hasLoadedConfig = false;
   private hasLoadedWorkflows = false;
   private normalizedWorkflowSelection = false;
+  private runsLoaded = false;
+  private runSearchDebounceId: ReturnType<typeof setTimeout> | undefined;
   public workflowSummaries: WorkflowSummaryEntity[] = [];
   public tabs: TabItem[] = [];
   public activeTabId = this.defaultTabId;
   public selectedRowId: string | null = null;
+  public isStartingRun = false;
+  public runs: EvalRunSummarySnapshot[] = [];
+  public runsTotal = 0;
+  public runsPage = 1;
+  public runsSearchText = '';
+  public selectedRunId: string | null = null;
+  public selectedRunDetail: EvalRunDetailSnapshot | null = null;
+  public isLoadingRuns = false;
+  public isLoadingRunDetail = false;
 
   ngOnInit(): void {
     this.tabs = [
@@ -65,6 +100,7 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
       { id: 'columns', title: 'Columns', content: this.columnsTab },
       { id: 'rows', title: 'Rows', content: this.rowsTab },
       { id: 'graders', title: 'Graders', content: this.gradersTab },
+      { id: 'runs', title: 'Runs', content: this.runsTab },
     ];
 
     this.activeTabId = this.resolveTabId(
@@ -74,6 +110,10 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
       const nextTabId = this.resolveTabId(params.get('tab'));
       if (nextTabId !== this.activeTabId) {
         this.activeTabId = nextTabId;
+      }
+
+      if (nextTabId === 'runs') {
+        this.ensureRunsLoaded();
       }
     });
     this.evalConfig.ensureRequiredNameColumn();
@@ -86,6 +126,16 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
       this.loadEvalConfig(id);
     } else {
       this.hasLoadedConfig = true;
+      if (this.activeTabId === 'runs') {
+        this.ensureRunsLoaded();
+      }
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.runSearchDebounceId) {
+      clearTimeout(this.runSearchDebounceId);
+      this.runSearchDebounceId = undefined;
     }
   }
 
@@ -93,8 +143,53 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
     this.saveChanges().subscribe();
   }
 
+  canStartRun(): boolean {
+    return (
+      !this.isStartingRun &&
+      !this.evalConfig.isDirty() &&
+      !this.hasColumnValidationErrors() &&
+      !this.hasRowValidationErrors()
+    );
+  }
+
+  startRun(): void {
+    const rowCount = this.evalConfig.rows().length;
+    const graderCount = this.evalConfig.graders().length;
+    const rowLabel = rowCount === 1 ? 'evaluation' : 'evaluations';
+    const graderLabel = graderCount === 1 ? 'grader' : 'graders';
+
+    this.confirmModalRef = this.modalService.show(ConfirmDialogComponent, {
+      initialState: {
+        title: 'Start Evaluation Run',
+        message: `Are you sure you want to run this evaluation?\n\nThis will execute ${rowCount} ${rowLabel} with ${graderCount} ${graderLabel}.`,
+      },
+    });
+
+    const modalRef = this.confirmModalRef;
+    modalRef.onHidden?.pipe(take(1)).subscribe(() => {
+      if (!modalRef.content?.result || this.isStartingRun) {
+        return;
+      }
+
+      this.isStartingRun = true;
+      this.serverRepository.startEvalRun(this.evalConfig.evalConfigId).subscribe({
+        next: (evalRunId) => {
+          this.isStartingRun = false;
+          if (evalRunId) {
+            this.activeTabId = 'runs';
+            this.updateTabRoute('runs');
+            this.refreshRuns(evalRunId);
+          }
+        },
+      });
+    });
+  }
+
   onActiveTabChange(tab: TabItem): void {
     this.updateTabRoute(tab.id);
+    if (tab.id === 'runs') {
+      this.ensureRunsLoaded();
+    }
   }
 
   onWorkflowChange(value: string | null): void {
@@ -729,6 +824,141 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
     );
   }
 
+  runsPageCount(): number {
+    return Math.ceil(this.runsTotal / this.runsPageSize);
+  }
+
+  runsPageNumbers(): number[] {
+    return this.buildPageNumbers(this.runsPage, this.runsPageCount());
+  }
+
+  onRunsPageChange(page: number): void {
+    const totalPages = this.runsPageCount();
+    if (page < 1 || (totalPages > 0 && page > totalPages)) {
+      return;
+    }
+
+    if (page === this.runsPage) {
+      return;
+    }
+
+    this.loadRunsPage(page);
+  }
+
+  onRunsSearchChange(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    this.runsSearchText = input?.value ?? '';
+    this.scheduleRunsSearch();
+  }
+
+  applyRunsSearch(): void {
+    if (this.runSearchDebounceId) {
+      clearTimeout(this.runSearchDebounceId);
+      this.runSearchDebounceId = undefined;
+    }
+
+    this.runsPage = 1;
+    this.refreshRuns();
+  }
+
+  refreshRuns(preferredRunId?: string): void {
+    if (!this.hasLoadedConfig) {
+      return;
+    }
+
+    this.isLoadingRuns = true;
+    const search = this.runsSearchText.trim();
+    this.serverRepository
+      .getEvalRunCount(this.evalConfig.evalConfigId, search)
+      .subscribe((total) => {
+        this.runsTotal = total;
+        const totalPages = this.runsPageCount();
+        const nextPage =
+          totalPages === 0 ? 1 : Math.min(this.runsPage, totalPages);
+        this.loadRunsPage(nextPage, preferredRunId);
+      });
+  }
+
+  selectRun(run: EvalRunSummarySnapshot): void {
+    if (this.selectedRunId === run.evalRunId) {
+      return;
+    }
+
+    this.selectedRunId = run.evalRunId;
+    this.loadSelectedRunDetail();
+  }
+
+  openRunDetail(run: EvalRunSummarySnapshot): void {
+    void this.router.navigate([
+      '/evaluations',
+      this.evalConfig.evalConfigId,
+      'runs',
+      run.evalRunId,
+    ]);
+  }
+
+  isRunSelected(run: EvalRunSummarySnapshot): boolean {
+    return this.selectedRunId === run.evalRunId;
+  }
+
+  get sortedGraderSummaries(): EvalRunGraderSummaryDetailSnapshot[] {
+    return (this.selectedRunDetail?.graderSummaries ?? []).slice();
+  }
+
+  getRunStatusLabel(status: EvalRunStatus): string {
+    switch (status) {
+      case EvalRunStatus.Running:
+        return 'Running';
+      case EvalRunStatus.Completed:
+        return 'Completed';
+      case EvalRunStatus.Failed:
+        return 'Failed';
+      case EvalRunStatus.Canceled:
+        return 'Canceled';
+      default:
+        return 'Unknown';
+    }
+  }
+
+  getRunStatusBadgeClass(status: EvalRunStatus): string {
+    switch (status) {
+      case EvalRunStatus.Running:
+        return 'text-bg-primary';
+      case EvalRunStatus.Completed:
+        return 'text-bg-success';
+      case EvalRunStatus.Failed:
+        return 'text-bg-danger';
+      case EvalRunStatus.Canceled:
+        return 'text-bg-secondary';
+      default:
+        return 'text-bg-secondary';
+    }
+  }
+
+  formatDateTime(value: string | null): string {
+    if (!value) {
+      return '-';
+    }
+
+    return new Date(value).toLocaleString();
+  }
+
+  formatMetric(value: number | null): string {
+    if (value === null || value === undefined) {
+      return '-';
+    }
+
+    return value.toFixed(3);
+  }
+
+  formatPercent(value: number | null): string {
+    if (value === null || value === undefined) {
+      return '-';
+    }
+
+    return `${(value * 100).toFixed(1)}%`;
+  }
+
   @HostListener('window:beforeunload', ['$event'])
   onBeforeUnload(event: BeforeUnloadEvent): void {
     if (this.hasUnsavedChanges()) {
@@ -750,6 +980,9 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
       this.ensureSelectedRow();
       this.hasLoadedConfig = true;
       this.tryNormalizeWorkflowSelection();
+      if (this.activeTabId === 'runs') {
+        this.ensureRunsLoaded();
+      }
     });
   }
 
@@ -839,6 +1072,105 @@ export class EvaluationComponent implements OnInit, CanLeaveWithUnsavedChanges {
     }
 
     return changed;
+  }
+
+  private ensureRunsLoaded(): void {
+    if (!this.hasLoadedConfig) {
+      return;
+    }
+
+    if (!this.runsLoaded) {
+      this.refreshRuns();
+    }
+  }
+
+  private loadRunsPage(page: number, preferredRunId?: string): void {
+    this.isLoadingRuns = true;
+    const skip = (page - 1) * this.runsPageSize;
+    const search = this.runsSearchText.trim();
+    this.serverRepository
+      .getEvalRunSummaries(
+        this.evalConfig.evalConfigId,
+        search,
+        skip,
+        this.runsPageSize,
+        EvalRunSortField.Started,
+        SortDirection.Descending,
+      )
+      .subscribe((runs) => {
+        this.runs = runs;
+        this.runsPage = page;
+        this.runsLoaded = true;
+        this.isLoadingRuns = false;
+
+        const selectedRunId = this.selectActiveRunAfterRefresh(preferredRunId);
+        if (selectedRunId) {
+          this.loadSelectedRunDetail();
+        } else {
+          this.selectedRunDetail = null;
+        }
+      });
+  }
+
+  private loadSelectedRunDetail(): void {
+    if (!this.selectedRunId) {
+      this.selectedRunDetail = null;
+      return;
+    }
+
+    this.isLoadingRunDetail = true;
+    this.serverRepository.getEvalRunDetail(this.selectedRunId).subscribe((detail) => {
+      this.isLoadingRunDetail = false;
+      this.selectedRunDetail = detail;
+    });
+  }
+
+  private selectActiveRunAfterRefresh(preferredRunId?: string): string | null {
+    if (this.runs.length === 0) {
+      this.selectedRunId = null;
+      return null;
+    }
+
+    if (preferredRunId && this.runs.some((run) => run.evalRunId === preferredRunId)) {
+      this.selectedRunId = preferredRunId;
+      return this.selectedRunId;
+    }
+
+    if (
+      this.selectedRunId &&
+      this.runs.some((run) => run.evalRunId === this.selectedRunId)
+    ) {
+      return this.selectedRunId;
+    }
+
+    this.selectedRunId = this.runs[0].evalRunId;
+    return this.selectedRunId;
+  }
+
+  private scheduleRunsSearch(): void {
+    if (this.runSearchDebounceId) {
+      clearTimeout(this.runSearchDebounceId);
+    }
+
+    this.runSearchDebounceId = setTimeout(() => this.applyRunsSearch(), 250);
+  }
+
+  private buildPageNumbers(currentPage: number, totalPages: number): number[] {
+    if (totalPages <= 1) {
+      return [];
+    }
+
+    const windowSize = 5;
+    let start = Math.max(1, currentPage - Math.floor(windowSize / 2));
+    let end = Math.min(totalPages, start + windowSize - 1);
+    start = Math.max(1, end - windowSize + 1);
+
+    const pages: number[] = [];
+    for (let page = start; page <= end; page += 1) {
+      pages.push(page);
+    }
+
+    return pages;
   }
 
   private resolveTabId(tabId: string | null): string {

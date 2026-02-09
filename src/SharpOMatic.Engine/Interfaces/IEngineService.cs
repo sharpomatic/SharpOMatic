@@ -8,4 +8,5 @@ public interface IEngineService
     Task StartWorkflowRunAndNotify(Guid runId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null);
     Guid CreateWorkflowRunSynchronously(Guid workflowId);
     Run StartWorkflowRunSynchronously(Guid runId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null);
+    Task<EvalRun> StartEvalRun(Guid workflowId);
 }

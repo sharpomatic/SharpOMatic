@@ -13,9 +13,13 @@
 
 ### Evaluations
 
-- Start an evalaution run (full or sampled)
-- Cancel a running evaluation
-- List runs
+- Graders per row
+- Graders summary
+- Check all the column types are working
+- Generate notification at each stage
+- Front end use notification for start, each row finished and overall finished
+- Allow a sampled run
+- Make frontend look good with graphs or pie charts etc.
 - Import/Merging of existing data using csv
 
 ### MCP Servers 

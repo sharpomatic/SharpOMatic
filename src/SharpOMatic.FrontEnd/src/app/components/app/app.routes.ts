@@ -8,6 +8,7 @@ import { ModelsComponent } from '../../pages/models/models.component';
 import { ModelComponent } from '../../pages/model/model.component';
 import { EvaluationsComponent } from '../../pages/evaluations/evaluations.component';
 import { EvaluationComponent } from '../../pages/evaluation/evaluation.component';
+import { EvaluationRunComponent } from '../../pages/evaluation-run/evaluation-run.component';
 import { AssetsComponent } from '../../pages/assets/assets.component';
 import { TransferComponent } from '../../pages/transfer/transfer.component';
 import { unsavedChangesGuard } from '../../helper/unsaved-changes.guard';
@@ -27,6 +28,10 @@ export const routes: Routes = [
   },
   { path: 'models', component: ModelsComponent },
   { path: 'evaluations', component: EvaluationsComponent },
+  {
+    path: 'evaluations/:id/runs/:runId',
+    component: EvaluationRunComponent,
+  },
   {
     path: 'evaluations/:id',
     component: EvaluationComponent,

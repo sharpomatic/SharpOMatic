@@ -105,6 +105,13 @@ public class EvalController : ControllerBase
         return repositoryService.GetEvalRunRowCount(id, normalizedSearch);
     }
 
+    [HttpPost("configs/{id}/runs")]
+    public async Task<ActionResult<Guid>> StartEvalRun(IEngineService engineService, Guid id)
+    {
+        var evalRun = await engineService.StartEvalRun(id);
+        return evalRun.EvalRunId;
+    }
+
     [HttpPost("configs")]
     public async Task UpsertEvalConfig(IRepositoryService repositoryService, [FromBody] EvalConfig evalConfig)
     {

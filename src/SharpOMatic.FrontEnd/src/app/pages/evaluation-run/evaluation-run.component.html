@@ -1,0 +1,212 @@
+<div class="d-flex flex-column bg-body-secondary h-100 evaluation-run-page">
+  <div class="flex-shrink-0">
+    <div class="d-flex align-items-center p-3 pt-2 pb-0">
+      <h2 class="">
+        <i class="bi bi-clipboard-check pe-3 icon-sm"></i>Run Detail
+      </h2>
+    </div>
+  </div>
+
+  <div class="run-meta px-3 pb-2">
+    @if (runDetail; as detail) {
+      <div class="d-flex align-items-center gap-2 small">
+        <span class="badge" [ngClass]="getRunStatusBadgeClass(detail.evalRun.status)">
+          {{ getRunStatusLabel(detail.evalRun.status) }}
+        </span>
+        <span class="text-body-secondary"
+          >Started: {{ formatDateTime(detail.evalRun.started) }}</span
+        >
+        <span class="text-body-secondary"
+          >Finished: {{ formatDateTime(detail.evalRun.finished) }}</span
+        >
+      </div>
+    } @else {
+      <div class="small text-body-secondary">
+        @if (isLoadingRunDetail) {
+          Loading run detail...
+        } @else {
+          Run detail unavailable.
+        }
+      </div>
+    }
+  </div>
+
+  <div class="run-layout bg-body-tertiary">
+    <div class="run-rows-master">
+      <div class="run-rows-toolbar">
+        <div class="input-group input-group-sm run-rows-search">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input
+            type="search"
+            class="form-control"
+            placeholder="Search rows"
+            [value]="runRowsSearchText"
+            (input)="onRunRowsSearchChange($event)"
+            (keyup.enter)="applyRunRowsSearch()"
+          />
+        </div>
+      </div>
+
+      <div class="run-rows-list list-group list-group-flush">
+        @if (isLoadingRunRows) {
+          <div class="text-muted p-2">Loading rows...</div>
+        } @else if (!runRows.length) {
+          <div class="text-muted fst-italic p-2">(no rows)</div>
+        } @else {
+          @for (row of runRows; track row.evalRunRowId) {
+            <button
+              type="button"
+              class="list-group-item list-group-item-action run-row-item"
+              [class.active]="isRunRowSelected(row)"
+              [attr.aria-current]="isRunRowSelected(row) ? 'true' : null"
+              (click)="selectRunRow(row)"
+            >
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">{{ row.name || '(unnamed row)' }}</span>
+                <span class="badge" [ngClass]="getRunStatusBadgeClass(row.status)">
+                  {{ getRunStatusLabel(row.status) }}
+                </span>
+              </div>
+              <div class="small text-body-secondary mt-1">
+                Started: {{ formatDateTime(row.started) }}
+              </div>
+            </button>
+          }
+        }
+      </div>
+
+      @if (runRowsPageCount() > 1) {
+        <div class="run-rows-pagination px-2 py-2 border-top">
+          <div class="d-flex justify-content-between align-items-center gap-2">
+            <div class="small text-muted">
+              Page {{ runRowsPage }} of {{ runRowsPageCount() }}
+            </div>
+            <nav aria-label="Run rows pagination">
+              <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" [class.disabled]="runRowsPage === 1">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="runRowsPage === 1"
+                    (click)="onRunRowsPageChange(runRowsPage - 1)"
+                  >
+                    &lsaquo;
+                  </button>
+                </li>
+                @for (page of runRowsPageNumbers(); track page) {
+                  <li
+                    class="page-item"
+                    [class.active]="page === runRowsPage"
+                    [attr.aria-current]="page === runRowsPage ? 'page' : null"
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      (click)="onRunRowsPageChange(page)"
+                    >
+                      {{ page }}
+                    </button>
+                  </li>
+                }
+                <li
+                  class="page-item"
+                  [class.disabled]="runRowsPage >= runRowsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="runRowsPage >= runRowsPageCount()"
+                    (click)="onRunRowsPageChange(runRowsPage + 1)"
+                  >
+                    &rsaquo;
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="run-row-detail">
+      @if (selectedRunRow; as selectedRow) {
+        <div class="p-3">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <h5 class="mb-0">{{ selectedRow.name || '(unnamed row)' }}</h5>
+            <span class="badge" [ngClass]="getRunStatusBadgeClass(selectedRow.status)">
+              {{ getRunStatusLabel(selectedRow.status) }}
+            </span>
+          </div>
+          <div class="small text-body-secondary mb-2">
+            Started: {{ formatDateTime(selectedRow.started) }} | Finished:
+            {{ formatDateTime(selectedRow.finished) }}
+          </div>
+
+          @if (selectedRow.error) {
+            <div class="small text-danger mb-2">{{ selectedRow.error }}</div>
+          }
+
+          <div class="mb-3">
+            <div class="small fw-semibold mb-1">Output Context</div>
+            @if (selectedRow.outputContext) {
+              <pre class="run-output mb-0">{{ selectedRow.outputContext }}</pre>
+            } @else {
+              <div class="text-muted fst-italic small">(no output context)</div>
+            }
+          </div>
+
+          <div>
+            <div class="small fw-semibold mb-1">Grader Outputs</div>
+            <div class="table-responsive">
+              <table class="table table-sm mb-0 run-row-grader-table">
+                <thead>
+                  <tr>
+                    <th>Grader</th>
+                    <th>Status</th>
+                    <th>Score</th>
+                    <th>Started</th>
+                    <th>Finished</th>
+                    <th>Error</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @if (!selectedRunRowGraders.length) {
+                    <tr>
+                      <td colspan="6" class="text-muted">(no grader results)</td>
+                    </tr>
+                  } @else {
+                    @for (grader of selectedRunRowGraders; track grader.evalRunRowGraderId) {
+                      <tr>
+                        <td>{{ grader.label }}</td>
+                        <td>
+                          <span class="badge" [ngClass]="getRunStatusBadgeClass(grader.status)">
+                            {{ getRunStatusLabel(grader.status) }}
+                          </span>
+                        </td>
+                        <td>{{ formatMetric(grader.score) }}</td>
+                        <td>{{ formatDateTime(grader.started) }}</td>
+                        <td>{{ formatDateTime(grader.finished) }}</td>
+                        <td>{{ grader.error || '-' }}</td>
+                      </tr>
+                      @if (grader.payload) {
+                        <tr>
+                          <td colspan="6" class="py-1">
+                            <pre class="run-output mb-0">{{ grader.payload }}</pre>
+                          </td>
+                        </tr>
+                      }
+                    }
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      } @else {
+        <div class="text-muted fst-italic p-3">
+          Select a row to view outputs and grader details.
+        </div>
+      }
+    </div>
+  </div>
+</div>

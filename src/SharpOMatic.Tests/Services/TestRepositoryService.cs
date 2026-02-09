@@ -132,10 +132,20 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task DeleteEvalData(Guid evalDataId) => throw new NotImplementedException();
 
+    public Task UpsertEvalRun(EvalRun evalRun) => throw new NotImplementedException();
+
+    public Task UpsertEvalRunRows(Guid evalRunId, List<EvalRunRow> runRows) => throw new NotImplementedException();
+
+    public Task UpsertEvalRunRowGraders(Guid evalRunId, List<EvalRunRowGrader> runRowGraders) => throw new NotImplementedException();
+
+    public Task UpsertEvalRunGraderSummaries(Guid evalRunId, List<EvalRunGraderSummary> graderSummaries) => throw new NotImplementedException();
+
     public Task<int> GetEvalRunSummaryCount(Guid evalConfigId, string? search) => throw new NotImplementedException();
 
     public Task<List<EvalRunSummary>> GetEvalRunSummaries(Guid evalConfigId, string? search, EvalRunSortField sortBy, SortDirection sortDirection, int skip, int take) =>
         throw new NotImplementedException();
+
+    public async Task<EvalRun> GetEvalRun(Guid evalRunId) => throw new NotImplementedException();
 
     public Task<EvalRunDetail> GetEvalRunDetail(Guid evalRunId) => throw new NotImplementedException();
 
