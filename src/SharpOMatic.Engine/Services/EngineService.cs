@@ -1,8 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.Extensions.DependencyInjection;
+using SharpOMatic.Engine.DTO;
 using SharpOMatic.Engine.Entities.Definitions;
 using SharpOMatic.Engine.Interfaces;
 using SharpOMatic.Engine.Repository;
 using SQLitePCL;
+using System;
 using System.Net.Http.Headers;
 
 namespace SharpOMatic.Engine.Services;
@@ -186,16 +189,25 @@ public class EngineService(
         using var serviceScope = ScopeFactory.CreateScope();
         var provider = serviceScope.ServiceProvider;
         var repository = provider.GetRequiredService<IRepositoryService>();
+        var jsonConverterService = provider.GetRequiredService<IJsonConverterService>();
 
         try
         {
             foreach(var row in evalConfigDetail.Rows.OrderBy(r => r.Order))
             {
-                var evalRunRow = await PerformEvalRow(repository, evalRun.EvalRunId, evalConfigDetail, row);
+                var evalRunRow = await PerformEvalRow(repository, jsonConverterService, evalRun.EvalRunId, evalConfigDetail, row);
                 if (evalRunRow.Status == EvalRunStatus.Completed)
                     evalRun.CompletedRows++;
                 else
                     evalRun.FailedRows++;
+            }
+
+            foreach (var evalGrader in evalConfigDetail.Graders.OrderBy(g => g.Order))
+            {
+                // TODO
+                // Get all the EvalRunRowGrader entries for this grader
+                // Calculate all the metrics
+                // Create EvalRunGraderSummary and upsert
             }
 
             evalRun.Message = "Completed";
@@ -215,7 +227,8 @@ public class EngineService(
     }
 
     private async Task<EvalRunRow> PerformEvalRow(
-        IRepositoryService repository, 
+        IRepositoryService repository,
+        IJsonConverterService jsonConverterService,
         Guid evalRunId, 
         EvalConfigDetail evalConfigDetail, 
         EvalRow evalRow)
@@ -228,8 +241,6 @@ public class EngineService(
             Started = DateTime.Now,
             Status = EvalRunStatus.Running
         };
-
-        await repository.UpsertEvalRunRows(evalRunId, [evalRunRow]);
 
         try
         {
@@ -255,25 +266,25 @@ public class EngineService(
                     {
                         case ContextEntryType.Bool:
                             if (columnData.BoolValue.HasValue)
-                                inputContext.Set(EngineService.ContextPath(column), columnData.BoolValue.Value);
+                                inputContext.Set(ContextPath(column), columnData.BoolValue.Value);
                             else if (!column.Optional)
                                 throw new SharpOMaticException($"Mandatory column '{column.Name}' for row '{rowName}' has missing bool value.");
                             break;
                         case ContextEntryType.Int:
                             if (columnData.IntValue.HasValue)
-                                inputContext.Set(EngineService.ContextPath(column), columnData.IntValue.Value);
+                                inputContext.Set(ContextPath(column), columnData.IntValue.Value);
                             else if (!column.Optional)
                                 throw new SharpOMaticException($"Mandatory column '{column.Name}' for row '{rowName}' has missing int value.");
                             break;
                         case ContextEntryType.Double:
                             if (columnData.DoubleValue.HasValue)
-                                inputContext.Set(EngineService.ContextPath(column), columnData.DoubleValue.Value);
+                                inputContext.Set(ContextPath(column), columnData.DoubleValue.Value);
                             else if (!column.Optional)
                                 throw new SharpOMaticException($"Mandatory column '{column.Name}' for row '{rowName}' has missing double value.");
                             break;
                         case ContextEntryType.String:
                             if (columnData.StringValue is not null)
-                                inputContext.Set(EngineService.ContextPath(column), columnData.StringValue);
+                                inputContext.Set(ContextPath(column), columnData.StringValue);
                             else if (!column.Optional)
                                 throw new SharpOMaticException($"Mandatory column '{column.Name}' for row '{rowName}' has missing string value.");
                             break;
@@ -283,7 +294,7 @@ public class EngineService(
                                 try
                                 {
                                     var obj = ContextHelpers.FastDeserializeString(columnData.StringValue);
-                                    inputContext.Set(EngineService.ContextPath(column), obj);
+                                    inputContext.Set(ContextPath(column), obj);
                                 }
                                 catch
                                 {
@@ -300,7 +311,7 @@ public class EngineService(
                             if (columnData.StringValue is not null)
                             {
                                 var assetRef = ContextHelpers.ParseAssetRef(columnData.StringValue, EngineService.ContextPath(column));
-                                inputContext.Set(EngineService.ContextPath(column), assetRef);
+                                inputContext.Set(ContextPath(column), assetRef);
                             }
                             else if (!column.Optional)
                                 throw new SharpOMaticException($"Mandatory column '{column.Name}' for row '{rowName}' has missing asset reference value.");
@@ -309,7 +320,7 @@ public class EngineService(
                             if (columnData.StringValue is not null)
                             {
                                 var assetRef = ContextHelpers.ParseAssetRefList(columnData.StringValue, EngineService.ContextPath(column));
-                                inputContext.Set(EngineService.ContextPath(column), assetRef);
+                                inputContext.Set(ContextPath(column), assetRef);
                             }
                             else if (!column.Optional)
                                 throw new SharpOMaticException($"Mandatory column '{column.Name}' for row '{rowName}' has missing asset reference list value.");
@@ -323,8 +334,8 @@ public class EngineService(
             var runId = await CreateWorkflowRun(evalConfigDetail.EvalConfig.WorkflowId ?? Guid.Empty);
             var runResult = await StartWorkflowRunAndWait(runId, inputContext);
             
-            // Run the graders
-            // Save graders entity            
+            foreach(var evalGrader in evalConfigDetail.Graders.OrderBy(g => g.Order))
+                await PerformEvalGrader(repository, jsonConverterService, evalRunId, evalRunRow.EvalRunRowId, evalGrader, runResult.OutputContext);
             
             evalRunRow.OutputContext = runResult.OutputContext;
             evalRunRow.Status = EvalRunStatus.Completed;
@@ -341,6 +352,65 @@ public class EngineService(
         }
 
         return evalRunRow;
+    }
+
+    private async Task PerformEvalGrader(
+        IRepositoryService repository,
+        IJsonConverterService jsonConverterService,
+        Guid evalRunId,
+        Guid evalRunRowId,
+        EvalGrader evalGrader, 
+        string? jsonContext)
+    {
+        var evalRunRowGrader = new EvalRunRowGrader
+        {
+            EvalRunRowGraderId = Guid.NewGuid(),
+            EvalRunRowId = evalRunRowId,
+            EvalGraderId = evalGrader.EvalGraderId,
+            Started = DateTime.Now,
+            Status = EvalRunStatus.Running
+        };
+
+        try
+        {
+            ContextObject inputContext = [];
+            if (!string.IsNullOrWhiteSpace(jsonContext))
+                inputContext = ContextObject.Deserialize(jsonContext, jsonConverterService);
+
+            var runId = await CreateWorkflowRun(evalGrader.WorkflowId ?? Guid.Empty);
+            var runResult = await StartWorkflowRunAndWait(runId, inputContext);
+
+            if (runResult.RunStatus == RunStatus.Failed)
+            {
+                evalRunRowGrader.Error = runResult.Error;
+                evalRunRowGrader.Status = EvalRunStatus.Failed;
+            }
+            else
+            {
+                if (!string.IsNullOrWhiteSpace(runResult.OutputContext))
+                {
+                    var graderOutput = ContextObject.Deserialize(runResult.OutputContext, jsonConverterService);
+                    if (graderOutput.TryGet<double>("score", out var score))
+                        evalRunRowGrader.Score = score;
+
+                    if (graderOutput.TryGet<string>("payload", out var payload))
+                        evalRunRowGrader.Payload = payload;
+                }
+
+                evalRunRowGrader.Status = EvalRunStatus.Completed;
+            }
+        }
+        catch (Exception ex)
+        {
+            evalRunRowGrader.Error = ex.Message;
+            evalRunRowGrader.Status = EvalRunStatus.Failed;
+        }
+        finally
+        {
+            evalRunRowGrader.Finished = DateTime.Now;
+            await repository.UpsertEvalRunRowGraders(evalRunId, [evalRunRowGrader]);
+        }
+
     }
 
     private static string ContextPath(EvalColumn evalColumn)
