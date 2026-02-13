@@ -562,13 +562,10 @@ export class ServerRepositoryService {
     );
   }
 
-  public upsertEvalGraders(
-    evalConfigId: string,
-    graders: EvalGraderSnapshot[],
-  ): Observable<void> {
+  public upsertEvalGraders(graders: EvalGraderSnapshot[]): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
     return this.http
-      .post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/graders`, graders)
+      .post<void>(`${apiUrl}/api/eval/configs/graders`, graders)
       .pipe(
         catchError((error) => {
           this.notifyError('Saving eval graders', error);
@@ -587,13 +584,10 @@ export class ServerRepositoryService {
     );
   }
 
-  public upsertEvalColumns(
-    evalConfigId: string,
-    columns: EvalColumnSnapshot[],
-  ): Observable<void> {
+  public upsertEvalColumns(columns: EvalColumnSnapshot[]): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
     return this.http
-      .post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/columns`, columns)
+      .post<void>(`${apiUrl}/api/eval/configs/columns`, columns)
       .pipe(
         catchError((error) => {
           this.notifyError('Saving eval columns', error);
@@ -612,13 +606,10 @@ export class ServerRepositoryService {
     );
   }
 
-  public upsertEvalRows(
-    evalConfigId: string,
-    rows: EvalRowSnapshot[],
-  ): Observable<void> {
+  public upsertEvalRows(rows: EvalRowSnapshot[]): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
     return this.http
-      .post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/rows`, rows)
+      .post<void>(`${apiUrl}/api/eval/configs/rows`, rows)
       .pipe(
         catchError((error) => {
           this.notifyError('Saving eval rows', error);
@@ -637,13 +628,10 @@ export class ServerRepositoryService {
     );
   }
 
-  public upsertEvalData(
-    evalConfigId: string,
-    data: EvalDataSnapshot[],
-  ): Observable<void> {
+  public upsertEvalData(data: EvalDataSnapshot[]): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
     return this.http
-      .post<void>(`${apiUrl}/api/eval/configs/${evalConfigId}/data`, data)
+      .post<void>(`${apiUrl}/api/eval/configs/data`, data)
       .pipe(
         catchError((error) => {
           this.notifyError('Saving eval data', error);

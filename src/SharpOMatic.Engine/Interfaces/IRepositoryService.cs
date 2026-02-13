@@ -72,24 +72,25 @@ public interface IRepositoryService
     Task<EvalConfigDetail> GetEvalConfigDetail(Guid evalConfigId);
     Task<int> GetEvalRunSummaryCount(Guid evalConfigId, string? search);
     Task<List<EvalRunSummary>> GetEvalRunSummaries(Guid evalConfigId, string? search, EvalRunSortField sortBy, SortDirection sortDirection, int skip, int take);
-    Task UpsertEvalRunGraderSummaries(Guid evalRunId, List<EvalRunGraderSummary> graderSummaries);
+    Task UpsertEvalRunGraderSummaries(List<EvalRunGraderSummary> graderSummaries);
     Task<EvalRun> GetEvalRun(Guid evalRunId);
     Task<EvalRunDetail> GetEvalRunDetail(Guid evalRunId);
     Task<List<EvalRunRowDetail>> GetEvalRunRows(Guid evalRunId, string? search, EvalRunRowSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task<int> GetEvalRunRowCount(Guid evalRunId, string? search);
+    Task<List<EvalRunRowGrader>> GetEvalRunRowGraders(Guid evalRunId, Guid evalGraderId);
     Task UpsertEvalConfig(EvalConfig evalConfig);
     Task DeleteEvalConfig(Guid evalConfigId);
-    Task UpsertEvalGraders(Guid evalConfigId, List<EvalGrader> graders);
+    Task UpsertEvalGraders(List<EvalGrader> graders);
     Task DeleteEvalGrader(Guid evalGraderId);
-    Task UpsertEvalColumns(Guid evalConfigId, List<EvalColumn> columns);
+    Task UpsertEvalColumns(List<EvalColumn> columns);
     Task DeleteEvalColumn(Guid evalColumnId);
-    Task UpsertEvalRows(Guid evalConfigId, List<EvalRow> rows);
+    Task UpsertEvalRows(List<EvalRow> rows);
     Task DeleteEvalRow(Guid evalRowId);
-    Task UpsertEvalData(Guid evalConfigId, List<EvalData> data);
+    Task UpsertEvalData(List<EvalData> data);
     Task DeleteEvalData(Guid evalDataId);
     Task UpsertEvalRun(EvalRun evalRun);
-    Task UpsertEvalRunRows(Guid evalRunId, List<EvalRunRow> runRows);
-    Task UpsertEvalRunRowGraders(Guid evalRunId, List<EvalRunRowGrader> runRowGraders);
+    Task UpsertEvalRunRows(List<EvalRunRow> runRows);
+    Task UpsertEvalRunRowGraders(List<EvalRunRowGrader> runRowGraders);
 
     // ------------------------------------------------
     // Setting Operations

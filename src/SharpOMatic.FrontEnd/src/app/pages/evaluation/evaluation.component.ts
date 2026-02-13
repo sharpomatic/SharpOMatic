@@ -769,23 +769,12 @@ export class EvaluationComponent
       );
 
     return this.serverRepository.upsertEvalConfig(this.evalConfig).pipe(
-      switchMap(() =>
-        this.serverRepository.upsertEvalGraders(
-          this.evalConfig.evalConfigId,
-          graderSnapshots,
-        ),
-      ),
+      switchMap(() => this.serverRepository.upsertEvalGraders(graderSnapshots)),
       switchMap(() => {
-        return this.serverRepository.upsertEvalColumns(
-          this.evalConfig.evalConfigId,
-          columnSnapshots,
-        );
+        return this.serverRepository.upsertEvalColumns(columnSnapshots);
       }),
       switchMap(() => {
-        return this.serverRepository.upsertEvalRows(
-          this.evalConfig.evalConfigId,
-          rowSnapshots,
-        );
+        return this.serverRepository.upsertEvalRows(rowSnapshots);
       }),
       switchMap(() => {
         if (
@@ -811,10 +800,7 @@ export class EvaluationComponent
           return of(undefined);
         }
 
-        return this.serverRepository.upsertEvalData(
-          this.evalConfig.evalConfigId,
-          dataSnapshots,
-        );
+        return this.serverRepository.upsertEvalData(dataSnapshots);
       }),
       map(() => {
         this.evalConfig.markClean();

@@ -116,29 +116,29 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task DeleteEvalConfig(Guid evalConfigId) => throw new NotImplementedException();
 
-    public Task UpsertEvalGraders(Guid evalConfigId, List<EvalGrader> graders) => throw new NotImplementedException();
+    public Task UpsertEvalGraders(List<EvalGrader> graders) => throw new NotImplementedException();
 
     public Task DeleteEvalGrader(Guid evalGraderId) => throw new NotImplementedException();
 
-    public Task UpsertEvalColumns(Guid evalConfigId, List<EvalColumn> columns) => throw new NotImplementedException();
+    public Task UpsertEvalColumns(List<EvalColumn> columns) => throw new NotImplementedException();
 
     public Task DeleteEvalColumn(Guid evalColumnId) => throw new NotImplementedException();
 
-    public Task UpsertEvalRows(Guid evalConfigId, List<EvalRow> rows) => throw new NotImplementedException();
+    public Task UpsertEvalRows(List<EvalRow> rows) => throw new NotImplementedException();
 
     public Task DeleteEvalRow(Guid evalRowId) => throw new NotImplementedException();
 
-    public Task UpsertEvalData(Guid evalConfigId, List<EvalData> data) => throw new NotImplementedException();
+    public Task UpsertEvalData(List<EvalData> data) => throw new NotImplementedException();
 
     public Task DeleteEvalData(Guid evalDataId) => throw new NotImplementedException();
 
     public Task UpsertEvalRun(EvalRun evalRun) => throw new NotImplementedException();
 
-    public Task UpsertEvalRunRows(Guid evalRunId, List<EvalRunRow> runRows) => throw new NotImplementedException();
+    public Task UpsertEvalRunRows(List<EvalRunRow> runRows) => throw new NotImplementedException();
 
-    public Task UpsertEvalRunRowGraders(Guid evalRunId, List<EvalRunRowGrader> runRowGraders) => throw new NotImplementedException();
+    public Task UpsertEvalRunRowGraders(List<EvalRunRowGrader> runRowGraders) => throw new NotImplementedException();
 
-    public Task UpsertEvalRunGraderSummaries(Guid evalRunId, List<EvalRunGraderSummary> graderSummaries) => throw new NotImplementedException();
+    public Task UpsertEvalRunGraderSummaries( List<EvalRunGraderSummary> graderSummaries) => throw new NotImplementedException();
 
     public Task<int> GetEvalRunSummaryCount(Guid evalConfigId, string? search) => throw new NotImplementedException();
 
@@ -150,6 +150,8 @@ public sealed class TestRepositoryService : IRepositoryService
     public Task<EvalRunDetail> GetEvalRunDetail(Guid evalRunId) => throw new NotImplementedException();
 
     public Task<int> GetEvalRunRowCount(Guid evalRunId, string? search) => throw new NotImplementedException();
+
+    public Task<List<EvalRunRowGrader>> GetEvalRunRowGraders(Guid evalRunId, Guid evalGraderId) => throw new NotImplementedException();
 
     public Task<List<EvalRunRowDetail>> GetEvalRunRows(Guid evalRunId, string? search, EvalRunRowSortField sortBy, SortDirection sortDirection, int skip, int take) =>
         throw new NotImplementedException();

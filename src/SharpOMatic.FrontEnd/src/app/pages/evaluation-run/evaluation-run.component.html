@@ -188,10 +188,10 @@
                         <td>{{ formatDateTime(grader.finished) }}</td>
                         <td>{{ grader.error || '-' }}</td>
                       </tr>
-                      @if (grader.payload) {
+                      @if (grader.outputContext) {
                         <tr>
                           <td colspan="6" class="py-1">
-                            <pre class="run-output mb-0">{{ grader.payload }}</pre>
+                            <pre class="run-output mb-0">{{ grader.outputContext }}</pre>
                           </td>
                         </tr>
                       }

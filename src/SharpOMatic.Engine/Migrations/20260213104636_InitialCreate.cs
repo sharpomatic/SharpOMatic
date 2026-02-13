@@ -11,7 +11,8 @@ namespace SharpOMatic.Engine.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.EnsureSchema(name: "SharpOMatic");
+            migrationBuilder.EnsureSchema(
+                name: "SharpOMatic");
 
             migrationBuilder.CreateTable(
                 name: "ConnectorConfigMetadata",
@@ -20,13 +21,12 @@ namespace SharpOMatic.Engine.Migrations
                 {
                     ConfigId = table.Column<string>(type: "TEXT", nullable: false),
                     Version = table.Column<int>(type: "INTEGER", nullable: false),
-                    Config = table.Column<string>(type: "TEXT", nullable: false),
+                    Config = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ConnectorConfigMetadata", x => x.ConfigId);
-                }
-            );
+                });
 
             migrationBuilder.CreateTable(
                 name: "ConnectorMetadata",
@@ -37,13 +37,12 @@ namespace SharpOMatic.Engine.Migrations
                     Version = table.Column<int>(type: "INTEGER", nullable: false),
                     Name = table.Column<string>(type: "TEXT", nullable: false),
                     Description = table.Column<string>(type: "TEXT", nullable: false),
-                    Config = table.Column<string>(type: "TEXT", nullable: false),
+                    Config = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ConnectorMetadata", x => x.ConnectorId);
-                }
-            );
+                });
 
             migrationBuilder.CreateTable(
                 name: "EvalConfigs",
@@ -54,13 +53,12 @@ namespace SharpOMatic.Engine.Migrations
                     WorkflowId = table.Column<Guid>(type: "TEXT", nullable: true),
                     Name = table.Column<string>(type: "TEXT", nullable: false),
                     Description = table.Column<string>(type: "TEXT", nullable: false),
-                    MaxParallel = table.Column<int>(type: "INTEGER", nullable: false),
+                    MaxParallel = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_EvalConfigs", x => x.EvalConfigId);
-                }
-            );
+                });
 
             migrationBuilder.CreateTable(
                 name: "ModelConfigMetadata",
@@ -69,13 +67,12 @@ namespace SharpOMatic.Engine.Migrations
                 {
                     ConfigId = table.Column<string>(type: "TEXT", nullable: false),
                     Version = table.Column<int>(type: "INTEGER", nullable: false),
-                    Config = table.Column<string>(type: "TEXT", nullable: false),
+                    Config = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ModelConfigMetadata", x => x.ConfigId);
-                }
-            );
+                });
 
             migrationBuilder.CreateTable(
                 name: "ModelMetadata",
@@ -86,13 +83,12 @@ namespace SharpOMatic.Engine.Migrations
                     Version = table.Column<int>(type: "INTEGER", nullable: false),
                     Name = table.Column<string>(type: "TEXT", nullable: false),
                     Description = table.Column<string>(type: "TEXT", nullable: false),
-                    Config = table.Column<string>(type: "TEXT", nullable: false),
+                    Config = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ModelMetadata", x => x.ModelId);
-                }
-            );
+                });
 
             migrationBuilder.CreateTable(
                 name: "Settings",
@@ -107,13 +103,12 @@ namespace SharpOMatic.Engine.Migrations
                     ValueString = table.Column<string>(type: "TEXT", nullable: true),
                     ValueBoolean = table.Column<bool>(type: "INTEGER", nullable: true),
                     ValueInteger = table.Column<int>(type: "INTEGER", nullable: true),
-                    ValueDouble = table.Column<double>(type: "REAL", nullable: true),
+                    ValueDouble = table.Column<double>(type: "REAL", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Settings", x => x.SettingId);
-                }
-            );
+                });
 
             migrationBuilder.CreateTable(
                 name: "Workflows",
@@ -125,13 +120,12 @@ namespace SharpOMatic.Engine.Migrations
                     Named = table.Column<string>(type: "TEXT", nullable: false),
                     Description = table.Column<string>(type: "TEXT", nullable: false),
                     Nodes = table.Column<string>(type: "TEXT", nullable: false),
-                    Connections = table.Column<string>(type: "TEXT", nullable: false),
+                    Connections = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Workflows", x => x.WorkflowId);
-                }
-            );
+                });
 
             migrationBuilder.CreateTable(
                 name: "EvalColumns",
@@ -144,7 +138,7 @@ namespace SharpOMatic.Engine.Migrations
                     Order = table.Column<int>(type: "INTEGER", nullable: false),
                     EntryType = table.Column<int>(type: "INTEGER", nullable: false),
                     Optional = table.Column<bool>(type: "INTEGER", nullable: false),
-                    InputPath = table.Column<string>(type: "TEXT", nullable: true),
+                    InputPath = table.Column<string>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -155,10 +149,8 @@ namespace SharpOMatic.Engine.Migrations
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalConfigs",
                         principalColumn: "EvalConfigId",
-                        onDelete: ReferentialAction.Cascade
-                    );
-                }
-            );
+                        onDelete: ReferentialAction.Cascade);
+                });
 
             migrationBuilder.CreateTable(
                 name: "EvalGraders",
@@ -170,7 +162,7 @@ namespace SharpOMatic.Engine.Migrations
                     WorkflowId = table.Column<Guid>(type: "TEXT", nullable: true),
                     Order = table.Column<int>(type: "INTEGER", nullable: false),
                     Label = table.Column<string>(type: "TEXT", nullable: false),
-                    PassThreshold = table.Column<double>(type: "REAL", nullable: false),
+                    PassThreshold = table.Column<double>(type: "REAL", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -181,10 +173,8 @@ namespace SharpOMatic.Engine.Migrations
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalConfigs",
                         principalColumn: "EvalConfigId",
-                        onDelete: ReferentialAction.Cascade
-                    );
-                }
-            );
+                        onDelete: ReferentialAction.Cascade);
+                });
 
             migrationBuilder.CreateTable(
                 name: "EvalRows",
@@ -193,7 +183,7 @@ namespace SharpOMatic.Engine.Migrations
                 {
                     EvalRowId = table.Column<Guid>(type: "TEXT", nullable: false),
                     EvalConfigId = table.Column<Guid>(type: "TEXT", nullable: false),
-                    Order = table.Column<int>(type: "INTEGER", nullable: false),
+                    Order = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -204,10 +194,8 @@ namespace SharpOMatic.Engine.Migrations
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalConfigs",
                         principalColumn: "EvalConfigId",
-                        onDelete: ReferentialAction.Cascade
-                    );
-                }
-            );
+                        onDelete: ReferentialAction.Cascade);
+                });
 
             migrationBuilder.CreateTable(
                 name: "EvalRuns",
@@ -224,7 +212,7 @@ namespace SharpOMatic.Engine.Migrations
                     TotalRows = table.Column<int>(type: "INTEGER", nullable: false),
                     CompletedRows = table.Column<int>(type: "INTEGER", nullable: false),
                     FailedRows = table.Column<int>(type: "INTEGER", nullable: false),
-                    CanceledRows = table.Column<int>(type: "INTEGER", nullable: false),
+                    CanceledRows = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -235,10 +223,8 @@ namespace SharpOMatic.Engine.Migrations
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalConfigs",
                         principalColumn: "EvalConfigId",
-                        onDelete: ReferentialAction.Cascade
-                    );
-                }
-            );
+                        onDelete: ReferentialAction.Cascade);
+                });
 
             migrationBuilder.CreateTable(
                 name: "Runs",
@@ -256,7 +242,7 @@ namespace SharpOMatic.Engine.Migrations
                     OutputContext = table.Column<string>(type: "TEXT", nullable: true),
                     CustomData = table.Column<string>(type: "TEXT", nullable: true),
                     Message = table.Column<string>(type: "TEXT", nullable: true),
-                    Error = table.Column<string>(type: "TEXT", nullable: true),
+                    Error = table.Column<string>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -267,10 +253,8 @@ namespace SharpOMatic.Engine.Migrations
                         principalSchema: "SharpOMatic",
                         principalTable: "Workflows",
                         principalColumn: "WorkflowId",
-                        onDelete: ReferentialAction.Cascade
-                    );
-                }
-            );
+                        onDelete: ReferentialAction.Cascade);
+                });
 
             migrationBuilder.CreateTable(
                 name: "EvalData",
@@ -283,7 +267,7 @@ namespace SharpOMatic.Engine.Migrations
                     StringValue = table.Column<string>(type: "TEXT", nullable: true),
                     IntValue = table.Column<int>(type: "INTEGER", nullable: true),
                     DoubleValue = table.Column<double>(type: "REAL", nullable: true),
-                    BoolValue = table.Column<bool>(type: "INTEGER", nullable: true),
+                    BoolValue = table.Column<bool>(type: "INTEGER", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -294,18 +278,15 @@ namespace SharpOMatic.Engine.Migrations
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalColumns",
                         principalColumn: "EvalColumnId",
-                        onDelete: ReferentialAction.Cascade
-                    );
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_EvalData_EvalRows_EvalRowId",
                         column: x => x.EvalRowId,
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalRows",
                         principalColumn: "EvalRowId",
-                        onDelete: ReferentialAction.Cascade
-                    );
-                }
-            );
+                        onDelete: ReferentialAction.Cascade);
+                });
 
             migrationBuilder.CreateTable(
                 name: "EvalRunGraderSummaries",
@@ -323,7 +304,7 @@ namespace SharpOMatic.Engine.Migrations
                     AverageScore = table.Column<double>(type: "REAL", nullable: true),
                     MedianScore = table.Column<double>(type: "REAL", nullable: true),
                     StandardDeviation = table.Column<double>(type: "REAL", nullable: true),
-                    PassRate = table.Column<double>(type: "REAL", nullable: true),
+                    PassRate = table.Column<double>(type: "REAL", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -334,18 +315,15 @@ namespace SharpOMatic.Engine.Migrations
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalGraders",
                         principalColumn: "EvalGraderId",
-                        onDelete: ReferentialAction.Cascade
-                    );
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_EvalRunGraderSummaries_EvalRuns_EvalRunId",
                         column: x => x.EvalRunId,
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalRuns",
                         principalColumn: "EvalRunId",
-                        onDelete: ReferentialAction.Cascade
-                    );
-                }
-            );
+                        onDelete: ReferentialAction.Cascade);
+                });
 
             migrationBuilder.CreateTable(
                 name: "EvalRunRows",
@@ -359,7 +337,7 @@ namespace SharpOMatic.Engine.Migrations
                     Finished = table.Column<DateTime>(type: "TEXT", nullable: true),
                     Status = table.Column<int>(type: "INTEGER", nullable: false),
                     OutputContext = table.Column<string>(type: "TEXT", nullable: true),
-                    Error = table.Column<string>(type: "TEXT", nullable: true),
+                    Error = table.Column<string>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -370,18 +348,15 @@ namespace SharpOMatic.Engine.Migrations
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalRows",
                         principalColumn: "EvalRowId",
-                        onDelete: ReferentialAction.Cascade
-                    );
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_EvalRunRows_EvalRuns_EvalRunId",
                         column: x => x.EvalRunId,
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalRuns",
                         principalColumn: "EvalRunId",
-                        onDelete: ReferentialAction.Cascade
-                    );
-                }
-            );
+                        onDelete: ReferentialAction.Cascade);
+                });
 
             migrationBuilder.CreateTable(
                 name: "Assets",
@@ -395,7 +370,7 @@ namespace SharpOMatic.Engine.Migrations
                     Created = table.Column<DateTime>(type: "TEXT", nullable: false),
                     MediaType = table.Column<string>(type: "TEXT", nullable: false),
                     SizeBytes = table.Column<long>(type: "INTEGER", nullable: false),
-                    StorageKey = table.Column<string>(type: "TEXT", nullable: false),
+                    StorageKey = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -406,10 +381,8 @@ namespace SharpOMatic.Engine.Migrations
                         principalSchema: "SharpOMatic",
                         principalTable: "Runs",
                         principalColumn: "RunId",
-                        onDelete: ReferentialAction.Cascade
-                    );
-                }
-            );
+                        onDelete: ReferentialAction.Cascade);
+                });
 
             migrationBuilder.CreateTable(
                 name: "Traces",
@@ -431,7 +404,7 @@ namespace SharpOMatic.Engine.Migrations
                     OutputContext = table.Column<string>(type: "TEXT", nullable: true),
                     CustomData = table.Column<string>(type: "TEXT", nullable: true),
                     Message = table.Column<string>(type: "TEXT", nullable: true),
-                    Error = table.Column<string>(type: "TEXT", nullable: true),
+                    Error = table.Column<string>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -442,10 +415,8 @@ namespace SharpOMatic.Engine.Migrations
                         principalSchema: "SharpOMatic",
                         principalTable: "Runs",
                         principalColumn: "RunId",
-                        onDelete: ReferentialAction.Cascade
-                    );
-                }
-            );
+                        onDelete: ReferentialAction.Cascade);
+                });
 
             migrationBuilder.CreateTable(
                 name: "EvalRunRowGraders",
@@ -455,12 +426,13 @@ namespace SharpOMatic.Engine.Migrations
                     EvalRunRowGraderId = table.Column<Guid>(type: "TEXT", nullable: false),
                     EvalRunRowId = table.Column<Guid>(type: "TEXT", nullable: false),
                     EvalGraderId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    EvalRunId = table.Column<Guid>(type: "TEXT", nullable: false),
                     Started = table.Column<DateTime>(type: "TEXT", nullable: false),
                     Finished = table.Column<DateTime>(type: "TEXT", nullable: true),
                     Status = table.Column<int>(type: "INTEGER", nullable: false),
                     Score = table.Column<double>(type: "REAL", nullable: true),
-                    Payload = table.Column<string>(type: "TEXT", nullable: true),
-                    Error = table.Column<string>(type: "TEXT", nullable: true),
+                    OutputContext = table.Column<string>(type: "TEXT", nullable: true),
+                    Error = table.Column<string>(type: "TEXT", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -471,94 +443,199 @@ namespace SharpOMatic.Engine.Migrations
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalGraders",
                         principalColumn: "EvalGraderId",
-                        onDelete: ReferentialAction.Cascade
-                    );
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_EvalRunRowGraders_EvalRunRows_EvalRunRowId",
                         column: x => x.EvalRunRowId,
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalRunRows",
                         principalColumn: "EvalRunRowId",
-                        onDelete: ReferentialAction.Cascade
-                    );
-                }
-            );
+                        onDelete: ReferentialAction.Cascade);
+                });
 
-            migrationBuilder.CreateIndex(name: "IX_Assets_Name", schema: "SharpOMatic", table: "Assets", column: "Name");
+            migrationBuilder.CreateIndex(
+                name: "IX_Assets_Name",
+                schema: "SharpOMatic",
+                table: "Assets",
+                column: "Name");
 
-            migrationBuilder.CreateIndex(name: "IX_Assets_RunId", schema: "SharpOMatic", table: "Assets", column: "RunId");
+            migrationBuilder.CreateIndex(
+                name: "IX_Assets_RunId",
+                schema: "SharpOMatic",
+                table: "Assets",
+                column: "RunId");
 
-            migrationBuilder.CreateIndex(name: "IX_Assets_Scope_Created", schema: "SharpOMatic", table: "Assets", columns: new[] { "Scope", "Created" });
+            migrationBuilder.CreateIndex(
+                name: "IX_Assets_Scope_Created",
+                schema: "SharpOMatic",
+                table: "Assets",
+                columns: new[] { "Scope", "Created" });
 
-            migrationBuilder.CreateIndex(name: "IX_EvalColumns_EvalConfigId", schema: "SharpOMatic", table: "EvalColumns", column: "EvalConfigId");
+            migrationBuilder.CreateIndex(
+                name: "IX_EvalColumns_EvalConfigId",
+                schema: "SharpOMatic",
+                table: "EvalColumns",
+                column: "EvalConfigId");
 
-            migrationBuilder.CreateIndex(name: "IX_EvalData_EvalColumnId", schema: "SharpOMatic", table: "EvalData", column: "EvalColumnId");
+            migrationBuilder.CreateIndex(
+                name: "IX_EvalData_EvalColumnId",
+                schema: "SharpOMatic",
+                table: "EvalData",
+                column: "EvalColumnId");
 
-            migrationBuilder.CreateIndex(name: "IX_EvalData_EvalRowId", schema: "SharpOMatic", table: "EvalData", column: "EvalRowId");
+            migrationBuilder.CreateIndex(
+                name: "IX_EvalData_EvalRowId",
+                schema: "SharpOMatic",
+                table: "EvalData",
+                column: "EvalRowId");
 
-            migrationBuilder.CreateIndex(name: "IX_EvalGraders_EvalConfigId", schema: "SharpOMatic", table: "EvalGraders", column: "EvalConfigId");
+            migrationBuilder.CreateIndex(
+                name: "IX_EvalGraders_EvalConfigId",
+                schema: "SharpOMatic",
+                table: "EvalGraders",
+                column: "EvalConfigId");
 
-            migrationBuilder.CreateIndex(name: "IX_EvalRows_EvalConfigId", schema: "SharpOMatic", table: "EvalRows", column: "EvalConfigId");
+            migrationBuilder.CreateIndex(
+                name: "IX_EvalRows_EvalConfigId",
+                schema: "SharpOMatic",
+                table: "EvalRows",
+                column: "EvalConfigId");
 
-            migrationBuilder.CreateIndex(name: "IX_EvalRunGraderSummaries_EvalGraderId", schema: "SharpOMatic", table: "EvalRunGraderSummaries", column: "EvalGraderId");
+            migrationBuilder.CreateIndex(
+                name: "IX_EvalRunGraderSummaries_EvalGraderId",
+                schema: "SharpOMatic",
+                table: "EvalRunGraderSummaries",
+                column: "EvalGraderId");
 
-            migrationBuilder.CreateIndex(name: "IX_EvalRunGraderSummaries_EvalRunId", schema: "SharpOMatic", table: "EvalRunGraderSummaries", column: "EvalRunId");
+            migrationBuilder.CreateIndex(
+                name: "IX_EvalRunGraderSummaries_EvalRunId",
+                schema: "SharpOMatic",
+                table: "EvalRunGraderSummaries",
+                column: "EvalRunId");
 
-            migrationBuilder.CreateIndex(name: "IX_EvalRunRowGraders_EvalGraderId", schema: "SharpOMatic", table: "EvalRunRowGraders", column: "EvalGraderId");
+            migrationBuilder.CreateIndex(
+                name: "IX_EvalRunRowGraders_EvalGraderId",
+                schema: "SharpOMatic",
+                table: "EvalRunRowGraders",
+                column: "EvalGraderId");
 
-            migrationBuilder.CreateIndex(name: "IX_EvalRunRowGraders_EvalRunRowId", schema: "SharpOMatic", table: "EvalRunRowGraders", column: "EvalRunRowId");
+            migrationBuilder.CreateIndex(
+                name: "IX_EvalRunRowGraders_EvalRunRowId",
+                schema: "SharpOMatic",
+                table: "EvalRunRowGraders",
+                column: "EvalRunRowId");
 
-            migrationBuilder.CreateIndex(name: "IX_EvalRunRows_EvalRowId", schema: "SharpOMatic", table: "EvalRunRows", column: "EvalRowId");
+            migrationBuilder.CreateIndex(
+                name: "IX_EvalRunRows_EvalRowId",
+                schema: "SharpOMatic",
+                table: "EvalRunRows",
+                column: "EvalRowId");
 
-            migrationBuilder.CreateIndex(name: "IX_EvalRunRows_EvalRunId", schema: "SharpOMatic", table: "EvalRunRows", column: "EvalRunId");
+            migrationBuilder.CreateIndex(
+                name: "IX_EvalRunRows_EvalRunId",
+                schema: "SharpOMatic",
+                table: "EvalRunRows",
+                column: "EvalRunId");
 
-            migrationBuilder.CreateIndex(name: "IX_EvalRuns_EvalConfigId", schema: "SharpOMatic", table: "EvalRuns", column: "EvalConfigId");
+            migrationBuilder.CreateIndex(
+                name: "IX_EvalRuns_EvalConfigId",
+                schema: "SharpOMatic",
+                table: "EvalRuns",
+                column: "EvalConfigId");
 
-            migrationBuilder.CreateIndex(name: "IX_Runs_WorkflowId_Created", schema: "SharpOMatic", table: "Runs", columns: new[] { "WorkflowId", "Created" });
+            migrationBuilder.CreateIndex(
+                name: "IX_Runs_WorkflowId_Created",
+                schema: "SharpOMatic",
+                table: "Runs",
+                columns: new[] { "WorkflowId", "Created" });
 
-            migrationBuilder.CreateIndex(name: "IX_Runs_WorkflowId_RunStatus", schema: "SharpOMatic", table: "Runs", columns: new[] { "WorkflowId", "RunStatus" });
+            migrationBuilder.CreateIndex(
+                name: "IX_Runs_WorkflowId_RunStatus",
+                schema: "SharpOMatic",
+                table: "Runs",
+                columns: new[] { "WorkflowId", "RunStatus" });
 
-            migrationBuilder.CreateIndex(name: "IX_Traces_RunId_Created", schema: "SharpOMatic", table: "Traces", columns: new[] { "RunId", "Created" });
+            migrationBuilder.CreateIndex(
+                name: "IX_Traces_RunId_Created",
+                schema: "SharpOMatic",
+                table: "Traces",
+                columns: new[] { "RunId", "Created" });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(name: "Assets", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "Assets",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "ConnectorConfigMetadata", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "ConnectorConfigMetadata",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "ConnectorMetadata", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "ConnectorMetadata",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "EvalData", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "EvalData",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "EvalRunGraderSummaries", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "EvalRunGraderSummaries",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "EvalRunRowGraders", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "EvalRunRowGraders",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "ModelConfigMetadata", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "ModelConfigMetadata",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "ModelMetadata", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "ModelMetadata",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "Settings", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "Settings",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "Traces", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "Traces",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "EvalColumns", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "EvalColumns",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "EvalGraders", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "EvalGraders",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "EvalRunRows", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "EvalRunRows",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "Runs", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "Runs",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "EvalRows", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "EvalRows",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "EvalRuns", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "EvalRuns",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "Workflows", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "Workflows",
+                schema: "SharpOMatic");
 
-            migrationBuilder.DropTable(name: "EvalConfigs", schema: "SharpOMatic");
+            migrationBuilder.DropTable(
+                name: "EvalConfigs",
+                schema: "SharpOMatic");
         }
     }
 }

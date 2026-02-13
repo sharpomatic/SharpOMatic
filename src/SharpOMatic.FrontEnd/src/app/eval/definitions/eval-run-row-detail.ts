@@ -10,7 +10,7 @@ export interface EvalRunRowGraderDetailSnapshot {
   started: string;
   finished: string | null;
   score: number | null;
-  payload: string | null;
+  outputContext: string | null;
   error: string | null;
 }
 

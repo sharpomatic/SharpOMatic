@@ -11,6 +11,6 @@ public class EvalRunRowGraderDetail
     public required DateTime Started { get; set; }
     public DateTime? Finished { get; set; }
     public double? Score { get; set; }
-    public string? Payload { get; set; }
+    public string? OutputContext { get; set; }
     public string? Error { get; set; }
 }

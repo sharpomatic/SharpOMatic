@@ -202,13 +202,65 @@ public class EngineService(
                     evalRun.FailedRows++;
             }
 
+            List<EvalRunGraderSummary> graderSummaries = [];
             foreach (var evalGrader in evalConfigDetail.Graders.OrderBy(g => g.Order))
             {
-                // TODO
-                // Get all the EvalRunRowGrader entries for this grader
-                // Calculate all the metrics
-                // Create EvalRunGraderSummary and upsert
+                var runRowGraders = await repository.GetEvalRunRowGraders(evalRun.EvalRunId, evalGrader.EvalGraderId);
+                var totalCount = runRowGraders.Count;
+                var completedCount = runRowGraders.Count(grader => grader.Status == EvalRunStatus.Completed);
+                var failedCount = runRowGraders.Count(grader => grader.Status == EvalRunStatus.Failed);
+
+                var scoredValues = runRowGraders
+                    .Where(grader => grader.Status == EvalRunStatus.Completed && grader.Score.HasValue)
+                    .Select(grader => grader.Score!.Value)
+                    .OrderBy(score => score)
+                    .ToList();
+
+                double? minScore = null;
+                double? maxScore = null;
+                double? averageScore = null;
+                double? medianScore = null;
+                double? standardDeviation = null;
+                double? passRate = null;
+
+                if (scoredValues.Count > 0)
+                {
+                    var scoredCount = scoredValues.Count;
+                    minScore = scoredValues[0];
+                    maxScore = scoredValues[scoredCount - 1];
+                    averageScore = scoredValues.Average();
+
+                    if (scoredCount % 2 == 1)
+                        medianScore = scoredValues[scoredCount / 2];
+                    else
+                        medianScore = (scoredValues[(scoredCount / 2) - 1] + scoredValues[scoredCount / 2]) / 2.0;
+
+                    var mean = averageScore.Value;
+                    var variance = scoredValues.Sum(score => Math.Pow(score - mean, 2)) / scoredCount;
+                    standardDeviation = Math.Sqrt(variance);
+
+                    var passingCount = scoredValues.Count(score => score >= evalGrader.PassThreshold);
+                    passRate = passingCount / (double)scoredCount;
+                }
+
+                graderSummaries.Add(new EvalRunGraderSummary
+                {
+                    EvalRunGraderSummaryId = Guid.NewGuid(),
+                    EvalRunId = evalRun.EvalRunId,
+                    EvalGraderId = evalGrader.EvalGraderId,
+                    TotalCount = totalCount,
+                    CompletedCount = completedCount,
+                    FailedCount = failedCount,
+                    MinScore = minScore,
+                    MaxScore = maxScore,
+                    AverageScore = averageScore,
+                    MedianScore = medianScore,
+                    StandardDeviation = standardDeviation,
+                    PassRate = passRate,
+                });
             }
+
+            await repository.UpsertEvalRunGraderSummaries(graderSummaries);
 
             evalRun.Message = "Completed";
             evalRun.Status = EvalRunStatus.Completed;
@@ -241,6 +293,8 @@ public class EngineService(
             Started = DateTime.Now,
             Status = EvalRunStatus.Running
         };
+
+        await repository.UpsertEvalRunRows([evalRunRow]);
 
         try
         {
@@ -348,7 +402,7 @@ public class EngineService(
         finally
         {
             evalRunRow.Finished = DateTime.Now;
-            await repository.UpsertEvalRunRows(evalRunId, [evalRunRow]);
+            await repository.UpsertEvalRunRows([evalRunRow]);
         }
 
         return evalRunRow;
@@ -367,6 +421,7 @@ public class EngineService(
             EvalRunRowGraderId = Guid.NewGuid(),
             EvalRunRowId = evalRunRowId,
             EvalGraderId = evalGrader.EvalGraderId,
+            EvalRunId = evalRunId,
             Started = DateTime.Now,
             Status = EvalRunStatus.Running
         };
@@ -379,6 +434,7 @@ public class EngineService(
 
             var runId = await CreateWorkflowRun(evalGrader.WorkflowId ?? Guid.Empty);
             var runResult = await StartWorkflowRunAndWait(runId, inputContext);
+            evalRunRowGrader.OutputContext = runResult.OutputContext;
 
             if (runResult.RunStatus == RunStatus.Failed)
             {
@@ -392,9 +448,6 @@ public class EngineService(
                     var graderOutput = ContextObject.Deserialize(runResult.OutputContext, jsonConverterService);
                     if (graderOutput.TryGet<double>("score", out var score))
                         evalRunRowGrader.Score = score;
-
-                    if (graderOutput.TryGet<string>("payload", out var payload))
-                        evalRunRowGrader.Payload = payload;
                 }
 
                 evalRunRowGrader.Status = EvalRunStatus.Completed;
@@ -408,7 +461,7 @@ public class EngineService(
         finally
         {
             evalRunRowGrader.Finished = DateTime.Now;
-            await repository.UpsertEvalRunRowGraders(evalRunId, [evalRunRowGrader]);
+            await repository.UpsertEvalRunRowGraders([evalRunRowGrader]);
         }
 
     }

@@ -380,13 +380,16 @@ namespace SharpOMatic.Engine.Migrations
                     b.Property<Guid>("EvalGraderId")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid>("EvalRunId")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid>("EvalRunRowId")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("Finished")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Payload")
+                    b.Property<string>("OutputContext")
                         .HasColumnType("TEXT");
 
                     b.Property<double?>("Score")

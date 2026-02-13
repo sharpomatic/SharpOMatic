@@ -124,16 +124,13 @@ public class EvalController : ControllerBase
         await repositoryService.DeleteEvalConfig(id);
     }
 
-    [HttpPost("configs/{id}/graders")]
-    public async Task UpsertEvalGraders(IRepositoryService repositoryService, Guid id, [FromBody] List<EvalGrader> graders)
+    [HttpPost("configs/graders")]
+    public async Task UpsertEvalGraders(IRepositoryService repositoryService, [FromBody] List<EvalGrader> graders)
     {
         if (graders is null || graders.Count == 0)
             return;
 
-        foreach (var grader in graders)
-            grader.EvalConfigId = id;
-
-        await repositoryService.UpsertEvalGraders(id, graders);
+        await repositoryService.UpsertEvalGraders(graders);
     }
 
     [HttpDelete("graders/{id}")]
@@ -142,16 +139,13 @@ public class EvalController : ControllerBase
         await repositoryService.DeleteEvalGrader(id);
     }
 
-    [HttpPost("configs/{id}/columns")]
-    public async Task UpsertEvalColumns(IRepositoryService repositoryService, Guid id, [FromBody] List<EvalColumn> columns)
+    [HttpPost("configs/columns")]
+    public async Task UpsertEvalColumns(IRepositoryService repositoryService, [FromBody] List<EvalColumn> columns)
     {
         if (columns is null || columns.Count == 0)
             return;
 
-        foreach (var column in columns)
-            column.EvalConfigId = id;
-
-        await repositoryService.UpsertEvalColumns(id, columns);
+        await repositoryService.UpsertEvalColumns(columns);
     }
 
     [HttpDelete("columns/{id}")]
@@ -160,16 +154,13 @@ public class EvalController : ControllerBase
         await repositoryService.DeleteEvalColumn(id);
     }
 
-    [HttpPost("configs/{id}/rows")]
-    public async Task UpsertEvalRows(IRepositoryService repositoryService, Guid id, [FromBody] List<EvalRow> rows)
+    [HttpPost("configs/rows")]
+    public async Task UpsertEvalRows(IRepositoryService repositoryService, [FromBody] List<EvalRow> rows)
     {
         if (rows is null || rows.Count == 0)
             return;
 
-        foreach (var row in rows)
-            row.EvalConfigId = id;
-
-        await repositoryService.UpsertEvalRows(id, rows);
+        await repositoryService.UpsertEvalRows(rows);
     }
 
     [HttpDelete("rows/{id}")]
@@ -178,13 +169,13 @@ public class EvalController : ControllerBase
         await repositoryService.DeleteEvalRow(id);
     }
 
-    [HttpPost("configs/{id}/data")]
-    public async Task UpsertEvalData(IRepositoryService repositoryService, Guid id, [FromBody] List<EvalData> data)
+    [HttpPost("configs/data")]
+    public async Task UpsertEvalData(IRepositoryService repositoryService, [FromBody] List<EvalData> data)
     {
         if (data is null || data.Count == 0)
             return;
 
-        await repositoryService.UpsertEvalData(id, data);
+        await repositoryService.UpsertEvalData(data);
     }
 
     [HttpDelete("data/{id}")]

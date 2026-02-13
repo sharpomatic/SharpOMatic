@@ -855,24 +855,23 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task UpsertEvalGraders(Guid evalConfigId, List<EvalGrader> graders)
+    public async Task UpsertEvalGraders(List<EvalGrader> graders)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
         if (graders.Count == 0)
             return;
 
-        var graderIds = graders.Select(grader => grader.EvalGraderId).ToList();
-        var existing = await dbContext.EvalGraders.Where(grader => graderIds.Contains(grader.EvalGraderId)).ToListAsync();
-        var existingLookup = existing.ToDictionary(grader => grader.EvalGraderId);
+        var ids = graders.Select(grader => grader.EvalGraderId).Distinct().ToList();
+        var entities = await (from run in dbContext.EvalGraders where ids.Contains(run.EvalGraderId) select run).ToListAsync();
 
         foreach (var grader in graders)
         {
-            grader.EvalConfigId = evalConfigId;
-            if (existingLookup.TryGetValue(grader.EvalGraderId, out var entity))
-                dbContext.Entry(entity).CurrentValues.SetValues(grader);
-            else
+            var entity = entities.Where(e => e.EvalGraderId == grader.EvalGraderId).FirstOrDefault();
+            if (entity is null)
                 dbContext.EvalGraders.Add(grader);
+            else
+                dbContext.Entry(entity).CurrentValues.SetValues(grader);
         }
 
         await dbContext.SaveChangesAsync();
@@ -891,24 +890,23 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task UpsertEvalColumns(Guid evalConfigId, List<EvalColumn> columns)
+    public async Task UpsertEvalColumns(List<EvalColumn> columns)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
         if (columns.Count == 0)
             return;
 
-        var columnIds = columns.Select(column => column.EvalColumnId).ToList();
-        var existing = await dbContext.EvalColumns.Where(column => columnIds.Contains(column.EvalColumnId)).ToListAsync();
-        var existingLookup = existing.ToDictionary(column => column.EvalColumnId);
+        var ids = columns.Select(row => row.EvalColumnId).Distinct().ToList();
+        var entities = await (from run in dbContext.EvalColumns where ids.Contains(run.EvalColumnId) select run).ToListAsync();
 
         foreach (var column in columns)
         {
-            column.EvalConfigId = evalConfigId;
-            if (existingLookup.TryGetValue(column.EvalColumnId, out var entity))
-                dbContext.Entry(entity).CurrentValues.SetValues(column);
-            else
+            var entity = entities.Where(e => e.EvalColumnId == column.EvalColumnId).FirstOrDefault();
+            if (entity is null)
                 dbContext.EvalColumns.Add(column);
+            else
+                dbContext.Entry(entity).CurrentValues.SetValues(column);
         }
 
         await dbContext.SaveChangesAsync();
@@ -927,24 +925,23 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task UpsertEvalRows(Guid evalConfigId, List<EvalRow> rows)
+    public async Task UpsertEvalRows(List<EvalRow> rows)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
         if (rows.Count == 0)
             return;
 
-        var rowIds = rows.Select(row => row.EvalRowId).ToList();
-        var existing = await dbContext.EvalRows.Where(row => rowIds.Contains(row.EvalRowId)).ToListAsync();
-        var existingLookup = existing.ToDictionary(row => row.EvalRowId);
+        var ids = rows.Select(row => row.EvalRowId).Distinct().ToList();
+        var entities = await (from run in dbContext.EvalRows where ids.Contains(run.EvalRowId) select run).ToListAsync();
 
         foreach (var row in rows)
         {
-            row.EvalConfigId = evalConfigId;
-            if (existingLookup.TryGetValue(row.EvalRowId, out var entity))
-                dbContext.Entry(entity).CurrentValues.SetValues(row);
-            else
+            var entity = entities.Where(e => e.EvalRowId == row.EvalRowId).FirstOrDefault();
+            if (entity is null)
                 dbContext.EvalRows.Add(row);
+            else
+                dbContext.Entry(entity).CurrentValues.SetValues(row);
         }
 
         await dbContext.SaveChangesAsync();
@@ -963,42 +960,23 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task UpsertEvalData(Guid evalConfigId, List<EvalData> data)
+    public async Task UpsertEvalData(List<EvalData> data)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
         if (data.Count == 0)
             return;
 
-        var rowIds = data.Select(entry => entry.EvalRowId).Distinct().ToList();
-        var columnIds = data.Select(entry => entry.EvalColumnId).Distinct().ToList();
+        var ids = data.Select(row => row.EvalDataId).Distinct().ToList();
+        var entities = await (from run in dbContext.EvalData where ids.Contains(run.EvalDataId) select run).ToListAsync();
 
-        var validRowIds = await dbContext.EvalRows.AsNoTracking().Where(row => row.EvalConfigId == evalConfigId && rowIds.Contains(row.EvalRowId)).Select(row => row.EvalRowId).ToListAsync();
-
-        var validColumnIds = await dbContext
-            .EvalColumns.AsNoTracking()
-            .Where(column => column.EvalConfigId == evalConfigId && columnIds.Contains(column.EvalColumnId))
-            .Select(column => column.EvalColumnId)
-            .ToListAsync();
-
-        var invalidRowIds = rowIds.Except(validRowIds).ToList();
-        if (invalidRowIds.Count > 0)
-            throw new SharpOMaticException($"EvalRow(s) do not belong to EvalConfig '{evalConfigId}'.");
-
-        var invalidColumnIds = columnIds.Except(validColumnIds).ToList();
-        if (invalidColumnIds.Count > 0)
-            throw new SharpOMaticException($"EvalColumn(s) do not belong to EvalConfig '{evalConfigId}'.");
-
-        var dataIds = data.Select(entry => entry.EvalDataId).ToList();
-        var existing = await dbContext.EvalData.Where(entry => dataIds.Contains(entry.EvalDataId)).ToListAsync();
-        var existingLookup = existing.ToDictionary(entry => entry.EvalDataId);
-
-        foreach (var entry in data)
+        foreach (var row in data)
         {
-            if (existingLookup.TryGetValue(entry.EvalDataId, out var entity))
-                dbContext.Entry(entity).CurrentValues.SetValues(entry);
+            var entity = entities.Where(e => e.EvalDataId == row.EvalDataId).FirstOrDefault();
+            if (entity is null)
+                dbContext.EvalData.Add(row);
             else
-                dbContext.EvalData.Add(entry);
+                dbContext.Entry(entity).CurrentValues.SetValues(row);
         }
 
         await dbContext.SaveChangesAsync();
@@ -1031,124 +1009,89 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task UpsertEvalRunRows(Guid evalRunId, List<EvalRunRow> runRows)
+    public async Task UpsertEvalRunRows(List<EvalRunRow> runRows)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
         if (runRows.Count == 0)
             return;
 
-        var evalRun = await (from run in dbContext.EvalRuns.AsNoTracking() where run.EvalRunId == evalRunId select run).FirstOrDefaultAsync();
-        if (evalRun is null)
-            throw new SharpOMaticException($"EvalRun '{evalRunId}' cannot be found.");
-
-        var rowIds = runRows.Select(row => row.EvalRowId).Distinct().ToList();
-        var validRowIds = await dbContext
-            .EvalRows.AsNoTracking()
-            .Where(row => row.EvalConfigId == evalRun.EvalConfigId && rowIds.Contains(row.EvalRowId))
-            .Select(row => row.EvalRowId)
-            .ToListAsync();
-        var invalidRowIds = rowIds.Except(validRowIds).ToList();
-        if (invalidRowIds.Count > 0)
-            throw new SharpOMaticException($"EvalRow(s) do not belong to EvalRun '{evalRunId}'.");
-
-        var runRowIds = runRows.Select(row => row.EvalRunRowId).ToList();
-        var existing = await dbContext.EvalRunRows.Where(row => runRowIds.Contains(row.EvalRunRowId)).ToListAsync();
-        var existingLookup = existing.ToDictionary(row => row.EvalRunRowId);
+        var ids = runRows.Select(row => row.EvalRunRowId).Distinct().ToList();
+        var entities = await (from run in dbContext.EvalRunRows where ids.Contains(run.EvalRunRowId) select run).ToListAsync();
 
         foreach (var row in runRows)
         {
-            row.EvalRunId = evalRunId;
-            if (existingLookup.TryGetValue(row.EvalRunRowId, out var entity))
-                dbContext.Entry(entity).CurrentValues.SetValues(row);
-            else
+            var entity = entities.Where(e => e.EvalRunRowId == row.EvalRunRowId).FirstOrDefault();
+            if (entity is null)
                 dbContext.EvalRunRows.Add(row);
+            else
+                dbContext.Entry(entity).CurrentValues.SetValues(row);
         }
 
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task UpsertEvalRunRowGraders(Guid evalRunId, List<EvalRunRowGrader> runRowGraders)
+    public async Task UpsertEvalRunRowGraders(List<EvalRunRowGrader> runRowGraders)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
         if (runRowGraders.Count == 0)
             return;
 
-        var evalRun = await (from run in dbContext.EvalRuns.AsNoTracking() where run.EvalRunId == evalRunId select run).FirstOrDefaultAsync();
-        if (evalRun is null)
-            throw new SharpOMaticException($"EvalRun '{evalRunId}' cannot be found.");
+        var ids = runRowGraders.Select(row => row.EvalRunRowGraderId).Distinct().ToList();
+        var entities = await (from run in dbContext.EvalRunRowGraders where ids.Contains(run.EvalRunRowGraderId) select run).ToListAsync();
 
-        var runRowIds = runRowGraders.Select(grader => grader.EvalRunRowId).Distinct().ToList();
-        var validRunRowIds = await dbContext
-            .EvalRunRows.AsNoTracking()
-            .Where(runRow => runRow.EvalRunId == evalRunId && runRowIds.Contains(runRow.EvalRunRowId))
-            .Select(runRow => runRow.EvalRunRowId)
-            .ToListAsync();
-        var invalidRunRowIds = runRowIds.Except(validRunRowIds).ToList();
-        if (invalidRunRowIds.Count > 0)
-            throw new SharpOMaticException($"EvalRunRow(s) do not belong to EvalRun '{evalRunId}'.");
-
-        var graderIds = runRowGraders.Select(grader => grader.EvalGraderId).Distinct().ToList();
-        var validGraderIds = await dbContext
-            .EvalGraders.AsNoTracking()
-            .Where(grader => grader.EvalConfigId == evalRun.EvalConfigId && graderIds.Contains(grader.EvalGraderId))
-            .Select(grader => grader.EvalGraderId)
-            .ToListAsync();
-        var invalidGraderIds = graderIds.Except(validGraderIds).ToList();
-        if (invalidGraderIds.Count > 0)
-            throw new SharpOMaticException($"EvalGrader(s) do not belong to EvalRun '{evalRunId}'.");
-
-        var runRowGraderIds = runRowGraders.Select(grader => grader.EvalRunRowGraderId).ToList();
-        var existing = await dbContext.EvalRunRowGraders.Where(grader => runRowGraderIds.Contains(grader.EvalRunRowGraderId)).ToListAsync();
-        var existingLookup = existing.ToDictionary(grader => grader.EvalRunRowGraderId);
-
-        foreach (var runRowGrader in runRowGraders)
+        foreach (var row in runRowGraders)
         {
-            if (existingLookup.TryGetValue(runRowGrader.EvalRunRowGraderId, out var entity))
-                dbContext.Entry(entity).CurrentValues.SetValues(runRowGrader);
+            var entity = entities.Where(e => e.EvalRunRowGraderId == row.EvalRunRowGraderId).FirstOrDefault();
+            if (entity is null)
+                dbContext.EvalRunRowGraders.Add(row);
             else
-                dbContext.EvalRunRowGraders.Add(runRowGrader);
+                dbContext.Entry(entity).CurrentValues.SetValues(row);
         }
 
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task UpsertEvalRunGraderSummaries(Guid evalRunId, List<EvalRunGraderSummary> graderSummaries)
+    public async Task UpsertEvalRunGraderSummaries(List<EvalRunGraderSummary> graderSummaries)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
         if (graderSummaries.Count == 0)
             return;
 
+        var ids = graderSummaries.Select(row => row.EvalRunGraderSummaryId).Distinct().ToList();
+        var entities = await (from run in dbContext.EvalRunGraderSummaries where ids.Contains(run.EvalRunGraderSummaryId) select run).ToListAsync();
+
+        foreach (var summary in graderSummaries)
+        {
+            var entity = entities.Where(e => e.EvalRunGraderSummaryId == summary.EvalRunGraderSummaryId).FirstOrDefault();
+            if (entity is null)
+                dbContext.EvalRunGraderSummaries.Add(summary);
+            else
+                dbContext.Entry(entity).CurrentValues.SetValues(summary);
+        }
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task<List<EvalRunRowGrader>> GetEvalRunRowGraders(Guid evalRunId, Guid evalGraderId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
         var evalRun = await (from run in dbContext.EvalRuns.AsNoTracking() where run.EvalRunId == evalRunId select run).FirstOrDefaultAsync();
         if (evalRun is null)
             throw new SharpOMaticException($"EvalRun '{evalRunId}' cannot be found.");
 
-        var graderIds = graderSummaries.Select(summary => summary.EvalGraderId).Distinct().ToList();
-        var validGraderIds = await dbContext
-            .EvalGraders.AsNoTracking()
-            .Where(grader => grader.EvalConfigId == evalRun.EvalConfigId && graderIds.Contains(grader.EvalGraderId))
-            .Select(grader => grader.EvalGraderId)
-            .ToListAsync();
-        var invalidGraderIds = graderIds.Except(validGraderIds).ToList();
-        if (invalidGraderIds.Count > 0)
-            throw new SharpOMaticException($"EvalGrader(s) do not belong to EvalRun '{evalRunId}'.");
+        var evalGrader = await (from grader in dbContext.EvalGraders.AsNoTracking() where grader.EvalGraderId == evalGraderId select grader).FirstOrDefaultAsync();
+        if (evalGrader is null || evalGrader.EvalConfigId != evalRun.EvalConfigId)
+            throw new SharpOMaticException($"EvalGrader '{evalGraderId}' does not belong to EvalRun '{evalRunId}'.");
 
-        var summaryIds = graderSummaries.Select(summary => summary.EvalRunGraderSummaryId).ToList();
-        var existing = await dbContext.EvalRunGraderSummaries.Where(summary => summaryIds.Contains(summary.EvalRunGraderSummaryId)).ToListAsync();
-        var existingLookup = existing.ToDictionary(summary => summary.EvalRunGraderSummaryId);
-
-        foreach (var summary in graderSummaries)
-        {
-            summary.EvalRunId = evalRunId;
-            if (existingLookup.TryGetValue(summary.EvalRunGraderSummaryId, out var entity))
-                dbContext.Entry(entity).CurrentValues.SetValues(summary);
-            else
-                dbContext.EvalRunGraderSummaries.Add(summary);
-        }
-
-        await dbContext.SaveChangesAsync();
+        return await (
+            from runRowGrader in dbContext.EvalRunRowGraders.AsNoTracking()
+            where runRowGrader.EvalRunId == evalRunId && runRowGrader.EvalGraderId == evalGraderId
+            select runRowGrader
+        ).ToListAsync();
     }
 
     public async Task<int> GetEvalRunSummaryCount(Guid evalConfigId, string? search)
@@ -1350,7 +1293,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                     Started = runRowGrader.Started,
                     Finished = runRowGrader.Finished,
                     Score = runRowGrader.Score,
-                    Payload = runRowGrader.Payload,
+                    OutputContext = runRowGrader.OutputContext,
                     Error = runRowGrader.Error,
                 },
             }
