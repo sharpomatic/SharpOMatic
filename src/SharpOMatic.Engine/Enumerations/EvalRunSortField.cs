@@ -6,5 +6,5 @@ public enum EvalRunSortField
     Status = 1,
     CompletedRows = 2,
     FailedRows = 3,
-    CanceledRows = 4,
+    Name = 4,
 }

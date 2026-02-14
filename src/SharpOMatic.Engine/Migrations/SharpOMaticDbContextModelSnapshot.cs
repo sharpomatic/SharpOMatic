@@ -247,9 +247,6 @@ namespace SharpOMatic.Engine.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("CanceledRows")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("CompletedRows")
                         .HasColumnType("INTEGER");
 
@@ -266,6 +263,10 @@ namespace SharpOMatic.Engine.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Message")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("Started")

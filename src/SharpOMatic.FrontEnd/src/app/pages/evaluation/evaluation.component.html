@@ -448,9 +448,7 @@
                 (dblclick)="openRunDetail(run)"
               >
                 <div class="d-flex justify-content-between align-items-center">
-                  <span class="fw-semibold">{{
-                    formatDateTime(run.started)
-                  }}</span>
+                  <span class="fw-semibold">{{ run.name || '(unnamed run)' }}</span>
                   <span
                     class="badge"
                     [ngClass]="getRunStatusBadgeClass(run.status)"
@@ -459,6 +457,9 @@
                   </span>
                 </div>
                 <div class="small text-body-secondary mt-1">
+                  Started: {{ formatDateTime(run.started) }}
+                </div>
+                <div class="small text-body-secondary">
                   Rows: {{ run.completedRows }}/{{ run.totalRows }} completed
                   <span class="ms-2">Failed: {{ run.failedRows }}</span>
                 </div>

@@ -106,9 +106,13 @@ public class EvalController : ControllerBase
     }
 
     [HttpPost("configs/{id}/runs")]
-    public async Task<ActionResult<Guid>> StartEvalRun(IEngineService engineService, Guid id)
+    public async Task<ActionResult<Guid>> StartEvalRun(
+        IEngineService engineService,
+        Guid id,
+        [FromBody] StartEvalRunRequest? request = null
+    )
     {
-        var evalRun = await engineService.StartEvalRun(id);
+        var evalRun = await engineService.StartEvalRun(id, request?.Name);
         return evalRun.EvalRunId;
     }
 

@@ -650,10 +650,14 @@ export class ServerRepositoryService {
     );
   }
 
-  public startEvalRun(evalConfigId: string): Observable<string | undefined> {
+  public startEvalRun(
+    evalConfigId: string,
+    name?: string | null,
+  ): Observable<string | undefined> {
     const apiUrl = this.settingsService.apiUrl();
+    const payload = { name: name ?? null };
     return this.http
-      .post<string>(`${apiUrl}/api/eval/configs/${evalConfigId}/runs`, null)
+      .post<string>(`${apiUrl}/api/eval/configs/${evalConfigId}/runs`, payload)
       .pipe(
         catchError((error) => {
           this.notifyError('Starting eval run', error);

@@ -1129,6 +1129,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             {
                 EvalRunId = run.EvalRunId,
                 EvalConfigId = run.EvalConfigId,
+                Name = run.Name,
                 Started = run.Started,
                 Finished = run.Finished,
                 Status = run.Status,
@@ -1137,7 +1138,6 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 TotalRows = run.TotalRows,
                 CompletedRows = run.CompletedRows,
                 FailedRows = run.FailedRows,
-                CanceledRows = run.CanceledRows,
             })
             .ToListAsync();
     }
@@ -1166,6 +1166,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         {
             EvalRunId = evalRun.EvalRunId,
             EvalConfigId = evalRun.EvalConfigId,
+            Name = evalRun.Name,
             Started = evalRun.Started,
             Finished = evalRun.Finished,
             Status = evalRun.Status,
@@ -1174,7 +1175,6 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             TotalRows = evalRun.TotalRows,
             CompletedRows = evalRun.CompletedRows,
             FailedRows = evalRun.FailedRows,
-            CanceledRows = evalRun.CanceledRows,
         };
 
         var graderSummaries = await (
@@ -1342,6 +1342,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             return evalRuns.Where(
                 run =>
                     run.EvalRunId == parsedRunId
+                    || run.Name.ToLower().Contains(normalizedSearch)
                     || (run.Message != null && run.Message.ToLower().Contains(normalizedSearch))
                     || (run.Error != null && run.Error.ToLower().Contains(normalizedSearch))
             );
@@ -1349,7 +1350,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         return evalRuns.Where(
             run =>
-                (run.Message != null && run.Message.ToLower().Contains(normalizedSearch))
+                run.Name.ToLower().Contains(normalizedSearch)
+                || (run.Message != null && run.Message.ToLower().Contains(normalizedSearch))
                 || (run.Error != null && run.Error.ToLower().Contains(normalizedSearch))
         );
     }
@@ -1358,6 +1360,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         return sortBy switch
         {
+            EvalRunSortField.Name => sortDirection == SortDirection.Ascending
+                ? evalRuns.OrderBy(run => run.Name).ThenByDescending(run => run.Started)
+                : evalRuns.OrderByDescending(run => run.Name).ThenByDescending(run => run.Started),
             EvalRunSortField.Status => sortDirection == SortDirection.Ascending
                 ? evalRuns.OrderBy(run => run.Status).ThenByDescending(run => run.Started)
                 : evalRuns.OrderByDescending(run => run.Status).ThenByDescending(run => run.Started),
@@ -1367,9 +1372,6 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             EvalRunSortField.FailedRows => sortDirection == SortDirection.Ascending
                 ? evalRuns.OrderBy(run => run.FailedRows).ThenByDescending(run => run.Started)
                 : evalRuns.OrderByDescending(run => run.FailedRows).ThenByDescending(run => run.Started),
-            EvalRunSortField.CanceledRows => sortDirection == SortDirection.Ascending
-                ? evalRuns.OrderBy(run => run.CanceledRows).ThenByDescending(run => run.Started)
-                : evalRuns.OrderByDescending(run => run.CanceledRows).ThenByDescending(run => run.Started),
             _ => sortDirection == SortDirection.Ascending ? evalRuns.OrderBy(run => run.Started) : evalRuns.OrderByDescending(run => run.Started),
         };
     }

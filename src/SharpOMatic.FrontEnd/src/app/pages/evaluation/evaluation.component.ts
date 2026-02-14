@@ -27,7 +27,7 @@ import { SortDirection } from '../../enumerations/sort-direction';
 import { MonacoService } from '../../services/monaco.service';
 import { ServerRepositoryService } from '../../services/server.repository.service';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
-import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
+import { EvalStartRunDialogComponent } from '../../dialogs/eval-start-run/eval-start-run-dialog.component';
 import { EvalRunStatus } from '../../eval/enumerations/eval-run-status';
 import { EvalRunSortField } from '../../eval/enumerations/eval-run-sort-field';
 import { EvalRunSummarySnapshot } from '../../eval/definitions/eval-run-summary';
@@ -57,7 +57,7 @@ export class EvaluationComponent
   private readonly router = inject(Router);
   private readonly serverRepository = inject(ServerRepositoryService);
   private readonly modalService = inject(BsModalService);
-  private confirmModalRef: BsModalRef<ConfirmDialogComponent> | undefined;
+  private startRunModalRef: BsModalRef<EvalStartRunDialogComponent> | undefined;
 
   public evalConfig = EvalConfig.fromSnapshot(EvalConfig.defaultSnapshot());
   public readonly contextEntryType = ContextEntryType;
@@ -158,30 +158,33 @@ export class EvaluationComponent
     const rowLabel = rowCount === 1 ? 'evaluation' : 'evaluations';
     const graderLabel = graderCount === 1 ? 'grader' : 'graders';
 
-    this.confirmModalRef = this.modalService.show(ConfirmDialogComponent, {
+    this.startRunModalRef = this.modalService.show(EvalStartRunDialogComponent, {
       initialState: {
         title: 'Start Evaluation Run',
         message: `Are you sure you want to run this evaluation?\n\nThis will execute ${rowCount} ${rowLabel} with ${graderCount} ${graderLabel}.`,
       },
     });
 
-    const modalRef = this.confirmModalRef;
+    const modalRef = this.startRunModalRef;
     modalRef.onHidden?.pipe(take(1)).subscribe(() => {
       if (!modalRef.content?.result || this.isStartingRun) {
         return;
       }
 
       this.isStartingRun = true;
-      this.serverRepository.startEvalRun(this.evalConfig.evalConfigId).subscribe({
-        next: (evalRunId) => {
-          this.isStartingRun = false;
-          if (evalRunId) {
-            this.activeTabId = 'runs';
-            this.updateTabRoute('runs');
-            this.refreshRuns(evalRunId);
-          }
-        },
-      });
+      const runName = modalRef.content.runName;
+      this.serverRepository
+        .startEvalRun(this.evalConfig.evalConfigId, runName)
+        .subscribe({
+          next: (evalRunId) => {
+            this.isStartingRun = false;
+            if (evalRunId) {
+              this.activeTabId = 'runs';
+              this.updateTabRoute('runs');
+              this.refreshRuns(evalRunId);
+            }
+          },
+        });
     });
   }
 

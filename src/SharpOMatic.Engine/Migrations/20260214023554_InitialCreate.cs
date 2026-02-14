@@ -204,6 +204,7 @@ namespace SharpOMatic.Engine.Migrations
                 {
                     EvalRunId = table.Column<Guid>(type: "TEXT", nullable: false),
                     EvalConfigId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Name = table.Column<string>(type: "TEXT", nullable: false),
                     Started = table.Column<DateTime>(type: "TEXT", nullable: false),
                     Finished = table.Column<DateTime>(type: "TEXT", nullable: true),
                     Status = table.Column<int>(type: "INTEGER", nullable: false),
@@ -211,8 +212,7 @@ namespace SharpOMatic.Engine.Migrations
                     Error = table.Column<string>(type: "TEXT", nullable: true),
                     TotalRows = table.Column<int>(type: "INTEGER", nullable: false),
                     CompletedRows = table.Column<int>(type: "INTEGER", nullable: false),
-                    FailedRows = table.Column<int>(type: "INTEGER", nullable: false),
-                    CanceledRows = table.Column<int>(type: "INTEGER", nullable: false)
+                    FailedRows = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {

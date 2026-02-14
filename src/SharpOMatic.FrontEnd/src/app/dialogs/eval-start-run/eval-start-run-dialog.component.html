@@ -1,0 +1,30 @@
+<div class="modal-header">
+  <h4 class="modal-title pull-left">{{ title }}</h4>
+  <button
+    type="button"
+    class="btn-close close pull-right"
+    aria-label="Close"
+    (click)="cancel()"
+  >
+    <span aria-hidden="true" class="visually-hidden">&times;</span>
+  </button>
+</div>
+<div class="modal-body">
+  <p style="white-space: pre-line">{{ message }}</p>
+  <label for="eval-run-name" class="form-label mb-1">Run name (optional)</label>
+  <input
+    id="eval-run-name"
+    type="text"
+    class="form-control"
+    placeholder="Leave blank to use default date/time"
+    [(ngModel)]="runName"
+  />
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-outline-secondary" (click)="cancel()">
+    Cancel
+  </button>
+  <button type="button" class="btn btn-primary" (click)="startRun()">
+    Start Run
+  </button>
+</div>

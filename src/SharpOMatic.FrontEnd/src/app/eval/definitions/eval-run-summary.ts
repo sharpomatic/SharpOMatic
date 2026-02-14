@@ -3,6 +3,7 @@ import { EvalRunStatus } from '../enumerations/eval-run-status';
 export interface EvalRunSummarySnapshot {
   evalRunId: string;
   evalConfigId: string;
+  name: string;
   started: string;
   finished: string | null;
   status: EvalRunStatus;
@@ -11,5 +12,4 @@ export interface EvalRunSummarySnapshot {
   totalRows: number;
   completedRows: number;
   failedRows: number;
-  canceledRows: number;
 }

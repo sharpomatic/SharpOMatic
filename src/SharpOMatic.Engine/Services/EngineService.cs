@@ -79,9 +79,9 @@ public class EngineService(
         return StartWorkflowRunAndWait(runId, context, inputEntries).GetAwaiter().GetResult();
     }
 
-    public async Task<EvalRun> StartEvalRun(Guid workflowId)
+    public async Task<EvalRun> StartEvalRun(Guid evalConfigId, string? name = null)
     {
-        return await StartEvalRunInternal(workflowId);
+        return await StartEvalRunInternal(evalConfigId, name);
     }
 
     private async Task<Run> CreateRunInternal(Guid workflowId)
@@ -160,15 +160,17 @@ public class EngineService(
         return inputJson;
     }
 
-    private async Task<EvalRun> StartEvalRunInternal(Guid evalConfigId)
+    private async Task<EvalRun> StartEvalRunInternal(Guid evalConfigId, string? name)
     {
         var evalConfigDetail = await RepositoryService.GetEvalConfigDetail(evalConfigId);
+        var started = DateTime.Now;
 
         var evalRun = new EvalRun
         {
             EvalRunId = Guid.NewGuid(),
             EvalConfigId = evalConfigId,
-            Started = DateTime.Now,
+            Name = ResolveEvalRunName(name, started),
+            Started = started,
             Finished = null,
             Status = EvalRunStatus.Running,
             Message = "Starting",
@@ -176,7 +178,6 @@ public class EngineService(
             TotalRows = evalConfigDetail.Rows.Count,
             CompletedRows = 0,
             FailedRows = 0,
-            CanceledRows = 0,
         };
 
         await RepositoryService.UpsertEvalRun(evalRun);
@@ -514,5 +515,14 @@ public class EngineService(
             return evalColumn.InputPath;
         else
             return evalColumn.Name;
+    }
+
+    private static string ResolveEvalRunName(string? name, DateTime started)
+    {
+        var normalized = name?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalized))
+            return normalized;
+
+        return started.ToString("yyyy-MM-dd HH:mm:ss");
     }
 }
