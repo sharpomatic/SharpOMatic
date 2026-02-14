@@ -10,13 +10,11 @@
   </button>
 </div>
 <div class="modal-body">
-  <p style="white-space: pre-line">{{ message }}</p>
   <label for="eval-run-name" class="form-label mb-1">Run name (optional)</label>
   <input
     id="eval-run-name"
     type="text"
     class="form-control"
-    placeholder="Leave blank to use default date/time"
     [(ngModel)]="runName"
   />
 
@@ -30,7 +28,7 @@
       [disabled]="!canUseSampling()"
     />
     <label class="form-check-label" for="eval-run-enable-sampling">
-      Run random sample rows only
+      Run random sample
     </label>
   </div>
 

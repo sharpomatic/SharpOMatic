@@ -188,7 +188,7 @@ export class EvaluationComponent
     this.startRunModalRef = this.modalService.show(EvalStartRunDialogComponent, {
       initialState: {
         title: 'Start Evaluation Run',
-        message: `Are you sure you want to run this evaluation?\n\nThis will execute ${rowCount} ${rowLabel} with ${graderCount} ${graderLabel}.`,
+        message: ``,
         rowCount,
       },
     });

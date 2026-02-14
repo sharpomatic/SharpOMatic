@@ -22,8 +22,6 @@
 
 - Bug, if workflow fails it continues to the graders
 - Check what happens if graders gives error
-- Generate notification at each stage
-- Front end use notification for start, each row finished and overall finished
 - Make frontend look good with graphs or pie charts etc.
 - Parallel execution
 - Allow cancelling a run part way through
