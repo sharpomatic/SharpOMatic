@@ -455,18 +455,35 @@
                 <div class="d-flex justify-content-between align-items-center">
                   <span class="fw-semibold">{{ run.name || '(unnamed run)' }}</span>
                   @if (shouldShowRunListStatus(run.status)) {
-                    <span class="run-text" [class.running]="run.status === evalRunStatus.Running" [class.failed]="run.status === evalRunStatus.Failed">
+                    <span
+                      class="run-text"
+                      [class.running]="run.status === evalRunStatus.Running"
+                      [class.failed]="run.status === evalRunStatus.Failed"
+                      [class.canceled]="run.status === evalRunStatus.Canceled"
+                    >
                       {{ getRunListStatusLabel(run.status) }}
                     </span>
                   }
                 </div>
-                <div class="small text-body-secondary mt-1">
-                  Started: {{ formatDateTime(run.started) }}
-                </div>
-                <div class="small text-body-secondary">
-                  Rows: {{ run.completedRows }}/{{ run.totalRows }} completed
-                  <span class="ms-2">Failed: {{ run.failedRows }}</span>
-                </div>
+                @if (isRunListProgressVisible(run)) {
+                  <div class="run-progress-row">
+                    <div
+                      class="progress run-progress-bar"
+                      role="progressbar"
+                      [attr.aria-valuenow]="getRunProgressPercent(run)"
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                    >
+                      <div
+                        class="progress-bar"
+                        [style.width.%]="getRunProgressPercent(run)"
+                      ></div>
+                    </div>
+                    <span class="run-progress-label text-body-secondary">
+                      {{ getRunProgressLabel(run) }}
+                    </span>
+                  </div>
+                }
               </button>
             }
           }

@@ -275,6 +275,33 @@
     color: white;
     background-color: #ff5454;
   }
+
+  &.canceled {
+    color: white;
+    background-color: #6c757d;
+  }
+}
+
+.run-progress-row {
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.run-progress-bar {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 0.5rem;
+}
+
+.run-progress-bar .progress-bar {
+  background-color: #ff8654;
+}
+
+.run-progress-label {
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 
 .runs-detail {

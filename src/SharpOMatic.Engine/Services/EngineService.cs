@@ -288,6 +288,8 @@ public class EngineService(
         {
             evalRun.Finished = DateTime.Now;
             await repository.UpsertEvalRun(evalRun);
+            foreach (var progressService in progressServices)
+                await progressService.EvalRunProgress(evalRun);
 
             foreach (var notification in engineNotifications)
             {

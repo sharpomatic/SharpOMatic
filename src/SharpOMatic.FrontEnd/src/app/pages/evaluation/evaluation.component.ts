@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import {
   Component,
+  effect,
   HostListener,
   OnDestroy,
   OnInit,
@@ -26,6 +27,7 @@ import { WorkflowSortField } from '../../enumerations/workflow-sort-field';
 import { SortDirection } from '../../enumerations/sort-direction';
 import { MonacoService } from '../../services/monaco.service';
 import { ServerRepositoryService } from '../../services/server.repository.service';
+import { SignalrService } from '../../services/signalr.service';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { EvalStartRunDialogComponent } from '../../dialogs/eval-start-run/eval-start-run-dialog.component';
 import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
@@ -57,9 +59,13 @@ export class EvaluationComponent
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly serverRepository = inject(ServerRepositoryService);
+  private readonly signalrService = inject(SignalrService);
   private readonly modalService = inject(BsModalService);
   private startRunModalRef: BsModalRef<EvalStartRunDialogComponent> | undefined;
   private confirmModalRef: BsModalRef<ConfirmDialogComponent> | undefined;
+  private readonly terminalReloadingRunIds = new Set<string>();
+  private readonly evalRunProgressListener = (data: EvalRunSummarySnapshot) =>
+    this.onEvalRunProgress(data);
 
   public evalConfig = EvalConfig.fromSnapshot(EvalConfig.defaultSnapshot());
   public readonly contextEntryType = ContextEntryType;
@@ -96,6 +102,16 @@ export class EvaluationComponent
   public isLoadingRuns = false;
   public isLoadingRunDetail = false;
   public isDeletingRun = false;
+
+  constructor() {
+    effect(() => {
+      if (this.signalrService.isConnected()) {
+        this.addListeners();
+      } else {
+        this.removeListeners();
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.tabs = [
@@ -136,6 +152,7 @@ export class EvaluationComponent
   }
 
   ngOnDestroy(): void {
+    this.removeListeners();
     if (this.runSearchDebounceId) {
       clearTimeout(this.runSearchDebounceId);
       this.runSearchDebounceId = undefined;
@@ -969,8 +986,16 @@ export class EvaluationComponent
     }
   }
 
+  isTerminalEvalRunStatus(status: EvalRunStatus): boolean {
+    return (
+      status === EvalRunStatus.Completed ||
+      status === EvalRunStatus.Failed ||
+      status === EvalRunStatus.Canceled
+    );
+  }
+
   shouldShowRunListStatus(status: EvalRunStatus): boolean {
-    return status === EvalRunStatus.Running || status === EvalRunStatus.Failed;
+    return status !== EvalRunStatus.Completed;
   }
 
   getRunListStatusLabel(status: EvalRunStatus): string {
@@ -979,9 +1004,33 @@ export class EvaluationComponent
         return 'Running';
       case EvalRunStatus.Failed:
         return 'Failed';
+      case EvalRunStatus.Canceled:
+        return 'Canceled';
       default:
         return '';
     }
+  }
+
+  isRunListProgressVisible(run: EvalRunSummarySnapshot): boolean {
+    return run.status === EvalRunStatus.Running;
+  }
+
+  getRunProgressCompletedCount(run: EvalRunSummarySnapshot): number {
+    return Math.max(0, run.completedRows + run.failedRows);
+  }
+
+  getRunProgressPercent(run: EvalRunSummarySnapshot): number {
+    if (run.totalRows <= 0) {
+      return 0;
+    }
+
+    const completed = this.getRunProgressCompletedCount(run);
+    const percent = (completed / run.totalRows) * 100;
+    return Math.min(100, Math.max(0, Math.round(percent)));
+  }
+
+  getRunProgressLabel(run: EvalRunSummarySnapshot): string {
+    return `${this.getRunProgressCompletedCount(run)} / ${run.totalRows}`;
   }
 
   formatDateTime(value: string | null): string {
@@ -1171,6 +1220,105 @@ export class EvaluationComponent
     this.serverRepository.getEvalRunDetail(this.selectedRunId).subscribe((detail) => {
       this.isLoadingRunDetail = false;
       this.selectedRunDetail = detail;
+    });
+  }
+
+  private addListeners(): void {
+    this.signalrService.addListener(
+      'EvalRunProgress',
+      this.evalRunProgressListener,
+    );
+  }
+
+  private removeListeners(): void {
+    this.signalrService.removeListener(
+      'EvalRunProgress',
+      this.evalRunProgressListener,
+    );
+  }
+
+  private onEvalRunProgress(progress: EvalRunSummarySnapshot): void {
+    if (!this.hasLoadedConfig) {
+      return;
+    }
+
+    if (progress.evalConfigId !== this.evalConfig.evalConfigId) {
+      return;
+    }
+
+    const index = this.runs.findIndex((run) => run.evalRunId === progress.evalRunId);
+    if (index < 0) {
+      return;
+    }
+
+    const previousRun = this.runs[index];
+    const previousStatus = previousRun.status;
+    const updatedRun = this.applyRunProgress(progress, previousRun);
+    const nextRuns = [...this.runs];
+    nextRuns[index] = updatedRun;
+    this.runs = nextRuns;
+
+    if (this.selectedRunDetail?.evalRun?.evalRunId === progress.evalRunId) {
+      this.selectedRunDetail = {
+        ...this.selectedRunDetail,
+        evalRun: this.applyRunProgress(progress, this.selectedRunDetail.evalRun),
+      };
+    }
+
+    const transitionedToTerminal =
+      previousStatus !== progress.status &&
+      this.isTerminalEvalRunStatus(progress.status);
+    if (!transitionedToTerminal) {
+      return;
+    }
+
+    this.reloadTerminalRunDetail(progress.evalRunId);
+  }
+
+  private applyRunProgress(
+    progress: EvalRunSummarySnapshot,
+    current: EvalRunSummarySnapshot,
+  ): EvalRunSummarySnapshot {
+    return {
+      ...current,
+      name: progress.name,
+      started: progress.started,
+      finished: progress.finished,
+      status: progress.status,
+      message: progress.message,
+      error: progress.error,
+      totalRows: progress.totalRows,
+      completedRows: progress.completedRows,
+      failedRows: progress.failedRows,
+    };
+  }
+
+  private reloadTerminalRunDetail(evalRunId: string): void {
+    if (this.terminalReloadingRunIds.has(evalRunId)) {
+      return;
+    }
+
+    this.terminalReloadingRunIds.add(evalRunId);
+    this.serverRepository.getEvalRunDetail(evalRunId).subscribe({
+      next: (detail) => {
+        if (!detail) {
+          return;
+        }
+
+        const index = this.runs.findIndex((run) => run.evalRunId === evalRunId);
+        if (index >= 0) {
+          const nextRuns = [...this.runs];
+          nextRuns[index] = detail.evalRun;
+          this.runs = nextRuns;
+        }
+
+        if (this.selectedRunDetail?.evalRun?.evalRunId === evalRunId) {
+          this.selectedRunDetail = detail;
+        }
+      },
+      complete: () => {
+        this.terminalReloadingRunIds.delete(evalRunId);
+      },
     });
   }
 
