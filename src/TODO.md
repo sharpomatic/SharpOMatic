@@ -14,7 +14,6 @@
 ### Evaluations
 
 - Parallel execution
-- Check all the column types are working
 - Generate notification at each stage
 - Front end use notification for start, each row finished and overall finished
 - Allow a sampled run

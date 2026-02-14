@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
+﻿using Google.GenAI.Types;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using SharpOMatic.Engine.DTO;
 using SharpOMatic.Engine.Entities.Definitions;
@@ -190,12 +191,14 @@ public class EngineService(
         var provider = serviceScope.ServiceProvider;
         var repository = provider.GetRequiredService<IRepositoryService>();
         var jsonConverterService = provider.GetRequiredService<IJsonConverterService>();
+        var assetStore = provider.GetRequiredService<IAssetStore>();
+        var scriptOptionsService = provider.GetRequiredService<IScriptOptionsService>();
 
         try
         {
             foreach(var row in evalConfigDetail.Rows.OrderBy(r => r.Order))
             {
-                var evalRunRow = await PerformEvalRow(repository, jsonConverterService, evalRun.EvalRunId, evalConfigDetail, row);
+                var evalRunRow = await PerformEvalRow(provider, repository, jsonConverterService, assetStore, scriptOptionsService, evalRun.EvalRunId, evalConfigDetail, row);
                 if (evalRunRow.Status == EvalRunStatus.Completed)
                     evalRun.CompletedRows++;
                 else
@@ -279,8 +282,11 @@ public class EngineService(
     }
 
     private async Task<EvalRunRow> PerformEvalRow(
+        IServiceProvider serviceProvider,
         IRepositoryService repository,
         IJsonConverterService jsonConverterService,
+        IAssetStore assetStore,
+        IScriptOptionsService scriptOptionsService,
         Guid evalRunId, 
         EvalConfigDetail evalConfigDetail, 
         EvalRow evalRow)
@@ -309,6 +315,7 @@ public class EngineService(
                 throw new SharpOMaticException($"Row '{evalRow.Order}' does not have mandatory 'Name' column.");
 
             var rowName = nameData.StringValue ?? "Unnamed";
+            var runId = await CreateWorkflowRun(evalConfigDetail.EvalConfig.WorkflowId ?? Guid.Empty);
 
             ContextObject inputContext = [];
             foreach (var column in evalConfigDetail.Columns.Where(c => c.Order > 0))
@@ -343,7 +350,7 @@ public class EngineService(
                                 throw new SharpOMaticException($"Mandatory column '{column.Name}' for row '{rowName}' has missing string value.");
                             break;
                         case ContextEntryType.JSON:
-                            if (columnData.StringValue is not null)
+                            if (!string.IsNullOrWhiteSpace(columnData.StringValue))
                             {
                                 try
                                 {
@@ -352,14 +359,48 @@ public class EngineService(
                                 }
                                 catch
                                 {
-                                    throw new SharpOMaticException($"Mandatory column '{column.Name}' for row '{rowName}' could not be parsed as json.");
+                                    throw new SharpOMaticException($"Column '{column.Name}' for row '{rowName}' could not be parsed as json.");
                                 }
                             }
                             else if (!column.Optional)
                                 throw new SharpOMaticException($"Mandatory column '{column.Name}' for row '{rowName}' has missing json value.");
                             break;
                         case ContextEntryType.Expression:
-                            // TODO
+                            if (!string.IsNullOrWhiteSpace(columnData.StringValue))
+                            {
+                                var options = scriptOptionsService.GetScriptOptions();
+                                var globals = new ScriptCodeContext()
+                               {
+                                    Context = [],
+                                    ServiceProvider = serviceProvider,
+                                    Assets = new AssetHelper(repository, assetStore, runId),
+                                };
+
+                                try
+                                {
+                                    var result = await CSharpScript.EvaluateAsync(columnData.StringValue, options, globals, typeof(ScriptCodeContext));
+                                    inputContext.Set(ContextPath(column), result);
+                                }
+                                catch (CompilationErrorException e1)
+                                {
+                                    // Return the first 3 errors only
+                                    StringBuilder sb = new();
+                                    sb.AppendLine($"Column '{column.Name}' for row '{rowName}' expression failed compilation.\n");
+                                    foreach (var diagnostic in e1.Diagnostics.Take(3))
+                                        sb.AppendLine(diagnostic.ToString());
+
+                                    throw new SharpOMaticException(sb.ToString());
+                                }
+                                catch (InvalidOperationException e2)
+                                {
+                                    StringBuilder sb = new();
+                                    sb.AppendLine($"Column '{column.Name}' for row '{rowName}' expression failed during execution.\n");
+                                    sb.Append(e2.Message);
+                                    throw new SharpOMaticException(sb.ToString());
+                                }
+                            }
+                            else if (!column.Optional)
+                                throw new SharpOMaticException($"Mandatory column '{column.Name}' for row '{rowName}' has missing expression value.");
                             break;
                         case ContextEntryType.AssetRef:
                             if (columnData.StringValue is not null)
@@ -385,7 +426,6 @@ public class EngineService(
                 }
             }
 
-            var runId = await CreateWorkflowRun(evalConfigDetail.EvalConfig.WorkflowId ?? Guid.Empty);
             var runResult = await StartWorkflowRunAndWait(runId, inputContext);
             
             foreach(var evalGrader in evalConfigDetail.Graders.OrderBy(g => g.Order))
