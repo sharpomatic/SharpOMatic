@@ -13,10 +13,11 @@
 
 ### Evaluations
 
+- Allow a sampled run
+- Give a new run a name, default to datetime
 - Parallel execution
 - Generate notification at each stage
 - Front end use notification for start, each row finished and overall finished
-- Allow a sampled run
 - Make frontend look good with graphs or pie charts etc.
 - Allow cancelling a run part way through
 - Import/Merging of existing data using csv

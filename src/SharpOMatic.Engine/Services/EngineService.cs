@@ -424,6 +424,8 @@ public class EngineService(
                             throw new SharpOMaticException($"Mandatory column '{column.Name}' for row '{rowName}' has unrecognized type '{column.EntryType}'.");
                     }
                 }
+                else if (!column.Optional)
+                    throw new SharpOMaticException($"Mandatory column '{column.Name}' for row '{rowName}' has a missing value.");
             }
 
             var runResult = await StartWorkflowRunAndWait(runId, inputContext);

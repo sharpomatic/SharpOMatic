@@ -324,8 +324,10 @@ export class EvaluationComponent
       columns.length,
       this.evalConfig.evalConfigId,
     );
-    const next = [...columns, EvalColumn.fromSnapshot(snapshot)];
+    const newColumn = EvalColumn.fromSnapshot(snapshot);
+    const next = [...columns, newColumn];
     this.evalConfig.columns.set(next);
+    this.seedMissingDataForColumn(newColumn);
   }
 
   isFixedColumn(column: EvalColumn): boolean {
@@ -466,6 +468,7 @@ export class EvaluationComponent
     );
     const newRow = EvalRow.fromSnapshot(snapshot);
     this.evalConfig.rows.set([...rows, newRow]);
+    this.seedMissingDataForRow(newRow);
     this.selectedRowId = newRow.evalRowId;
   }
 
@@ -1248,6 +1251,44 @@ export class EvaluationComponent
       doubleValue: null,
       boolValue: null,
     };
+  }
+
+  private seedMissingDataForColumn(column: EvalColumn): void {
+    const rows = this.evalConfig.rows();
+    rows.forEach((row) => {
+      const existing = this.evalConfig.dataStore.getSnapshot(
+        row.evalRowId,
+        column.evalColumnId,
+      );
+      if (existing) {
+        return;
+      }
+
+      const snapshot = this.createEmptyCellSnapshot(
+        row.evalRowId,
+        column.evalColumnId,
+      );
+      this.evalConfig.dataStore.upsert(snapshot, true);
+    });
+  }
+
+  private seedMissingDataForRow(row: EvalRow): void {
+    const columns = this.evalConfig.columns();
+    columns.forEach((column) => {
+      const existing = this.evalConfig.dataStore.getSnapshot(
+        row.evalRowId,
+        column.evalColumnId,
+      );
+      if (existing) {
+        return;
+      }
+
+      const snapshot = this.createEmptyCellSnapshot(
+        row.evalRowId,
+        column.evalColumnId,
+      );
+      this.evalConfig.dataStore.upsert(snapshot, true);
+    });
   }
 
   private setNumericCellValue(

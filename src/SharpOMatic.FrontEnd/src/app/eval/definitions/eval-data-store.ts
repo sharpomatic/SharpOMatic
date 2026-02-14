@@ -43,7 +43,7 @@ export class EvalDataStore {
     return existing ? { ...existing } : null;
   }
 
-  public upsert(snapshot: EvalDataSnapshot): void {
+  public upsert(snapshot: EvalDataSnapshot, preserveEmpty = false): void {
     const normalized = EvalDataStore.normalizeSnapshot(snapshot);
     const key = EvalDataStore.buildKey(
       normalized.evalRowId,
@@ -57,7 +57,11 @@ export class EvalDataStore {
       return;
     }
 
-    if (!initial && EvalDataStore.isSnapshotEmpty(normalized)) {
+    if (
+      !initial &&
+      EvalDataStore.isSnapshotEmpty(normalized) &&
+      !preserveEmpty
+    ) {
       this.editsByKey.delete(key);
       this.dirtyCount.set(this.editsByKey.size);
       return;
