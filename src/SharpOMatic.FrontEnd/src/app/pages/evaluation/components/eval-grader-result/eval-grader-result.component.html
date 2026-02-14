@@ -1,0 +1,36 @@
+<div class="card grader-result-card">
+  <div class="card-header py-2 fw-semibold">
+    {{ summary.label }}
+  </div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0 grader-result-table">
+      <thead>
+        <tr>
+          <th>Threshold</th>
+          <th>Completed</th>
+          <th>Failed</th>
+          <th>Avg</th>
+          <th>Min</th>
+          <th>Max</th>
+          <th>Median</th>
+          <th>StdDev</th>
+          <th>Pass Rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ formatMetric(summary.passThreshold) }}</td>
+          <td>{{ summary.completedCount }}/{{ summary.totalCount }}</td>
+          <td>{{ summary.failedCount }}</td>
+          <td>{{ formatMetric(summary.averageScore) }}</td>
+          <td>{{ formatMetric(summary.minScore) }}</td>
+          <td>{{ formatMetric(summary.maxScore) }}</td>
+          <td>{{ formatMetric(summary.medianScore) }}</td>
+          <td>{{ formatMetric(summary.standardDeviation) }}</td>
+          <td>{{ formatPercent(summary.passRate) }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+

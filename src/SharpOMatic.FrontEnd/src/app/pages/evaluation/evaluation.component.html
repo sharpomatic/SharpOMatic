@@ -543,56 +543,19 @@
       </div>
 
       <div class="runs-detail">
-        @if (selectedRunDetail; as detail) {
+        @if (selectedRunDetail) {
           <div class="runs-detail-body p-3">
-            <div class="card">
-              <div class="card-header py-2 fw-semibold d-flex align-items-center gap-2">
-                <span>Grader Summaries</span>
-                <span class="badge ms-auto" [ngClass]="getRunStatusBadgeClass(detail.evalRun.status)">
-                  {{ getRunStatusLabel(detail.evalRun.status) }}
-                </span>
+            @if (!sortedGraderSummaries.length) {
+              <div class="text-muted">(no grader summaries)</div>
+            } @else {
+              <div class="d-flex flex-column gap-3">
+                @for (summary of sortedGraderSummaries; track summary.evalRunGraderSummaryId) {
+                  <app-eval-grader-result
+                    [summary]="summary"
+                  ></app-eval-grader-result>
+                }
               </div>
-              <div class="table-responsive">
-                <table class="table table-sm mb-0 run-metrics-table">
-                  <thead>
-                    <tr>
-                      <th>Grader</th>
-                      <th>Threshold</th>
-                      <th>Completed</th>
-                      <th>Failed</th>
-                      <th>Avg</th>
-                      <th>Min</th>
-                      <th>Max</th>
-                      <th>Median</th>
-                      <th>StdDev</th>
-                      <th>Pass Rate</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @if (!sortedGraderSummaries.length) {
-                      <tr>
-                        <td colspan="10" class="text-muted">(no grader summaries)</td>
-                      </tr>
-                    } @else {
-                      @for (summary of sortedGraderSummaries; track summary.evalRunGraderSummaryId) {
-                        <tr>
-                          <td>{{ summary.label }}</td>
-                          <td>{{ formatMetric(summary.passThreshold) }}</td>
-                          <td>{{ summary.completedCount }}/{{ summary.totalCount }}</td>
-                          <td>{{ summary.failedCount }}</td>
-                          <td>{{ formatMetric(summary.averageScore) }}</td>
-                          <td>{{ formatMetric(summary.minScore) }}</td>
-                          <td>{{ formatMetric(summary.maxScore) }}</td>
-                          <td>{{ formatMetric(summary.medianScore) }}</td>
-                          <td>{{ formatMetric(summary.standardDeviation) }}</td>
-                          <td>{{ formatPercent(summary.passRate) }}</td>
-                        </tr>
-                      }
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            }
           </div>
         } @else {
           <div class="runs-detail-empty text-muted fst-italic p-3">

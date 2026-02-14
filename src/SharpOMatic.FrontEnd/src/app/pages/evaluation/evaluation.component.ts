@@ -33,6 +33,7 @@ import { EvalStartRunDialogComponent } from '../../dialogs/eval-start-run/eval-s
 import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
 import { EvalRunStatus } from '../../eval/enumerations/eval-run-status';
 import { EvalRunSortField } from '../../eval/enumerations/eval-run-sort-field';
+import { EvalGraderResultComponent } from './components/eval-grader-result/eval-grader-result.component';
 import { EvalRunSummarySnapshot } from '../../eval/definitions/eval-run-summary';
 import {
   EvalRunDetailSnapshot,
@@ -42,7 +43,13 @@ import {
 @Component({
   selector: 'app-evaluation',
   standalone: true,
-  imports: [CommonModule, FormsModule, TabComponent, MonacoEditorModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    TabComponent,
+    MonacoEditorModule,
+    EvalGraderResultComponent,
+  ],
   templateUrl: './evaluation.component.html',
   styleUrls: ['./evaluation.component.scss'],
   providers: [BsModalService],
@@ -1039,22 +1046,6 @@ export class EvaluationComponent
     }
 
     return new Date(value).toLocaleString();
-  }
-
-  formatMetric(value: number | null): string {
-    if (value === null || value === undefined) {
-      return '-';
-    }
-
-    return value.toFixed(3);
-  }
-
-  formatPercent(value: number | null): string {
-    if (value === null || value === undefined) {
-      return '-';
-    }
-
-    return `${(value * 100).toFixed(1)}%`;
   }
 
   @HostListener('window:beforeunload', ['$event'])
