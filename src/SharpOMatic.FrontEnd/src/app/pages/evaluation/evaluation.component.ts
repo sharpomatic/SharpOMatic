@@ -28,6 +28,7 @@ import { MonacoService } from '../../services/monaco.service';
 import { ServerRepositoryService } from '../../services/server.repository.service';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { EvalStartRunDialogComponent } from '../../dialogs/eval-start-run/eval-start-run-dialog.component';
+import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
 import { EvalRunStatus } from '../../eval/enumerations/eval-run-status';
 import { EvalRunSortField } from '../../eval/enumerations/eval-run-sort-field';
 import { EvalRunSummarySnapshot } from '../../eval/definitions/eval-run-summary';
@@ -58,6 +59,7 @@ export class EvaluationComponent
   private readonly serverRepository = inject(ServerRepositoryService);
   private readonly modalService = inject(BsModalService);
   private startRunModalRef: BsModalRef<EvalStartRunDialogComponent> | undefined;
+  private confirmModalRef: BsModalRef<ConfirmDialogComponent> | undefined;
 
   public evalConfig = EvalConfig.fromSnapshot(EvalConfig.defaultSnapshot());
   public readonly contextEntryType = ContextEntryType;
@@ -93,6 +95,7 @@ export class EvaluationComponent
   public selectedRunDetail: EvalRunDetailSnapshot | null = null;
   public isLoadingRuns = false;
   public isLoadingRunDetail = false;
+  public isDeletingRun = false;
 
   ngOnInit(): void {
     this.tabs = [
@@ -891,6 +894,43 @@ export class EvaluationComponent
     ]);
   }
 
+  canDeleteSelectedRun(): boolean {
+    const selectedRun = this.selectedRunDetail?.evalRun;
+    if (!selectedRun || this.isDeletingRun) {
+      return false;
+    }
+
+    return selectedRun.status !== EvalRunStatus.Running;
+  }
+
+  deleteSelectedRun(): void {
+    const selectedRun = this.selectedRunDetail?.evalRun;
+    if (!selectedRun || this.isDeletingRun || selectedRun.status === EvalRunStatus.Running) {
+      return;
+    }
+
+    const runName = selectedRun.name?.trim() || selectedRun.evalRunId;
+    this.confirmModalRef = this.modalService.show(ConfirmDialogComponent, {
+      initialState: {
+        title: 'Delete Evaluation Run',
+        message: `Are you sure you want to delete the run '${runName}'?`,
+      },
+    });
+
+    const modalRef = this.confirmModalRef;
+    modalRef.onHidden?.pipe(take(1)).subscribe(() => {
+      if (!modalRef.content?.result || this.isDeletingRun) {
+        return;
+      }
+
+      this.isDeletingRun = true;
+      this.serverRepository.deleteEvalRun(selectedRun.evalRunId).subscribe(() => {
+        this.isDeletingRun = false;
+        this.refreshRuns();
+      });
+    });
+  }
+
   isRunSelected(run: EvalRunSummarySnapshot): boolean {
     return this.selectedRunId === run.evalRunId;
   }
@@ -926,6 +966,21 @@ export class EvaluationComponent
         return 'text-bg-secondary';
       default:
         return 'text-bg-secondary';
+    }
+  }
+
+  shouldShowRunListStatus(status: EvalRunStatus): boolean {
+    return status === EvalRunStatus.Running || status === EvalRunStatus.Failed;
+  }
+
+  getRunListStatusLabel(status: EvalRunStatus): string {
+    switch (status) {
+      case EvalRunStatus.Running:
+        return 'Running';
+      case EvalRunStatus.Failed:
+        return 'Failed';
+      default:
+        return '';
     }
   }
 

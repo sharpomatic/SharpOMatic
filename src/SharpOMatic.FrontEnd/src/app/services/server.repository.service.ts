@@ -729,6 +729,16 @@ export class ServerRepositoryService {
       );
   }
 
+  public deleteEvalRun(evalRunId: string): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.delete<void>(`${apiUrl}/api/eval/runs/${evalRunId}`).pipe(
+      catchError((error) => {
+        this.notifyError('Deleting eval run', error);
+        return of(undefined);
+      }),
+    );
+  }
+
   public getEvalRunRows(
     evalRunId: string,
     search = '',

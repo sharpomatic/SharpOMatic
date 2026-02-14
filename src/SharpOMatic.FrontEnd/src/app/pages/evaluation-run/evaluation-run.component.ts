@@ -2,11 +2,14 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
+import { take } from 'rxjs';
 import { EvalRunDetailSnapshot } from '../../eval/definitions/eval-run-detail';
 import {
   EvalRunRowDetailSnapshot,
   EvalRunRowGraderDetailSnapshot,
 } from '../../eval/definitions/eval-run-row-detail';
+import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
 import { EvalRunRowSortField } from '../../eval/enumerations/eval-run-row-sort-field';
 import { EvalRunStatus } from '../../eval/enumerations/eval-run-status';
 import { SortDirection } from '../../enumerations/sort-direction';
@@ -18,11 +21,14 @@ import { ServerRepositoryService } from '../../services/server.repository.servic
   imports: [CommonModule, FormsModule],
   templateUrl: './evaluation-run.component.html',
   styleUrls: ['./evaluation-run.component.scss'],
+  providers: [BsModalService],
 })
 export class EvaluationRunComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly serverRepository = inject(ServerRepositoryService);
+  private readonly modalService = inject(BsModalService);
+  private confirmModalRef: BsModalRef<ConfirmDialogComponent> | undefined;
 
   private readonly runRowsPageSize = 25;
   private runRowsSearchDebounceId: ReturnType<typeof setTimeout> | undefined;
@@ -38,6 +44,7 @@ export class EvaluationRunComponent implements OnInit, OnDestroy {
   public runRowsSearchText = '';
   public selectedRunRowId: string | null = null;
   public isLoadingRunRows = false;
+  public isDeletingRun = false;
 
   ngOnInit(): void {
     this.route.paramMap.subscribe((params) => {
@@ -122,6 +129,45 @@ export class EvaluationRunComponent implements OnInit, OnDestroy {
 
   get selectedRunRowGraders(): EvalRunRowGraderDetailSnapshot[] {
     return this.selectedRunRow?.graders ?? [];
+  }
+
+  canDeleteRun(): boolean {
+    const run = this.runDetail?.evalRun;
+    if (!run || this.isDeletingRun) {
+      return false;
+    }
+
+    return run.status !== EvalRunStatus.Running;
+  }
+
+  deleteRun(): void {
+    const run = this.runDetail?.evalRun;
+    if (!run || this.isDeletingRun || run.status === EvalRunStatus.Running) {
+      return;
+    }
+
+    const runName = run.name?.trim() || run.evalRunId;
+    this.confirmModalRef = this.modalService.show(ConfirmDialogComponent, {
+      initialState: {
+        title: 'Delete Evaluation Run',
+        message: `Are you sure you want to delete the run '${runName}'?`,
+      },
+    });
+
+    const modalRef = this.confirmModalRef;
+    modalRef.onHidden?.pipe(take(1)).subscribe(() => {
+      if (!modalRef.content?.result || this.isDeletingRun) {
+        return;
+      }
+
+      this.isDeletingRun = true;
+      this.serverRepository.deleteEvalRun(run.evalRunId).subscribe(() => {
+        this.isDeletingRun = false;
+        void this.router.navigate(['/evaluations', this.evalConfigId], {
+          queryParams: { tab: 'runs' },
+        });
+      });
+    });
   }
 
   getRunStatusLabel(status: EvalRunStatus): string {

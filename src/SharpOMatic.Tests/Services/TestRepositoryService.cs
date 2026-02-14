@@ -132,6 +132,8 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task DeleteEvalData(Guid evalDataId) => throw new NotImplementedException();
 
+    public Task DeleteEvalRun(Guid evalRunId) => throw new NotImplementedException();
+
     public Task UpsertEvalRun(EvalRun evalRun) => throw new NotImplementedException();
 
     public Task UpsertEvalRunRows(List<EvalRunRow> runRows) => throw new NotImplementedException();

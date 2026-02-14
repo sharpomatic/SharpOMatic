@@ -423,12 +423,17 @@
             />
           </div>
           <button
-            class="btn btn-outline-secondary btn-sm"
+            class="btn btn-outline-danger btn-sm"
             type="button"
-            (click)="refreshRuns()"
-            title="Refresh runs"
+            [disabled]="!canDeleteSelectedRun()"
+            [title]="
+              selectedRunDetail?.evalRun?.status === evalRunStatus.Running
+                ? 'Running runs cannot be deleted.'
+                : 'Delete selected run'
+            "
+            (click)="deleteSelectedRun()"
           >
-            <i class="bi bi-arrow-clockwise"></i>
+            <i class="bi bi-trash"></i>
           </button>
         </div>
 
@@ -449,12 +454,11 @@
               >
                 <div class="d-flex justify-content-between align-items-center">
                   <span class="fw-semibold">{{ run.name || '(unnamed run)' }}</span>
-                  <span
-                    class="badge"
-                    [ngClass]="getRunStatusBadgeClass(run.status)"
-                  >
-                    {{ getRunStatusLabel(run.status) }}
-                  </span>
+                  @if (shouldShowRunListStatus(run.status)) {
+                    <span class="run-text" [class.running]="run.status === evalRunStatus.Running" [class.failed]="run.status === evalRunStatus.Failed">
+                      {{ getRunListStatusLabel(run.status) }}
+                    </span>
+                  }
                 </div>
                 <div class="small text-body-secondary mt-1">
                   Started: {{ formatDateTime(run.started) }}

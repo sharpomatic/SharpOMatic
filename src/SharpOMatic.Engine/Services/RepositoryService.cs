@@ -1154,6 +1154,21 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return evalRun;
     }
 
+    public async Task DeleteEvalRun(Guid evalRunId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var evalRun = await (from run in dbContext.EvalRuns where run.EvalRunId == evalRunId select run).FirstOrDefaultAsync();
+        if (evalRun is null)
+            throw new SharpOMaticException($"EvalRun '{evalRunId}' cannot be found.");
+
+        if (evalRun.Status == EvalRunStatus.Running)
+            throw new SharpOMaticException($"EvalRun '{evalRunId}' is currently running and cannot be deleted.");
+
+        dbContext.Remove(evalRun);
+        await dbContext.SaveChangesAsync();
+    }
+
     public async Task<EvalRunDetail> GetEvalRunDetail(Guid evalRunId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();

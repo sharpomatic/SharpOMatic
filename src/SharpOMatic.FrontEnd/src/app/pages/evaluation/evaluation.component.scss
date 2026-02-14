@@ -262,6 +262,21 @@
   text-align: left;
 }
 
+.run-text {
+  padding: 2px 6px;
+  border-radius: 4px;
+
+  &.running {
+    color: black;
+    background-color: #ff8654;
+  }
+
+  &.failed {
+    color: white;
+    background-color: #ff5454;
+  }
+}
+
 .runs-detail {
   flex: 1 1 auto;
   min-width: 0;

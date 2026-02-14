@@ -20,11 +20,10 @@
 
 ### Evaluations
 
-- Allow a sampled run
-- Parallel execution
 - Generate notification at each stage
 - Front end use notification for start, each row finished and overall finished
 - Make frontend look good with graphs or pie charts etc.
+- Parallel execution
 - Allow cancelling a run part way through
 - Import/Merging of existing data using csv
 
