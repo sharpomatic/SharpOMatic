@@ -150,7 +150,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         var notifications = processContext.ServiceScope.ServiceProvider.GetServices<IEngineNotification>();
         foreach (var notification in notifications)
         {
-            // Notify in separate task in case called instance perform a long running action
+            // Notify in separate task in case called instance performs a long running action
             _ = Task.Run(async () =>
             {
                 await notification.RunCompleted(processContext.Run.RunId, processContext.Run.WorkflowId, processContext.Run.RunStatus, processContext.Run.OutputContext, processContext.Run.Error);

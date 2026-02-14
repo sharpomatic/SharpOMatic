@@ -196,6 +196,8 @@ public class EngineService(
         var jsonConverterService = provider.GetRequiredService<IJsonConverterService>();
         var assetStore = provider.GetRequiredService<IAssetStore>();
         var scriptOptionsService = provider.GetRequiredService<IScriptOptionsService>();
+        var engineNotifications = provider.GetServices<IEngineNotification>();
+        var progressServices = provider.GetServices<IProgressService>();
 
         try
         {
@@ -206,6 +208,11 @@ public class EngineService(
                     evalRun.CompletedRows++;
                 else
                     evalRun.FailedRows++;
+
+                await repository.UpsertEvalRun(evalRun);
+
+                foreach (var progressService in progressServices)
+                    await progressService.EvalRunProgress(evalRun);
             }
 
             List<EvalRunGraderSummary> graderSummaries = [];
@@ -281,6 +288,15 @@ public class EngineService(
         {
             evalRun.Finished = DateTime.Now;
             await repository.UpsertEvalRun(evalRun);
+
+            foreach (var notification in engineNotifications)
+            {
+                // Notify in separate task in case called instance performs a long running action
+                _ = Task.Run(async () =>
+                {
+                    await notification.EvalRunCompleted(evalRun.EvalRunId, evalRun.Status, evalRun.Error);
+                });
+            }
         }
     }
 
