@@ -19,6 +19,41 @@
     placeholder="Leave blank to use default date/time"
     [(ngModel)]="runName"
   />
+
+  <div class="form-check mt-3">
+    <input
+      id="eval-run-enable-sampling"
+      class="form-check-input"
+      type="checkbox"
+      [ngModel]="enableSampling"
+      (ngModelChange)="onEnableSamplingChange($event)"
+      [disabled]="!canUseSampling()"
+    />
+    <label class="form-check-label" for="eval-run-enable-sampling">
+      Run random sample rows only
+    </label>
+  </div>
+
+  @if (canUseSampling() && enableSampling) {
+    <div class="mt-2">
+      <label for="eval-run-sample-count" class="form-label mb-1">
+        Sample count
+      </label>
+      <input
+        id="eval-run-sample-count"
+        type="number"
+        class="form-control"
+        [ngModel]="sampleCount"
+        (ngModelChange)="onSampleCountChange($event)"
+        min="1"
+        [max]="maxSampleCount"
+        [disabled]="!enableSampling"
+      />
+      <div class="form-text">
+        Choose between 1 and {{ maxSampleCount }} rows.
+      </div>
+    </div>
+  }
 </div>
 <div class="modal-footer">
   <button type="button" class="btn btn-outline-secondary" (click)="cancel()">

@@ -79,9 +79,9 @@ public class EngineService(
         return StartWorkflowRunAndWait(runId, context, inputEntries).GetAwaiter().GetResult();
     }
 
-    public async Task<EvalRun> StartEvalRun(Guid evalConfigId, string? name = null)
+    public async Task<EvalRun> StartEvalRun(Guid evalConfigId, string? name = null, int? sampleCount = null)
     {
-        return await StartEvalRunInternal(evalConfigId, name);
+        return await StartEvalRunInternal(evalConfigId, name, sampleCount);
     }
 
     private async Task<Run> CreateRunInternal(Guid workflowId)
@@ -160,9 +160,11 @@ public class EngineService(
         return inputJson;
     }
 
-    private async Task<EvalRun> StartEvalRunInternal(Guid evalConfigId, string? name)
+    private async Task<EvalRun> StartEvalRunInternal(Guid evalConfigId, string? name, int? sampleCount)
     {
         var evalConfigDetail = await RepositoryService.GetEvalConfigDetail(evalConfigId);
+        var allRows = evalConfigDetail.Rows.OrderBy(r => r.Order).ToList();
+        var selectedRows = ResolveEvalRowsForRun(allRows, sampleCount);
         var started = DateTime.Now;
 
         var evalRun = new EvalRun
@@ -175,18 +177,18 @@ public class EngineService(
             Status = EvalRunStatus.Running,
             Message = "Starting",
             Error = null,
-            TotalRows = evalConfigDetail.Rows.Count,
+            TotalRows = selectedRows.Count,
             CompletedRows = 0,
             FailedRows = 0,
         };
 
         await RepositoryService.UpsertEvalRun(evalRun);
-        _ = Task.Run(() => PerformEvalRun(evalConfigDetail, evalRun));
+        _ = Task.Run(() => PerformEvalRun(evalConfigDetail, evalRun, selectedRows));
 
         return evalRun;
     }
 
-    private async Task PerformEvalRun(EvalConfigDetail evalConfigDetail, EvalRun evalRun)
+    private async Task PerformEvalRun(EvalConfigDetail evalConfigDetail, EvalRun evalRun, IReadOnlyList<EvalRow> selectedRows)
     {
         using var serviceScope = ScopeFactory.CreateScope();
         var provider = serviceScope.ServiceProvider;
@@ -197,7 +199,7 @@ public class EngineService(
 
         try
         {
-            foreach(var row in evalConfigDetail.Rows.OrderBy(r => r.Order))
+            foreach (var row in selectedRows)
             {
                 var evalRunRow = await PerformEvalRow(provider, repository, jsonConverterService, assetStore, scriptOptionsService, evalRun.EvalRunId, evalConfigDetail, row);
                 if (evalRunRow.Status == EvalRunStatus.Completed)
@@ -507,6 +509,37 @@ public class EngineService(
             await repository.UpsertEvalRunRowGraders([evalRunRowGrader]);
         }
 
+    }
+
+    private static List<EvalRow> ResolveEvalRowsForRun(List<EvalRow> allRows, int? sampleCount)
+    {
+        if (!sampleCount.HasValue)
+            return allRows;
+
+        if (allRows.Count == 0)
+            throw new SharpOMaticException("Sample count cannot be provided when there are no rows to run.");
+
+        var requestedSampleCount = sampleCount.Value;
+        if (requestedSampleCount < 1 || requestedSampleCount > allRows.Count)
+            throw new SharpOMaticException($"Sample count must be between 1 and {allRows.Count}.");
+
+        if (requestedSampleCount == allRows.Count)
+            return allRows;
+
+        var selectedRowIds = BuildRandomSampleRowIds(allRows, requestedSampleCount);
+        return allRows.Where(row => selectedRowIds.Contains(row.EvalRowId)).ToList();
+    }
+
+    private static HashSet<Guid> BuildRandomSampleRowIds(List<EvalRow> allRows, int requestedSampleCount)
+    {
+        var rowIds = allRows.Select(row => row.EvalRowId).ToArray();
+        for (var index = rowIds.Length - 1; index > 0; index--)
+        {
+            var swapIndex = Random.Shared.Next(index + 1);
+            (rowIds[index], rowIds[swapIndex]) = (rowIds[swapIndex], rowIds[index]);
+        }
+
+        return rowIds.Take(requestedSampleCount).ToHashSet();
     }
 
     private static string ContextPath(EvalColumn evalColumn)

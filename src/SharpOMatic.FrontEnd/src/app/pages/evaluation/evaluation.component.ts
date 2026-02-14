@@ -162,6 +162,7 @@ export class EvaluationComponent
       initialState: {
         title: 'Start Evaluation Run',
         message: `Are you sure you want to run this evaluation?\n\nThis will execute ${rowCount} ${rowLabel} with ${graderCount} ${graderLabel}.`,
+        rowCount,
       },
     });
 
@@ -173,8 +174,9 @@ export class EvaluationComponent
 
       this.isStartingRun = true;
       const runName = modalRef.content.runName;
+      const sampleCount = modalRef.content.getSelectedSampleCount();
       this.serverRepository
-        .startEvalRun(this.evalConfig.evalConfigId, runName)
+        .startEvalRun(this.evalConfig.evalConfigId, runName, sampleCount)
         .subscribe({
           next: (evalRunId) => {
             this.isStartingRun = false;

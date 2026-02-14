@@ -112,7 +112,7 @@ public class EvalController : ControllerBase
         [FromBody] StartEvalRunRequest? request = null
     )
     {
-        var evalRun = await engineService.StartEvalRun(id, request?.Name);
+        var evalRun = await engineService.StartEvalRun(id, request?.Name, request?.SampleCount);
         return evalRun.EvalRunId;
     }
 

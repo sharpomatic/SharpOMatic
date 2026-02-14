@@ -653,9 +653,10 @@ export class ServerRepositoryService {
   public startEvalRun(
     evalConfigId: string,
     name?: string | null,
+    sampleCount?: number | null,
   ): Observable<string | undefined> {
     const apiUrl = this.settingsService.apiUrl();
-    const payload = { name: name ?? null };
+    const payload = { name: name ?? null, sampleCount: sampleCount ?? null };
     return this.http
       .post<string>(`${apiUrl}/api/eval/configs/${evalConfigId}/runs`, payload)
       .pipe(
