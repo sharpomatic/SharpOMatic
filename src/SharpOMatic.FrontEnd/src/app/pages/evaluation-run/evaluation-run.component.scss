@@ -51,6 +51,31 @@
   text-align: left;
 }
 
+.run-text {
+  padding: 2px 6px;
+  border-radius: 4px;
+
+  &.running {
+    color: black;
+    background-color: #ff8654;
+  }
+
+  &.failed {
+    color: white;
+    background-color: #ff5454;
+  }
+
+  &.completed {
+    color: white;
+    background-color: #198754;
+  }
+
+  &.canceled {
+    color: white;
+    background-color: #6c757d;
+  }
+}
+
 .run-row-detail {
   flex: 1 1 auto;
   min-width: 0;
@@ -58,18 +83,96 @@
   overflow-y: auto;
 }
 
-.run-row-grader-table th,
-.run-row-grader-table td {
-  vertical-align: middle;
-  white-space: nowrap;
+.run-row-detail-body {
+  max-width: 900px;
 }
 
-.run-output {
-  max-height: 180px;
-  overflow: auto;
-  white-space: pre-wrap;
-  background: var(--bs-tertiary-bg);
-  border: 1px solid var(--bs-border-color);
-  border-radius: var(--bs-border-radius);
-  padding: 0.5rem;
+.control-offset {
+  margin-left: calc(140px + 1rem);
+}
+
+.row-name-heading {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+
+.graders-section-title {
+  margin-top: 2.5rem;
+  margin-bottom: 0.85rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.form-line {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+  width: 100%;
+}
+
+.form-line.align-start {
+  align-items: flex-start;
+}
+
+.field-label {
+  width: 140px;
+  flex: 0 0 140px;
+  margin-bottom: 0;
+  text-align: right;
+  padding-top: 0.375rem;
+}
+
+.control-column {
+  min-width: 0;
+}
+
+.control-column.short {
+  max-width: 260px;
+  width: 100%;
+}
+
+.control-column.half {
+  max-width: 360px;
+  width: 100%;
+}
+
+.control-column.long {
+  max-width: 700px;
+  width: 100%;
+}
+
+.status-value {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+}
+
+.grader-control {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 38px;
+}
+
+.grader-score {
+  font-size: 0.9rem;
+  color: var(--bs-secondary-color);
+}
+
+.grader-score-value {
+  color: white;
+  font-weight: 700;
+}
+
+.control-column .form-control {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .control-offset {
+    margin-left: 0;
+  }
 }

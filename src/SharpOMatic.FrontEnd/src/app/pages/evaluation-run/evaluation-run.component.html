@@ -5,44 +5,7 @@
         <i class="bi bi-clipboard-check pe-3 icon-sm"></i
         >{{ runDetail?.evalRun?.name || 'Run Detail' }}
       </h2>
-      <button
-        type="button"
-        class="btn btn-outline-danger btn-sm ms-auto"
-        [disabled]="!canDeleteRun()"
-        [title]="
-          runDetail?.evalRun?.status === evalRunStatus.Running
-            ? 'Running runs cannot be deleted.'
-            : ''
-        "
-        (click)="deleteRun()"
-      >
-        Delete Run
-      </button>
     </div>
-  </div>
-
-  <div class="run-meta px-3 pb-2">
-    @if (runDetail; as detail) {
-      <div class="d-flex align-items-center gap-2 small">
-        <span class="badge" [ngClass]="getRunStatusBadgeClass(detail.evalRun.status)">
-          {{ getRunStatusLabel(detail.evalRun.status) }}
-        </span>
-        <span class="text-body-secondary"
-          >Started: {{ formatDateTime(detail.evalRun.started) }}</span
-        >
-        <span class="text-body-secondary"
-          >Finished: {{ formatDateTime(detail.evalRun.finished) }}</span
-        >
-      </div>
-    } @else {
-      <div class="small text-body-secondary">
-        @if (isLoadingRunDetail) {
-          Loading run detail...
-        } @else {
-          Run detail unavailable.
-        }
-      </div>
-    }
   </div>
 
   <div class="run-layout bg-body-tertiary">
@@ -77,12 +40,16 @@
             >
               <div class="d-flex justify-content-between align-items-center">
                 <span class="fw-semibold">{{ row.name || '(unnamed row)' }}</span>
-                <span class="badge" [ngClass]="getRunStatusBadgeClass(row.status)">
-                  {{ getRunStatusLabel(row.status) }}
-                </span>
-              </div>
-              <div class="small text-body-secondary mt-1">
-                Started: {{ formatDateTime(row.started) }}
+                @if (shouldShowRunListStatus(row.status)) {
+                  <span
+                    class="run-text"
+                    [class.running]="row.status === evalRunStatus.Running"
+                    [class.failed]="row.status === evalRunStatus.Failed"
+                    [class.canceled]="row.status === evalRunStatus.Canceled"
+                  >
+                    {{ getRunListStatusLabel(row.status) }}
+                  </span>
+                }
               </div>
             </button>
           }
@@ -144,74 +111,132 @@
 
     <div class="run-row-detail">
       @if (selectedRunRow; as selectedRow) {
-        <div class="p-3">
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <h5 class="mb-0">{{ selectedRow.name || '(unnamed row)' }}</h5>
-            <span class="badge" [ngClass]="getRunStatusBadgeClass(selectedRow.status)">
-              {{ getRunStatusLabel(selectedRow.status) }}
-            </span>
-          </div>
-          <div class="small text-body-secondary mb-2">
-            Started: {{ formatDateTime(selectedRow.started) }} | Finished:
-            {{ formatDateTime(selectedRow.finished) }}
+        <div class="p-3 run-row-detail-body">
+          <div class="control-offset row-name-heading">
+            {{ selectedRow.name || '(unnamed row)' }}
           </div>
 
-          @if (selectedRow.error) {
-            <div class="small text-danger mb-2">{{ selectedRow.error }}</div>
-          }
-
-          <div class="mb-3">
-            <div class="small fw-semibold mb-1">Output Context</div>
-            @if (selectedRow.outputContext) {
-              <pre class="run-output mb-0">{{ selectedRow.outputContext }}</pre>
-            } @else {
-              <div class="text-muted fst-italic small">(no output context)</div>
-            }
-          </div>
-
-          <div>
-            <div class="small fw-semibold mb-1">Grader Outputs</div>
-            <div class="table-responsive">
-              <table class="table table-sm mb-0 run-row-grader-table">
-                <thead>
-                  <tr>
-                    <th>Grader</th>
-                    <th>Status</th>
-                    <th>Score</th>
-                    <th>Started</th>
-                    <th>Finished</th>
-                    <th>Error</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @if (!selectedRunRowGraders.length) {
-                    <tr>
-                      <td colspan="6" class="text-muted">(no grader results)</td>
-                    </tr>
-                  } @else {
-                    @for (grader of selectedRunRowGraders; track grader.evalRunRowGraderId) {
-                      <tr>
-                        <td>{{ grader.label }}</td>
-                        <td>
-                          <span class="badge" [ngClass]="getRunStatusBadgeClass(grader.status)">
-                            {{ getRunStatusLabel(grader.status) }}
-                          </span>
-                        </td>
-                        <td>{{ formatMetric(grader.score) }}</td>
-                        <td>{{ formatDateTime(grader.started) }}</td>
-                        <td>{{ formatDateTime(grader.finished) }}</td>
-                        <td>{{ grader.error || '-' }}</td>
-                      </tr>
-                    }
-                  }
-                </tbody>
-              </table>
+          <div class="form-line">
+            <label class="form-label field-label">Status</label>
+            <div class="control-column short status-value">
+              <span
+                class="run-text"
+                [class.running]="selectedRow.status === evalRunStatus.Running"
+                [class.completed]="selectedRow.status === evalRunStatus.Completed"
+                [class.failed]="selectedRow.status === evalRunStatus.Failed"
+                [class.canceled]="selectedRow.status === evalRunStatus.Canceled"
+              >
+                {{ getRunStatusLabel(selectedRow.status) }}
+              </span>
             </div>
           </div>
+
+          @if (selectedRow.status === evalRunStatus.Failed) {
+            <div class="form-line align-start">
+              <label class="form-label field-label">Error</label>
+              <div class="control-column long">
+                <textarea class="form-control" rows="4" readonly>{{
+                  selectedRow.error || '-'
+                }}</textarea>
+              </div>
+            </div>
+          }
+
+          <div class="form-line">
+            <label class="form-label field-label">Started</label>
+            <div class="control-column half">
+              <input
+                type="text"
+                class="form-control"
+                [value]="formatDateTime(selectedRow.started)"
+                readonly
+              />
+            </div>
+          </div>
+
+          <div class="form-line">
+            <label class="form-label field-label">Finished</label>
+            <div class="control-column half">
+              <input
+                type="text"
+                class="form-control"
+                [value]="formatDateTime(selectedRow.finished)"
+                readonly
+              />
+            </div>
+          </div>
+
+          <div class="form-line align-start">
+            <label class="form-label field-label">Output Context</label>
+            <div class="control-column long">
+              <app-context-viewer
+                [contexts]="getOutputContexts(selectedRow)"
+                mode="simple"
+              ></app-context-viewer>
+            </div>
+          </div>
+
+          <div class="control-offset graders-section-title">Graders</div>
+
+          @if (!selectedRow.graders.length) {
+            <div class="control-offset text-muted fst-italic">
+              (no graders)
+            </div>
+          } @else {
+            @for (grader of selectedRow.graders; track grader.evalRunRowGraderId) {
+              <div class="form-line">
+                <label class="form-label field-label">{{
+                  grader.label || '(unnamed grader)'
+                }}</label>
+                <div class="control-column long grader-control">
+                  <span
+                    class="run-text"
+                    [class.running]="grader.status === evalRunStatus.Running"
+                    [class.completed]="grader.status === evalRunStatus.Completed"
+                    [class.failed]="grader.status === evalRunStatus.Failed"
+                    [class.canceled]="grader.status === evalRunStatus.Canceled"
+                  >
+                    {{ getRunStatusLabel(grader.status) }}
+                  </span>
+                  @if (grader.status !== evalRunStatus.Failed) {
+                    <span class="grader-score">
+                      Score:
+                      <span class="grader-score-value">{{
+                        formatScore(grader.score)
+                      }}</span>
+                    </span>
+                  }
+                </div>
+              </div>
+
+              @if (grader.status === evalRunStatus.Completed) {
+                <div class="form-line align-start">
+                  <label class="form-label field-label">Output Context</label>
+                  <div class="control-column long">
+                    <app-context-viewer
+                      [contexts]="getGraderOutputContexts(grader)"
+                      mode="simple"
+                    ></app-context-viewer>
+                  </div>
+                </div>
+              }
+
+              @if (grader.status === evalRunStatus.Failed) {
+                <div class="form-line align-start">
+                  <label class="form-label field-label">&nbsp;</label>
+                  <div class="control-column long">
+                    <textarea class="form-control" rows="3" readonly>{{
+                      grader.error || '-'
+                    }}</textarea>
+                  </div>
+                </div>
+              }
+            }
+          }
         </div>
       } @else {
         <div class="text-muted fst-italic p-3">
-          Select a row to view outputs and grader details.
+          Select a row to view details.
         </div>
       }
     </div>

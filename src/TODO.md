@@ -20,11 +20,7 @@
 
 ### Evaluations
 
-- Bug, if workflow fails it continues to the graders
-- Check what happens if graders gives error
-- Make frontend look good with graphs or pie charts etc.
-- Parallel execution
-- Allow cancelling a run part way through
+- Add order to runrow and use that for sorting the eval run page
 - Import/Merging of existing data using csv
 
 ### MCP Servers 

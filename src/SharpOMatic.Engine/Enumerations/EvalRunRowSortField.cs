@@ -5,4 +5,5 @@ public enum EvalRunRowSortField
     Name = 0,
     Status = 1,
     Started = 2,
+    Order = 3,
 }

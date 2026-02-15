@@ -27,5 +27,33 @@ export class EvalGraderResultComponent {
 
     return `${(value * 100).toFixed(1)}%`;
   }
-}
 
+  getPassRateDisplay(summary: EvalRunGraderSummaryDetailSnapshot): string {
+    return this.formatPercent(summary.passRate);
+  }
+
+  getPassRatePercent(summary: EvalRunGraderSummaryDetailSnapshot): number {
+    if (summary.passRate === null || summary.passRate === undefined) {
+      return 0;
+    }
+
+    return this.clampPercent(summary.passRate * 100);
+  }
+
+  getPassRateRemainderPercent(summary: EvalRunGraderSummaryDetailSnapshot): number {
+    return 100 - this.getPassRatePercent(summary);
+  }
+
+  getCompletedPercent(summary: EvalRunGraderSummaryDetailSnapshot): number {
+    if (!summary.totalCount || summary.totalCount <= 0) {
+      return 0;
+    }
+
+    return this.clampPercent((summary.completedCount / summary.totalCount) * 100);
+  }
+
+  private clampPercent(value: number): number {
+    const safeValue = Number.isFinite(value) ? value : 0;
+    return Math.min(100, Math.max(0, safeValue));
+  }
+}

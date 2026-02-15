@@ -177,6 +177,7 @@ public class EngineService(
             Status = EvalRunStatus.Running,
             Message = "Starting",
             Error = null,
+            CancelRequested = false,
             TotalRows = selectedRows.Count,
             CompletedRows = 0,
             FailedRows = 0,
@@ -199,20 +200,64 @@ public class EngineService(
         var engineNotifications = provider.GetServices<IEngineNotification>();
         var progressServices = provider.GetServices<IProgressService>();
 
+        var configuredMaxParallel = evalConfigDetail.EvalConfig.MaxParallel;
+        var normalizedMaxParallel = Math.Max(1, Math.Min(selectedRows.Count, Math.Max(1, configuredMaxParallel)));
+        using var progressUpdateGate = new SemaphoreSlim(1, 1);
+        var cancelRequested = 0;
+
         try
         {
-            foreach (var row in selectedRows)
+            await Parallel.ForEachAsync(
+                selectedRows,
+                new ParallelOptions { MaxDegreeOfParallelism = normalizedMaxParallel },
+                async (row, cancellationToken) =>
+                {
+                    if (Volatile.Read(ref cancelRequested) == 1)
+                        return;
+
+                    var evalRunState = await repository.GetEvalRun(evalRun.EvalRunId);
+                    if (evalRunState.CancelRequested)
+                    {
+                        Interlocked.Exchange(ref cancelRequested, 1);
+                        return;
+                    }
+
+                    var evalRunRow = await PerformEvalRow(
+                        provider,
+                        repository,
+                        jsonConverterService,
+                        assetStore,
+                        scriptOptionsService,
+                        evalRun.EvalRunId,
+                        evalConfigDetail,
+                        row
+                    );
+
+                    await progressUpdateGate.WaitAsync(cancellationToken);
+                    try
+                    {
+                        if (evalRunRow.Status == EvalRunStatus.Completed)
+                            evalRun.CompletedRows++;
+                        else
+                            evalRun.FailedRows++;
+
+                        await repository.UpsertEvalRun(evalRun);
+
+                        foreach (var progressService in progressServices)
+                            await progressService.EvalRunProgress(evalRun);
+                    }
+                    finally
+                    {
+                        progressUpdateGate.Release();
+                    }
+                }
+            );
+
+            var isCancelRequested = Volatile.Read(ref cancelRequested) == 1;
+            if (!isCancelRequested)
             {
-                var evalRunRow = await PerformEvalRow(provider, repository, jsonConverterService, assetStore, scriptOptionsService, evalRun.EvalRunId, evalConfigDetail, row);
-                if (evalRunRow.Status == EvalRunStatus.Completed)
-                    evalRun.CompletedRows++;
-                else
-                    evalRun.FailedRows++;
-
-                await repository.UpsertEvalRun(evalRun);
-
-                foreach (var progressService in progressServices)
-                    await progressService.EvalRunProgress(evalRun);
+                var latestRun = await repository.GetEvalRun(evalRun.EvalRunId);
+                isCancelRequested = latestRun.CancelRequested;
             }
 
             List<EvalRunGraderSummary> graderSummaries = [];
@@ -275,8 +320,17 @@ public class EngineService(
 
             await repository.UpsertEvalRunGraderSummaries(graderSummaries);
 
-            evalRun.Message = "Completed";
-            evalRun.Status = EvalRunStatus.Completed;
+            if (isCancelRequested)
+            {
+                evalRun.Message = "Canceled";
+                evalRun.Error = null;
+                evalRun.Status = EvalRunStatus.Canceled;
+            }
+            else
+            {
+                evalRun.Message = "Completed";
+                evalRun.Status = EvalRunStatus.Completed;
+            }
         }
         catch (Exception ex)
         {
@@ -317,6 +371,7 @@ public class EngineService(
             EvalRunRowId = Guid.NewGuid(),
             EvalRunId = evalRunId,
             EvalRowId = evalRow.EvalRowId,
+            Order = evalRow.Order,
             Started = DateTime.Now,
             Status = EvalRunStatus.Running
         };
@@ -450,12 +505,21 @@ public class EngineService(
             }
 
             var runResult = await StartWorkflowRunAndWait(runId, inputContext);
-            
-            foreach(var evalGrader in evalConfigDetail.Graders.OrderBy(g => g.Order))
-                await PerformEvalGrader(repository, jsonConverterService, evalRunId, evalRunRow.EvalRunRowId, evalGrader, runResult.OutputContext);
-            
-            evalRunRow.OutputContext = runResult.OutputContext;
-            evalRunRow.Status = EvalRunStatus.Completed;
+            if (runResult.RunStatus == RunStatus.Failed)
+            {
+                evalRunRow.OutputContext = runResult.OutputContext;
+                evalRunRow.Error = runResult.Error;
+                evalRunRow.Status = EvalRunStatus.Failed;
+            }
+            else
+            {
+                foreach (var evalGrader in evalConfigDetail.Graders.OrderBy(g => g.Order))
+                    await PerformEvalGrader(repository, jsonConverterService, evalRunId, evalRunRow.EvalRunRowId, evalGrader, runResult.OutputContext);
+
+                evalRunRow.OutputContext = runResult.OutputContext;
+                evalRunRow.Status = EvalRunStatus.Completed;
+            }
+
         }
         catch (Exception ex)
         {

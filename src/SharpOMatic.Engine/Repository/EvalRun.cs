@@ -11,6 +11,7 @@ public class EvalRun
     public required EvalRunStatus Status { get; set; }
     public string? Message { get; set; }
     public string? Error { get; set; }
+    public required bool CancelRequested { get; set; }
     public required int TotalRows { get; set; }
     public required int CompletedRows { get; set; }
     public required int FailedRows { get; set; }

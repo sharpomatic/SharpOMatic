@@ -250,6 +250,9 @@ namespace SharpOMatic.Engine.Migrations
                     b.Property<int>("CompletedRows")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("CancelRequested")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Error")
                         .HasColumnType("TEXT");
 
@@ -353,6 +356,9 @@ namespace SharpOMatic.Engine.Migrations
 
                     b.Property<string>("OutputContext")
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("Started")
                         .HasColumnType("TEXT");

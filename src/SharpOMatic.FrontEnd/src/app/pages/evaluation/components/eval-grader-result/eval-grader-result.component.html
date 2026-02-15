@@ -1,36 +1,69 @@
 <div class="card grader-result-card">
-  <div class="card-header py-2 fw-semibold">
-    {{ summary.label }}
-  </div>
-  <div class="table-responsive">
-    <table class="table table-sm mb-0 grader-result-table">
-      <thead>
-        <tr>
-          <th>Threshold</th>
-          <th>Completed</th>
-          <th>Failed</th>
-          <th>Avg</th>
-          <th>Min</th>
-          <th>Max</th>
-          <th>Median</th>
-          <th>StdDev</th>
-          <th>Pass Rate</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>{{ formatMetric(summary.passThreshold) }}</td>
-          <td>{{ summary.completedCount }}/{{ summary.totalCount }}</td>
-          <td>{{ summary.failedCount }}</td>
-          <td>{{ formatMetric(summary.averageScore) }}</td>
-          <td>{{ formatMetric(summary.minScore) }}</td>
-          <td>{{ formatMetric(summary.maxScore) }}</td>
-          <td>{{ formatMetric(summary.medianScore) }}</td>
-          <td>{{ formatMetric(summary.standardDeviation) }}</td>
-          <td>{{ formatPercent(summary.passRate) }}</td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="card-body p-3 grader-result-body">
+    <div class="grader-header">
+      <div class="grader-title">{{ summary.label }}</div>
+    </div>
+
+    <div class="metrics-row">
+      <div class="metric-tile pass-rate-tile">
+        <div class="metric-values-row">
+          <div>
+            <div class="metric-label">Pass Rate</div>
+            <div class="metric-value">{{ getPassRateDisplay(summary) }}</div>
+          </div>
+          <div class="threshold-block">
+            <div class="metric-label">THRESHOLD</div>
+            <div class="metric-value">{{ formatMetric(summary.passThreshold) }}</div>
+          </div>
+        </div>
+        <div class="progress pass-rate-bar">
+          <div
+            class="progress-bar pass-rate-progress"
+            [style.width.%]="getPassRatePercent(summary)"
+          ></div>
+          <div
+            class="progress-bar pass-rate-failed-progress"
+            [style.width.%]="getPassRateRemainderPercent(summary)"
+          ></div>
+        </div>
+      </div>
+
+      <div class="metric-tile compact-tile completion-tile">
+        <div class="metric-split-row">
+          <div class="metric-split-item">
+            <span class="metric-split-label">COMPLETED</span>
+            <span class="metric-value">{{ summary.completedCount }}</span>
+          </div>
+          <div class="metric-split-item align-end">
+            <span class="metric-split-label">FAILED</span>
+            <span class="metric-value">{{ summary.failedCount }}</span>
+          </div>
+        </div>
+        <div class="progress completion-bar">
+          <div
+            class="progress-bar completion-progress"
+            [style.width.%]="getCompletedPercent(summary)"
+          ></div>
+        </div>
+      </div>
+
+      <div class="metric-tile compact-tile score-tile">
+        <div class="score-split-row">
+          <div class="score-item">
+            <span class="metric-split-label">AVG</span>
+            <span class="metric-value">{{ formatMetric(summary.averageScore) }}</span>
+          </div>
+          <div class="score-item">
+            <span class="metric-split-label">MIN</span>
+            <span class="metric-value">{{ formatMetric(summary.minScore) }}</span>
+          </div>
+          <div class="score-item align-end">
+            <span class="metric-split-label">MAX</span>
+            <span class="metric-value">{{ formatMetric(summary.maxScore) }}</span>
+          </div>
+        </div>
+        <div class="score-bar-spacer"></div>
+      </div>
+    </div>
   </div>
 </div>
-

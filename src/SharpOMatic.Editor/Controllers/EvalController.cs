@@ -122,6 +122,12 @@ public class EvalController : ControllerBase
         await repositoryService.DeleteEvalRun(id);
     }
 
+    [HttpPost("runs/{id}/cancel")]
+    public async Task CancelEvalRun(IRepositoryService repositoryService, Guid id)
+    {
+        await repositoryService.RequestCancelEvalRun(id);
+    }
+
     [HttpPost("configs")]
     public async Task UpsertEvalConfig(IRepositoryService repositoryService, [FromBody] EvalConfig evalConfig)
     {

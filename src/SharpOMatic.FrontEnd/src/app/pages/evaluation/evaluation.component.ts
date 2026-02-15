@@ -109,6 +109,7 @@ export class EvaluationComponent
   public isLoadingRuns = false;
   public isLoadingRunDetail = false;
   public isDeletingRun = false;
+  public isCancelingRun = false;
 
   constructor() {
     effect(() => {
@@ -920,16 +921,30 @@ export class EvaluationComponent
 
   canDeleteSelectedRun(): boolean {
     const selectedRun = this.selectedRunDetail?.evalRun;
-    if (!selectedRun || this.isDeletingRun) {
+    if (!selectedRun || this.isDeletingRun || this.isCancelingRun) {
       return false;
     }
 
     return selectedRun.status !== EvalRunStatus.Running;
   }
 
+  canCancelSelectedRun(): boolean {
+    const selectedRun = this.selectedRunDetail?.evalRun;
+    if (!selectedRun || this.isDeletingRun || this.isCancelingRun) {
+      return false;
+    }
+
+    return selectedRun.status === EvalRunStatus.Running;
+  }
+
   deleteSelectedRun(): void {
     const selectedRun = this.selectedRunDetail?.evalRun;
-    if (!selectedRun || this.isDeletingRun || selectedRun.status === EvalRunStatus.Running) {
+    if (
+      !selectedRun ||
+      this.isDeletingRun ||
+      this.isCancelingRun ||
+      selectedRun.status === EvalRunStatus.Running
+    ) {
       return;
     }
 
@@ -951,6 +966,38 @@ export class EvaluationComponent
       this.serverRepository.deleteEvalRun(selectedRun.evalRunId).subscribe(() => {
         this.isDeletingRun = false;
         this.refreshRuns();
+      });
+    });
+  }
+
+  cancelSelectedRun(): void {
+    const selectedRun = this.selectedRunDetail?.evalRun;
+    if (
+      !selectedRun ||
+      this.isDeletingRun ||
+      this.isCancelingRun ||
+      selectedRun.status !== EvalRunStatus.Running
+    ) {
+      return;
+    }
+
+    const runName = selectedRun.name?.trim() || selectedRun.evalRunId;
+    this.confirmModalRef = this.modalService.show(ConfirmDialogComponent, {
+      initialState: {
+        title: 'Cancel Evaluation Run',
+        message: `Are you sure you want to cancel the running run '${runName}'?`,
+      },
+    });
+
+    const modalRef = this.confirmModalRef;
+    modalRef.onHidden?.pipe(take(1)).subscribe(() => {
+      if (!modalRef.content?.result || this.isCancelingRun) {
+        return;
+      }
+
+      this.isCancelingRun = true;
+      this.serverRepository.cancelEvalRun(selectedRun.evalRunId).subscribe(() => {
+        this.isCancelingRun = false;
       });
     });
   }

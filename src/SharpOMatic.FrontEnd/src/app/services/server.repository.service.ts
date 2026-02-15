@@ -739,6 +739,18 @@ export class ServerRepositoryService {
     );
   }
 
+  public cancelEvalRun(evalRunId: string): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .post<void>(`${apiUrl}/api/eval/runs/${evalRunId}/cancel`, null)
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Canceling eval run', error);
+          return of(undefined);
+        }),
+      );
+  }
+
   public getEvalRunRows(
     evalRunId: string,
     search = '',

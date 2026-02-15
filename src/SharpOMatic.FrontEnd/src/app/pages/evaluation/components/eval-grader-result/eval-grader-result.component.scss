@@ -1,10 +1,198 @@
 .grader-result-card {
   min-width: 0;
+  border: 1px solid var(--bs-border-color);
 }
 
-.grader-result-table th,
-.grader-result-table td {
-  vertical-align: middle;
+.grader-result-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.grader-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.grader-title {
+  font-weight: 600;
+  font-size: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.metrics-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.65rem;
+}
+
+.metric-tile {
+  border: 1px solid var(--bs-border-color);
+  border-radius: 0.45rem;
+  background: var(--bs-tertiary-bg);
+  padding: 0.55rem 0.7rem;
+  min-width: 0;
+}
+
+.metric-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--bs-secondary-color);
+  margin-bottom: 0.1rem;
+}
+
+.metric-values-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.threshold-block {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.metric-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.pass-rate-bar {
+  height: 0.42rem;
+  margin-top: 0.45rem;
+  border-radius: 999px;
+  background: var(--bs-tertiary-bg);
+}
+
+.pass-rate-progress {
+  background-color: var(--bs-success);
+}
+
+.pass-rate-failed-progress {
+  background-color: var(--bs-danger);
+}
+
+.compact-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.pass-rate-tile {
+  flex: 0 0 250px;
+  width: 250px;
+}
+
+.completion-tile {
+  flex: 0 0 200px;
+  width: 200px;
+}
+
+.score-tile {
+  flex: 0 0 330px;
+  width: 330px;
+}
+
+.metric-split-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.metric-split-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.metric-split-item.align-end {
+  align-items: flex-end;
+}
+
+.metric-split-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--bs-secondary-color);
+  line-height: 1.1;
+}
+
+.completion-bar {
+  height: 0.35rem;
+  margin-top: 0.45rem;
+  border-radius: 999px;
+  background: var(--bs-tertiary-bg);
+}
+
+.completion-progress {
+  background-color: var(--bs-success);
+}
+
+.score-split-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.score-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.score-item.align-end {
+  align-items: flex-end;
+}
+
+.score-bar-spacer {
+  height: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+@media (max-width: 900px) {
+  .pass-rate-tile,
+  .completion-tile,
+  .score-tile {
+    flex-basis: 320px;
+    width: 320px;
+  }
+}
+
+@media (max-width: 640px) {
+  .grader-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .metric-values-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .metrics-row {
+    justify-content: flex-start;
+  }
+
+  .pass-rate-tile,
+  .completion-tile,
+  .score-tile {
+    flex-basis: 300px;
+    width: 300px;
+  }
+
+  .score-split-row {
+    gap: 0.4rem;
+  }
+}

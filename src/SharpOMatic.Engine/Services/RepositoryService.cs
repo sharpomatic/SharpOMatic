@@ -1004,7 +1004,10 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (entity is null)
             dbContext.EvalRuns.Add(evalRun);
         else
+        {
             dbContext.Entry(entity).CurrentValues.SetValues(evalRun);
+            dbContext.Entry(entity).Property(run => run.CancelRequested).IsModified = false;
+        }
 
         await dbContext.SaveChangesAsync();
     }
@@ -1152,6 +1155,24 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             throw new SharpOMaticException($"EvalRun '{evalRunId}' cannot be found.");
 
         return evalRun;
+    }
+
+    public async Task RequestCancelEvalRun(Guid evalRunId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var evalRun = await dbContext.EvalRuns.FirstOrDefaultAsync(run => run.EvalRunId == evalRunId);
+        if (evalRun is null)
+            throw new SharpOMaticException($"EvalRun '{evalRunId}' cannot be found.");
+
+        if (evalRun.Status != EvalRunStatus.Running)
+            throw new SharpOMaticException($"EvalRun '{evalRunId}' is not running and cannot be canceled.");
+
+        if (evalRun.CancelRequested)
+            return;
+
+        evalRun.CancelRequested = true;
+        await dbContext.SaveChangesAsync();
     }
 
     public async Task DeleteEvalRun(Guid evalRunId)
@@ -1415,7 +1436,6 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         return (
             from runRow in dbContext.EvalRunRows.AsNoTracking()
-            join row in dbContext.EvalRows.AsNoTracking() on runRow.EvalRowId equals row.EvalRowId
             where runRow.EvalRunId == evalRunId
             select new EvalRunRowProjection
             {
@@ -1429,7 +1449,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                         select data.StringValue
                     ).FirstOrDefault() ?? ""
                     : "",
-                Order = row.Order,
+                Order = runRow.Order,
                 Status = runRow.Status,
                 Started = runRow.Started,
                 Finished = runRow.Finished,
@@ -1460,6 +1480,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         return sortBy switch
         {
+            EvalRunRowSortField.Order => sortDirection == SortDirection.Ascending
+                ? rows.OrderBy(row => row.Order).ThenBy(row => row.Name)
+                : rows.OrderByDescending(row => row.Order).ThenBy(row => row.Name),
             EvalRunRowSortField.Status => sortDirection == SortDirection.Ascending
                 ? rows.OrderBy(row => row.Status).ThenBy(row => row.Order)
                 : rows.OrderByDescending(row => row.Status).ThenBy(row => row.Order),
