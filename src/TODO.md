@@ -29,6 +29,7 @@
 
 ### Editor
 
+- Bug with connectors disappearing when trace bar is resized
 - Cut, copy and paste of workflow nodes/connectors
 
 ### ChatClient
