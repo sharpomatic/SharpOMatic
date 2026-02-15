@@ -20,7 +20,6 @@
 
 ### Evaluations
 
-- Add order to runrow and use that for sorting the eval run page
 - Import/Merging of existing data using csv
 
 ### MCP Servers 
