@@ -15,6 +15,16 @@ This saves time and reduces the need to look up model names and capabilities.
 It is not possible to preconfigure every known model, so only the most recent and popular ones are defined.
 New models are likely to be released between SharpOMatic versions, so you can manually configure a model that is not known by the system.
 
+## Predefined model families
+
+Current built-in model configs cover:
+
+- **OpenAI** (for OpenAI connectors)
+- **Azure OpenAI** (for Azure OpenAI connectors)
+- **Google Gemini** (for Google AI connectors, including Gemini models)
+
+These lists evolve between releases as model catalogs change.
+
 ## Model Instances
 
 A model is an instance of a model config.
@@ -29,6 +39,7 @@ The custom option allows you to specify the model capabilities it supports.
 For example, reasoning, structured output, tool calling, image input, and so forth.
 You can look up this information online for the model of interest and then set up the model instance as needed.
 This customization mechanism allows you to call models that have been released since the last SharpOMatic update.
+The custom model path remains the fallback for newly released or specialized models not yet in the predefined list.
 
 <img src="/img/models_custom.png" alt="Custom model setup" width="700" style={{ maxWidth: '100%', height: 'auto' }} />
 
@@ -40,4 +51,3 @@ For example, if the model supports structured output, you get an extra tab for t
 Inside that tab, you can define structured-output values that are used during the actual call.
 
 <img src="/img/models_modelcall.png" alt="NodeCall capability tabs" width="600" style={{ maxWidth: '100%', height: 'auto' }} />
-

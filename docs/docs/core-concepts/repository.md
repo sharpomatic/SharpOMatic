@@ -46,9 +46,16 @@ For SQL Server:
           connectionString: builder.Configuration.GetConnectionString("SharpOMatic")!);
 ```
 
+For local SQL Server testing with LocalDB:
+
+```text
+Server=(localdb)\MSSQLLocalDB;Database=SharpOMatic;Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true
+```
+
 ## Upgrades
 
 Entity Framework migrations are used to update the repository database schema and provide a transparent upgrade path.
 By default, migrations are applied automatically on engine startup.
 You can disable this by setting **ApplyMigrationsOnStartup** to **false**.
+SQLite and SQL Server use separate provider-specific migration chains, each packaged with its provider extension package.
 All persisted data types, such as workflows and metadata, have an embedded version number so that version changes can be detected on load and upgrades are applied automatically.

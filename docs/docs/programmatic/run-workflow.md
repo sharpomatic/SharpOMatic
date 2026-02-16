@@ -85,7 +85,7 @@ Here is the code to start the workflow running.
   await engine.StartWorkflowRunAndNotify(runId);
 ```
 
-The interface you need to implement only has two methods.
+The interface includes workflow completion, evaluation completion, and connection override hooks.
 
 ```csharp
   public interface IEngineNotification
@@ -95,6 +95,11 @@ The interface you need to implement only has two methods.
         Guid workflowId, 
         RunStatus runStatus, 
         string? outputContext, 
+        string? error);
+
+    public Task EvalRunCompleted(
+        Guid evalRunId,
+        EvalRunStatus runStatus,
         string? error);
 
     public void ConnectionOverride(
@@ -139,6 +144,15 @@ Here is a simple implementation of the interface to duplicate the previous logic
       }        
     }
 
+    public Task EvalRunCompleted(
+      Guid evalRunId,
+      EvalRunStatus runStatus,
+      string? error)
+    {
+      // Handle evaluation completion if your host uses eval runs
+      return Task.CompletedTask;
+    }
+
     public void ConnectionOverride(
         Guid runId, 
         Guid workflowId, 
@@ -163,13 +177,14 @@ Here is a simple implementation of the interface to duplicate the previous logic
 
 If you need to monitor workflow execution at a more granular level, then implement the **IProgressService** interface.
 
-The interface you need to implement only has two methods.
+The interface includes workflow run progress, trace progress, and evaluation run progress.
 
 ```csharp
   public interface IProgressService
   {
     Task RunProgress(Run run);
     Task TraceProgress(Trace trace);
+    Task EvalRunProgress(EvalRun evalRun);
   }
 ```
 
@@ -187,18 +202,23 @@ Here is a simple implementation.
       if (model.RunStatus == RunStatus.Failed)
       {
         // Log or otherwise process a failure
-        Console.WriteLine($"Workflow {model.workflowId} failed with error {model.Error}");
+        Console.WriteLine($"Workflow {model.WorkflowId} failed with error {model.Error}");
       }
       else
       { 
         // Log all other state changes
-        Console.WriteLine($"Workflow {model.workflowId} is now {model.RunStatus}");
+        Console.WriteLine($"Workflow {model.WorkflowId} is now {model.RunStatus}");
       }
     }
 
     public async Task TraceProgress(Trace model)
     {
-        Console.WriteLine($"Workflow {model.workflowId} Node {model.nodeId} is now {model.Message}");
+        Console.WriteLine($"Workflow {model.WorkflowId} Node {model.NodeEntityId} is now {model.Message}");
+    }
+
+    public async Task EvalRunProgress(EvalRun evalRun)
+    {
+        Console.WriteLine($"Eval run {evalRun.EvalRunId} is now {evalRun.Status}");
     }
   }
 ```

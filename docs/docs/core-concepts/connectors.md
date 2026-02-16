@@ -5,7 +5,7 @@ sidebar_position: 2
 
 Connectors define how SharpOMatic connects to external providers.
 They capture the credentials, endpoints, and other details needed to access third-party services.
-Today this focuses on language model providers, but it will expand in the future.
+Today this focuses on language model providers.
 
 ## Connector Configs
 
@@ -13,7 +13,6 @@ The repository stores connector configs.
 These are metadata definitions that describe supported providers.
 Each config lists the fields the editor should collect, such as API keys, tenant IDs, endpoints, and so forth.
 When the user creates a new connector instance, they can select from this list of known providers.
-Future releases will expand this list to include more well-known model providers.
 
 ## Connector Instances
 
@@ -93,3 +92,11 @@ Look up the endpoint of the resource and then use either an API key or Default A
 This is the approach now recommended by Microsoft.
 Model deployments within a Foundry provide access to OpenAI models and many other open-source models such as those from DeepSeek and Meta.
 Fortunately, all models exposed from Foundry use the OpenAI protocol, so you can access DeepSeek, Llama, and thousands of other models using the Azure OpenAI connector.
+
+
+## Google AI
+
+This connector allows calls to Google Gen AI compatible models.
+The current auth mode is API key based.
+
+- **API Key** - mandatory
