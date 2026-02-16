@@ -9,6 +9,8 @@ on:
       - 'src/SharpOMatic.FrontEnd/**'
       - 'src/SharpOMatic.Editor/**'
       - 'src/SharpOMatic.Engine/**'
+      - 'src/SharpOMatic.Engine.Sqlite/**'
+      - 'src/SharpOMatic.Engine.SqlServer/**'
       - 'src/SharpOMatic.Server/**'
       - 'src/SharpOMatic.Tests/**'
   pull_request:
@@ -18,6 +20,8 @@ on:
       - 'src/SharpOMatic.FrontEnd/**'
       - 'src/SharpOMatic.Editor/**'
       - 'src/SharpOMatic.Engine/**'
+      - 'src/SharpOMatic.Engine.Sqlite/**'
+      - 'src/SharpOMatic.Engine.SqlServer/**'
       - 'src/SharpOMatic.Server/**'
       - 'src/SharpOMatic.Tests/**'
 

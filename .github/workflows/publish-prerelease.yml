@@ -53,6 +53,14 @@ jobs:
         working-directory: src
         run: dotnet pack SharpOMatic.Engine/SharpOMatic.Engine.csproj --configuration Release --no-build /p:VersionPrefix=$VERSION_PREFIX /p:VersionSuffix=$VERSION_SUFFIX -o ../artifacts
 
+      - name: Pack Engine Sqlite
+        working-directory: src
+        run: dotnet pack SharpOMatic.Engine.Sqlite/SharpOMatic.Engine.Sqlite.csproj --configuration Release --no-build /p:VersionPrefix=$VERSION_PREFIX /p:VersionSuffix=$VERSION_SUFFIX -o ../artifacts
+
+      - name: Pack Engine SqlServer
+        working-directory: src
+        run: dotnet pack SharpOMatic.Engine.SqlServer/SharpOMatic.Engine.SqlServer.csproj --configuration Release --no-build /p:VersionPrefix=$VERSION_PREFIX /p:VersionSuffix=$VERSION_SUFFIX -o ../artifacts
+
       - name: Pack Editor
         working-directory: src
         run: dotnet pack SharpOMatic.Editor/SharpOMatic.Editor.csproj --configuration Release --no-build /p:VersionPrefix=$VERSION_PREFIX /p:VersionSuffix=$VERSION_SUFFIX -o ../artifacts

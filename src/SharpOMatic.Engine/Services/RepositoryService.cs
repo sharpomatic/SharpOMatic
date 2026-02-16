@@ -886,6 +886,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (grader is null)
             throw new SharpOMaticException($"EvalGrader '{evalGraderId}' cannot be found.");
 
+        await (from g in dbContext.EvalRunRowGraders where g.EvalGraderId == evalGraderId select g).ExecuteDeleteAsync();
+        await (from g in dbContext.EvalRunGraderSummaries where g.EvalGraderId == evalGraderId select g).ExecuteDeleteAsync();
+
         dbContext.Remove(grader);
         await dbContext.SaveChangesAsync();
     }
@@ -921,6 +924,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (column is null)
             throw new SharpOMaticException($"EvalColumn '{evalColumnId}' cannot be found.");
 
+        await (from d in dbContext.EvalData where d.EvalColumnId == evalColumnId select d).ExecuteDeleteAsync();
+
         dbContext.Remove(column);
         await dbContext.SaveChangesAsync();
     }
@@ -955,6 +960,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         if (row is null)
             throw new SharpOMaticException($"EvalRow '{evalRowId}' cannot be found.");
+
+        await (from d in dbContext.EvalData where d.EvalRowId == evalRowId select d).ExecuteDeleteAsync();
+        await (from r in dbContext.EvalRunRows where r.EvalRowId == evalRowId select r).ExecuteDeleteAsync();
 
         dbContext.Remove(row);
         await dbContext.SaveChangesAsync();
@@ -1106,14 +1114,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return await evalRuns.CountAsync();
     }
 
-    public async Task<List<EvalRunSummary>> GetEvalRunSummaries(
-        Guid evalConfigId,
-        string? search,
-        EvalRunSortField sortBy,
-        SortDirection sortDirection,
-        int skip,
-        int take
-    )
+    public async Task<List<EvalRunSummary>> GetEvalRunSummaries(Guid evalConfigId, string? search, EvalRunSortField sortBy, SortDirection sortDirection, int skip, int take)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -1239,11 +1240,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             }
         ).ToListAsync();
 
-        return new EvalRunDetail
-        {
-            EvalRun = evalRunSummary,
-            GraderSummaries = graderSummaries,
-        };
+        return new EvalRunDetail { EvalRun = evalRunSummary, GraderSummaries = graderSummaries };
     }
 
     public async Task<int> GetEvalRunRowCount(Guid evalRunId, string? search)
@@ -1260,14 +1257,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return await rows.CountAsync();
     }
 
-    public async Task<List<EvalRunRowDetail>> GetEvalRunRows(
-        Guid evalRunId,
-        string? search,
-        EvalRunRowSortField sortBy,
-        SortDirection sortDirection,
-        int skip,
-        int take
-    )
+    public async Task<List<EvalRunRowDetail>> GetEvalRunRows(Guid evalRunId, string? search, EvalRunRowSortField sortBy, SortDirection sortDirection, int skip, int take)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -1375,20 +1365,18 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         var normalizedSearch = trimmedSearch.ToLower();
         if (Guid.TryParse(trimmedSearch, out var parsedRunId))
         {
-            return evalRuns.Where(
-                run =>
-                    run.EvalRunId == parsedRunId
-                    || run.Name.ToLower().Contains(normalizedSearch)
-                    || (run.Message != null && run.Message.ToLower().Contains(normalizedSearch))
-                    || (run.Error != null && run.Error.ToLower().Contains(normalizedSearch))
+            return evalRuns.Where(run =>
+                run.EvalRunId == parsedRunId
+                || run.Name.ToLower().Contains(normalizedSearch)
+                || (run.Message != null && run.Message.ToLower().Contains(normalizedSearch))
+                || (run.Error != null && run.Error.ToLower().Contains(normalizedSearch))
             );
         }
 
-        return evalRuns.Where(
-            run =>
-                run.Name.ToLower().Contains(normalizedSearch)
-                || (run.Message != null && run.Message.ToLower().Contains(normalizedSearch))
-                || (run.Error != null && run.Error.ToLower().Contains(normalizedSearch))
+        return evalRuns.Where(run =>
+            run.Name.ToLower().Contains(normalizedSearch)
+            || (run.Message != null && run.Message.ToLower().Contains(normalizedSearch))
+            || (run.Error != null && run.Error.ToLower().Contains(normalizedSearch))
         );
     }
 
@@ -1443,11 +1431,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 EvalRunId = runRow.EvalRunId,
                 EvalRowId = runRow.EvalRowId,
                 Name = nameColumnId.HasValue
-                    ? (
-                        from data in dbContext.EvalData.AsNoTracking()
-                        where data.EvalRowId == runRow.EvalRowId && data.EvalColumnId == nameColumnId.Value
-                        select data.StringValue
-                    ).FirstOrDefault() ?? ""
+                    ? (from data in dbContext.EvalData.AsNoTracking() where data.EvalRowId == runRow.EvalRowId && data.EvalColumnId == nameColumnId.Value select data.StringValue).FirstOrDefault()
+                        ?? ""
                     : "",
                 Order = runRow.Order,
                 Status = runRow.Status,
@@ -1465,18 +1450,10 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             return rows;
 
         var normalizedSearch = search.Trim().ToLower();
-        return rows.Where(
-            row =>
-                row.Name.ToLower().Contains(normalizedSearch)
-                || (row.Error != null && row.Error.ToLower().Contains(normalizedSearch))
-        );
+        return rows.Where(row => row.Name.ToLower().Contains(normalizedSearch) || (row.Error != null && row.Error.ToLower().Contains(normalizedSearch)));
     }
 
-    private static IQueryable<EvalRunRowProjection> GetSortedEvalRunRows(
-        IQueryable<EvalRunRowProjection> rows,
-        EvalRunRowSortField sortBy,
-        SortDirection sortDirection
-    )
+    private static IQueryable<EvalRunRowProjection> GetSortedEvalRunRows(IQueryable<EvalRunRowProjection> rows, EvalRunRowSortField sortBy, SortDirection sortDirection)
     {
         return sortBy switch
         {
@@ -1489,9 +1466,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             EvalRunRowSortField.Started => sortDirection == SortDirection.Ascending
                 ? rows.OrderBy(row => row.Started).ThenBy(row => row.Order)
                 : rows.OrderByDescending(row => row.Started).ThenBy(row => row.Order),
-            _ => sortDirection == SortDirection.Ascending
-                ? rows.OrderBy(row => row.Name).ThenBy(row => row.Order)
-                : rows.OrderByDescending(row => row.Name).ThenBy(row => row.Order),
+            _ => sortDirection == SortDirection.Ascending ? rows.OrderBy(row => row.Name).ThenBy(row => row.Order) : rows.OrderByDescending(row => row.Name).ThenBy(row => row.Order),
         };
     }
 

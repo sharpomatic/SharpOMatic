@@ -2,13 +2,6 @@
 
 ## Major Features
 
-### EF
-
-- Create SQLite specific nuget package for migrations
-- Create SQLServer specific nuget package for migrations
-- Create initial migrations for both
-- Check both work by connecting to Azure SQL instance from DemoServer
-
 ### Engine
 
 - Integrate use of LSP/OmniSharp for full intellisense in code nodes

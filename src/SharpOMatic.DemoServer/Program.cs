@@ -24,16 +24,7 @@ builder
     .AddToolMethods(ToolCalling.GetGreeting, ToolCalling.GetTime)
     .AddScriptOptions([typeof(CodeExample).Assembly], ["SharpOMatic.DemoServer"])
     .AddJsonConverters(typeof(ClassExampleConverter))
-    .AddRepository(
-        (optionBuilder) =>
-        {
-            // SQLite database in current users profile
-            var folder = Environment.SpecialFolder.LocalApplicationData;
-            var path = Environment.GetFolderPath(folder);
-            var dbPath = Path.Join(path, "sharpomatic.db");
-            optionBuilder.UseSqlite($"Data Source={dbPath}");
-        }
-    );
+    .AddSqliteRepository(connectionString: $"Data Source={Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sharpomatic.db")}");
 
 // Custom implementation to track when workflows are completed
 builder.Services.AddSingleton<IProgressService, ProgressService>();

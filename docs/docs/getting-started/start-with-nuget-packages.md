@@ -10,8 +10,11 @@ You could start from scratch by creating a new ASP.NET Core project and then run
 
 ```powershell
 dotnet add package SharpOMatic.Engine
+dotnet add package SharpOMatic.Engine.Sqlite
 dotnet add package SharpOMatic.Editor
 ```
+
+For SQL Server, install `SharpOMatic.Engine.SqlServer` instead of `SharpOMatic.Engine.Sqlite`.
 
 ## Register services
 
@@ -31,14 +34,8 @@ For example, if your username is JohnDoe, then the files will be at:<br />
   builder.Services.AddSharpOMaticEditor();
   builder.Services.AddSharpOMaticTransfer();
   builder.Services.AddSharpOMaticEngine()
-    .AddRepository((optionBuilder) =>
-    {
-      // SQLite database in current user's profile
-      var folder = Environment.SpecialFolder.LocalApplicationData;
-      var path = Environment.GetFolderPath(folder);
-      var dbPath = Path.Join(path, "sharpomatic.db");
-      optionBuilder.UseSqlite($"Data Source={dbPath}");
-    });
+    .AddSqliteRepository(
+      connectionString: $"Data Source={Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sharpomatic.db")}");
 ```
 
 The first 3 lines are used to setup how assets are stored.
@@ -47,6 +44,18 @@ We want to use the browser based editor and so need to call **AddSharpOMaticEdit
 To enable import and export we then add **AddSharpOMaticTransfer**.
 Finally the **AddSharpOMaticEngine** call is used to setup the repository.
 For simplicity we use SQLite, it will create the database automatically on first start.
+
+If you want SQL Server:
+
+```powershell
+dotnet add package SharpOMatic.Engine.SqlServer
+```
+
+```csharp
+  builder.Services.AddSharpOMaticEngine()
+    .AddSqlServerRepository(
+      connectionString: builder.Configuration.GetConnectionString("SharpOMatic")!);
+```
 
 ## Map the editor UI
 
@@ -63,4 +72,3 @@ Check the generated port number for new project in the `launchSettings.json`.<br
 NOTE: Replace 9001 with your project specific port number
 
 Use your favorite browser to open http://localhost:9001/editor
-

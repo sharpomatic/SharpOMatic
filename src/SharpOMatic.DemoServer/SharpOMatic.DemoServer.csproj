@@ -18,5 +18,6 @@
   <ItemGroup>
     <ProjectReference Include="..\SharpOMatic.Editor\SharpOMatic.Editor.csproj" />
     <ProjectReference Include="..\SharpOMatic.Engine\SharpOMatic.Engine.csproj" />
+    <ProjectReference Include="..\SharpOMatic.Engine.Sqlite\SharpOMatic.Engine.Sqlite.csproj" />
   </ItemGroup>
 </Project>

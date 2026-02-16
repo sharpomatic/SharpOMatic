@@ -22,17 +22,28 @@ Repository operations are exposed through **IRepositoryService**, which handles 
 
 ## Configuration
 
-The demo server uses SQLite, but you can point to any supported provider.
+Add one of the provider packages:
+
+```powershell
+dotnet add package SharpOMatic.Engine.Sqlite
+# or
+dotnet add package SharpOMatic.Engine.SqlServer
+```
+
+The demo server uses SQLite by default:
 
 ```csharp
   builder.Services.AddSharpOMaticEngine()
-      .AddRepository(options =>
-      {
-          var folder = Environment.SpecialFolder.LocalApplicationData;
-          var path = Environment.GetFolderPath(folder);
-          var dbPath = Path.Join(path, "sharpomatic.db");
-          options.UseSqlite($"Data Source={dbPath}");
-      });
+      .AddSqliteRepository(
+          connectionString: $"Data Source={Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sharpomatic.db")}");
+```
+
+For SQL Server:
+
+```csharp
+  builder.Services.AddSharpOMaticEngine()
+      .AddSqlServerRepository(
+          connectionString: builder.Configuration.GetConnectionString("SharpOMatic")!);
 ```
 
 ## Upgrades

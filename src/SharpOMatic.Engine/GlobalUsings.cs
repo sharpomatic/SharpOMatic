@@ -25,7 +25,6 @@ global using Microsoft.CodeAnalysis.CSharp;
 global using Microsoft.CodeAnalysis.CSharp.Scripting;
 global using Microsoft.CodeAnalysis.Scripting;
 global using Microsoft.EntityFrameworkCore;
-global using Microsoft.EntityFrameworkCore.Design;
 global using Microsoft.Extensions.AI;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.DependencyInjection.Extensions;

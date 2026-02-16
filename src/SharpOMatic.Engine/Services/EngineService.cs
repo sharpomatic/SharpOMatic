@@ -1,13 +1,12 @@
-﻿using Google.GenAI.Types;
+﻿using System;
+using System.Net.Http.Headers;
+using Google.GenAI.Types;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using SharpOMatic.Engine.DTO;
 using SharpOMatic.Engine.Entities.Definitions;
 using SharpOMatic.Engine.Interfaces;
 using SharpOMatic.Engine.Repository;
-using SQLitePCL;
-using System;
-using System.Net.Http.Headers;
 
 namespace SharpOMatic.Engine.Services;
 
@@ -222,16 +221,7 @@ public class EngineService(
                         return;
                     }
 
-                    var evalRunRow = await PerformEvalRow(
-                        provider,
-                        repository,
-                        jsonConverterService,
-                        assetStore,
-                        scriptOptionsService,
-                        evalRun.EvalRunId,
-                        evalConfigDetail,
-                        row
-                    );
+                    var evalRunRow = await PerformEvalRow(provider, repository, jsonConverterService, assetStore, scriptOptionsService, evalRun.EvalRunId, evalConfigDetail, row);
 
                     await progressUpdateGate.WaitAsync(cancellationToken);
                     try
@@ -301,21 +291,23 @@ public class EngineService(
                     passRate = passingCount / (double)scoredCount;
                 }
 
-                graderSummaries.Add(new EvalRunGraderSummary
-                {
-                    EvalRunGraderSummaryId = Guid.NewGuid(),
-                    EvalRunId = evalRun.EvalRunId,
-                    EvalGraderId = evalGrader.EvalGraderId,
-                    TotalCount = totalCount,
-                    CompletedCount = completedCount,
-                    FailedCount = failedCount,
-                    MinScore = minScore,
-                    MaxScore = maxScore,
-                    AverageScore = averageScore,
-                    MedianScore = medianScore,
-                    StandardDeviation = standardDeviation,
-                    PassRate = passRate,
-                });
+                graderSummaries.Add(
+                    new EvalRunGraderSummary
+                    {
+                        EvalRunGraderSummaryId = Guid.NewGuid(),
+                        EvalRunId = evalRun.EvalRunId,
+                        EvalGraderId = evalGrader.EvalGraderId,
+                        TotalCount = totalCount,
+                        CompletedCount = completedCount,
+                        FailedCount = failedCount,
+                        MinScore = minScore,
+                        MaxScore = maxScore,
+                        AverageScore = averageScore,
+                        MedianScore = medianScore,
+                        StandardDeviation = standardDeviation,
+                        PassRate = passRate,
+                    }
+                );
             }
 
             await repository.UpsertEvalRunGraderSummaries(graderSummaries);
@@ -362,9 +354,10 @@ public class EngineService(
         IJsonConverterService jsonConverterService,
         IAssetStore assetStore,
         IScriptOptionsService scriptOptionsService,
-        Guid evalRunId, 
-        EvalConfigDetail evalConfigDetail, 
-        EvalRow evalRow)
+        Guid evalRunId,
+        EvalConfigDetail evalConfigDetail,
+        EvalRow evalRow
+    )
     {
         var evalRunRow = new EvalRunRow
         {
@@ -373,7 +366,7 @@ public class EngineService(
             EvalRowId = evalRow.EvalRowId,
             Order = evalRow.Order,
             Started = DateTime.Now,
-            Status = EvalRunStatus.Running
+            Status = EvalRunStatus.Running,
         };
 
         await repository.UpsertEvalRunRows([evalRunRow]);
@@ -446,7 +439,7 @@ public class EngineService(
                             {
                                 var options = scriptOptionsService.GetScriptOptions();
                                 var globals = new ScriptCodeContext()
-                               {
+                                {
                                     Context = [],
                                     ServiceProvider = serviceProvider,
                                     Assets = new AssetHelper(repository, assetStore, runId),
@@ -519,7 +512,6 @@ public class EngineService(
                 evalRunRow.OutputContext = runResult.OutputContext;
                 evalRunRow.Status = EvalRunStatus.Completed;
             }
-
         }
         catch (Exception ex)
         {
@@ -535,13 +527,7 @@ public class EngineService(
         return evalRunRow;
     }
 
-    private async Task PerformEvalGrader(
-        IRepositoryService repository,
-        IJsonConverterService jsonConverterService,
-        Guid evalRunId,
-        Guid evalRunRowId,
-        EvalGrader evalGrader, 
-        string? jsonContext)
+    private async Task PerformEvalGrader(IRepositoryService repository, IJsonConverterService jsonConverterService, Guid evalRunId, Guid evalRunRowId, EvalGrader evalGrader, string? jsonContext)
     {
         var evalRunRowGrader = new EvalRunRowGrader
         {
@@ -550,7 +536,7 @@ public class EngineService(
             EvalGraderId = evalGrader.EvalGraderId,
             EvalRunId = evalRunId,
             Started = DateTime.Now,
-            Status = EvalRunStatus.Running
+            Status = EvalRunStatus.Running,
         };
 
         try
@@ -590,7 +576,6 @@ public class EngineService(
             evalRunRowGrader.Finished = DateTime.Now;
             await repository.UpsertEvalRunRowGraders([evalRunRowGrader]);
         }
-
     }
 
     private static List<EvalRow> ResolveEvalRowsForRun(List<EvalRow> allRows, int? sampleCount)

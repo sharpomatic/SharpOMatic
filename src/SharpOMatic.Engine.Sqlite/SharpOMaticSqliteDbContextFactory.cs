@@ -1,6 +1,6 @@
-﻿namespace SharpOMatic.Engine.Repository;
+namespace SharpOMatic.Engine.Repository;
 
-public class SharpOMaticDbContextFactory : IDesignTimeDbContextFactory<SharpOMaticDbContext>
+public class SharpOMaticSqliteDbContextFactory : IDesignTimeDbContextFactory<SharpOMaticDbContext>
 {
     public SharpOMaticDbContext CreateDbContext(string[] args)
     {
@@ -9,7 +9,7 @@ public class SharpOMaticDbContextFactory : IDesignTimeDbContextFactory<SharpOMat
         var folder = Environment.SpecialFolder.LocalApplicationData;
         var path = Environment.GetFolderPath(folder);
         var dbPath = Path.Join(path, "sharpomatic.db");
-        optionsBuilder.UseSqlite($"Data Source={dbPath}");
+        optionsBuilder.UseSqlite($"Data Source={dbPath}", sqliteOptions => sqliteOptions.MigrationsAssembly(typeof(SharpOMaticSqliteDbContextFactory).Assembly.FullName));
 
         return new SharpOMaticDbContext(optionsBuilder.Options, Options.Create(new SharpOMaticDbOptions()));
     }
