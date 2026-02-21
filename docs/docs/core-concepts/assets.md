@@ -80,7 +80,7 @@ These examples assume you have resolved **IAssetService** and **IRepositoryServi
   // File helper loads bytes from a named file on your local system
   var data = await File.ReadAllBytesAsync("document.png");
 
-  // Speicfy Run scope and provide the run identifier
+  // Specify Run scope and provide the run identifier
   var runAssetRef = await assetService.CreateFromBytesAsync(
       data,
       "document.png",

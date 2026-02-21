@@ -194,7 +194,7 @@ The **RunProgress** method is invoked each time a **Run** changes state.
 **TraceProgress** is called whenever a new **Trace** record is created or changes its value.
 A trace record is used to track the state of an individual node as it is processed.
 Here is a simple implementation.
-The **EvalRunProgress** methos is invoked as each row of the evalution is processed.
+The **EvalRunProgress** method is invoked as each row of the evaluation is processed.
 
 ```csharp
   public class ProgressService(IServiceProvider serviceProvider) : IProgressService

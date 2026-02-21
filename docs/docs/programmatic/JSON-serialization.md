@@ -25,7 +25,7 @@ If you think a simple type has been missed, please raise an issue and it will be
 
 ### Class instances
 
-Classes always require a dedicated converter that derives from **IJsonConverter**.
+Classes always require a dedicated converter that derives from **JsonConverter&lt;T&gt;**.
 
 The following built-in types already have converters.
 
@@ -51,7 +51,7 @@ Here is an example class definition.
   }
 ```
 
-Now you need to implement an **IJsonConverter** for it.
+Now you need to implement a **JsonConverter&lt;ClassExample&gt;** for it.
 
 ```csharp
   public sealed class ClassExampleConverter : JsonConverter<ClassExample>
@@ -92,7 +92,7 @@ Here you can see it being specified in the editor.
 
 <img src="/img/json_fast1.png" alt="JSON Data" width="900" style={{ maxWidth: '100%', height: 'auto' }} />
 
-You can use the fast deserialization utility inside a **Code** node or your own code when constructing the inital context for a workflow invocation.
+You can use the fast deserialization utility inside a **Code** node or your own code when constructing the initial context for a workflow invocation.
 
 ```csharp
   var json = """

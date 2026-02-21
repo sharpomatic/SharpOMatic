@@ -67,15 +67,14 @@ builder.Services.AddSharpOMaticTransfer();
 
 ### Import
 
-You can use a utility such as **POSTMAN** to invoke the import end point. <br/>
+You can use a utility such as **POSTMAN** to invoke the import endpoint. <br/>
 The demo server has a url of **http://localhost:9001/api/transfer/import**, you will need to update this for your own domain.
 
 <img src="/img/transfer_import_postman.png" alt="POSTMAN import" width="700" style={{ maxWidth: '100%', height: 'auto' }} />
 
 ### Export
 
-You can use a utility such as **POSTMAN** to invoke the export end point. <br/>
+You can use a utility such as **POSTMAN** to invoke the export endpoint. <br/>
 The body needs to be JSON that specifies the identifiers of the instances wanted, or set the **all** property to true.
 
 <img src="/img/transfer_export_postman.png" alt="POSTMAN export" width="700" style={{ maxWidth: '100%', height: 'auto' }} />
-

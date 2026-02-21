@@ -24,7 +24,7 @@ You can perform await operations on asynchronous code in the usual way.
 It is recommended to use async operations when possible to free up the thread for slow operations.
 For example, file and network calls are typically quite slow and benefit from this approach.
 
-<img src="/img/code_async.png" alt="Mandatory paths" width="800" style={{ maxWidth: '100%', height: 'auto' }} />```
+<img src="/img/code_async.png" alt="Mandatory paths" width="800" style={{ maxWidth: '100%', height: 'auto' }} />
 
 ## Implicit Assemblies
 

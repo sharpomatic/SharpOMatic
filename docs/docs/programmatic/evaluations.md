@@ -6,6 +6,11 @@ sidebar_position: 4
 This section covers running evaluations programmatically.
 For evaluation concepts and editor flows, see [Evaluations](../core-concepts/evaluations.md).
 
+## Editor vs Programmatic
+
+Use the editor to design and maintain evaluation configurations (columns, rows, and graders).
+Use programmatic APIs when your application needs to start runs, monitor progress, and process run outcomes as part of automation.
+
 ## Start an evaluation run
 
 Use `IEngineService.StartEvalRun`:
@@ -21,6 +26,10 @@ Optional parameters:
 
 - `name`: custom display name for the run
 - `sampleCount`: random row sample size
+
+`sampleCount` is optional. If omitted, all rows are run.
+If provided, it must be between `1` and the evaluation row count.
+Rows are chosen randomly for each run.
 
 ```csharp
 var engine = serviceProvider.GetRequiredService<IEngineService>();
@@ -97,5 +106,4 @@ public class ProgressService : IProgressService
 
 ## API-driven evaluation flows
 
-If you are building outside the editor UI, the evaluation HTTP endpoints are documented in [Evaluations](../core-concepts/evaluations.md).
-
+If you are building outside the editor UI, you can call the evaluation endpoints exposed under `/api/eval` by the editor host.

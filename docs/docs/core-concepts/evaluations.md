@@ -43,6 +43,14 @@ Graders are workflows that score or assess the output from the main evaluation w
 You can define multiple graders and set a pass threshold for each one.
 After the run completes, grader summaries provide statistics such as average score and pass rate.
 
+### Grader Output Contract
+
+A grader workflow is expected to write its numeric score to the context path `score`.
+This value is used for score statistics and pass-rate calculations.
+
+If a grader completes without providing a numeric `score`, the grader run can still complete, but score-based aggregates will not include that row.
+For consistent evaluation metrics, ensure every grader writes a valid numeric value to `score`.
+
 ## Running an Evaluation
 
 From the evaluation page, select **Start Run**.
@@ -53,6 +61,9 @@ The start dialog allows:
 - **Sample count**: choose how many rows to run in the random sample.
 
 Sampling is useful for quick checks when you want faster feedback before running the full dataset.
+If sampling is enabled, sample count must be between `1` and the total number of rows in the evaluation.
+Rows are selected randomly each run, so two sampled runs can execute different subsets.
+If sampling is disabled, all rows are executed.
 
 ## Runs
 
@@ -68,3 +79,28 @@ The import does not replace an existing evaluation by ID.
 This clone-on-import behavior is intentional so existing evaluations keep their original run history.
 In other words, importing an evaluation configuration does not delete previous runs from existing evaluations.
 
+Evaluation transfer includes the full configuration:
+
+- EvalConfig
+- EvalGraders
+- EvalColumns
+- EvalRows
+- EvalData
+
+Evaluation run result data is not transferred:
+
+- EvalRun
+- EvalRunRow
+- EvalRunRowGrader
+- EvalRunGraderSummary
+
+## Troubleshooting
+
+Common causes of evaluation run failures:
+
+- **Missing workflow reference**: the evaluation workflow or grader workflow is not set or no longer exists.
+- **Missing mandatory row data**: a required column has no value for one or more rows.
+- **Invalid sample count**: the sample count is outside the valid range for the current row total.
+- **Missing grader score**: the grader workflow does not output a numeric value at `score`, so score summaries may look incomplete.
+
+When troubleshooting, open the run details and inspect row-level errors and grader results to identify the exact failure point.

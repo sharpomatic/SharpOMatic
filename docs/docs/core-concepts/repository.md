@@ -32,7 +32,7 @@ dotnet add package SharpOMatic.Engine.Sqlite
 dotnet add package SharpOMatic.Engine.SqlServer
 ```
 
-The demo server uses SQLite by default and stores the database file in the users profile data.
+The demo server uses SQLite by default and stores the database file in the user's profile data.
 
 ```csharp
   builder.Services.AddSharpOMaticEngine()
@@ -48,7 +48,7 @@ For SQL Server the connection string is pulled from appsettings.
           connectionString: builder.Configuration.GetConnectionString("SharpOMatic")!);
 ```
 
-For local SQL Server testing with LocalDB you can use a connectin string like this.
+For local SQL Server testing with LocalDB you can use a connection string like this.
 
 ```text
 Server=(localdb)\MSSQLLocalDB;Database=SharpOMatic;Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true

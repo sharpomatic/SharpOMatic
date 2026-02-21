@@ -5,7 +5,7 @@ sidebar_position: 2
 
 Connectors define how SharpOMatic connects to external providers.
 They capture the credentials, endpoints, and other details needed to access third-party services.
-Currently ony language model providers are supported but this will be expanded in the future.
+Currently only language model providers are supported, but this will be expanded in the future.
 
 ## Connector Configs
 
