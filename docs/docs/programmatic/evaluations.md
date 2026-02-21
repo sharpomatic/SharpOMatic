@@ -13,7 +13,7 @@ Use `IEngineService.StartEvalRun`:
 ```csharp
 var engine = serviceProvider.GetRequiredService<IEngineService>();
 
-// Start against all rows
+// Start and run all the evaluation runs
 var evalRun = await engine.StartEvalRun(evalConfigId);
 ```
 

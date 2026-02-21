@@ -5,7 +5,7 @@ sidebar_position: 3
 
 SharpOMatic includes sample workflows you can load into your workspace.
 Samples are useful for exploring the editor, exploring different features and seeing recommended node patterns.
-Samples include orchestration patterns such as fan-out/fan-in, batch processing, and workflow composition.
+Samples include orchestration patterns such as fan-out/fan-in, batch processing, loops and more.
 If a sample needs to use a model then you will need to create a connector and then model.
 Once added you can edit the **ModelCall** in the workflow and select the model you just defined.
 Some sample sets can also be used as references when building evaluation scenarios.

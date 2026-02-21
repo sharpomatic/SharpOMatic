@@ -112,6 +112,7 @@ The interface includes workflow completion, evaluation completion, and connectio
 ```
 
 The **RunCompleted** method is invoked each time a **Run** completes with success or failure.
+Likewise the **EvalRunCompleted** is invoked when an evaluation run completes.
 **ConnectionOverride** is called whenever a connection is about to be used.
 It allows you to override the connection properties such as the target endpoint and API key.
 This makes it easy to implement different values per environment.
@@ -176,6 +177,7 @@ Here is a simple implementation of the interface to duplicate the previous logic
 ### Progress Notifications
 
 If you need to monitor workflow execution at a more granular level, then implement the **IProgressService** interface.
+This interface is used internally to notify the front end during run and eval run execution.
 
 The interface includes workflow run progress, trace progress, and evaluation run progress.
 
@@ -188,11 +190,11 @@ The interface includes workflow run progress, trace progress, and evaluation run
   }
 ```
 
-
 The **RunProgress** method is invoked each time a **Run** changes state.
 **TraceProgress** is called whenever a new **Trace** record is created or changes its value.
 A trace record is used to track the state of an individual node as it is processed.
 Here is a simple implementation.
+The **EvalRunProgress** methos is invoked as each row of the evalution is processed.
 
 ```csharp
   public class ProgressService(IServiceProvider serviceProvider) : IProgressService
