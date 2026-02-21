@@ -6,6 +6,7 @@ public class TransferExportRequest
     public TransferSelection? Workflows { get; set; }
     public TransferSelection? Connectors { get; set; }
     public TransferSelection? Models { get; set; }
+    public TransferSelection? Evaluations { get; set; }
     public TransferSelection? Assets { get; set; }
 }
 
@@ -31,6 +32,7 @@ public class TransferCounts
     public int Workflows { get; set; }
     public int Connectors { get; set; }
     public int Models { get; set; }
+    public int Evaluations { get; set; }
     public int Assets { get; set; }
 }
 
@@ -48,5 +50,6 @@ public class TransferImportResult
     public int WorkflowsImported { get; set; }
     public int ConnectorsImported { get; set; }
     public int ModelsImported { get; set; }
+    public int EvaluationsImported { get; set; }
     public int AssetsImported { get; set; }
 }

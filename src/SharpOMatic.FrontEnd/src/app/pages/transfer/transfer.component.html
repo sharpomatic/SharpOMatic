@@ -15,7 +15,7 @@
   <div class="transfer-panel p-3">
     <h5 class="mb-2">Import a transfer package</h5>
     <p class="text-body-secondary mb-3">
-      Import workflows, connectors, models, and assets from a transfer package.
+      Import workflows, connectors, models, evaluations, and assets from a transfer package.
     </p>
     <div class="d-flex align-items-center gap-2 flex-wrap">
       <input
@@ -776,6 +776,248 @@
                     [disabled]="modelsPage >= modelsPageCount()"
                     aria-label="Last"
                     (click)="onModelsPageChange(modelsPageCount())"
+                  >
+                    <span aria-hidden="true">&raquo;</span>
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          }
+        </div>
+      }
+    }
+  </div>
+</ng-template>
+
+<ng-template #evaluationsExportTab>
+  <div class="transfer-section bg-body-tertiary">
+    <div class="selection-toolbar">
+      <div
+        class="selection-modes btn-group"
+        role="group"
+        aria-label="Evaluation selection"
+      >
+        <input
+          class="btn-check"
+          type="radio"
+          name="evaluations-mode"
+          id="evaluations-all"
+          value="all"
+          [(ngModel)]="evaluationsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
+        <label class="btn btn-outline-primary" for="evaluations-all">All</label>
+
+        <input
+          class="btn-check"
+          type="radio"
+          name="evaluations-mode"
+          id="evaluations-none"
+          value="none"
+          [(ngModel)]="evaluationsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
+        <label class="btn btn-outline-primary" for="evaluations-none"
+          >None</label
+        >
+
+        <input
+          class="btn-check"
+          type="radio"
+          name="evaluations-mode"
+          id="evaluations-custom"
+          value="custom"
+          [(ngModel)]="evaluationsMode"
+          (ngModelChange)="updateExportTabs()"
+          autocomplete="off"
+        />
+        <label class="btn btn-outline-primary" for="evaluations-custom"
+          >Custom</label
+        >
+      </div>
+      @if (evaluationsMode === "custom") {
+        <div class="input-group export-search">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input
+            type="search"
+            class="form-control"
+            placeholder="Search by name"
+            [value]="evaluationsSearchText"
+            (input)="onEvaluationsSearchChange($event)"
+            (keyup.enter)="applyEvaluationsSearch()"
+          />
+        </div>
+      }
+    </div>
+    @if (evaluationsMode === "custom") {
+      @if (evaluationsFilteredTotal === 0) {
+        <div class="text-body-secondary small">No evaluations available.</div>
+      } @else {
+        <div class="table-responsive export-table">
+          <table class="table table-sm table-striped table-hover align-middle">
+            <thead>
+              <tr>
+                <th scope="col" class="col-select"></th>
+                <th scope="col" class="col-name">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="onEvaluationsSortChange(EvalConfigSortField.Name)"
+                  >
+                    Name
+                    @if (evaluationsSortField === EvalConfigSortField.Name) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          evaluationsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          evaluationsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
+                    }
+                  </button>
+                </th>
+                <th scope="col" class="col-description">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="
+                      onEvaluationsSortChange(EvalConfigSortField.Description)
+                    "
+                  >
+                    Description
+                    @if (
+                      evaluationsSortField === EvalConfigSortField.Description
+                    ) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          evaluationsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          evaluationsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
+                    }
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (evaluation of evaluations; track evaluation.evalConfigId) {
+                <tr>
+                  <td class="col-select">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      [id]="'evaluation-' + evaluation.evalConfigId"
+                      [checked]="
+                        selectedEvaluations.has(evaluation.evalConfigId)
+                      "
+                      (change)="
+                        onSelectionChange(
+                          selectedEvaluations,
+                          evaluation.evalConfigId,
+                          $event
+                        )
+                      "
+                    />
+                  </td>
+                  <td
+                    class="col-name text-truncate"
+                    title="{{ evaluation.name }}"
+                  >
+                    {{ evaluation.name }}
+                  </td>
+                  <td
+                    class="col-description text-truncate"
+                    title="{{ evaluation.description }}"
+                  >
+                    {{ evaluation.description }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div
+          class="d-flex align-items-center justify-content-between export-pagination"
+        >
+          <div class="text-muted small">
+            Page {{ evaluationsPage }} of {{ evaluationsPageCount() }} ({{
+              evaluationsFilteredTotal
+            }}
+            total evaluations)
+          </div>
+          @if (evaluationsPageCount() > 1) {
+            <nav aria-label="Evaluations pagination">
+              <ul class="pagination pagination-sm mb-0">
+                <li class="page-item" [class.disabled]="evaluationsPage === 1">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="evaluationsPage === 1"
+                    aria-label="First"
+                    (click)="onEvaluationsPageChange(1)"
+                  >
+                    <span aria-hidden="true">&laquo;</span>
+                  </button>
+                </li>
+                <li class="page-item" [class.disabled]="evaluationsPage === 1">
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="evaluationsPage === 1"
+                    aria-label="Previous"
+                    (click)="onEvaluationsPageChange(evaluationsPage - 1)"
+                  >
+                    <span aria-hidden="true">&lsaquo;</span>
+                  </button>
+                </li>
+                @for (page of evaluationsPageNumbers(); track page) {
+                  <li
+                    class="page-item"
+                    [class.active]="page === evaluationsPage"
+                    [attr.aria-current]="
+                      page === evaluationsPage ? 'page' : null
+                    "
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      (click)="onEvaluationsPageChange(page)"
+                    >
+                      {{ page }}
+                    </button>
+                  </li>
+                }
+                <li
+                  class="page-item"
+                  [class.disabled]="evaluationsPage >= evaluationsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="evaluationsPage >= evaluationsPageCount()"
+                    aria-label="Next"
+                    (click)="onEvaluationsPageChange(evaluationsPage + 1)"
+                  >
+                    <span aria-hidden="true">&rsaquo;</span>
+                  </button>
+                </li>
+                <li
+                  class="page-item"
+                  [class.disabled]="evaluationsPage >= evaluationsPageCount()"
+                >
+                  <button
+                    class="page-link"
+                    type="button"
+                    [disabled]="evaluationsPage >= evaluationsPageCount()"
+                    aria-label="Last"
+                    (click)="onEvaluationsPageChange(evaluationsPageCount())"
                   >
                     <span aria-hidden="true">&raquo;</span>
                   </button>

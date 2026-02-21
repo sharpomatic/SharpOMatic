@@ -5,5 +5,6 @@ export interface TransferExportRequest {
   workflows?: TransferSelection;
   connectors?: TransferSelection;
   models?: TransferSelection;
+  evaluations?: TransferSelection;
   assets?: TransferSelection;
 }

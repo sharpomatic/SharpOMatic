@@ -22,10 +22,28 @@ You can use the checkbox to override this and export secrets as well.
 ## Import
 
 Imports are performed by uploading a transfer package in the editor.
-Items are upserted by ID, so existing entries are updated and missing entries are created.
-Note that no data is deleted by this import process.
+Workflows, connectors, models, and assets are upserted by ID, so existing entries are updated and missing entries are created.
+Evaluations are imported as new instances with new identifiers to avoid collisions when importing into the same system.
+This means existing evaluation runs remain intact and linked to the original evaluation configuration.
 When secrets are excluded from the export, existing secret values are preserved during import.
 This allows you to manually set a secret in the staging or production environment without worrying that a new import will override that environment-specific data.
+
+## Evaluations
+
+Evaluation transfer includes the full configuration:
+
+- EvalConfig
+- EvalGraders
+- EvalColumns
+- EvalRows
+- EvalData
+
+Evaluation run result data is not transferred:
+
+- EvalRun
+- EvalRunRow
+- EvalRunRowGrader
+- EvalRunGraderSummary
 
 ## Assets
 
@@ -60,5 +78,4 @@ You can use a utility such as **POSTMAN** to invoke the export end point. <br/>
 The body needs to be JSON that specifies the identifiers of the instances wanted, or set the **all** property to true.
 
 <img src="/img/transfer_export_postman.png" alt="POSTMAN export" width="700" style={{ maxWidth: '100%', height: 'auto' }} />
-
 

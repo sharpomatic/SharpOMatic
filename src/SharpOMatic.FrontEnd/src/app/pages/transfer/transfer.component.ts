@@ -26,6 +26,8 @@ import { SortDirection } from '../../enumerations/sort-direction';
 import { WorkflowSortField } from '../../enumerations/workflow-sort-field';
 import { ConnectorSortField } from '../../enumerations/connector-sort-field';
 import { ModelSortField } from '../../enumerations/model-sort-field';
+import { EvalConfigSummary } from '../../eval/definitions/eval-config-summary';
+import { EvalConfigSortField } from '../../eval/enumerations/eval-config-sort-field';
 import { formatByteSize } from '../../helper/format-size';
 
 type SelectionMode = 'all' | 'none' | 'custom';
@@ -47,6 +49,8 @@ export class TransferComponent implements OnInit {
   connectorsExportTab!: TemplateRef<unknown>;
   @ViewChild('modelsExportTab', { static: true })
   modelsExportTab!: TemplateRef<unknown>;
+  @ViewChild('evaluationsExportTab', { static: true })
+  evaluationsExportTab!: TemplateRef<unknown>;
   @ViewChild('assetsExportTab', { static: true })
   assetsExportTab!: TemplateRef<unknown>;
 
@@ -67,6 +71,7 @@ export class TransferComponent implements OnInit {
   public workflows: WorkflowSummaryEntity[] = [];
   public connectors: ConnectorSummary[] = [];
   public models: ModelSummary[] = [];
+  public evaluations: EvalConfigSummary[] = [];
   public assets: AssetSummary[] = [];
   public workflowsTotal = 0;
   public workflowsFilteredTotal = 0;
@@ -74,6 +79,8 @@ export class TransferComponent implements OnInit {
   public connectorsFilteredTotal = 0;
   public modelsTotal = 0;
   public modelsFilteredTotal = 0;
+  public evaluationsTotal = 0;
+  public evaluationsFilteredTotal = 0;
   public assetsTotal = 0;
   public assetsFilteredTotal = 0;
   public readonly exportPageSize = 50;
@@ -81,10 +88,12 @@ export class TransferComponent implements OnInit {
   public workflowsMode: SelectionMode = 'all';
   public connectorsMode: SelectionMode = 'all';
   public modelsMode: SelectionMode = 'all';
+  public evaluationsMode: SelectionMode = 'all';
   public assetsMode: SelectionMode = 'all';
   public workflowsPage = 1;
   public connectorsPage = 1;
   public modelsPage = 1;
+  public evaluationsPage = 1;
   public assetsPage = 1;
   public workflowsSortField: WorkflowSortField = WorkflowSortField.Name;
   public workflowsSortDirection: SortDirection = SortDirection.Ascending;
@@ -92,27 +101,35 @@ export class TransferComponent implements OnInit {
   public connectorsSortDirection: SortDirection = SortDirection.Ascending;
   public modelsSortField: ModelSortField = ModelSortField.Name;
   public modelsSortDirection: SortDirection = SortDirection.Ascending;
+  public evaluationsSortField: EvalConfigSortField = EvalConfigSortField.Name;
+  public evaluationsSortDirection: SortDirection = SortDirection.Ascending;
   public assetsSortField: AssetSortField = AssetSortField.Name;
   public assetsSortDirection: SortDirection = SortDirection.Ascending;
   public workflowsSearchText = '';
   public connectorsSearchText = '';
   public modelsSearchText = '';
+  public evaluationsSearchText = '';
   public assetsSearchText = '';
 
   public readonly WorkflowSortField = WorkflowSortField;
   public readonly ConnectorSortField = ConnectorSortField;
   public readonly ModelSortField = ModelSortField;
+  public readonly EvalConfigSortField = EvalConfigSortField;
   public readonly AssetSortField = AssetSortField;
   public readonly SortDirection = SortDirection;
 
   public selectedWorkflows = new Set<string>();
   public selectedConnectors = new Set<string>();
   public selectedModels = new Set<string>();
+  public selectedEvaluations = new Set<string>();
   public selectedAssets = new Set<string>();
 
   private workflowsSearchDebounceId: ReturnType<typeof setTimeout> | undefined;
   private connectorsSearchDebounceId: ReturnType<typeof setTimeout> | undefined;
   private modelsSearchDebounceId: ReturnType<typeof setTimeout> | undefined;
+  private evaluationsSearchDebounceId:
+    | ReturnType<typeof setTimeout>
+    | undefined;
   private assetsSearchDebounceId: ReturnType<typeof setTimeout> | undefined;
 
   ngOnInit(): void {
@@ -198,6 +215,7 @@ export class TransferComponent implements OnInit {
     const message =
       `Imported ${result.workflowsImported} workflows, ` +
       `${result.connectorsImported} connectors, ${result.modelsImported} models, ` +
+      `${result.evaluationsImported} evaluations, ` +
       `${result.assetsImported} assets.`;
     this.showInfoDialog('Import Complete', message);
   }
@@ -250,6 +268,10 @@ export class TransferComponent implements OnInit {
     return Math.ceil(this.modelsFilteredTotal / this.exportPageSize);
   }
 
+  evaluationsPageCount(): number {
+    return Math.ceil(this.evaluationsFilteredTotal / this.exportPageSize);
+  }
+
   assetsPageCount(): number {
     return Math.ceil(this.assetsFilteredTotal / this.exportPageSize);
   }
@@ -267,6 +289,13 @@ export class TransferComponent implements OnInit {
 
   modelsPageNumbers(): number[] {
     return this.buildPageNumbers(this.modelsPage, this.modelsPageCount());
+  }
+
+  evaluationsPageNumbers(): number[] {
+    return this.buildPageNumbers(
+      this.evaluationsPage,
+      this.evaluationsPageCount(),
+    );
   }
 
   assetsPageNumbers(): number[] {
@@ -310,6 +339,19 @@ export class TransferComponent implements OnInit {
     }
 
     this.loadModelsPage(page);
+  }
+
+  onEvaluationsPageChange(page: number): void {
+    const totalPages = this.evaluationsPageCount();
+    if (page < 1 || (totalPages > 0 && page > totalPages)) {
+      return;
+    }
+
+    if (page === this.evaluationsPage) {
+      return;
+    }
+
+    this.loadEvaluationsPage(page);
   }
 
   onAssetsPageChange(page: number): void {
@@ -370,6 +412,21 @@ export class TransferComponent implements OnInit {
     this.loadModelsPage(1);
   }
 
+  onEvaluationsSortChange(field: EvalConfigSortField): void {
+    if (this.evaluationsSortField === field) {
+      this.evaluationsSortDirection =
+        this.evaluationsSortDirection === SortDirection.Descending
+          ? SortDirection.Ascending
+          : SortDirection.Descending;
+    } else {
+      this.evaluationsSortField = field;
+      this.evaluationsSortDirection = SortDirection.Ascending;
+    }
+
+    this.evaluationsPage = 1;
+    this.loadEvaluationsPage(1);
+  }
+
   onAssetsSortChange(field: AssetSortField): void {
     if (this.assetsSortField === field) {
       this.assetsSortDirection =
@@ -401,6 +458,12 @@ export class TransferComponent implements OnInit {
     const input = event.target as HTMLInputElement | null;
     this.modelsSearchText = input?.value ?? '';
     this.scheduleModelsSearch();
+  }
+
+  onEvaluationsSearchChange(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    this.evaluationsSearchText = input?.value ?? '';
+    this.scheduleEvaluationsSearch();
   }
 
   onAssetsSearchChange(event: Event): void {
@@ -439,6 +502,16 @@ export class TransferComponent implements OnInit {
     this.refreshModels();
   }
 
+  applyEvaluationsSearch(): void {
+    if (this.evaluationsSearchDebounceId) {
+      clearTimeout(this.evaluationsSearchDebounceId);
+      this.evaluationsSearchDebounceId = undefined;
+    }
+
+    this.evaluationsPage = 1;
+    this.refreshEvaluations();
+  }
+
   applyAssetsSearch(): void {
     if (this.assetsSearchDebounceId) {
       clearTimeout(this.assetsSearchDebounceId);
@@ -454,6 +527,7 @@ export class TransferComponent implements OnInit {
       this.hasSelection(this.workflowsMode, this.selectedWorkflows) ||
       this.hasSelection(this.connectorsMode, this.selectedConnectors) ||
       this.hasSelection(this.modelsMode, this.selectedModels) ||
+      this.hasSelection(this.evaluationsMode, this.selectedEvaluations) ||
       this.hasSelection(this.assetsMode, this.selectedAssets)
     );
   }
@@ -474,6 +548,7 @@ export class TransferComponent implements OnInit {
     this.refreshWorkflows();
     this.refreshConnectors();
     this.refreshModels();
+    this.refreshEvaluations();
     this.refreshAssets();
   }
 
@@ -501,6 +576,14 @@ export class TransferComponent implements OnInit {
     const models = this.buildSelection(this.modelsMode, this.selectedModels);
     if (models) {
       request.models = models;
+    }
+
+    const evaluations = this.buildSelection(
+      this.evaluationsMode,
+      this.selectedEvaluations,
+    );
+    if (evaluations) {
+      request.evaluations = evaluations;
     }
 
     const assets = this.buildSelection(this.assetsMode, this.selectedAssets);
@@ -597,6 +680,16 @@ export class TransferComponent implements OnInit {
           this.modelsTotal,
         ),
         content: this.modelsExportTab,
+      },
+      {
+        id: 'evaluations',
+        title: this.exportTabTitle(
+          'Evaluations',
+          this.evaluationsMode,
+          this.selectedEvaluations,
+          this.evaluationsTotal,
+        ),
+        content: this.evaluationsExportTab,
       },
       {
         id: 'assets',
@@ -722,6 +815,35 @@ export class TransferComponent implements OnInit {
     });
   }
 
+  private refreshEvaluations(): void {
+    const search = this.evaluationsSearchText.trim();
+    if (!search) {
+      this.serverRepository.getEvalConfigCount().subscribe((total) => {
+        this.evaluationsTotal = total;
+        this.evaluationsFilteredTotal = total;
+        const totalPages = this.evaluationsPageCount();
+        const nextPage =
+          totalPages === 0 ? 1 : Math.min(this.evaluationsPage, totalPages);
+        this.loadEvaluationsPage(nextPage);
+        this.updateExportTabs();
+      });
+      return;
+    }
+
+    this.serverRepository.getEvalConfigCount().subscribe((total) => {
+      this.evaluationsTotal = total;
+      this.updateExportTabs();
+    });
+
+    this.serverRepository.getEvalConfigCount(search).subscribe((total) => {
+      this.evaluationsFilteredTotal = total;
+      const totalPages = this.evaluationsPageCount();
+      const nextPage =
+        totalPages === 0 ? 1 : Math.min(this.evaluationsPage, totalPages);
+      this.loadEvaluationsPage(nextPage);
+    });
+  }
+
   private refreshAssets(): void {
     const search = this.assetsSearchText.trim();
     if (!search) {
@@ -808,6 +930,23 @@ export class TransferComponent implements OnInit {
       });
   }
 
+  private loadEvaluationsPage(page: number): void {
+    const skip = (page - 1) * this.exportPageSize;
+    const search = this.evaluationsSearchText.trim();
+    this.serverRepository
+      .getEvalConfigSummaries(
+        search,
+        skip,
+        this.exportPageSize,
+        this.evaluationsSortField,
+        this.evaluationsSortDirection,
+      )
+      .subscribe((evaluations) => {
+        this.evaluations = evaluations;
+        this.evaluationsPage = page;
+      });
+  }
+
   private loadAssetsPage(page: number): void {
     const skip = (page - 1) * this.exportPageSize;
     const search = this.assetsSearchText.trim();
@@ -882,6 +1021,17 @@ export class TransferComponent implements OnInit {
 
     this.modelsSearchDebounceId = setTimeout(
       () => this.applyModelsSearch(),
+      250,
+    );
+  }
+
+  private scheduleEvaluationsSearch(): void {
+    if (this.evaluationsSearchDebounceId) {
+      clearTimeout(this.evaluationsSearchDebounceId);
+    }
+
+    this.evaluationsSearchDebounceId = setTimeout(
+      () => this.applyEvaluationsSearch(),
       250,
     );
   }

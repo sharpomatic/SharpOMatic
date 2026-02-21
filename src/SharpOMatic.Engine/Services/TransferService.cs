@@ -8,6 +8,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
     private const string WorkflowDirectory = "workflows";
     private const string ConnectorDirectory = "connectors";
     private const string ModelDirectory = "models";
+    private const string EvaluationDirectory = "evaluations";
     private const string AssetDirectory = "assets";
     private const string JsonExtension = ".json";
 
@@ -45,6 +46,21 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             }
         );
 
+        var evaluationIds = await ResolveSelectionAsync(
+            request.Evaluations,
+            async () =>
+            {
+                var summaries = await repositoryService.GetEvalConfigSummaries(
+                    search: null,
+                    sortBy: EvalConfigSortField.Name,
+                    sortDirection: SortDirection.Ascending,
+                    skip: 0,
+                    take: 0
+                );
+                return summaries.Select(summary => summary.EvalConfigId);
+            }
+        );
+
         var assets = await ResolveAssetsAsync(request.Assets);
 
         var manifest = new TransferManifest
@@ -56,6 +72,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                 Workflows = workflowIds.Count,
                 Connectors = connectorIds.Count,
                 Models = modelIds.Count,
+                Evaluations = evaluationIds.Count,
                 Assets = assets.Count,
             },
             Assets = assets
@@ -98,6 +115,12 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             await WriteJsonEntryAsync(archive, BuildEntityEntryName(ModelDirectory, modelId), model, cancellationToken);
         }
 
+        foreach (var evaluationId in evaluationIds)
+        {
+            var evalConfigDetail = await repositoryService.GetEvalConfigDetail(evaluationId);
+            await WriteJsonEntryAsync(archive, BuildEntityEntryName(EvaluationDirectory, evaluationId), evalConfigDetail, cancellationToken);
+        }
+
         foreach (var asset in assets)
         {
             var entry = archive.CreateEntry(BuildAssetEntryName(asset.AssetId), CompressionLevel.Optimal);
@@ -121,6 +144,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         var connectorEntries = GetEntityEntries(archive, ConnectorDirectory);
         var modelEntries = GetEntityEntries(archive, ModelDirectory);
         var workflowEntries = GetEntityEntries(archive, WorkflowDirectory);
+        var evaluationEntries = GetEntityEntries(archive, EvaluationDirectory);
 
         var result = new TransferImportResult();
 
@@ -149,6 +173,21 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             var workflow = await ReadJsonEntryAsync<WorkflowEntity>(entry, cancellationToken);
             await repositoryService.UpsertWorkflow(workflow);
             result.WorkflowsImported++;
+        }
+
+        foreach (var evaluationEntry in evaluationEntries)
+        {
+            var evalConfigDetail = await ReadJsonEntryAsync<EvalConfigDetail>(evaluationEntry.Value, cancellationToken);
+            ValidateEvalConfigEntry(evaluationEntry.Key, evalConfigDetail, evaluationEntry.Value.FullName);
+            ValidateEvalConfigDetail(evalConfigDetail, evaluationEntry.Value.FullName);
+
+            var remapped = RemapEvalConfigDetail(evalConfigDetail);
+            await repositoryService.UpsertEvalConfig(remapped.EvalConfig);
+            await repositoryService.UpsertEvalGraders(remapped.Graders);
+            await repositoryService.UpsertEvalColumns(remapped.Columns);
+            await repositoryService.UpsertEvalRows(remapped.Rows);
+            await repositoryService.UpsertEvalData(remapped.Data);
+            result.EvaluationsImported++;
         }
 
         foreach (var assetEntry in manifest.Assets ?? [])
@@ -280,6 +319,134 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             return false;
 
         return true;
+    }
+
+    private static void ValidateEvalConfigEntry(Guid expectedEvalConfigId, EvalConfigDetail detail, string entryName)
+    {
+        if (detail.EvalConfig.EvalConfigId != expectedEvalConfigId)
+            throw new SharpOMaticException($"Evaluation entry '{entryName}' does not match payload EvalConfigId '{detail.EvalConfig.EvalConfigId}'.");
+    }
+
+    private static void ValidateEvalConfigDetail(EvalConfigDetail detail, string entryName)
+    {
+        var evalConfigId = detail.EvalConfig.EvalConfigId;
+        var graderIds = new HashSet<Guid>();
+        var columnIds = new HashSet<Guid>();
+        var rowIds = new HashSet<Guid>();
+        var dataIds = new HashSet<Guid>();
+
+        foreach (var grader in detail.Graders)
+        {
+            if (grader.EvalConfigId != evalConfigId)
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains grader '{grader.EvalGraderId}' with mismatched EvalConfigId.");
+
+            if (!graderIds.Add(grader.EvalGraderId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains duplicate grader id '{grader.EvalGraderId}'.");
+        }
+
+        foreach (var column in detail.Columns)
+        {
+            if (column.EvalConfigId != evalConfigId)
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains column '{column.EvalColumnId}' with mismatched EvalConfigId.");
+
+            if (!columnIds.Add(column.EvalColumnId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains duplicate column id '{column.EvalColumnId}'.");
+        }
+
+        foreach (var row in detail.Rows)
+        {
+            if (row.EvalConfigId != evalConfigId)
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains row '{row.EvalRowId}' with mismatched EvalConfigId.");
+
+            if (!rowIds.Add(row.EvalRowId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains duplicate row id '{row.EvalRowId}'.");
+        }
+
+        foreach (var data in detail.Data)
+        {
+            if (!dataIds.Add(data.EvalDataId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains duplicate data id '{data.EvalDataId}'.");
+
+            if (!rowIds.Contains(data.EvalRowId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains data '{data.EvalDataId}' referencing missing row '{data.EvalRowId}'.");
+
+            if (!columnIds.Contains(data.EvalColumnId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains data '{data.EvalDataId}' referencing missing column '{data.EvalColumnId}'.");
+        }
+    }
+
+    private static EvalConfigDetail RemapEvalConfigDetail(EvalConfigDetail source)
+    {
+        var targetEvalConfigId = Guid.NewGuid();
+
+        var graderIdMap = source.Graders.ToDictionary(grader => grader.EvalGraderId, _ => Guid.NewGuid());
+        var columnIdMap = source.Columns.ToDictionary(column => column.EvalColumnId, _ => Guid.NewGuid());
+        var rowIdMap = source.Rows.ToDictionary(row => row.EvalRowId, _ => Guid.NewGuid());
+
+        var evalConfig = new EvalConfig
+        {
+            EvalConfigId = targetEvalConfigId,
+            WorkflowId = source.EvalConfig.WorkflowId,
+            Name = source.EvalConfig.Name,
+            Description = source.EvalConfig.Description,
+            MaxParallel = source.EvalConfig.MaxParallel,
+        };
+
+        var graders = source.Graders
+            .Select(grader => new EvalGrader
+            {
+                EvalGraderId = graderIdMap[grader.EvalGraderId],
+                EvalConfigId = targetEvalConfigId,
+                WorkflowId = grader.WorkflowId,
+                Order = grader.Order,
+                Label = grader.Label,
+                PassThreshold = grader.PassThreshold,
+            })
+            .ToList();
+
+        var columns = source.Columns
+            .Select(column => new EvalColumn
+            {
+                EvalColumnId = columnIdMap[column.EvalColumnId],
+                EvalConfigId = targetEvalConfigId,
+                Name = column.Name,
+                Order = column.Order,
+                EntryType = column.EntryType,
+                Optional = column.Optional,
+                InputPath = column.InputPath,
+            })
+            .ToList();
+
+        var rows = source.Rows
+            .Select(row => new EvalRow
+            {
+                EvalRowId = rowIdMap[row.EvalRowId],
+                EvalConfigId = targetEvalConfigId,
+                Order = row.Order,
+            })
+            .ToList();
+
+        var data = source.Data
+            .Select(item => new EvalData
+            {
+                EvalDataId = Guid.NewGuid(),
+                EvalRowId = rowIdMap[item.EvalRowId],
+                EvalColumnId = columnIdMap[item.EvalColumnId],
+                StringValue = item.StringValue,
+                IntValue = item.IntValue,
+                DoubleValue = item.DoubleValue,
+                BoolValue = item.BoolValue,
+            })
+            .ToList();
+
+        return new EvalConfigDetail
+        {
+            EvalConfig = evalConfig,
+            Graders = graders,
+            Columns = columns,
+            Rows = rows,
+            Data = data,
+        };
     }
 
     private async Task StripConnectorSecrets(Connector connector)
