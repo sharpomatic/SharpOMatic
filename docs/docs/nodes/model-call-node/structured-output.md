@@ -50,5 +50,5 @@ Use a comma-separated list of types if you need to specify more than one.
 
 ```csharp
   builder.Services.AddSharpOMaticEngine()
-     .AddSchemaTypes(typeof(SchemaExample))
+     .AddSchemaTypes(typeof(SchemaExample));
 ```

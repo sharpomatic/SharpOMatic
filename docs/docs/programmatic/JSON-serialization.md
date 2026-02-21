@@ -79,7 +79,7 @@ Provide the implementation type during SharpOMatic setup.
 
 ```csharp
   builder.Services.AddSharpOMaticEngine()
-    .AddJsonConverters(typeof(ClassExampleConverter))
+    .AddJsonConverters(typeof(ClassExampleConverter));
 ```
 For additional information about context, see the [Context](../core-concepts/context.md) section.
 

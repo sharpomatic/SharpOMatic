@@ -4,7 +4,7 @@ sidebar_position: 6
 ---
 
 Assets are files that workflows can reference, such as text, images, and other media.
-Rather than embedding file contents directly in context (which can bloat the database), store assets separately and reference them.
+Rather than embedding file contents directly into context (which can bloat the database), store assets separately and reference them.
 Assets are also reusable, so the same asset can be used by or passed into multiple workflows.
 
 ## AssetRef
@@ -43,12 +43,15 @@ These examples assume you have resolved **IAssetService** and **IRepositoryServi
 ### Use library asset
 
 ```csharp
+  // Load the named asset
   var asset = await repositoryService.GetLibraryAssetByName("document.png");
   if (asset is null)
       throw new InvalidOperationException("Asset 'document.png' was not found in the library.");
 
+  // Create an AssetRef from the asset
   var assetRef = new AssetRef(asset);
 
+  // Only an AssetRef or AssetRefList can be added into Context
   var context = new ContextObject();
   context.Set("input.image", assetRef);
 ```
@@ -56,14 +59,17 @@ These examples assume you have resolved **IAssetService** and **IRepositoryServi
 ### Add library asset
 
 ```csharp
+  // File helper loads bytes from a named file on your local system
   var data = await File.ReadAllBytesAsync("document.png");
 
+  // Create new library AssetRef from loaded the bytes
   var libraryAssetRef = await assetService.CreateFromBytesAsync(
       data,
       "document.png",
       "image/png",
       AssetScope.Library);
 
+  // Only an AssetRef or AssetRefList can be added into Context
   var context = new ContextObject();
   context.Set("input.image", libraryAssetRef);
 ```
@@ -71,14 +77,18 @@ These examples assume you have resolved **IAssetService** and **IRepositoryServi
 ### Add run-scoped asset
 
 ```csharp
+  // File helper loads bytes from a named file on your local system
   var data = await File.ReadAllBytesAsync("document.png");
 
+  // Speicfy Run scope and provide the run identifier
   var runAssetRef = await assetService.CreateFromBytesAsync(
       data,
       "document.png",
       "image/png",
-      AssetScope.Run);
+      AssetScope.Run,
+      runId);
 
+  // Only an AssetRef or AssetRefList can be added into Context
   var context = new ContextObject();
   context.Set("input.image", runAssetRef);
 ```
@@ -93,8 +103,60 @@ This is the simplest implementation and uses your local file system.
 It is great for getting up and running quickly, and you can override the default location using appsettings.
 It is not recommended for production systems.
 
+To use this store, you need the following in your startup code.
+
+```csharp
+  builder.Services.AddSingleton<IAssetStore, FileSystemAssetStore>();
+  builder.Services.Configure<FileSystemAssetStoreOptions>(
+    builder.Configuration.GetSection("AssetStorage:FileSystem"));
+```
+
+By default it will store assets in a subdirectory of your user profile directory.
+
+`C:\Users\<username>\AppData\Local\SharpOMatic\Assets`
+
+To override this, set the **RootPath** in appsettings.
+
+```json
+  "AssetStorage": {
+    "FileSystem": {
+      "RootPath": "C:\\MyStorageDir"
+    }
+  }
+```
+
 ### AzureBlobStorageAssetStore
 
 This connects to an Azure-hosted Blob Storage service.
 For production systems, it provides a more secure and reliable storage mechanism.
 Set appropriate connection settings in your appsettings.
+
+To use this store, you need the following in your startup code.
+
+```csharp
+  builder.Services.AddSingleton<IAssetStore, AzureBlobStorageAssetStore>();
+  builder.Services.Configure<AzureBlobStorageAssetStoreOptions>(
+    builder.Configuration.GetSection("AssetStorage:AzureBlobStorage"));
+```
+
+You have two choices for setting the blob storage in appsettings.
+Either provide the **ConnectionString** for the blob storage container.
+
+```json
+  "AssetStorage": {
+    "AzureBlobStorage": {
+      "ConnectionString": ""
+    }
+  }
+```
+
+Or you can specify the **ServiceUri** along with the **ContainerName**.
+
+```json
+  "AssetStorage": {
+    "AzureBlobStorage": {
+      "ContainerName": "assets",
+      "ServiceUri": ""
+    }
+  }
+```

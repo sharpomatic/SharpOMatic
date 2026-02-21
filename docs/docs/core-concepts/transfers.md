@@ -3,7 +3,7 @@ title: Transfers
 sidebar_position: 7
 ---
 
-Transfers let you export and import workflows, connectors, models, and library assets between environments.
+Transfers let you export and import workflows, evaluations, connectors, models, and library assets between environments.
 A typical usage is to export new or updated entities from your development environment.
 These can then be imported into downstream environments, such as staging or production, as part of a release process.
 Another use is to back up your entities for safekeeping.
@@ -12,7 +12,7 @@ It is recommended to store important data in a source control system for change 
 ## Export
 
 Exports are generated from the editor Transfer page.
-You can select all items or choose specific workflows, connectors, models, and library assets.
+You can select all items or choose specific workflows, evaluations, connectors, models, and library assets.
 The export is a zip package that includes a manifest and the selected data.
 By default, secrets are not exported to prevent accidental exposure of sensitive data.
 You can use the checkbox to override this and export secrets as well.
@@ -50,7 +50,7 @@ builder.Services.AddSharpOMaticTransfer();
 ### Import
 
 You can use a utility such as **POSTMAN** to invoke the import end point. <br/>
-The demo server has a url of **http://localhost:9001/api/transfer/import**, you will to update this for your on domain.
+The demo server has a url of **http://localhost:9001/api/transfer/import**, you will need to update this for your own domain.
 
 <img src="/img/transfer_import_postman.png" alt="POSTMAN import" width="700" style={{ maxWidth: '100%', height: 'auto' }} />
 

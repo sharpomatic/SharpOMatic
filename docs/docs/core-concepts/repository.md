@@ -13,8 +13,10 @@ The major types of data stored are:
 - **Workflows**: store workflow metadata plus JSON blobs for nodes and connections.
 - **Runs**: store run status, timestamps, and serialized input/output context.
 - **Traces**: store per-node execution status, messages, and context snapshots.
+- **Evals**: store evaluation definitions and evaluation run results.
 - **Metadata**: store predefined metadata for known connectors and models.
-- **Connector/Model**: store user-defined connector and model instances.
+- **Connectors**: store user-defined connector instances.
+- **Models**: store user-defined model instances.
 - **Assets**: store asset metadata and storage keys.
 - **Settings**: store runtime configuration such as run history and node limits.
 
@@ -30,7 +32,7 @@ dotnet add package SharpOMatic.Engine.Sqlite
 dotnet add package SharpOMatic.Engine.SqlServer
 ```
 
-The demo server uses SQLite by default:
+The demo server uses SQLite by default and stores the database file in the users profile data.
 
 ```csharp
   builder.Services.AddSharpOMaticEngine()
@@ -38,7 +40,7 @@ The demo server uses SQLite by default:
           connectionString: $"Data Source={Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sharpomatic.db")}");
 ```
 
-For SQL Server:
+For SQL Server the connection string is pulled from appsettings.
 
 ```csharp
   builder.Services.AddSharpOMaticEngine()
@@ -46,7 +48,7 @@ For SQL Server:
           connectionString: builder.Configuration.GetConnectionString("SharpOMatic")!);
 ```
 
-For local SQL Server testing with LocalDB:
+For local SQL Server testing with LocalDB you can use a connectin string like this.
 
 ```text
 Server=(localdb)\MSSQLLocalDB;Database=SharpOMatic;Integrated Security=true;TrustServerCertificate=true;MultipleActiveResultSets=true

@@ -160,7 +160,7 @@ Here is a simple implementation of the interface to duplicate the previous logic
         AuthenticationModeConfig authenticationModel, 
         Dictionary<string, string?> parameters)
     {
-      if (connectorId == "azure_openAI")
+      if (connectorId == "azure_openai")
       {
         if (authenticationModel.Id == "api_key")
         {

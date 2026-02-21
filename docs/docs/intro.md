@@ -4,19 +4,25 @@ slug: /
 sidebar_position: 1
 ---
 
-SharpOMatic is an open-source workflow builder focused on AI-driven tasks.
+SharpOMatic is an open-source workflow builder focused on AI-driven tasks designed for .NET projects.
 
 ## Configuration over code
 
-One of the biggest challenges when building an AI-focused workflow is cycle time.
-Constantly changing code to try new ideas slows you down.
+One of the biggest challenges when building an AI-focused workflow is cycle time for trying ideas.
 AI is notorious for needing lots of experiments to find the right combination of model, prompts, tool calls, and glue logic to get the outcome you need.
 Using SharpOMatic, you can prefer configuration over code, which lets you iterate on ideas much faster.
+
+## Evaluations
+
+All AI based workflows should have evaluations.
+They compound the benefit of configuration over code because your evaluation is run for each new prompt, design change and model release.
+Objective measures are needed for reliable production systems, not just eye balling results.
 
 ## Host your own execution
 
 The execution engine is hosted in your project so you retain complete control over the environment and storage of all data.
-You can run with OpenAI, Azure OpenAI, and Google connectors while still keeping all workflow and run data in your own environment.
+You can run with OpenAI, Azure OpenAI, and Google connectors while still keeping all workflow and run data in your own system.
+This makes it easy to merge workflows into an existing backend because it really is part of the that same backend.
 
 ## Deep integration
 

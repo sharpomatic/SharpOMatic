@@ -21,7 +21,7 @@ Current built-in model configs cover:
 
 - **OpenAI** (for OpenAI connectors)
 - **Azure OpenAI** (for Azure OpenAI connectors)
-- **Google Gemini** (for Google AI connectors, including Gemini models)
+- **Google AI** (for Google AI connectors, including Gemini models)
 
 These lists evolve between releases as model catalogs change.
 

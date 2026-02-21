@@ -15,7 +15,7 @@ You do not have to provide all the tools for every call. Use the checkboxes to s
 
 ```csharp
   builder.Services.AddSharpOMaticEngine()
-     .AddToolMethods(ToolCalling.GetGreeting, ToolCalling.GetTime)
+     .AddToolMethods(ToolCalling.GetGreeting, ToolCalling.GetTime);
 ```
 
 Example tool call implementations.

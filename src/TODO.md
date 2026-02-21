@@ -22,7 +22,6 @@
 
 ### Editor
 
-- Bug with connectors disappearing when trace bar is resized
 - Cut, copy and paste of workflow nodes/connectors
 
 ### ChatClient
@@ -33,6 +32,11 @@
 ### Assets
 
 - Add two level structure, folders and then assets
+
+### Promotion
+
+- Add YouTube channel and some initial videos
+- Add tab that links to you tube and website etc
 
 ## Minor Features
 
