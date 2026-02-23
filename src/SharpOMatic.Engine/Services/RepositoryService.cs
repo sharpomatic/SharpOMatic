@@ -1531,14 +1531,26 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return asset;
     }
 
-    public async Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null)
+    public async Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null, Guid? folderId = null, bool topLevelOnly = false)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
         var assets = dbContext.Assets.AsNoTracking().Where(a => a.Scope == scope);
 
-        if (scope == AssetScope.Run && runId.HasValue)
+        if (scope == AssetScope.Run)
+        {
+            if (!runId.HasValue)
+                throw new SharpOMaticException("Run asset queries require a runId.");
+
             assets = assets.Where(a => a.RunId == runId.Value);
+        }
+        else if (scope == AssetScope.Library)
+        {
+            if (topLevelOnly)
+                assets = assets.Where(a => a.FolderId == null);
+            else if (folderId.HasValue)
+                assets = assets.Where(a => a.FolderId == folderId.Value);
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -1550,14 +1562,36 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return await assets.CountAsync();
     }
 
-    public async Task<List<Asset>> GetAssetsByScope(AssetScope scope, string? search, AssetSortField sortBy, SortDirection sortDirection, int skip, int take, Guid? runId = null)
+    public async Task<List<Asset>> GetAssetsByScope(
+        AssetScope scope,
+        string? search,
+        AssetSortField sortBy,
+        SortDirection sortDirection,
+        int skip,
+        int take,
+        Guid? runId = null,
+        Guid? folderId = null,
+        bool topLevelOnly = false
+    )
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
         var assets = dbContext.Assets.AsNoTracking().Where(a => a.Scope == scope);
 
-        if (scope == AssetScope.Run && runId.HasValue)
+        if (scope == AssetScope.Run)
+        {
+            if (!runId.HasValue)
+                throw new SharpOMaticException("Run asset queries require a runId.");
+
             assets = assets.Where(a => a.RunId == runId.Value);
+        }
+        else if (scope == AssetScope.Library)
+        {
+            if (topLevelOnly)
+                assets = assets.Where(a => a.FolderId == null);
+            else if (folderId.HasValue)
+                assets = assets.Where(a => a.FolderId == folderId.Value);
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -1617,6 +1651,24 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             .FirstOrDefaultAsync();
     }
 
+    public async Task<Asset?> GetLibraryAssetByFolderAndName(string folderName, string name)
+    {
+        if (string.IsNullOrWhiteSpace(folderName) || string.IsNullOrWhiteSpace(name))
+            return null;
+
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var normalizedFolderName = folderName.Trim();
+        var normalizedAssetName = name.Trim().ToLower();
+
+        return await (
+            from asset in dbContext.Assets.AsNoTracking()
+            join folder in dbContext.AssetFolders.AsNoTracking() on asset.FolderId equals folder.FolderId
+            where asset.Scope == AssetScope.Library && folder.Name == normalizedFolderName && asset.Name.ToLower() == normalizedAssetName
+            orderby asset.Created descending
+            select asset
+        ).FirstOrDefaultAsync();
+    }
+
     public async Task<Asset?> GetLibraryAssetByName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -1630,6 +1682,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
     public async Task UpsertAsset(Asset asset)
     {
+        if (asset.Scope == AssetScope.Run && asset.FolderId.HasValue)
+            throw new SharpOMaticException("Run assets cannot be assigned to folders.");
+
         using var dbContext = dbContextFactory.CreateDbContext();
 
         var entity = await (from a in dbContext.Assets where a.AssetId == asset.AssetId select a).FirstOrDefaultAsync();
@@ -1653,6 +1708,89 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         dbContext.Remove(asset);
         await dbContext.SaveChangesAsync();
+    }
+
+    public async Task<AssetFolder> GetAssetFolder(Guid folderId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var folder = await dbContext.AssetFolders.AsNoTracking().FirstOrDefaultAsync(f => f.FolderId == folderId);
+
+        if (folder is null)
+            throw new SharpOMaticException($"Asset folder '{folderId}' cannot be found.");
+
+        return folder;
+    }
+
+    public async Task<AssetFolder?> GetAssetFolderByName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var normalizedName = name.Trim();
+        return await dbContext.AssetFolders.AsNoTracking().FirstOrDefaultAsync(f => f.Name == normalizedName);
+    }
+
+    public async Task<int> GetAssetFolderCount(string? search)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var folders = ApplyAssetFolderSearch(dbContext.AssetFolders.AsNoTracking(), search);
+        return await folders.CountAsync();
+    }
+
+    public async Task<List<AssetFolder>> GetAssetFolders(string? search, SortDirection sortDirection, int skip, int take)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var folders = ApplyAssetFolderSearch(dbContext.AssetFolders.AsNoTracking(), search);
+        folders = sortDirection == SortDirection.Descending ? folders.OrderByDescending(f => f.Name).ThenByDescending(f => f.Created) : folders.OrderBy(f => f.Name).ThenBy(f => f.Created);
+
+        if (skip > 0)
+            folders = folders.Skip(skip);
+
+        if (take > 0)
+            folders = folders.Take(take);
+
+        return await folders.ToListAsync();
+    }
+
+    public async Task<int> GetAssetFolderAssetCount(Guid folderId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        return await dbContext.Assets.AsNoTracking().Where(a => a.Scope == AssetScope.Library && a.FolderId == folderId).CountAsync();
+    }
+
+    public async Task UpsertAssetFolder(AssetFolder folder)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var entity = await dbContext.AssetFolders.FirstOrDefaultAsync(f => f.FolderId == folder.FolderId);
+
+        if (entity is null)
+            dbContext.AssetFolders.Add(folder);
+        else
+            dbContext.Entry(entity).CurrentValues.SetValues(folder);
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task DeleteAssetFolder(Guid folderId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var folder = await dbContext.AssetFolders.FirstOrDefaultAsync(f => f.FolderId == folderId);
+        if (folder is null)
+            throw new SharpOMaticException($"Asset folder '{folderId}' cannot be found.");
+
+        dbContext.Remove(folder);
+        await dbContext.SaveChangesAsync();
+    }
+
+    private static IQueryable<AssetFolder> ApplyAssetFolderSearch(IQueryable<AssetFolder> folders, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+            return folders;
+
+        var normalizedSearch = search.Trim().ToLower();
+        return folders.Where(folder => folder.Name.ToLower().Contains(normalizedSearch));
     }
 
     private async Task DeleteAssetStorageForRuns(IReadOnlyCollection<Guid> runIds)

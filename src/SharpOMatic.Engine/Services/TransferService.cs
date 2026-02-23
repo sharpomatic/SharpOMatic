@@ -62,6 +62,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         );
 
         var assets = await ResolveAssetsAsync(request.Assets);
+        var folders = await ResolveFoldersAsync(request.Assets, assets);
 
         var manifest = new TransferManifest
         {
@@ -73,18 +74,26 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                 Connectors = connectorIds.Count,
                 Models = modelIds.Count,
                 Evaluations = evaluationIds.Count,
+                Folders = folders.Count,
                 Assets = assets.Count,
             },
-            Assets = assets
+            Folders = [.. folders
+                .Select(folder => new TransferFolderEntry
+                {
+                    FolderId = folder.FolderId,
+                    Name = folder.Name,
+                    Created = folder.Created,
+                })],
+            Assets = [.. assets
                 .Select(asset => new TransferAssetEntry
                 {
                     AssetId = asset.AssetId,
+                    FolderId = asset.FolderId,
                     Name = asset.Name,
                     MediaType = asset.MediaType,
                     SizeBytes = asset.SizeBytes,
                     Created = asset.Created,
-                })
-                .ToList(),
+                })],
         };
 
         using var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true);
@@ -138,7 +147,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         var manifestEntry = archive.GetEntry(ManifestFileName) ?? throw new SharpOMaticException("Transfer manifest is missing.");
         var manifest = await ReadJsonEntryAsync<TransferManifest>(manifestEntry, cancellationToken);
 
-        if (manifest.SchemaVersion != TransferManifest.CurrentSchemaVersion)
+        if (manifest.SchemaVersion is not (1 or TransferManifest.CurrentSchemaVersion))
             throw new SharpOMaticException($"Transfer manifest schema version {manifest.SchemaVersion} is not supported.");
 
         var connectorEntries = GetEntityEntries(archive, ConnectorDirectory);
@@ -190,11 +199,59 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             result.EvaluationsImported++;
         }
 
+        var folderIdMap = new Dictionary<Guid, Guid>();
+        if (manifest.SchemaVersion >= 2)
+        {
+            foreach (var folderEntry in manifest.Folders ?? [])
+            {
+                if (string.IsNullOrWhiteSpace(folderEntry.Name))
+                    throw new SharpOMaticException($"Folder '{folderEntry.FolderId}' has an invalid name.");
+
+                var normalizedName = folderEntry.Name.Trim();
+                if (normalizedName.Contains('/', StringComparison.Ordinal) || normalizedName.Contains('\\', StringComparison.Ordinal))
+                    throw new SharpOMaticException($"Folder '{folderEntry.FolderId}' has an invalid name.");
+
+                var byId = await TryGetFolder(folderEntry.FolderId);
+                if (byId is not null)
+                {
+                    var updated = new AssetFolder { FolderId = byId.FolderId, Name = normalizedName, Created = byId.Created };
+                    await repositoryService.UpsertAssetFolder(updated);
+                    folderIdMap[folderEntry.FolderId] = byId.FolderId;
+                    continue;
+                }
+
+                var byName = await repositoryService.GetAssetFolderByName(normalizedName);
+                if (byName is not null)
+                {
+                    folderIdMap[folderEntry.FolderId] = byName.FolderId;
+                    continue;
+                }
+
+                var created = new AssetFolder
+                {
+                    FolderId = folderEntry.FolderId,
+                    Name = normalizedName,
+                    Created = folderEntry.Created == default ? DateTime.Now : folderEntry.Created,
+                };
+                await repositoryService.UpsertAssetFolder(created);
+                folderIdMap[folderEntry.FolderId] = created.FolderId;
+            }
+        }
+
         foreach (var assetEntry in manifest.Assets ?? [])
         {
             var zipEntry = archive.GetEntry(BuildAssetEntryName(assetEntry.AssetId)) ?? throw new SharpOMaticException($"Asset '{assetEntry.AssetId}' is missing from the transfer package.");
 
-            var storageKey = AssetStorageKey.ForLibrary(assetEntry.AssetId);
+            Guid? folderId = null;
+            if (manifest.SchemaVersion >= 2 && assetEntry.FolderId.HasValue)
+            {
+                if (!folderIdMap.TryGetValue(assetEntry.FolderId.Value, out var mappedFolderId))
+                    throw new SharpOMaticException($"Asset '{assetEntry.AssetId}' references missing folder '{assetEntry.FolderId.Value}'.");
+
+                folderId = mappedFolderId;
+            }
+
+            var storageKey = AssetStorageKey.ForLibrary(assetEntry.AssetId, folderId);
             await using (var assetStream = zipEntry.Open())
             {
                 await assetStore.SaveAsync(storageKey, assetStream, cancellationToken);
@@ -205,6 +262,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             {
                 AssetId = assetEntry.AssetId,
                 RunId = null,
+                FolderId = folderId,
                 Name = assetEntry.Name,
                 Scope = AssetScope.Library,
                 Created = assetEntry.Created,
@@ -243,15 +301,43 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         return assets;
     }
 
+    private async Task<List<AssetFolder>> ResolveFoldersAsync(TransferSelection? selection, List<Asset> selectedAssets)
+    {
+        if (selection is null)
+            return [];
+
+        if (selection.All)
+            return await repositoryService.GetAssetFolders(null, SortDirection.Ascending, 0, 0);
+
+        var folderIds = selectedAssets.Where(asset => asset.FolderId.HasValue).Select(asset => asset.FolderId!.Value).Distinct().ToList();
+        var folders = new List<AssetFolder>();
+        foreach (var folderId in folderIds)
+            folders.Add(await repositoryService.GetAssetFolder(folderId));
+
+        return folders;
+    }
+
+    private async Task<AssetFolder?> TryGetFolder(Guid folderId)
+    {
+        try
+        {
+            return await repositoryService.GetAssetFolder(folderId);
+        }
+        catch (SharpOMaticException)
+        {
+            return null;
+        }
+    }
+
     private static async Task<List<Guid>> ResolveSelectionAsync(TransferSelection? selection, Func<Task<IEnumerable<Guid>>> resolveAllIds)
     {
         if (selection is null)
             return [];
 
         if (selection.All)
-            return (await resolveAllIds()).Distinct().ToList();
+            return [.. (await resolveAllIds()).Distinct()];
 
-        return (selection.Ids ?? []).Distinct().ToList();
+        return [.. (selection.Ids ?? []).Distinct()];
     }
 
     private static string BuildEntityEntryName(string directory, Guid id) => $"{directory}/{id:D}{JsonExtension}";
@@ -269,10 +355,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
     {
         await using var entryStream = entry.Open();
         var payload = await JsonSerializer.DeserializeAsync<T>(entryStream, JsonOptions, cancellationToken);
-        if (payload is null)
-            throw new SharpOMaticException($"Entry '{entry.FullName}' is invalid.");
-
-        return payload;
+        return payload is null ? throw new SharpOMaticException($"Entry '{entry.FullName}' is invalid.") : payload;
     }
 
     private static Dictionary<Guid, ZipArchiveEntry> GetEntityEntries(ZipArchive archive, string directory)
@@ -286,7 +369,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             if (!IsSafeEntryName(name) || !name.StartsWith(prefix, StringComparison.Ordinal))
                 continue;
 
-            if (name.EndsWith("/", StringComparison.Ordinal))
+            if (name.EndsWith('/'))
                 continue;
 
             var fileName = name[prefix.Length..];
@@ -312,7 +395,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         if (string.IsNullOrWhiteSpace(fullName))
             return false;
 
-        if (fullName.StartsWith("/", StringComparison.Ordinal) || fullName.StartsWith("\\", StringComparison.Ordinal))
+        if (fullName.StartsWith('/') || fullName.StartsWith('\\'))
             return false;
 
         if (fullName.Contains("..", StringComparison.Ordinal))

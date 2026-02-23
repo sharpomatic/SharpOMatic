@@ -239,15 +239,19 @@ public static class ContextHelpers
         if (string.IsNullOrWhiteSpace(assetName))
             return string.Empty;
 
+        var normalizedAssetName = assetName.Trim();
         Asset? asset = null;
 
         if (runId.HasValue)
-            asset = await repositoryService.GetRunAssetByName(runId.Value, assetName);
+            asset = await repositoryService.GetRunAssetByName(runId.Value, normalizedAssetName);
+
+        if (asset is null && AssetNameParser.TryParseFolderQualifiedName(normalizedAssetName, out var folderName, out var folderAssetName))
+            asset = await repositoryService.GetLibraryAssetByFolderAndName(folderName, folderAssetName);
 
         if (asset is null)
-            asset = await repositoryService.GetLibraryAssetByName(assetName);
+            asset = await repositoryService.GetLibraryAssetByName(normalizedAssetName);
 
-        if (asset is null || !IsTextMediaType(asset.MediaType))
+        if (asset is null || !AssetMediaTypePolicy.IsTextLike(asset.MediaType))
             return string.Empty;
 
         try
@@ -261,6 +265,4 @@ public static class ContextHelpers
             return string.Empty;
         }
     }
-
-    private static bool IsTextMediaType(string mediaType) => mediaType.StartsWith("text/", StringComparison.OrdinalIgnoreCase);
 }

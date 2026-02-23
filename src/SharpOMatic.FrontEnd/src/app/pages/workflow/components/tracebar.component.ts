@@ -21,6 +21,7 @@ import {
   AssetRef,
   buildAssetRefListValue,
   buildAssetRefValue,
+  formatAssetRefLabel,
   parseAssetRefListValue,
   parseAssetRefValue,
 } from '../../../entities/definitions/asset-ref';
@@ -35,6 +36,7 @@ import { AssetPreviewDialogComponent } from '../../../dialogs/asset-preview/asse
 import { AssetTextDialogComponent } from '../../../dialogs/asset-text/asset-text-dialog.component';
 import { AssetSummary } from '../../assets/interfaces/asset-summary';
 import { formatByteSize } from '../../../helper/format-size';
+import { isTextLikeMediaType, normalizeMediaType } from '../../../helper/asset-media-type';
 import { ServerRepositoryService } from '../../../services/server.repository.service';
 
 @Component({
@@ -106,20 +108,6 @@ export class TracebarComponent implements OnInit, OnDestroy {
   private readonly touchEndListenerOptions: AddEventListenerOptions = {
     capture: true,
   };
-  private readonly viewableTextMediaTypes = new Set([
-    'text/plain',
-    'text/markdown',
-    'text/csv',
-    'text/html',
-    'text/xml',
-    'text/css',
-    'text/javascript',
-    'application/json',
-    'application/xml',
-    'application/x-yaml',
-    'application/javascript',
-  ]);
-
   public getEntryTypeDisplay(type: ContextEntryType): string {
     switch (type) {
       case ContextEntryType.Expression:
@@ -306,7 +294,8 @@ export class TracebarComponent implements OnInit, OnDestroy {
   }
 
   public getSelectedAssetLabel(entry: ContextEntryEntity): string {
-    return parseAssetRefValue(entry.entryValue())?.name ?? '';
+    const asset = parseAssetRefValue(entry.entryValue());
+    return asset ? formatAssetRefLabel(asset) : '';
   }
 
   public getSelectedAssetListLabel(entry: ContextEntryEntity): string {
@@ -316,7 +305,7 @@ export class TracebarComponent implements OnInit, OnDestroy {
     }
 
     if (assets.length <= 3) {
-      return assets.map((asset) => asset.name).join(', ');
+      return assets.map((asset) => formatAssetRefLabel(asset)).join(', ');
     }
 
     return `${assets.length} assets selected`;
@@ -355,13 +344,12 @@ export class TracebarComponent implements OnInit, OnDestroy {
   }
 
   public isImageAsset(asset: AssetSummary): boolean {
-    const mediaType = this.normalizeMediaType(asset.mediaType);
+    const mediaType = normalizeMediaType(asset.mediaType);
     return mediaType.startsWith('image/');
   }
 
   public isViewableTextAsset(asset: AssetSummary): boolean {
-    const mediaType = this.normalizeMediaType(asset.mediaType);
-    return this.viewableTextMediaTypes.has(mediaType);
+    return isTextLikeMediaType(asset.mediaType);
   }
 
   public openAssetPreview(asset: AssetSummary): void {
@@ -396,11 +384,4 @@ export class TracebarComponent implements OnInit, OnDestroy {
     });
   }
 
-  private normalizeMediaType(mediaType: string | undefined | null): string {
-    if (!mediaType) {
-      return '';
-    }
-
-    return mediaType.split(';', 2)[0].trim().toLowerCase();
-  }
 }

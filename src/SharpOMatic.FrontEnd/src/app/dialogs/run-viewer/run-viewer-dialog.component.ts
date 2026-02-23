@@ -21,6 +21,7 @@ import {
 import { ContextEntryEntity } from '../../entities/definitions/context-entry.entity';
 import { ContextEntryType } from '../../entities/enumerations/context-entry-type';
 import {
+  formatAssetRefLabel,
   parseAssetRefListValue,
   parseAssetRefValue,
 } from '../../entities/definitions/asset-ref';
@@ -38,6 +39,7 @@ import { AssetPreviewDialogComponent } from '../asset-preview/asset-preview-dial
 import { AssetTextDialogComponent } from '../asset-text/asset-text-dialog.component';
 import { AssetSummary } from '../../pages/assets/interfaces/asset-summary';
 import { formatByteSize } from '../../helper/format-size';
+import { isTextLikeMediaType, normalizeMediaType } from '../../helper/asset-media-type';
 
 interface RunPropertyRow {
   label: string;
@@ -94,20 +96,6 @@ export class RunViewerDialogComponent implements OnInit {
     ...MonacoService.editorOptionsCSharp,
     readOnly: true,
   };
-  private readonly viewableTextMediaTypes = new Set([
-    'text/plain',
-    'text/markdown',
-    'text/csv',
-    'text/html',
-    'text/xml',
-    'text/css',
-    'text/javascript',
-    'application/json',
-    'application/xml',
-    'application/x-yaml',
-    'application/javascript',
-  ]);
-
   constructor(@Inject(DIALOG_DATA) data: { run: RunProgressModel }) {
     this.run = data.run;
     this.outputContexts = this.run.outputContext
@@ -159,12 +147,13 @@ export class RunViewerDialogComponent implements OnInit {
 
   public getAssetEntryDisplay(entry: ContextEntryEntity): string {
     if (entry.entryType() === ContextEntryType.AssetRef) {
-      return parseAssetRefValue(entry.entryValue())?.name ?? '';
+      const asset = parseAssetRefValue(entry.entryValue());
+      return asset ? formatAssetRefLabel(asset) : '';
     }
 
     if (entry.entryType() === ContextEntryType.AssetRefList) {
       return parseAssetRefListValue(entry.entryValue())
-        .map((asset) => asset.name)
+        .map((asset) => formatAssetRefLabel(asset))
         .join(', ');
     }
 
@@ -176,13 +165,12 @@ export class RunViewerDialogComponent implements OnInit {
   }
 
   public isImageAsset(asset: AssetSummary): boolean {
-    const mediaType = this.normalizeMediaType(asset.mediaType);
+    const mediaType = normalizeMediaType(asset.mediaType);
     return mediaType.startsWith('image/');
   }
 
   public isViewableTextAsset(asset: AssetSummary): boolean {
-    const mediaType = this.normalizeMediaType(asset.mediaType);
-    return this.viewableTextMediaTypes.has(mediaType);
+    return isTextLikeMediaType(asset.mediaType);
   }
 
   public openAssetPreview(asset: AssetSummary): void {
@@ -342,11 +330,4 @@ export class RunViewerDialogComponent implements OnInit {
     return value.toString().padStart(2, '0');
   }
 
-  private normalizeMediaType(mediaType: string | undefined | null): string {
-    if (!mediaType) {
-      return '';
-    }
-
-    return mediaType.split(';', 2)[0].trim().toLowerCase();
-  }
 }

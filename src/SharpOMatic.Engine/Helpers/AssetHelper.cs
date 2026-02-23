@@ -48,12 +48,7 @@ public class AssetHelper
         if (string.IsNullOrWhiteSpace(name))
             throw new SharpOMaticException("Asset name cannot be empty or whitespace.");
 
-        Asset? asset = null;
-
-        if (_runId.HasValue)
-            asset = await _repositoryService.GetRunAssetByName(_runId.Value, name);
-
-        asset ??= await _repositoryService.GetLibraryAssetByName(name);
+        var asset = await ResolveByNameInternal(name);
 
         if (asset is null)
             throw new SharpOMaticException($"Asset '{name}' cannot be found.");
@@ -95,12 +90,7 @@ public class AssetHelper
         if (string.IsNullOrWhiteSpace(name))
             throw new SharpOMaticException("Asset name cannot be empty or whitespace.");
 
-        Asset? asset = null;
-
-        if (_runId.HasValue)
-            asset = await _repositoryService.GetRunAssetByName(_runId.Value, name);
-
-        asset ??= await _repositoryService.GetLibraryAssetByName(name);
+        var asset = await ResolveByNameInternal(name);
 
         if (asset is null)
             throw new SharpOMaticException($"Asset '{name}' cannot be found.");
@@ -142,12 +132,7 @@ public class AssetHelper
         if (string.IsNullOrWhiteSpace(name))
             throw new SharpOMaticException("Asset name cannot be empty or whitespace.");
 
-        Asset? asset = null;
-
-        if (_runId.HasValue)
-            asset = await _repositoryService.GetRunAssetByName(_runId.Value, name);
-
-        asset ??= await _repositoryService.GetLibraryAssetByName(name);
+        var asset = await ResolveByNameInternal(name);
 
         if (asset is null)
             throw new SharpOMaticException($"Asset '{name}' cannot be found.");
@@ -249,12 +234,7 @@ public class AssetHelper
         if (string.IsNullOrWhiteSpace(name))
             throw new SharpOMaticException("Asset name cannot be empty or whitespace.");
 
-        Asset? asset = null;
-
-        if (_runId.HasValue)
-            asset = await _repositoryService.GetRunAssetByName(_runId.Value, name);
-
-        asset ??= await _repositoryService.GetLibraryAssetByName(name);
+        var asset = await ResolveByNameInternal(name);
 
         if (asset is null)
             throw new SharpOMaticException($"Asset '{name}' cannot be found.");
@@ -313,6 +293,7 @@ public class AssetHelper
         {
             AssetId = assetId,
             RunId = scope == AssetScope.Run ? _runId : null,
+            FolderId = null,
             Name = name.Trim(),
             Scope = scope,
             Created = DateTime.Now,
@@ -323,19 +304,34 @@ public class AssetHelper
 
         await _repositoryService.UpsertAsset(asset);
 
-        return new AssetRef
-        {
-            AssetId = asset.AssetId,
-            Name = asset.Name,
-            MediaType = asset.MediaType,
-            SizeBytes = asset.SizeBytes,
-        };
+        return new AssetRef(asset);
     }
 
     private async Task DeleteAssetInternal(Asset asset)
     {
         await _repositoryService.DeleteAsset(asset.AssetId);
         await _assetStore.DeleteAsync(asset.StorageKey);
+    }
+
+    private async Task<Asset?> ResolveByNameInternal(string name)
+    {
+        var normalizedName = name.Trim();
+
+        if (_runId.HasValue)
+        {
+            var runAsset = await _repositoryService.GetRunAssetByName(_runId.Value, normalizedName);
+            if (runAsset is not null)
+                return runAsset;
+        }
+
+        if (AssetNameParser.TryParseFolderQualifiedName(normalizedName, out var folderName, out var assetName))
+        {
+            var folderAsset = await _repositoryService.GetLibraryAssetByFolderAndName(folderName, assetName);
+            if (folderAsset is not null)
+                return folderAsset;
+        }
+
+        return await _repositoryService.GetLibraryAssetByName(normalizedName);
     }
 
     private sealed class CountingStream : Stream

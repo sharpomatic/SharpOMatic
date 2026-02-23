@@ -31,7 +31,7 @@
 
 ### Assets
 
-- Add two level structure, folders and then assets
+- Check that removing a run gets rid of run assets and the run assets folder for that run
 
 ### Promotion
 

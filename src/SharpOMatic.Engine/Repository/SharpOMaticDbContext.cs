@@ -6,6 +6,7 @@ public class SharpOMaticDbContext : DbContext
     public DbSet<Run> Runs { get; set; }
     public DbSet<Trace> Traces { get; set; }
     public DbSet<Asset> Assets { get; set; }
+    public DbSet<AssetFolder> AssetFolders { get; set; }
     public DbSet<ConnectorConfigMetadata> ConnectorConfigMetadata { get; set; }
     public DbSet<ConnectorMetadata> ConnectorMetadata { get; set; }
     public DbSet<ModelConfigMetadata> ModelConfigMetadata { get; set; }
@@ -44,6 +45,9 @@ public class SharpOMaticDbContext : DbContext
 
         // Cascade delete: Deleting a Run deletes its Assets
         modelBuilder.Entity<Asset>().HasOne<Run>().WithMany().HasForeignKey(a => a.RunId).OnDelete(DeleteBehavior.Cascade);
+
+        // Cascade delete: Deleting an AssetFolder deletes its Assets
+        modelBuilder.Entity<Asset>().HasOne<AssetFolder>().WithMany().HasForeignKey(a => a.FolderId).OnDelete(DeleteBehavior.Restrict);
 
         // Cascade delete: Deleting an EvalConfig deletes its EvalGraders
         modelBuilder.Entity<EvalGrader>().HasOne<EvalConfig>().WithMany().HasForeignKey(e => e.EvalConfigId).OnDelete(DeleteBehavior.Cascade);

@@ -105,11 +105,30 @@ public interface IRepositoryService
     // Asset Operations
     // ------------------------------------------------
     Task<Asset> GetAsset(Guid assetId);
-    Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null);
-    Task<List<Asset>> GetAssetsByScope(AssetScope scope, string? search, AssetSortField sortBy, SortDirection sortDirection, int skip, int take, Guid? runId = null);
+    Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null, Guid? folderId = null, bool topLevelOnly = false);
+    Task<List<Asset>> GetAssetsByScope(
+        AssetScope scope,
+        string? search,
+        AssetSortField sortBy,
+        SortDirection sortDirection,
+        int skip,
+        int take,
+        Guid? runId = null,
+        Guid? folderId = null,
+        bool topLevelOnly = false
+    );
     Task<List<Asset>> GetRunAssets(Guid runId);
     Task<Asset?> GetRunAssetByName(Guid runId, string name);
+    Task<Asset?> GetLibraryAssetByFolderAndName(string folderName, string name);
     Task<Asset?> GetLibraryAssetByName(string name);
     Task UpsertAsset(Asset asset);
     Task DeleteAsset(Guid assetId);
+
+    Task<AssetFolder> GetAssetFolder(Guid folderId);
+    Task<AssetFolder?> GetAssetFolderByName(string name);
+    Task<int> GetAssetFolderCount(string? search);
+    Task<List<AssetFolder>> GetAssetFolders(string? search, SortDirection sortDirection, int skip, int take);
+    Task<int> GetAssetFolderAssetCount(Guid folderId);
+    Task UpsertAssetFolder(AssetFolder folder);
+    Task DeleteAssetFolder(Guid folderId);
 }

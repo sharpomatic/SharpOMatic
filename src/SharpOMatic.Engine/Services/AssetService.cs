@@ -2,7 +2,7 @@ namespace SharpOMatic.Engine.Services;
 
 public class AssetService(IRepositoryService repositoryService, IAssetStore assetStore) : IAssetService
 {
-    public async Task<AssetRef> CreateFromStreamAsync(Stream content, long sizeBytes, string name, string mediaType, AssetScope scope, Guid? runId = null)
+    public async Task<AssetRef> CreateFromStreamAsync(Stream content, long sizeBytes, string name, string mediaType, AssetScope scope, Guid? runId = null, Guid? folderId = null)
     {
         if (content is null)
             throw new SharpOMaticException("Asset content is required.");
@@ -16,8 +16,17 @@ public class AssetService(IRepositoryService repositoryService, IAssetStore asse
         if (string.IsNullOrWhiteSpace(mediaType))
             throw new SharpOMaticException("Asset media type is required.");
 
+        if (scope == AssetScope.Run && !runId.HasValue)
+            throw new SharpOMaticException("Run assets require a runId.");
+
+        if (scope == AssetScope.Run && folderId.HasValue)
+            throw new SharpOMaticException("Run assets cannot be assigned to a folder.");
+
+        if (scope == AssetScope.Library && folderId.HasValue)
+            _ = await repositoryService.GetAssetFolder(folderId.Value);
+
         var assetId = Guid.NewGuid();
-        var storageKey = AssetStorageKey.ForScope(scope, assetId, runId);
+        var storageKey = AssetStorageKey.ForScope(scope, assetId, runId, folderId);
 
         await assetStore.SaveAsync(storageKey, content);
 
@@ -25,6 +34,7 @@ public class AssetService(IRepositoryService repositoryService, IAssetStore asse
         {
             AssetId = assetId,
             RunId = scope == AssetScope.Run ? runId : null,
+            FolderId = scope == AssetScope.Library ? folderId : null,
             Name = name.Trim(),
             Scope = scope,
             Created = DateTime.Now,
@@ -35,21 +45,15 @@ public class AssetService(IRepositoryService repositoryService, IAssetStore asse
 
         await repositoryService.UpsertAsset(asset);
 
-        return new AssetRef
-        {
-            AssetId = asset.AssetId,
-            Name = asset.Name,
-            MediaType = asset.MediaType,
-            SizeBytes = asset.SizeBytes,
-        };
+        return new AssetRef(asset);
     }
 
-    public async Task<AssetRef> CreateFromBytesAsync(byte[] data, string name, string mediaType, AssetScope scope, Guid? runId = null)
+    public async Task<AssetRef> CreateFromBytesAsync(byte[] data, string name, string mediaType, AssetScope scope, Guid? runId = null, Guid? folderId = null)
     {
         if (data is null)
             throw new SharpOMaticException("Asset data is required.");
 
         await using var stream = new MemoryStream(data, writable: false);
-        return await CreateFromStreamAsync(stream, data.LongLength, name, mediaType, scope, runId);
+        return await CreateFromStreamAsync(stream, data.LongLength, name, mediaType, scope, runId, folderId);
     }
 }

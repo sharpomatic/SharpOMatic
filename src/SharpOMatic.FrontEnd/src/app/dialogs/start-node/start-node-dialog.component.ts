@@ -18,6 +18,7 @@ import {
   AssetRef,
   buildAssetRefListValue,
   buildAssetRefValue,
+  formatAssetRefLabel,
   parseAssetRefListValue,
   parseAssetRefValue,
 } from '../../entities/definitions/asset-ref';
@@ -138,7 +139,8 @@ export class StartNodeDialogComponent implements OnInit {
   }
 
   getSelectedAssetLabel(entry: ContextEntryEntity): string {
-    return parseAssetRefValue(entry.entryValue())?.name ?? '';
+    const asset = parseAssetRefValue(entry.entryValue());
+    return asset ? formatAssetRefLabel(asset) : '';
   }
 
   getSelectedAssetListLabel(entry: ContextEntryEntity): string {
@@ -148,7 +150,7 @@ export class StartNodeDialogComponent implements OnInit {
     }
 
     if (assets.length <= 3) {
-      return assets.map((asset) => asset.name).join(', ');
+      return assets.map((asset) => formatAssetRefLabel(asset)).join(', ');
     }
 
     return `${assets.length} assets selected`;

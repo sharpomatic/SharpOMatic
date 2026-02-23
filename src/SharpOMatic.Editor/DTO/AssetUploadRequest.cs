@@ -6,4 +6,5 @@ public class AssetUploadRequest
     public required string Name { get; set; }
     public AssetScope Scope { get; set; }
     public Guid? RunId { get; set; }
+    public Guid? FolderId { get; set; }
 }

@@ -7,6 +7,7 @@ import { AssetSortField } from '../../enumerations/asset-sort-field';
 import { SortDirection } from '../../enumerations/sort-direction';
 import { formatByteSize } from '../../helper/format-size';
 import { AssetSummary } from '../../pages/assets/interfaces/asset-summary';
+import { AssetFolderSummary } from '../../pages/assets/interfaces/asset-folder-summary';
 import { ServerRepositoryService } from '../../services/server.repository.service';
 import { DIALOG_DATA } from '../services/dialog.service';
 
@@ -28,6 +29,8 @@ export class AssetPickerDialogComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
 
   public assets: AssetSummary[] = [];
+  public folders: AssetFolderSummary[] = [];
+  public selectedFolderFilter: string = 'all';
   public assetsPage = 1;
   public assetsTotal = 0;
   public readonly assetsPageSize = 50;
@@ -59,6 +62,7 @@ export class AssetPickerDialogComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.refreshFolders();
     this.refreshAssets();
   }
 
@@ -152,6 +156,13 @@ export class AssetPickerDialogComponent implements OnInit {
     this.refreshAssets();
   }
 
+  onFolderFilterChange(event: Event): void {
+    const input = event.target as HTMLSelectElement | null;
+    this.selectedFolderFilter = input?.value ?? 'all';
+    this.assetsPage = 1;
+    this.refreshAssets();
+  }
+
   onSearchChange(event: Event): void {
     const input = event.target as HTMLInputElement | null;
     this.searchText = input?.value ?? '';
@@ -171,8 +182,16 @@ export class AssetPickerDialogComponent implements OnInit {
   private refreshAssets(): void {
     this.isLoading = true;
     const search = this.searchText.trim();
+    const folderId = this.currentFolderId();
+    const topLevelOnly = this.selectedFolderFilter === 'top';
     this.serverRepository
-      .getAssetsCount(AssetScope.Library, search)
+      .getAssetsCount(
+        AssetScope.Library,
+        search,
+        undefined,
+        folderId ?? undefined,
+        topLevelOnly,
+      )
       .subscribe((total) => {
         this.assetsTotal = total;
         const totalPages = this.assetsPageCount();
@@ -186,6 +205,8 @@ export class AssetPickerDialogComponent implements OnInit {
     this.isLoading = true;
     const skip = (page - 1) * this.assetsPageSize;
     const search = this.searchText.trim();
+    const folderId = this.currentFolderId();
+    const topLevelOnly = this.selectedFolderFilter === 'top';
     this.serverRepository
       .getAssets(
         AssetScope.Library,
@@ -194,6 +215,9 @@ export class AssetPickerDialogComponent implements OnInit {
         this.assetsSortField,
         this.assetsSortDirection,
         search,
+        undefined,
+        folderId ?? undefined,
+        topLevelOnly,
       )
       .subscribe((assets) => {
         this.assets = assets;
@@ -210,6 +234,38 @@ export class AssetPickerDialogComponent implements OnInit {
     this.searchDebounceId = setTimeout(() => this.applySearch(), 250);
   }
 
+  public showFolderColumn(): boolean {
+    return this.selectedFolderFilter === 'all';
+  }
+
+  private refreshFolders(): void {
+    this.serverRepository
+      .getAssetFolders('', 0, 0, SortDirection.Ascending)
+      .subscribe((folders) => {
+        this.folders = folders;
+        if (
+          this.selectedFolderFilter !== 'all' &&
+          this.selectedFolderFilter !== 'top' &&
+          !this.folders.some(
+            (folder) => folder.folderId === this.selectedFolderFilter,
+          )
+        ) {
+          this.selectedFolderFilter = 'all';
+        }
+      });
+  }
+
+  private currentFolderId(): string | null {
+    if (
+      this.selectedFolderFilter === 'all' ||
+      this.selectedFolderFilter === 'top'
+    ) {
+      return null;
+    }
+
+    return this.selectedFolderFilter;
+  }
+
   private emitSelection(assets: AssetRef[]): void {
     this.onSelect?.(assets);
     this.close.emit();
@@ -221,6 +277,8 @@ export class AssetPickerDialogComponent implements OnInit {
       name: asset.name,
       mediaType: asset.mediaType,
       sizeBytes: asset.sizeBytes,
+      folderId: asset.folderId ?? null,
+      folderName: asset.folderName ?? null,
     };
   }
 }

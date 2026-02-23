@@ -3,17 +3,24 @@ namespace SharpOMatic.Engine.Helpers;
 public static class AssetStorageKey
 {
     private const string LibraryPrefix = "library";
+    private const string LibraryFolderPrefix = "folders";
     private const string RunPrefix = "runs";
 
-    public static string ForLibrary(Guid assetId) => $"{LibraryPrefix}/{assetId:N}";
+    public static string ForLibrary(Guid assetId, Guid? folderId = null)
+    {
+        if (folderId.HasValue)
+            return $"{LibraryPrefix}/{LibraryFolderPrefix}/{folderId.Value:N}/{assetId:N}";
+
+        return $"{LibraryPrefix}/{assetId:N}";
+    }
 
     public static string ForRun(Guid runId, Guid assetId) => $"{RunPrefix}/{runId:N}/{assetId:N}";
 
-    public static string ForScope(AssetScope scope, Guid assetId, Guid? runId = null)
+    public static string ForScope(AssetScope scope, Guid assetId, Guid? runId = null, Guid? folderId = null)
     {
         return scope switch
         {
-            AssetScope.Library => ForLibrary(assetId),
+            AssetScope.Library => ForLibrary(assetId, folderId),
             AssetScope.Run when runId.HasValue => ForRun(runId.Value, assetId),
             AssetScope.Run => throw new SharpOMaticException("Run assets require a runId."),
             _ => throw new SharpOMaticException($"Unsupported asset scope '{scope}'."),

@@ -3,6 +3,8 @@ export interface AssetRef {
   name: string;
   mediaType: string;
   sizeBytes: number;
+  folderId?: string | null;
+  folderName?: string | null;
 }
 
 const isAssetRef = (value: unknown): value is AssetRef => {
@@ -15,7 +17,13 @@ const isAssetRef = (value: unknown): value is AssetRef => {
     typeof candidate.assetId === 'string' &&
     typeof candidate.name === 'string' &&
     typeof candidate.mediaType === 'string' &&
-    typeof candidate.sizeBytes === 'number'
+    typeof candidate.sizeBytes === 'number' &&
+    (candidate.folderId === undefined ||
+      candidate.folderId === null ||
+      typeof candidate.folderId === 'string') &&
+    (candidate.folderName === undefined ||
+      candidate.folderName === null ||
+      typeof candidate.folderName === 'string')
   );
 };
 
@@ -55,4 +63,12 @@ export const buildAssetRefValue = (asset: AssetRef | null): string => {
 
 export const buildAssetRefListValue = (assets: AssetRef[]): string => {
   return JSON.stringify(assets);
+};
+
+export const formatAssetRefLabel = (asset: AssetRef): string => {
+  if (asset.folderName) {
+    return `${asset.folderName}/${asset.name}`;
+  }
+
+  return asset.name;
 };

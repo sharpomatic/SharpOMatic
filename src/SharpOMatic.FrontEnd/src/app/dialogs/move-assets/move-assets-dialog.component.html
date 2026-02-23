@@ -1,0 +1,28 @@
+<div class="modal-header">
+  <h4 class="modal-title pull-left">Move Assets</h4>
+  <button
+    type="button"
+    class="btn-close close pull-right"
+    aria-label="Close"
+    (click)="close()"
+  >
+    <span aria-hidden="true" class="visually-hidden">&times;</span>
+  </button>
+</div>
+<div class="modal-body">
+  <label class="form-label">Target folder</label>
+  <select
+    class="form-select"
+    [value]="folderSelectionValue()"
+    (change)="onFolderSelectionChange($event)"
+  >
+    <option [value]="topLevelOptionValue">Top-level</option>
+    @for (folder of folders; track folder.folderId) {
+      <option [value]="folder.folderId">{{ folder.name }}</option>
+    }
+  </select>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-primary" (click)="close()">Cancel</button>
+  <button type="button" class="btn btn-primary" (click)="confirm()">Move</button>
+</div>

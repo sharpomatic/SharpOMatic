@@ -1,6 +1,6 @@
 namespace SharpOMatic.Engine.Services;
 
-public class AzureBlobStorageAssetStore : IAssetStore
+public class AzureBlobStorageAssetStore : IAssetStore, IAssetStoreMove
 {
     private readonly BlobContainerClient _containerClient;
     private readonly SemaphoreSlim _containerInit = new(1, 1);
@@ -68,6 +68,36 @@ public class AzureBlobStorageAssetStore : IAssetStore
         await EnsureContainerAsync(cancellationToken);
         var blobClient = GetBlobClient(storageKey);
         await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+    }
+
+    public async Task MoveAsync(string sourceStorageKey, string destinationStorageKey, bool overwrite = true, CancellationToken cancellationToken = default)
+    {
+        await EnsureContainerAsync(cancellationToken);
+        var sourceBlobClient = GetBlobClient(sourceStorageKey);
+        var destinationBlobClient = GetBlobClient(destinationStorageKey);
+
+        if (!await sourceBlobClient.ExistsAsync(cancellationToken))
+            throw new SharpOMaticException($"Asset '{sourceStorageKey}' cannot be found.");
+
+        if (!overwrite && await destinationBlobClient.ExistsAsync(cancellationToken))
+            throw new SharpOMaticException($"Asset '{destinationStorageKey}' already exists.");
+
+        await destinationBlobClient.StartCopyFromUriAsync(sourceBlobClient.Uri, cancellationToken: cancellationToken);
+
+        while (true)
+        {
+            var properties = await destinationBlobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+            var copyStatus = properties.Value.CopyStatus;
+            if (copyStatus == Azure.Storage.Blobs.Models.CopyStatus.Success)
+                break;
+
+            if (copyStatus != Azure.Storage.Blobs.Models.CopyStatus.Pending)
+                throw new SharpOMaticException($"Unable to move asset content from '{sourceStorageKey}' to '{destinationStorageKey}'.");
+
+            await Task.Delay(150, cancellationToken);
+        }
+
+        await sourceBlobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
     }
 
     private BlobClient GetBlobClient(string storageKey)

@@ -2,7 +2,15 @@ namespace SharpOMatic.Editor.Helpers;
 
 public static class FormFileAssetExtensions
 {
-    public static async Task<AssetRef> CreateAssetRefAsync(this IFormFile file, IAssetService assetService, AssetScope scope, Guid? runId = null, string? name = null, string? mediaType = null)
+    public static async Task<AssetRef> CreateAssetRefAsync(
+        this IFormFile file,
+        IAssetService assetService,
+        AssetScope scope,
+        Guid? runId = null,
+        Guid? folderId = null,
+        string? name = null,
+        string? mediaType = null
+    )
     {
         if (file is null)
             throw new SharpOMaticException("File is required.");
@@ -17,6 +25,6 @@ public static class FormFileAssetExtensions
         var resolvedMediaType = string.IsNullOrWhiteSpace(mediaType) ? (string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType) : mediaType;
 
         await using var stream = file.OpenReadStream();
-        return await assetService.CreateFromStreamAsync(stream, file.Length, resolvedName, resolvedMediaType, scope, runId);
+        return await assetService.CreateFromStreamAsync(stream, file.Length, resolvedName, resolvedMediaType, scope, runId, folderId);
     }
 }

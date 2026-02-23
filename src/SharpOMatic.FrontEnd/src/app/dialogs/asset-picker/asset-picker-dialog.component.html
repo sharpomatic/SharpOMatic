@@ -33,6 +33,17 @@
             (keyup.enter)="applySearch()"
           />
         </div>
+        <select
+          class="form-select w-auto"
+          [value]="selectedFolderFilter"
+          (change)="onFolderFilterChange($event)"
+        >
+          <option value="all">All folders</option>
+          <option value="top">Top-level only</option>
+          @for (folder of folders; track folder.folderId) {
+            <option [value]="folder.folderId">{{ folder.name }}</option>
+          }
+        </select>
         @if (!isMulti) {
           <div class="text-muted small">Double-click a row to select.</div>
         }
@@ -80,6 +91,9 @@
                     }
                   </button>
                 </th>
+                @if (showFolderColumn()) {
+                  <th scope="col">Folder</th>
+                }
                 <th scope="col" class="col-type">
                   <button
                     class="btn btn-link p-0 asset-picker-sort"
@@ -163,6 +177,11 @@
                   <td class="col-name text-truncate" title="{{ asset.name }}">
                     {{ asset.name }}
                   </td>
+                  @if (showFolderColumn()) {
+                    <td class="text-truncate" title="{{ asset.folderName || '' }}">
+                      {{ asset.folderName || "-" }}
+                    </td>
+                  }
                   <td
                     class="col-type text-truncate"
                     title="{{ asset.mediaType }}"

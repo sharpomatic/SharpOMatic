@@ -176,18 +176,44 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task<Asset> GetAsset(Guid assetId) => throw new NotImplementedException();
 
-    public Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId) => throw new NotImplementedException();
+    public Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null, Guid? folderId = null, bool topLevelOnly = false) => throw new NotImplementedException();
 
-    public Task<List<Asset>> GetAssetsByScope(AssetScope scope, string? search, AssetSortField sortBy, SortDirection sortDirection, int skip, int take, Guid? runId) =>
+    public Task<List<Asset>> GetAssetsByScope(
+        AssetScope scope,
+        string? search,
+        AssetSortField sortBy,
+        SortDirection sortDirection,
+        int skip,
+        int take,
+        Guid? runId = null,
+        Guid? folderId = null,
+        bool topLevelOnly = false
+    ) =>
         throw new NotImplementedException();
 
     public Task<List<Asset>> GetRunAssets(Guid runId) => throw new NotImplementedException();
 
     public Task<Asset?> GetRunAssetByName(Guid runId, string name) => throw new NotImplementedException();
 
+    public Task<Asset?> GetLibraryAssetByFolderAndName(string folderName, string name) => throw new NotImplementedException();
+
     public Task<Asset?> GetLibraryAssetByName(string name) => throw new NotImplementedException();
 
     public Task UpsertAsset(Asset asset) => throw new NotImplementedException();
 
     public Task DeleteAsset(Guid assetId) => throw new NotImplementedException();
+
+    public Task<AssetFolder> GetAssetFolder(Guid folderId) => throw new NotImplementedException();
+
+    public Task<AssetFolder?> GetAssetFolderByName(string name) => throw new NotImplementedException();
+
+    public Task<int> GetAssetFolderCount(string? search) => throw new NotImplementedException();
+
+    public Task<List<AssetFolder>> GetAssetFolders(string? search, SortDirection sortDirection, int skip, int take) => throw new NotImplementedException();
+
+    public Task<int> GetAssetFolderAssetCount(Guid folderId) => throw new NotImplementedException();
+
+    public Task UpsertAssetFolder(AssetFolder folder) => throw new NotImplementedException();
+
+    public Task DeleteAssetFolder(Guid folderId) => throw new NotImplementedException();
 }

@@ -62,6 +62,7 @@ import { EvalRunSortField } from '../eval/enumerations/eval-run-sort-field';
 import { EvalRunRowSortField } from '../eval/enumerations/eval-run-row-sort-field';
 import { AssetSummary } from '../pages/assets/interfaces/asset-summary';
 import { AssetText } from '../pages/assets/interfaces/asset-text';
+import { AssetFolderSummary } from '../pages/assets/interfaces/asset-folder-summary';
 import { TransferImportResult } from '../pages/transfer/interfaces/transfer-import-result';
 import { TransferExportRequest } from '../pages/transfer/interfaces/transfer-export-request';
 import { EvalRunSummarySnapshot } from '../eval/definitions/eval-run-summary';
@@ -836,19 +837,33 @@ export class ServerRepositoryService {
     sortDirection = SortDirection.Descending,
     search = '',
     runId?: string,
+    folderId?: string,
+    topLevelOnly = false,
   ): Observable<AssetSummary[]> {
+    if (scope === AssetScope.Run && !runId) {
+      this.notifyError(
+        'Loading assets',
+        new Error('Run scope queries require a runId.'),
+      );
+      return of([]);
+    }
+
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams()
       .set('scope', scope)
       .set('skip', skip)
       .set('take', take)
       .set('sortBy', sortBy)
-      .set('sortDirection', sortDirection);
+      .set('sortDirection', sortDirection)
+      .set('topLevelOnly', topLevelOnly);
     if (search.trim().length > 0) {
       params = params.set('search', search.trim());
     }
     if (runId) {
       params = params.set('runId', runId);
+    }
+    if (folderId) {
+      params = params.set('folderId', folderId);
     }
     return this.http
       .get<AssetSummary[]>(`${apiUrl}/api/assets`, { params })
@@ -864,14 +879,29 @@ export class ServerRepositoryService {
     scope: AssetScope = AssetScope.Library,
     search = '',
     runId?: string,
+    folderId?: string,
+    topLevelOnly = false,
   ): Observable<number> {
+    if (scope === AssetScope.Run && !runId) {
+      this.notifyError(
+        'Loading asset count',
+        new Error('Run scope queries require a runId.'),
+      );
+      return of(0);
+    }
+
     const apiUrl = this.settingsService.apiUrl();
-    let params = new HttpParams().set('scope', scope);
+    let params = new HttpParams()
+      .set('scope', scope)
+      .set('topLevelOnly', topLevelOnly);
     if (search.trim().length > 0) {
       params = params.set('search', search.trim());
     }
     if (runId) {
       params = params.set('runId', runId);
+    }
+    if (folderId) {
+      params = params.set('folderId', folderId);
     }
     return this.http.get<number>(`${apiUrl}/api/assets/count`, { params }).pipe(
       catchError((error) => {
@@ -886,7 +916,16 @@ export class ServerRepositoryService {
     name: string,
     scope: AssetScope,
     runId?: string,
+    folderId?: string,
   ): Observable<AssetSummary | null> {
+    if (scope === AssetScope.Run) {
+      this.notifyError(
+        'Uploading asset',
+        new Error('Editor uploads only support library assets.'),
+      );
+      return of(null);
+    }
+
     const apiUrl = this.settingsService.apiUrl();
     const formData = new FormData();
     formData.append('file', file);
@@ -895,6 +934,9 @@ export class ServerRepositoryService {
     if (runId) {
       formData.append('runId', runId);
     }
+    if (folderId) {
+      formData.append('folderId', folderId);
+    }
 
     return this.http.post<AssetSummary>(`${apiUrl}/api/assets`, formData).pipe(
       catchError((error) => {
@@ -902,6 +944,108 @@ export class ServerRepositoryService {
         return of(null);
       }),
     );
+  }
+
+  public getAssetFolders(
+    search = '',
+    skip = 0,
+    take = 0,
+    sortDirection: SortDirection = SortDirection.Ascending,
+  ): Observable<AssetFolderSummary[]> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams()
+      .set('skip', skip)
+      .set('take', take)
+      .set('sortDirection', sortDirection);
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http
+      .get<AssetFolderSummary[]>(`${apiUrl}/api/assets/folders`, { params })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading asset folders', error);
+          return of([]);
+        }),
+      );
+  }
+
+  public getAssetFolderCount(search = ''): Observable<number> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams();
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http
+      .get<number>(`${apiUrl}/api/assets/folders/count`, { params })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading asset folder count', error);
+          return of(0);
+        }),
+      );
+  }
+
+  public createAssetFolder(name: string): Observable<AssetFolderSummary | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .post<AssetFolderSummary>(`${apiUrl}/api/assets/folders`, { name })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Creating asset folder', error);
+          return of(null);
+        }),
+      );
+  }
+
+  public renameAssetFolder(
+    folderId: string,
+    name: string,
+  ): Observable<AssetFolderSummary | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .put<AssetFolderSummary>(`${apiUrl}/api/assets/folders/${folderId}`, {
+        name,
+      })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Renaming asset folder', error);
+          return of(null);
+        }),
+      );
+  }
+
+  public deleteAssetFolder(folderId: string): Observable<boolean> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .delete<void>(`${apiUrl}/api/assets/folders/${folderId}`)
+      .pipe(
+        map(() => true),
+        catchError((error) => {
+          this.notifyError('Deleting asset folder', error);
+          return of(false);
+        }),
+      );
+  }
+
+  public moveAssetToFolder(
+    assetId: string,
+    folderId?: string | null,
+  ): Observable<boolean> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .put<void>(`${apiUrl}/api/assets/${assetId}/folder`, {
+        folderId: folderId ?? null,
+      })
+      .pipe(
+        map(() => true),
+        catchError((error) => {
+          this.notifyError('Moving asset', error);
+          return of(false);
+        }),
+      );
   }
 
   public deleteAsset(assetId: string): Observable<void> {

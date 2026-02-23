@@ -32,6 +32,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("FolderId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("MediaType")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -55,13 +58,38 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
                     b.HasKey("AssetId");
 
+                    b.HasIndex("FolderId");
+
                     b.HasIndex("Name");
 
                     b.HasIndex("RunId");
 
                     b.HasIndex("Scope", "Created");
 
+                    b.HasIndex("Scope", "FolderId", "Created");
+
                     b.ToTable("Assets", "SharpOMatic");
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.AssetFolder", b =>
+                {
+                    b.Property<Guid>("FolderId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("FolderId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("AssetFolders", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.ConnectorConfigMetadata", b =>
@@ -640,6 +668,11 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Asset", b =>
                 {
+                    b.HasOne("SharpOMatic.Engine.Repository.AssetFolder", null)
+                        .WithMany()
+                        .HasForeignKey("FolderId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("SharpOMatic.Engine.Repository.Run", null)
                         .WithMany()
                         .HasForeignKey("RunId")

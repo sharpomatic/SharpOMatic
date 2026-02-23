@@ -1,6 +1,6 @@
 namespace SharpOMatic.Engine.Services;
 
-public class FileSystemAssetStore : IAssetStore
+public class FileSystemAssetStore : IAssetStore, IAssetStoreMove
 {
     private readonly string _rootPath;
 
@@ -63,6 +63,26 @@ public class FileSystemAssetStore : IAssetStore
         if (File.Exists(path))
             File.Delete(path);
 
+        return Task.CompletedTask;
+    }
+
+    public Task MoveAsync(string sourceStorageKey, string destinationStorageKey, bool overwrite = true, CancellationToken cancellationToken = default)
+    {
+        var sourcePath = ResolvePath(sourceStorageKey);
+        if (!File.Exists(sourcePath))
+            throw new SharpOMaticException($"Asset '{sourceStorageKey}' cannot be found.");
+
+        var destinationPath = ResolvePath(destinationStorageKey);
+        var destinationDirectory = Path.GetDirectoryName(destinationPath);
+        if (string.IsNullOrWhiteSpace(destinationDirectory))
+            throw new SharpOMaticException($"Storage key '{destinationStorageKey}' is invalid.");
+
+        Directory.CreateDirectory(destinationDirectory);
+
+        if (!overwrite && File.Exists(destinationPath))
+            throw new SharpOMaticException($"Asset '{destinationStorageKey}' already exists.");
+
+        File.Move(sourcePath, destinationPath, overwrite);
         return Task.CompletedTask;
     }
 

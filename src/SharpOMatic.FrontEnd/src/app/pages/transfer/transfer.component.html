@@ -1140,6 +1140,7 @@
                     }
                   </button>
                 </th>
+                <th scope="col">Folder</th>
                 <th scope="col" class="col-size">
                   <button
                     class="btn btn-link p-0 export-sort"
@@ -1204,6 +1205,9 @@
                     title="{{ asset.mediaType }}"
                   >
                     {{ asset.mediaType }}
+                  </td>
+                  <td class="text-truncate" title="{{ asset.folderName || '' }}">
+                    {{ asset.folderName || "-" }}
                   </td>
                   <td class="col-size">{{ formatSize(asset.sizeBytes) }}</td>
                   <td class="col-created">
