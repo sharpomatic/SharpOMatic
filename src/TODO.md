@@ -2,6 +2,12 @@
 
 ## Major Features
 
+### Roboflow
+
+- Add Roboflow connector
+- Probably don't need model for roboflow
+- Add Roboflow calling node
+
 ### Engine
 
 - Integrate use of LSP/OmniSharp for full intellisense in code nodes
