@@ -1289,6 +1289,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 Status = row.Status,
                 Started = row.Started,
                 Finished = row.Finished,
+                InputContext = row.InputContext,
                 OutputContext = row.OutputContext,
                 Error = row.Error,
                 Graders = [],
@@ -1319,6 +1320,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                     Started = runRowGrader.Started,
                     Finished = runRowGrader.Finished,
                     Score = runRowGrader.Score,
+                    InputContext = runRowGrader.InputContext,
                     OutputContext = runRowGrader.OutputContext,
                     Error = runRowGrader.Error,
                 },
@@ -1438,6 +1440,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 Status = runRow.Status,
                 Started = runRow.Started,
                 Finished = runRow.Finished,
+                InputContext = runRow.InputContext,
                 OutputContext = runRow.OutputContext,
                 Error = runRow.Error,
             }
@@ -1480,6 +1483,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         public required EvalRunStatus Status { get; set; }
         public required DateTime Started { get; set; }
         public DateTime? Finished { get; set; }
+        public string? InputContext { get; set; }
         public string? OutputContext { get; set; }
         public string? Error { get; set; }
     }

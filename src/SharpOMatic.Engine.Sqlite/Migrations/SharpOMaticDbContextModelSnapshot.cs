@@ -382,6 +382,9 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<DateTime?>("Finished")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("InputContext")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Order")
                         .HasColumnType("INTEGER");
 
@@ -422,6 +425,9 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("Finished")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InputContext")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("OutputContext")

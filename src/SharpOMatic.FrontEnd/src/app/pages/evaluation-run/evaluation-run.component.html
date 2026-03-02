@@ -167,6 +167,16 @@
           </div>
 
           <div class="form-line align-start">
+            <label class="form-label field-label">Input Context</label>
+            <div class="control-column long">
+              <app-context-viewer
+                [contexts]="getInputContexts(selectedRow)"
+                mode="simple"
+              ></app-context-viewer>
+            </div>
+          </div>          
+
+          <div class="form-line align-start">
             <label class="form-label field-label">Output Context</label>
             <div class="control-column long">
               <app-context-viewer
@@ -210,6 +220,15 @@
               </div>
 
               @if (grader.status === evalRunStatus.Completed) {
+                <div class="form-line align-start">
+                  <label class="form-label field-label">Input Context</label>
+                  <div class="control-column long">
+                    <app-context-viewer
+                      [contexts]="getGraderInputContexts(grader)"
+                      mode="simple"
+                    ></app-context-viewer>
+                  </div>
+                </div>
                 <div class="form-line align-start">
                   <label class="form-label field-label">Output Context</label>
                   <div class="control-column long">

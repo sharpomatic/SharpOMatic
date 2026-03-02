@@ -172,8 +172,16 @@ export class EvaluationRunComponent implements OnInit, OnDestroy {
     return value.toFixed(3);
   }
 
+  getInputContexts(row: EvalRunRowDetailSnapshot): string[] {
+    return row.inputContext ? [row.inputContext] : [];
+  }
+
   getOutputContexts(row: EvalRunRowDetailSnapshot): string[] {
     return row.outputContext ? [row.outputContext] : [];
+  }
+
+  getGraderInputContexts(grader: EvalRunRowGraderDetailSnapshot): string[] {
+    return grader.inputContext ? [grader.inputContext] : [];
   }
 
   getGraderOutputContexts(grader: EvalRunRowGraderDetailSnapshot): string[] {

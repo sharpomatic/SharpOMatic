@@ -498,6 +498,7 @@ public class EngineService(
             }
 
             var serializedInput = inputContext.Serialize(jsonConverterService);
+            evalRunRow.InputContext = serializedInput;
             var runResult = await StartWorkflowRunAndWait(runId, inputContext);
             if (runResult.RunStatus == RunStatus.Failed)
             {

@@ -10,6 +10,7 @@ export interface EvalRunRowGraderDetailSnapshot {
   started: string;
   finished: string | null;
   score: number | null;
+  inputContext: string | null;
   outputContext: string | null;
   error: string | null;
 }
@@ -23,6 +24,7 @@ export interface EvalRunRowDetailSnapshot {
   status: EvalRunStatus;
   started: string;
   finished: string | null;
+  inputContext: string | null;
   outputContext: string | null;
   error: string | null;
   graders: EvalRunRowGraderDetailSnapshot[];

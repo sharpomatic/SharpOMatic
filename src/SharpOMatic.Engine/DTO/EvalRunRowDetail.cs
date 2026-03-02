@@ -10,6 +10,7 @@ public class EvalRunRowDetail
     public required EvalRunStatus Status { get; set; }
     public required DateTime Started { get; set; }
     public DateTime? Finished { get; set; }
+    public string? InputContext { get; set; }
     public string? OutputContext { get; set; }
     public string? Error { get; set; }
     public required List<EvalRunRowGraderDetail> Graders { get; set; }
