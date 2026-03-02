@@ -497,6 +497,7 @@ public class EngineService(
                     throw new SharpOMaticException($"Mandatory column '{column.Name}' for row '{rowName}' has a missing value.");
             }
 
+            var serializedInput = inputContext.Serialize(jsonConverterService);
             var runResult = await StartWorkflowRunAndWait(runId, inputContext);
             if (runResult.RunStatus == RunStatus.Failed)
             {
@@ -506,8 +507,13 @@ public class EngineService(
             }
             else
             {
+                inputContext = ContextObject.Deserialize(serializedInput, jsonConverterService);
+                var resultContext = ContextObject.Deserialize(runResult.OutputContext, jsonConverterService);
+                ContextHelpers.OverwriteContexts(inputContext, resultContext);
+                var graderContext = inputContext.Serialize(jsonConverterService);
+
                 foreach (var evalGrader in evalConfigDetail.Graders.OrderBy(g => g.Order))
-                    await PerformEvalGrader(repository, jsonConverterService, evalRunId, evalRunRow.EvalRunRowId, evalGrader, runResult.OutputContext);
+                    await PerformEvalGrader(repository, jsonConverterService, evalRunId, evalRunRow.EvalRunRowId, evalGrader, graderContext);
 
                 evalRunRow.OutputContext = runResult.OutputContext;
                 evalRunRow.Status = EvalRunStatus.Completed;
@@ -547,6 +553,7 @@ public class EngineService(
 
             var runId = await CreateWorkflowRun(evalGrader.WorkflowId ?? Guid.Empty);
             var runResult = await StartWorkflowRunAndWait(runId, inputContext);
+            evalRunRowGrader.InputContext = jsonContext;
             evalRunRowGrader.OutputContext = runResult.OutputContext;
 
             if (runResult.RunStatus == RunStatus.Failed)

@@ -14,6 +14,32 @@ public class AssetHelper
         _runId = runId;
     }
 
+    public async Task<Asset> GetAssetAsync(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new SharpOMaticException("Asset name cannot be empty or whitespace.");
+
+        var asset = await ResolveByNameInternal(name);
+
+        if (asset is null)
+            throw new SharpOMaticException($"Asset '{name}' cannot be found.");
+
+        return asset;
+    }
+
+    public async Task<AssetRef> GetAssetRefAsync(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new SharpOMaticException("Asset name cannot be empty or whitespace.");
+
+        var asset = await ResolveByNameInternal(name);
+
+        if (asset is null)
+            throw new SharpOMaticException($"Asset '{name}' cannot be found.");
+
+        return new AssetRef(asset);
+    }
+
     public Task<byte[]> LoadAssetBytesAsync(Asset asset)
     {
         if (asset is null)

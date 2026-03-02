@@ -66,31 +66,12 @@ public sealed class GosubContext : ExecutionContext
                     }
                 }
 
-                OverwriteContexts(ParentContext, outputContext);
+                ContextHelpers.OverwriteContexts(ParentContext, outputContext);
             }
             else
             {
-                OverwriteContexts(ParentContext, childContext);
+                ContextHelpers.OverwriteContexts(ParentContext, childContext);
             }
-        }
-    }
-
-    private void OverwriteContexts(ContextObject target, ContextObject source)
-    {
-        foreach (var key in source.Keys)
-        {
-            if (!target.TryGetValue(key, out var targetValue))
-            {
-                target[key] = source[key];
-                continue;
-            }
-
-            var sourceValue = source[key];
-
-            if (targetValue is ContextObject targetObject && sourceValue is ContextObject sourceObject)
-                OverwriteContexts(targetObject, sourceObject);
-            else
-                target[key] = sourceValue;
         }
     }
 }

@@ -79,6 +79,7 @@ export class RunViewerDialogComponent implements OnInit {
   public runInputs = ContextEntryListEntity.fromSnapshot(
     ContextEntryListEntity.defaultSnapshot(),
   );
+  public inputContexts: string[] = [];
   public outputContexts: string[] = [];
   public traces: TraceProgressModel[] = [];
   public isLoadingTraces = true;
@@ -98,6 +99,9 @@ export class RunViewerDialogComponent implements OnInit {
   };
   constructor(@Inject(DIALOG_DATA) data: { run: RunProgressModel }) {
     this.run = data.run;
+    this.inputContexts = this.run.inputContext
+      ? [this.run.inputContext]
+      : [];  
     this.outputContexts = this.run.outputContext
       ? [this.run.outputContext]
       : [];

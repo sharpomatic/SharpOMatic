@@ -265,4 +265,23 @@ public static class ContextHelpers
             return string.Empty;
         }
     }
+
+    public static void OverwriteContexts(ContextObject target, ContextObject source)
+    {
+        foreach (var key in source.Keys)
+        {
+            if (!target.TryGetValue(key, out var targetValue))
+            {
+                target[key] = source[key];
+                continue;
+            }
+
+            var sourceValue = source[key];
+
+            if (targetValue is ContextObject targetObject && sourceValue is ContextObject sourceObject)
+                OverwriteContexts(targetObject, sourceObject);
+            else
+                target[key] = sourceValue;
+        }
+    }
 }

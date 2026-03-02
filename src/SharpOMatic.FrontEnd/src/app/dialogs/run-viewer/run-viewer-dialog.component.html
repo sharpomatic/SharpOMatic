@@ -66,102 +66,10 @@
     </ng-template>
 
     <ng-template #inputTab>
-      <div class="bg-body-tertiary flex-grow-1 d-flex flex-column p-3 h-100">
-        @if (runInputs.entries().length > 0) {
-          <div class="run-inputs flex-grow-1">
-            <div class="d-flex align-items-start gap-2 mb-2">
-              <label class="form-label editPath mb-0">Path</label>
-              <label class="form-label editType mb-0">Type</label>
-              <label class="form-label editValue mb-0">Value</label>
-            </div>
-            @for (entry of runInputs.entries(); track entry.id) {
-              <div class="d-flex align-items-start gap-2 mb-2 run-input-row">
-                <input
-                  type="text"
-                  class="form-control editPath"
-                  [value]="entry.inputPath()"
-                  readonly
-                />
-                <input
-                  type="text"
-                  class="form-control editType"
-                  [value]="getEntryTypeDisplay(entry.entryType())"
-                  readonly
-                />
-                @if (entry.entryType() === contextEntryType.JSON) {
-                  <div class="editValue">
-                    <ngx-monaco-editor
-                      class="editJson"
-                      [options]="getEditorOptions(entry)"
-                      [ngModel]="entry.entryValue()"
-                    />
-                  </div>
-                } @else if (entry.entryType() === contextEntryType.Expression) {
-                  <div class="editValue">
-                    <ngx-monaco-editor
-                      class="editExpression"
-                      [options]="getEditorOptions(entry)"
-                      [ngModel]="entry.entryValue()"
-                    />
-                  </div>
-                } @else if (entry.entryType() === contextEntryType.Bool) {
-                  <div class="d-flex editValue">
-                    <select
-                      class="form-select editBoolValue"
-                      [ngModel]="entry.entryValue() || 'False'"
-                      disabled
-                    >
-                      <option value="True">True</option>
-                      <option value="False">False</option>
-                    </select>
-                  </div>
-                } @else if (entry.entryType() === contextEntryType.Int) {
-                  <input
-                    type="number"
-                    class="form-control editValue"
-                    inputmode="numeric"
-                    pattern="[0-9]*"
-                    step="1"
-                    [ngModel]="
-                      entry.entryValue() !== '' ? +entry.entryValue() : null
-                    "
-                    readonly
-                  />
-                } @else if (entry.entryType() === contextEntryType.Double) {
-                  <input
-                    type="number"
-                    class="form-control editValue"
-                    inputmode="decimal"
-                    step="any"
-                    [ngModel]="
-                      entry.entryValue() !== '' ? +entry.entryValue() : null
-                    "
-                    readonly
-                  />
-                } @else if (
-                  entry.entryType() === contextEntryType.AssetRef ||
-                  entry.entryType() === contextEntryType.AssetRefList
-                ) {
-                  <input
-                    type="text"
-                    class="form-control editValue"
-                    [value]="getAssetEntryDisplay(entry)"
-                    [title]="getAssetEntryDisplay(entry)"
-                    readonly
-                  />
-                } @else {
-                  <input
-                    type="text"
-                    class="form-control editValue"
-                    [ngModel]="entry.entryValue()"
-                    readonly
-                  />
-                }
-              </div>
-            }
-          </div>
-        }
-      </div>
+        <app-context-viewer
+          [contexts]="inputContexts"
+          mode="simple"
+        ></app-context-viewer>
     </ng-template>
 
     <ng-template #outputTab>
