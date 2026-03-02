@@ -186,18 +186,18 @@
             </div>
           </div>
 
-          <div class="control-offset graders-section-title">Graders</div>
-
           @if (!selectedRow.graders.length) {
             <div class="control-offset text-muted fst-italic">
               (no graders)
             </div>
           } @else {
             @for (grader of selectedRow.graders; track grader.evalRunRowGraderId) {
+              <div class="control-offset graders-section-title">
+                {{ grader.label || '(unnamed grader)' }} Grader
+              </div>
+
               <div class="form-line">
-                <label class="form-label field-label">{{
-                  grader.label || '(unnamed grader)'
-                }}</label>
+                <label class="form-label field-label">Status</label>
                 <div class="control-column long grader-control">
                   <span
                     class="run-text"
@@ -229,7 +229,7 @@
                     ></app-context-viewer>
                   </div>
                 </div>
-                <div class="form-line align-start">
+                <div class="form-line align-start mb-4">
                   <label class="form-label field-label">Output Context</label>
                   <div class="control-column long">
                     <app-context-viewer
