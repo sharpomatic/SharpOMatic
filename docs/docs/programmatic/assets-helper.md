@@ -207,17 +207,7 @@ Context.Set("output.manual", downloaded);
 
 ### Creating Library Assets
 
-If you want the created asset to be reusable outside the current run, pass `AssetScope.Library`.
-To use `AssetScope` in a code node, add its namespace to script options.
-
-```csharp
-builder.Services.AddSharpOMaticEngine()
-  .AddScriptOptions(
-    [typeof(SharpOMatic.Engine.Enumerations.AssetScope).Assembly],
-    ["SharpOMatic.Engine.Enumerations"]);
-```
-
-Then the code node can create a library asset:
+If you want the created asset to be reusable outside the current run, pass `AssetScope.Library`:
 
 ```csharp
 var bytes = System.Text.Encoding.UTF8.GetBytes("Shared prompt content");
