@@ -2,10 +2,6 @@
 
 ## Major Features
 
-### Documentation
-
-- the assets and image helpers
-
 ### Metadata
 
 - Add 'list models' for a connector so you can see the available models.
