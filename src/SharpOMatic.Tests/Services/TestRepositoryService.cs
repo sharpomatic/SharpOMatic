@@ -134,6 +134,8 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task RequestCancelEvalRun(Guid evalRunId) => throw new NotImplementedException();
 
+    public Task RenameEvalRun(Guid evalRunId, string name) => throw new NotImplementedException();
+
     public Task MoveEvalRun(Guid evalRunId, MoveDirection direction) => throw new NotImplementedException();
 
     public Task DeleteEvalRun(Guid evalRunId) => throw new NotImplementedException();

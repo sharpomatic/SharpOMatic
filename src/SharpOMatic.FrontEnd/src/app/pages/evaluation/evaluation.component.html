@@ -441,6 +441,19 @@
             <i class="bi bi-arrow-down"></i>
           </button>
           <button
+            class="btn btn-outline-primary btn-sm"
+            type="button"
+            [disabled]="!canRenameSelectedRun()"
+            [title]="
+              selectedRunDetail?.evalRun?.status === evalRunStatus.Running
+                ? 'Running runs cannot be renamed.'
+                : 'Rename selected run'
+            "
+            (click)="renameSelectedRun()"
+          >
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button
             class="btn btn-outline-warning btn-sm"
             type="button"
             [disabled]="!canCancelSelectedRun()"

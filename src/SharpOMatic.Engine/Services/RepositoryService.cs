@@ -1198,6 +1198,22 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
+    public async Task RenameEvalRun(Guid evalRunId, string name)
+    {
+        var normalizedName = name?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(normalizedName))
+            throw new SharpOMaticException("EvalRun name cannot be empty.");
+
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var evalRun = await dbContext.EvalRuns.FirstOrDefaultAsync(run => run.EvalRunId == evalRunId);
+        if (evalRun is null)
+            throw new SharpOMaticException($"EvalRun '{evalRunId}' cannot be found.");
+
+        evalRun.Name = normalizedName;
+        await dbContext.SaveChangesAsync();
+    }
+
     public async Task MoveEvalRun(Guid evalRunId, MoveDirection direction)
     {
         using var dbContext = dbContextFactory.CreateDbContext();

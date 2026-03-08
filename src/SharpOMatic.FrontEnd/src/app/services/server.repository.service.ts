@@ -719,6 +719,18 @@ export class ServerRepositoryService {
       );
   }
 
+  public renameEvalRun(evalRunId: string, name: string): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .post<void>(`${apiUrl}/api/eval/runs/${evalRunId}/rename`, { name })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Renaming eval run', error);
+          return of(undefined);
+        }),
+      );
+  }
+
   public moveEvalRun(
     evalRunId: string,
     direction: MoveDirection,

@@ -34,6 +34,7 @@ import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.com
 import { EvalRunStatus } from '../../eval/enumerations/eval-run-status';
 import { EvalRunSortField } from '../../eval/enumerations/eval-run-sort-field';
 import { MoveDirection } from '../../eval/enumerations/move-direction';
+import { TextInputDialogComponent } from '../../dialogs/text-input/text-input-dialog.component';
 import { EvalGraderResultComponent } from './components/eval-grader-result/eval-grader-result.component';
 import { EvalRunSummarySnapshot } from '../../eval/definitions/eval-run-summary';
 import {
@@ -71,6 +72,7 @@ export class EvaluationComponent
   private readonly modalService = inject(BsModalService);
   private startRunModalRef: BsModalRef<EvalStartRunDialogComponent> | undefined;
   private confirmModalRef: BsModalRef<ConfirmDialogComponent> | undefined;
+  private renameRunModalRef: BsModalRef<TextInputDialogComponent> | undefined;
   private readonly terminalReloadingRunIds = new Set<string>();
   private readonly evalRunProgressListener = (data: EvalRunSummarySnapshot) =>
     this.onEvalRunProgress(data);
@@ -112,6 +114,7 @@ export class EvaluationComponent
   public isDeletingRun = false;
   public isCancelingRun = false;
   public isMovingRun = false;
+  public isRenamingRun = false;
 
   constructor() {
     effect(() => {
@@ -923,7 +926,13 @@ export class EvaluationComponent
 
   canDeleteSelectedRun(): boolean {
     const selectedRun = this.selectedRunDetail?.evalRun;
-    if (!selectedRun || this.isDeletingRun || this.isCancelingRun || this.isMovingRun) {
+    if (
+      !selectedRun ||
+      this.isDeletingRun ||
+      this.isCancelingRun ||
+      this.isMovingRun ||
+      this.isRenamingRun
+    ) {
       return false;
     }
 
@@ -932,7 +941,13 @@ export class EvaluationComponent
 
   canCancelSelectedRun(): boolean {
     const selectedRun = this.selectedRunDetail?.evalRun;
-    if (!selectedRun || this.isDeletingRun || this.isCancelingRun || this.isMovingRun) {
+    if (
+      !selectedRun ||
+      this.isDeletingRun ||
+      this.isCancelingRun ||
+      this.isMovingRun ||
+      this.isRenamingRun
+    ) {
       return false;
     }
 
@@ -946,6 +961,7 @@ export class EvaluationComponent
       this.isDeletingRun ||
       this.isCancelingRun ||
       this.isMovingRun ||
+      this.isRenamingRun ||
       selectedRun.status === EvalRunStatus.Running
     ) {
       return;
@@ -980,6 +996,7 @@ export class EvaluationComponent
       this.isDeletingRun ||
       this.isCancelingRun ||
       this.isMovingRun ||
+      this.isRenamingRun ||
       selectedRun.status !== EvalRunStatus.Running
     ) {
       return;
@@ -1010,8 +1027,54 @@ export class EvaluationComponent
     return this.selectedRunId === run.evalRunId;
   }
 
+  canRenameSelectedRun(): boolean {
+    const selectedRun = this.selectedRunDetail?.evalRun;
+    if (
+      !selectedRun ||
+      this.isDeletingRun ||
+      this.isCancelingRun ||
+      this.isMovingRun ||
+      this.isRenamingRun
+    ) {
+      return false;
+    }
+
+    return selectedRun.status !== EvalRunStatus.Running;
+  }
+
+  renameSelectedRun(): void {
+    const selectedRun = this.selectedRunDetail?.evalRun;
+    if (!selectedRun || !this.canRenameSelectedRun()) {
+      return;
+    }
+
+    this.renameRunModalRef = this.modalService.show(TextInputDialogComponent, {
+      initialState: {
+        title: 'Rename Evaluation Run',
+        label: 'Run name',
+        value: selectedRun.name ?? '',
+        placeholder: 'Enter run name',
+        confirmText: 'Rename',
+      },
+    });
+
+    const modalRef = this.renameRunModalRef;
+    modalRef.onHidden?.pipe(take(1)).subscribe(() => {
+      const name = modalRef.content?.result;
+      if (!name || this.isRenamingRun) {
+        return;
+      }
+
+      this.isRenamingRun = true;
+      this.serverRepository.renameEvalRun(selectedRun.evalRunId, name).subscribe(() => {
+        this.isRenamingRun = false;
+        this.loadRunsPage(this.runsPage, selectedRun.evalRunId);
+      });
+    });
+  }
+
   canMoveSelectedRunUp(): boolean {
-    if (this.isMovingRun || this.isRunSearchActive()) {
+    if (this.isMovingRun || this.isRenamingRun || this.isRunSearchActive()) {
       return false;
     }
 
@@ -1024,7 +1087,7 @@ export class EvaluationComponent
   }
 
   canMoveSelectedRunDown(): boolean {
-    if (this.isMovingRun || this.isRunSearchActive()) {
+    if (this.isMovingRun || this.isRenamingRun || this.isRunSearchActive()) {
       return false;
     }
 
@@ -1400,7 +1463,12 @@ export class EvaluationComponent
   }
 
   private moveSelectedRun(direction: MoveDirection): void {
-    if (this.isMovingRun || this.isRunSearchActive() || !this.selectedRunId) {
+    if (
+      this.isMovingRun ||
+      this.isRenamingRun ||
+      this.isRunSearchActive() ||
+      !this.selectedRunId
+    ) {
       return;
     }
 

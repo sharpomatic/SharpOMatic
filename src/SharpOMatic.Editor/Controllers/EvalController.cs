@@ -118,6 +118,12 @@ public class EvalController : ControllerBase
         await repositoryService.DeleteEvalRun(id);
     }
 
+    [HttpPost("runs/{id}/rename")]
+    public async Task RenameEvalRun(IRepositoryService repositoryService, Guid id, [FromBody] RenameEvalRunRequest request)
+    {
+        await repositoryService.RenameEvalRun(id, request.Name);
+    }
+
     [HttpPost("runs/{id}/move")]
     public async Task MoveEvalRun(IRepositoryService repositoryService, Guid id, [FromBody] MoveEvalRunRequest request)
     {
