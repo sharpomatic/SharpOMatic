@@ -60,6 +60,7 @@ import { ModelSortField } from '../enumerations/model-sort-field';
 import { EvalConfigSortField } from '../eval/enumerations/eval-config-sort-field';
 import { EvalRunSortField } from '../eval/enumerations/eval-run-sort-field';
 import { EvalRunRowSortField } from '../eval/enumerations/eval-run-row-sort-field';
+import { MoveDirection } from '../eval/enumerations/move-direction';
 import { AssetSummary } from '../pages/assets/interfaces/asset-summary';
 import { AssetText } from '../pages/assets/interfaces/asset-text';
 import { AssetFolderSummary } from '../pages/assets/interfaces/asset-folder-summary';
@@ -673,7 +674,7 @@ export class ServerRepositoryService {
     search = '',
     skip = 0,
     take = 0,
-    sortBy: EvalRunSortField = EvalRunSortField.Started,
+    sortBy: EvalRunSortField = EvalRunSortField.Order,
     sortDirection: SortDirection = SortDirection.Descending,
   ): Observable<EvalRunSummarySnapshot[]> {
     const apiUrl = this.settingsService.apiUrl();
@@ -714,6 +715,21 @@ export class ServerRepositoryService {
         catchError((error) => {
           this.notifyError('Loading eval run count', error);
           return of(0);
+        }),
+      );
+  }
+
+  public moveEvalRun(
+    evalRunId: string,
+    direction: MoveDirection,
+  ): Observable<void> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .post<void>(`${apiUrl}/api/eval/runs/${evalRunId}/move`, { direction })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Moving eval run', error);
+          return of(undefined);
         }),
       );
   }

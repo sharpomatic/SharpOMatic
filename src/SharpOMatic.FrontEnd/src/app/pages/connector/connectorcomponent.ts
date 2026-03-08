@@ -43,8 +43,18 @@ export class ConnectorComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   public onConnectorConfigChange(configId: string): void {
+    const previousConfig = this.connectorConfig;
+    const currentName = this.connector.name();
+    const shouldRename = this.shouldRenameOnConfigChange(
+      previousConfig,
+      currentName,
+    );
+
     this.setConnectorConfig(configId, true);
-    this.setNameFromSelectedConfig();
+
+    if (shouldRename && this.connectorConfig) {
+      this.connector.name.set(this.connectorConfig.displayName);
+    }
   }
 
   public get connectorFieldValuesRecord(): Record<string, string | null> {
@@ -79,15 +89,16 @@ export class ConnectorComponent implements OnInit, CanLeaveWithUnsavedChanges {
     this.ensureAuthMode(resetFieldValues);
   }
 
-  private setNameFromSelectedConfig(): void {
-    if (!this.connectorConfig) {
-      return;
+  private shouldRenameOnConfigChange(
+    previousConfig: ConnectorConfig | null,
+    currentName: string,
+  ): boolean {
+    if (previousConfig) {
+      return currentName === previousConfig.displayName;
     }
 
-    const currentName = this.connector.name().trim();
-    if (!currentName || currentName === 'Untitled') {
-      this.connector.name.set(this.connectorConfig.displayName);
-    }
+    const trimmedName = currentName.trim();
+    return currentName === 'Untitled' || trimmedName === '';
   }
 
   public get selectedAuthMode() {

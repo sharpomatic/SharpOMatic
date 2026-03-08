@@ -4,6 +4,7 @@ export interface EvalRunSummarySnapshot {
   evalRunId: string;
   evalConfigId: string;
   name: string;
+  order: number;
   started: string;
   finished: string | null;
   status: EvalRunStatus;

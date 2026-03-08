@@ -48,7 +48,7 @@ public class EvalController : ControllerBase
         IRepositoryService repositoryService,
         Guid id,
         [FromQuery] string? search = null,
-        [FromQuery] EvalRunSortField sortBy = EvalRunSortField.Started,
+        [FromQuery] EvalRunSortField sortBy = EvalRunSortField.Order,
         [FromQuery] SortDirection sortDirection = SortDirection.Descending,
         [FromQuery] int skip = 0,
         [FromQuery] int take = 0
@@ -116,6 +116,12 @@ public class EvalController : ControllerBase
     public async Task DeleteEvalRun(IRepositoryService repositoryService, Guid id)
     {
         await repositoryService.DeleteEvalRun(id);
+    }
+
+    [HttpPost("runs/{id}/move")]
+    public async Task MoveEvalRun(IRepositoryService repositoryService, Guid id, [FromBody] MoveEvalRunRequest request)
+    {
+        await repositoryService.MoveEvalRun(id, request.Direction);
     }
 
     [HttpPost("runs/{id}/cancel")]

@@ -171,6 +171,7 @@ public class EngineService(
             EvalRunId = Guid.NewGuid(),
             EvalConfigId = evalConfigId,
             Name = ResolveEvalRunName(name, started),
+            Order = 0,
             Started = started,
             Finished = null,
             Status = EvalRunStatus.Running,

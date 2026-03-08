@@ -423,6 +423,24 @@
             />
           </div>
           <button
+            class="btn btn-outline-primary btn-sm"
+            type="button"
+            [disabled]="!canMoveSelectedRunUp()"
+            title="Move selected run up"
+            (click)="moveSelectedRunUp()"
+          >
+            <i class="bi bi-arrow-up"></i>
+          </button>
+          <button
+            class="btn btn-outline-primary btn-sm"
+            type="button"
+            [disabled]="!canMoveSelectedRunDown()"
+            title="Move selected run down"
+            (click)="moveSelectedRunDown()"
+          >
+            <i class="bi bi-arrow-down"></i>
+          </button>
+          <button
             class="btn btn-outline-warning btn-sm"
             type="button"
             [disabled]="!canCancelSelectedRun()"

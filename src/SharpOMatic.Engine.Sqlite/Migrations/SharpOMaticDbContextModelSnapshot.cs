@@ -300,6 +300,9 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("Order")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime>("Started")
                         .HasColumnType("TEXT");
 
@@ -311,7 +314,8 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 
                     b.HasKey("EvalRunId");
 
-                    b.HasIndex("EvalConfigId");
+                    b.HasIndex("EvalConfigId", "Order")
+                        .IsUnique();
 
                     b.ToTable("EvalRuns", "SharpOMatic");
                 });

@@ -1,11 +1,13 @@
 namespace SharpOMatic.Engine.Repository;
 
+[Index(nameof(EvalConfigId), nameof(Order), IsUnique = true)]
 public class EvalRun
 {
     [Key]
     public required Guid EvalRunId { get; set; }
     public required Guid EvalConfigId { get; set; }
     public required string Name { get; set; }
+    public required int Order { get; set; }
     public required DateTime Started { get; set; }
     public DateTime? Finished { get; set; }
     public required EvalRunStatus Status { get; set; }

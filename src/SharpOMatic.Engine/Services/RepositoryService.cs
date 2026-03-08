@@ -1005,19 +1005,40 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
     public async Task UpsertEvalRun(EvalRun evalRun)
     {
-        using var dbContext = dbContextFactory.CreateDbContext();
+        const int maxInsertAttempts = 2;
 
-        var entity = await (from run in dbContext.EvalRuns where run.EvalRunId == evalRun.EvalRunId select run).FirstOrDefaultAsync();
-
-        if (entity is null)
-            dbContext.EvalRuns.Add(evalRun);
-        else
+        for (var attempt = 1; attempt <= maxInsertAttempts; attempt++)
         {
-            dbContext.Entry(entity).CurrentValues.SetValues(evalRun);
-            dbContext.Entry(entity).Property(run => run.CancelRequested).IsModified = false;
+            using var dbContext = dbContextFactory.CreateDbContext();
+            await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+            var entity = await (from run in dbContext.EvalRuns where run.EvalRunId == evalRun.EvalRunId select run).FirstOrDefaultAsync();
+
+            if (entity is null)
+            {
+                evalRun.Order = evalRun.Order > 0 ? evalRun.Order : await GetNextEvalRunOrder(dbContext, evalRun.EvalConfigId);
+                dbContext.EvalRuns.Add(evalRun);
+            }
+            else
+            {
+                evalRun.Order = entity.Order;
+                dbContext.Entry(entity).CurrentValues.SetValues(evalRun);
+                dbContext.Entry(entity).Property(run => run.CancelRequested).IsModified = false;
+            }
+
+            try
+            {
+                await dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return;
+            }
+            catch (DbUpdateException ex) when (entity is null && attempt < maxInsertAttempts && IsUniqueEvalRunOrderViolation(ex))
+            {
+                await transaction.RollbackAsync();
+            }
         }
 
-        await dbContext.SaveChangesAsync();
+        throw new SharpOMaticException($"EvalRun '{evalRun.EvalRunId}' could not be saved because a unique run order could not be allocated.");
     }
 
     public async Task UpsertEvalRunRows(List<EvalRunRow> runRows)
@@ -1134,6 +1155,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 EvalRunId = run.EvalRunId,
                 EvalConfigId = run.EvalConfigId,
                 Name = run.Name,
+                Order = run.Order,
                 Started = run.Started,
                 Finished = run.Finished,
                 Status = run.Status,
@@ -1176,6 +1198,53 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
+    public async Task MoveEvalRun(Guid evalRunId, MoveDirection direction)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+        var evalRun = await dbContext.EvalRuns.FirstOrDefaultAsync(run => run.EvalRunId == evalRunId);
+        if (evalRun is null)
+            throw new SharpOMaticException($"EvalRun '{evalRunId}' cannot be found.");
+
+        var adjacentRun = direction switch
+        {
+            MoveDirection.Up => await dbContext
+                .EvalRuns
+                .Where(run => run.EvalConfigId == evalRun.EvalConfigId && run.Order > evalRun.Order)
+                .OrderBy(run => run.Order)
+                .ThenByDescending(run => run.Started)
+                .ThenBy(run => run.EvalRunId)
+                .FirstOrDefaultAsync(),
+            MoveDirection.Down => await dbContext
+                .EvalRuns
+                .Where(run => run.EvalConfigId == evalRun.EvalConfigId && run.Order < evalRun.Order)
+                .OrderByDescending(run => run.Order)
+                .ThenByDescending(run => run.Started)
+                .ThenBy(run => run.EvalRunId)
+                .FirstOrDefaultAsync(),
+            _ => throw new SharpOMaticException($"Move direction '{direction}' is not supported."),
+        };
+
+        if (adjacentRun is null)
+        {
+            await transaction.CommitAsync();
+            return;
+        }
+
+        var currentOrder = evalRun.Order;
+        var adjacentOrder = adjacentRun.Order;
+        var sentinelOrder = await GetSentinelEvalRunOrder(dbContext, evalRun.EvalConfigId);
+
+        evalRun.Order = sentinelOrder;
+        await dbContext.SaveChangesAsync();
+
+        adjacentRun.Order = currentOrder;
+        evalRun.Order = adjacentOrder;
+        await dbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
+    }
+
     public async Task DeleteEvalRun(Guid evalRunId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
@@ -1204,6 +1273,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             EvalRunId = evalRun.EvalRunId,
             EvalConfigId = evalRun.EvalConfigId,
             Name = evalRun.Name,
+            Order = evalRun.Order,
             Started = evalRun.Started,
             Finished = evalRun.Finished,
             Status = evalRun.Status,
@@ -1386,20 +1456,59 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         return sortBy switch
         {
+            EvalRunSortField.Order => sortDirection == SortDirection.Ascending
+                ? evalRuns.OrderBy(run => run.Order).ThenByDescending(run => run.Started).ThenBy(run => run.EvalRunId)
+                : evalRuns.OrderByDescending(run => run.Order).ThenByDescending(run => run.Started).ThenBy(run => run.EvalRunId),
             EvalRunSortField.Name => sortDirection == SortDirection.Ascending
-                ? evalRuns.OrderBy(run => run.Name).ThenByDescending(run => run.Started)
-                : evalRuns.OrderByDescending(run => run.Name).ThenByDescending(run => run.Started),
+                ? evalRuns.OrderBy(run => run.Name).ThenByDescending(run => run.Started).ThenBy(run => run.EvalRunId)
+                : evalRuns.OrderByDescending(run => run.Name).ThenByDescending(run => run.Started).ThenBy(run => run.EvalRunId),
             EvalRunSortField.Status => sortDirection == SortDirection.Ascending
-                ? evalRuns.OrderBy(run => run.Status).ThenByDescending(run => run.Started)
-                : evalRuns.OrderByDescending(run => run.Status).ThenByDescending(run => run.Started),
+                ? evalRuns.OrderBy(run => run.Status).ThenByDescending(run => run.Started).ThenBy(run => run.EvalRunId)
+                : evalRuns.OrderByDescending(run => run.Status).ThenByDescending(run => run.Started).ThenBy(run => run.EvalRunId),
             EvalRunSortField.CompletedRows => sortDirection == SortDirection.Ascending
-                ? evalRuns.OrderBy(run => run.CompletedRows).ThenByDescending(run => run.Started)
-                : evalRuns.OrderByDescending(run => run.CompletedRows).ThenByDescending(run => run.Started),
+                ? evalRuns.OrderBy(run => run.CompletedRows).ThenByDescending(run => run.Started).ThenBy(run => run.EvalRunId)
+                : evalRuns.OrderByDescending(run => run.CompletedRows).ThenByDescending(run => run.Started).ThenBy(run => run.EvalRunId),
             EvalRunSortField.FailedRows => sortDirection == SortDirection.Ascending
-                ? evalRuns.OrderBy(run => run.FailedRows).ThenByDescending(run => run.Started)
-                : evalRuns.OrderByDescending(run => run.FailedRows).ThenByDescending(run => run.Started),
-            _ => sortDirection == SortDirection.Ascending ? evalRuns.OrderBy(run => run.Started) : evalRuns.OrderByDescending(run => run.Started),
+                ? evalRuns.OrderBy(run => run.FailedRows).ThenByDescending(run => run.Started).ThenBy(run => run.EvalRunId)
+                : evalRuns.OrderByDescending(run => run.FailedRows).ThenByDescending(run => run.Started).ThenBy(run => run.EvalRunId),
+            _ => sortDirection == SortDirection.Ascending
+                ? evalRuns.OrderBy(run => run.Started).ThenBy(run => run.EvalRunId)
+                : evalRuns.OrderByDescending(run => run.Started).ThenBy(run => run.EvalRunId),
         };
+    }
+
+    private static async Task<int> GetNextEvalRunOrder(SharpOMaticDbContext dbContext, Guid evalConfigId)
+    {
+        return (await dbContext.EvalRuns.Where(run => run.EvalConfigId == evalConfigId).MaxAsync(run => (int?)run.Order) ?? 0) + 1;
+    }
+
+    private static async Task<int> GetSentinelEvalRunOrder(SharpOMaticDbContext dbContext, Guid evalConfigId)
+    {
+        return (await dbContext.EvalRuns.Where(run => run.EvalConfigId == evalConfigId).MinAsync(run => (int?)run.Order) ?? 0) - 1;
+    }
+
+    private static bool IsUniqueEvalRunOrderViolation(DbUpdateException exception)
+    {
+        var current = exception.InnerException;
+        while (current is not null)
+        {
+            var message = current.Message;
+            if (
+                message.Contains("EvalRuns", StringComparison.OrdinalIgnoreCase)
+                && message.Contains("Order", StringComparison.OrdinalIgnoreCase)
+                && (
+                    message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase)
+                    || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase)
+                )
+            )
+            {
+                return true;
+            }
+
+            current = current.InnerException;
+        }
+
+        return false;
     }
 
     private static async Task<Guid?> GetEvalRunNameColumnId(SharpOMaticDbContext dbContext, Guid evalConfigId)

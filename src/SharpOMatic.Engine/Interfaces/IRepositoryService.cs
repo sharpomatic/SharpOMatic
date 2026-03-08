@@ -89,6 +89,7 @@ public interface IRepositoryService
     Task UpsertEvalData(List<EvalData> data);
     Task DeleteEvalData(Guid evalDataId);
     Task RequestCancelEvalRun(Guid evalRunId);
+    Task MoveEvalRun(Guid evalRunId, MoveDirection direction);
     Task DeleteEvalRun(Guid evalRunId);
     Task UpsertEvalRun(EvalRun evalRun);
     Task UpsertEvalRunRows(List<EvalRunRow> runRows);

@@ -4,4 +4,5 @@ export enum EvalRunSortField {
   Status = 'Status',
   CompletedRows = 'CompletedRows',
   FailedRows = 'FailedRows',
+  Order = 'Order',
 }

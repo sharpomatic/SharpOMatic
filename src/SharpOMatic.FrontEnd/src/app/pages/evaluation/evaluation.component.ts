@@ -33,6 +33,7 @@ import { EvalStartRunDialogComponent } from '../../dialogs/eval-start-run/eval-s
 import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
 import { EvalRunStatus } from '../../eval/enumerations/eval-run-status';
 import { EvalRunSortField } from '../../eval/enumerations/eval-run-sort-field';
+import { MoveDirection } from '../../eval/enumerations/move-direction';
 import { EvalGraderResultComponent } from './components/eval-grader-result/eval-grader-result.component';
 import { EvalRunSummarySnapshot } from '../../eval/definitions/eval-run-summary';
 import {
@@ -110,6 +111,7 @@ export class EvaluationComponent
   public isLoadingRunDetail = false;
   public isDeletingRun = false;
   public isCancelingRun = false;
+  public isMovingRun = false;
 
   constructor() {
     effect(() => {
@@ -921,7 +923,7 @@ export class EvaluationComponent
 
   canDeleteSelectedRun(): boolean {
     const selectedRun = this.selectedRunDetail?.evalRun;
-    if (!selectedRun || this.isDeletingRun || this.isCancelingRun) {
+    if (!selectedRun || this.isDeletingRun || this.isCancelingRun || this.isMovingRun) {
       return false;
     }
 
@@ -930,7 +932,7 @@ export class EvaluationComponent
 
   canCancelSelectedRun(): boolean {
     const selectedRun = this.selectedRunDetail?.evalRun;
-    if (!selectedRun || this.isDeletingRun || this.isCancelingRun) {
+    if (!selectedRun || this.isDeletingRun || this.isCancelingRun || this.isMovingRun) {
       return false;
     }
 
@@ -943,6 +945,7 @@ export class EvaluationComponent
       !selectedRun ||
       this.isDeletingRun ||
       this.isCancelingRun ||
+      this.isMovingRun ||
       selectedRun.status === EvalRunStatus.Running
     ) {
       return;
@@ -976,6 +979,7 @@ export class EvaluationComponent
       !selectedRun ||
       this.isDeletingRun ||
       this.isCancelingRun ||
+      this.isMovingRun ||
       selectedRun.status !== EvalRunStatus.Running
     ) {
       return;
@@ -1004,6 +1008,40 @@ export class EvaluationComponent
 
   isRunSelected(run: EvalRunSummarySnapshot): boolean {
     return this.selectedRunId === run.evalRunId;
+  }
+
+  canMoveSelectedRunUp(): boolean {
+    if (this.isMovingRun || this.isRunSearchActive()) {
+      return false;
+    }
+
+    const index = this.getSelectedRunIndex();
+    if (index < 0) {
+      return false;
+    }
+
+    return index > 0 || this.runsPage > 1;
+  }
+
+  canMoveSelectedRunDown(): boolean {
+    if (this.isMovingRun || this.isRunSearchActive()) {
+      return false;
+    }
+
+    const index = this.getSelectedRunIndex();
+    if (index < 0) {
+      return false;
+    }
+
+    return index < this.runs.length - 1 || this.runsPage < this.runsPageCount();
+  }
+
+  moveSelectedRunUp(): void {
+    this.moveSelectedRun(MoveDirection.Up);
+  }
+
+  moveSelectedRunDown(): void {
+    this.moveSelectedRun(MoveDirection.Down);
   }
 
   get sortedGraderSummaries(): EvalRunGraderSummaryDetailSnapshot[] {
@@ -1230,7 +1268,7 @@ export class EvaluationComponent
         search,
         skip,
         this.runsPageSize,
-        EvalRunSortField.Started,
+        EvalRunSortField.Order,
         SortDirection.Descending,
       )
       .subscribe((runs) => {
@@ -1320,6 +1358,7 @@ export class EvaluationComponent
     return {
       ...current,
       name: progress.name,
+      order: progress.order,
       started: progress.started,
       finished: progress.finished,
       status: progress.status,
@@ -1358,6 +1397,46 @@ export class EvaluationComponent
         this.terminalReloadingRunIds.delete(evalRunId);
       },
     });
+  }
+
+  private moveSelectedRun(direction: MoveDirection): void {
+    if (this.isMovingRun || this.isRunSearchActive() || !this.selectedRunId) {
+      return;
+    }
+
+    const selectedRunId = this.selectedRunId;
+    const selectedIndex = this.getSelectedRunIndex();
+    if (selectedIndex < 0) {
+      return;
+    }
+
+    const targetPage =
+      direction === MoveDirection.Up
+        ? selectedIndex === 0 && this.runsPage > 1
+          ? this.runsPage - 1
+          : this.runsPage
+        : selectedIndex === this.runs.length - 1 &&
+            this.runsPage < this.runsPageCount()
+          ? this.runsPage + 1
+          : this.runsPage;
+
+    this.isMovingRun = true;
+    this.serverRepository.moveEvalRun(selectedRunId, direction).subscribe(() => {
+      this.isMovingRun = false;
+      this.loadRunsPage(targetPage, selectedRunId);
+    });
+  }
+
+  private getSelectedRunIndex(): number {
+    if (!this.selectedRunId) {
+      return -1;
+    }
+
+    return this.runs.findIndex((run) => run.evalRunId === this.selectedRunId);
+  }
+
+  private isRunSearchActive(): boolean {
+    return this.runsSearchText.trim().length > 0;
   }
 
   private selectActiveRunAfterRefresh(preferredRunId?: string): string | null {

@@ -130,8 +130,18 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
   }
 
   public onModelConfigChange(configId: string): void {
+    const previousConfig = this.modelConfig;
+    const currentName = this.model.name();
+    const shouldRename = this.shouldRenameOnConfigChange(
+      previousConfig,
+      currentName,
+    );
+
     this.setModelConfig(configId, true);
-    this.setNameFromSelectedConfig();
+
+    if (shouldRename && this.modelConfig) {
+      this.model.name.set(this.modelConfig.displayName);
+    }
   }
 
   public get parameterValuesRecord(): Record<string, string | null> {
@@ -224,15 +234,16 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
     }
   }
 
-  private setNameFromSelectedConfig(): void {
-    if (!this.modelConfig) {
-      return;
+  private shouldRenameOnConfigChange(
+    previousConfig: ModelConfig | null,
+    currentName: string,
+  ): boolean {
+    if (previousConfig) {
+      return currentName === previousConfig.displayName;
     }
 
-    const currentName = this.model.name().trim();
-    if (!currentName || currentName === 'Untitled') {
-      this.model.name.set(this.modelConfig.displayName);
-    }
+    const trimmedName = currentName.trim();
+    return currentName === 'Untitled' || trimmedName === '';
   }
 
   private buildParameterValuesForConfig(

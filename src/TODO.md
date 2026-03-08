@@ -24,7 +24,6 @@
 
 ### Connectors
 
-- OpenAI, add gpt-5.2 set of models including chat-latest, pro, mini and nano.
 - Gemini connector (tool calling fails with: Duplicate function declaration found: GetTime when using raw factory)
 - Anthropic connector
 

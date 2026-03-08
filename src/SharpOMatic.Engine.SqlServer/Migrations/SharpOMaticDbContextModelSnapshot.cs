@@ -304,6 +304,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("Started")
                         .HasColumnType("datetime2");
 
@@ -315,7 +318,8 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
                     b.HasKey("EvalRunId");
 
-                    b.HasIndex("EvalConfigId");
+                    b.HasIndex("EvalConfigId", "Order")
+                        .IsUnique();
 
                     b.ToTable("EvalRuns", "SharpOMatic");
                 });
