@@ -1164,6 +1164,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 TotalRows = run.TotalRows,
                 CompletedRows = run.CompletedRows,
                 FailedRows = run.FailedRows,
+                AveragePassRate = run.AveragePassRate,
             })
             .ToListAsync();
     }
@@ -1298,6 +1299,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             TotalRows = evalRun.TotalRows,
             CompletedRows = evalRun.CompletedRows,
             FailedRows = evalRun.FailedRows,
+            AveragePassRate = evalRun.AveragePassRate,
         };
 
         var graderSummaries = await (

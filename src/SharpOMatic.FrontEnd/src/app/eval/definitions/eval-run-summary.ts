@@ -13,4 +13,5 @@ export interface EvalRunSummarySnapshot {
   totalRows: number;
   completedRows: number;
   failedRows: number;
+  averagePassRate: number | null;
 }

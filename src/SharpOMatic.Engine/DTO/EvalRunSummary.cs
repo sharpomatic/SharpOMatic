@@ -14,4 +14,5 @@ public class EvalRunSummary
     public required int TotalRows { get; set; }
     public required int CompletedRows { get; set; }
     public required int FailedRows { get; set; }
+    public double? AveragePassRate { get; set; }
 }

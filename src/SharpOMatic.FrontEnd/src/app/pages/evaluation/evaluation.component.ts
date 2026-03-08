@@ -1196,6 +1196,14 @@ export class EvaluationComponent
     return new Date(value).toLocaleString();
   }
 
+  formatRunPassRate(value: number | null): string {
+    if (value === null || value === undefined) {
+      return '-';
+    }
+
+    return `${(value * 100).toFixed(1)}%`;
+  }
+
   @HostListener('window:beforeunload', ['$event'])
   onBeforeUnload(event: BeforeUnloadEvent): void {
     if (this.hasUnsavedChanges()) {
@@ -1430,6 +1438,7 @@ export class EvaluationComponent
       totalRows: progress.totalRows,
       completedRows: progress.completedRows,
       failedRows: progress.failedRows,
+      averagePassRate: progress.averagePassRate,
     };
   }
 

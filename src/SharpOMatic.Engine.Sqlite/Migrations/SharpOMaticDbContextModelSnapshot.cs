@@ -278,6 +278,9 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<bool>("CancelRequested")
                         .HasColumnType("INTEGER");
 
+                    b.Property<double?>("AveragePassRate")
+                        .HasColumnType("REAL");
+
                     b.Property<int>("CompletedRows")
                         .HasColumnType("INTEGER");
 

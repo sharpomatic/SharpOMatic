@@ -181,6 +181,7 @@ public class EngineService(
             TotalRows = selectedRows.Count,
             CompletedRows = 0,
             FailedRows = 0,
+            AveragePassRate = null,
         };
 
         await RepositoryService.UpsertEvalRun(evalRun);
@@ -312,6 +313,7 @@ public class EngineService(
             }
 
             await repository.UpsertEvalRunGraderSummaries(graderSummaries);
+            evalRun.AveragePassRate = graderSummaries.Select(summary => summary.PassRate).Average();
 
             if (isCancelRequested)
             {

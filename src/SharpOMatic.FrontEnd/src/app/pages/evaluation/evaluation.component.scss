@@ -262,6 +262,27 @@
   text-align: left;
 }
 
+.runs-master-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.runs-master-item-meta {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.run-average-pass-rate {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .run-text {
   padding: 2px 6px;
   border-radius: 4px;

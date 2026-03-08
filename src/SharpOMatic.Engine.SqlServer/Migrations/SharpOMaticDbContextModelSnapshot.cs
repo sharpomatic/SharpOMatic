@@ -282,6 +282,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<bool>("CancelRequested")
                         .HasColumnType("bit");
 
+                    b.Property<double?>("AveragePassRate")
+                        .HasColumnType("float");
+
                     b.Property<int>("CompletedRows")
                         .HasColumnType("int");
 
