@@ -1,0 +1,110 @@
+{
+  "Version": 1,
+  "ConfigId": "openai_gpt-5.3-codex",
+  "DisplayName": "gpt-5.3-codex",
+  "Description": "Coding model",
+  "ConnectorConfigId": "openai",
+  "IsCustom": false,
+  "Capabilities": [
+    {
+      "Name": "SupportsTextIn",
+      "DisplayName": "Supports Text Input"
+    },
+    {
+      "Name": "SupportsTextOut",
+      "DisplayName": "Supports Text Output"
+    },
+    {
+      "Name": "SupportsImageIn",
+      "DisplayName": "Supports Image Input"
+    },
+    {
+      "Name": "SupportsMaxOutputTokens",
+      "DisplayName": "Supports Max Output Tokens"
+    },
+    {
+      "Name": "SupportsReasoningEffort",
+      "DisplayName": "Supports Reasoning Effort"
+    },
+    {
+      "Name": "SupportsStructuredOutput",
+      "DisplayName": "Supports Structured Output"
+    },
+    {
+      "Name": "SupportsToolCalling",
+      "DisplayName": "Supports Tool Calling"
+    }
+  ],
+  "ParameterFields": [
+    {
+      "Name": "max_output_tokens",
+      "Label": "Max Output Tokens",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 5,
+      "IsRequired": true,
+      "Capability": "SupportsMaxOutputTokens",
+      "DefaultValue": 128000,
+      "Min": 0,
+      "Max": 128000,
+      "Step": 1000
+    },
+    {
+      "Name": "reasoning_effort",
+      "Label": "Reasoning Effort",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsReasoningEffort",
+      "DefaultValue": "None",
+      "EnumOptions": [
+        "None",
+        "Low",
+        "Medium",
+        "High",
+        "XHigh"
+      ]
+    },
+    {
+      "Name": "structured_output",
+      "Label": "Structured Output",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsStructuredOutput",
+      "DefaultValue": "Text",
+      "EnumOptions": [
+        "Text",
+        "Json",
+        "Schema",
+        "Configured Type"
+      ]
+    },
+    {
+      "Name": "parallel_tool_calls",
+      "Description": "",
+      "Label": "Parallel Tool Calls",
+      "CallDefined": true,
+      "IsRequired": false,
+      "Type": 2,
+      "Capability": "SupportsToolCalling",
+      "DefaultValue": true
+    },
+    {
+      "Name": "tool_choice",
+      "Label": "Tool Choice",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsToolCalling",
+      "DefaultValue": "Auto",
+      "EnumOptions": [
+        "None",
+        "Auto"
+      ]
+    }
+  ]
+}

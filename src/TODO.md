@@ -6,6 +6,12 @@
 
 - the assets and image helpers
 
+### Metadata
+
+- Add 'list models' for a connector so you can see the available models.
+- List models in descending order so higher numbers appear first
+- Include information only, pricing and context length
+
 ### Roboflow
 
 - Add Roboflow connector
