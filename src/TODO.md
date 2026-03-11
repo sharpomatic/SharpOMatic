@@ -7,6 +7,13 @@
 - Store the tool call arguments
 - New information for tool result, store the result
 
+### Model Calls
+
+- Separate table to record each model call, time, tokens, error
+- Reference to owning workflow name, connector name, model name because...
+- Needs to be valid even when the connector/model has been deleted
+- Will be used for metrics/cost of model usage
+
 ### Upgrade
 
 - Move packages to latest once the GA of MAF occurs
