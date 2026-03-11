@@ -12,6 +12,11 @@ public class ProgressService(IHubContext<NotificationHub> hubContext) : IProgres
         await hubContext.Clients.All.SendAsync("TraceProgress", model);
     }
 
+    public async Task InformationsProgress(List<Information> models)
+    {
+        await hubContext.Clients.All.SendAsync("InformationsProgress", models);
+    }
+
     public async Task EvalRunProgress(EvalRun model)
     {
         await hubContext.Clients.All.SendAsync("EvalRunProgress", model);

@@ -82,7 +82,10 @@ public abstract class RunNode<T> : IRunNode
         await ProcessContext.RepositoryService.UpsertTrace(Trace);
         await ProcessContext.RepositoryService.UpsertInformations(Informations);
         foreach (var progressService in ProcessContext.ProgressServices)
+        {
             await progressService.TraceProgress(Trace);
+            await progressService.InformationsProgress(Informations);
+        }
     }
 
     protected List<NextNodeData> ResolveOptionalSingleOutput(ThreadContext nextThreadContext)
