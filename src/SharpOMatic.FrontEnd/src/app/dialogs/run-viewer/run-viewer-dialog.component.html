@@ -163,7 +163,10 @@
     </ng-template>
 
     <ng-template #traceTab>
-      <app-trace-viewer [traces]="traces"></app-trace-viewer>
+      <app-trace-viewer
+        [traces]="traces"
+        [informations]="informations"
+      ></app-trace-viewer>
     </ng-template>
   </div>
 </div>

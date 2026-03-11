@@ -2,6 +2,16 @@
 
 ## Major Features
 
+### Information
+
+- Store the tool call arguments
+- New information for tool result, store the result
+
+### Upgrade
+
+- Move packages to latest once the GA of MAF occurs
+- Check for when the Google Tool Calling bug is fixed
+
 ### Metadata
 
 - Add 'list models' for a connector so you can see the available models.

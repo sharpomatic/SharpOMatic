@@ -1,4 +1,6 @@
 #pragma warning disable OPENAI001
+using System.ClientModel.Primitives;
+
 namespace SharpOMatic.Engine.Nodes;
 
 [RunNode(NodeType.ModelCall)]
@@ -16,41 +18,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
         // Use specific implementation to perform call for us
         (var chat, var responses, var tempContext) = await caller.Call(model, modelConfig, connector, connectorConfig, ProcessContext, ThreadContext, Node);
-
-        // Create information messages from the response
-        foreach(var response in responses)
-        {
-            if (response.Role == ChatRole.Assistant)
-            {
-                foreach(var content in response.Contents)
-                {
-                    if (content is TextReasoningContent reasoningContent)
-                    {
-                        Informations.Add(new Information()
-                        {
-                            InformationId = Guid.NewGuid(),
-                            RunId = Trace.RunId,
-                            TraceId = Trace.TraceId,
-                            Created = DateTime.Now,
-                            InformationType = InformationType.Reasoning,
-                            Text = reasoningContent.Text
-                        });
-                    }
-                    else if (content is FunctionCallContent functionCallContent)
-                    {
-                        Informations.Add(new Information()
-                        {
-                            InformationId = Guid.NewGuid(),
-                            RunId = Trace.RunId,
-                            TraceId = Trace.TraceId,
-                            Created = DateTime.Now,
-                            InformationType = InformationType.ToolCall,
-                            Text = functionCallContent.CallId
-                        });
-                    }
-                }
-            }
-        }
+        ResponseToInformation(responses);
 
         // Merge result context into the nodes context
         ProcessContext.MergeContexts(ThreadContext.NodeContext, tempContext);
@@ -95,5 +63,43 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             throw new SharpOMaticException("Cannot find the connector configuration");
 
         return (model, modelConfig, connector, connectorConfig);
+    }
+
+     private void ResponseToInformation(IList<ChatMessage> responses)
+    {
+        // Create information messages from the response
+        foreach (var response in responses)
+        {
+            if (response.Role == ChatRole.Assistant)
+            {
+                foreach (var content in response.Contents)
+                {
+                    if (content is TextReasoningContent reasoningContent)
+                    {
+                        Informations.Add(new Information()
+                        {
+                            InformationId = Guid.NewGuid(),
+                            RunId = Trace.RunId,
+                            TraceId = Trace.TraceId,
+                            Created = DateTime.Now,
+                            InformationType = InformationType.Reasoning,
+                            Text = string.IsNullOrEmpty(reasoningContent.Text) ? "Thinking" : reasoningContent.Text
+                        });
+                    }
+                    else if (content is FunctionCallContent functionCallContent)
+                    {
+                        Informations.Add(new Information()
+                        {
+                            InformationId = Guid.NewGuid(),
+                            RunId = Trace.RunId,
+                            TraceId = Trace.TraceId,
+                            Created = DateTime.Now,
+                            InformationType = InformationType.ToolCall,
+                            Text = functionCallContent.Name
+                        });
+                    }
+                }
+            }
+        }
     }
 }

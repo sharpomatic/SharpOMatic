@@ -11,6 +11,7 @@ import { ServerRepositoryService } from '../../../services/server.repository.ser
 import { WorkflowEntity } from '../../../entities/definitions/workflow.entity';
 import { RunProgressModel } from '../interfaces/run-progress-model';
 import { TraceProgressModel } from '../interfaces/trace-progress-model';
+import { InformationProgressModel } from '../interfaces/information-progress-model';
 import { SignalrService } from '../../../services/signalr.service';
 import { RunStatus } from '../../../enumerations/run-status';
 import { NodeStatus } from '../../../enumerations/node-status';
@@ -43,6 +44,7 @@ export class WorkflowService implements OnDestroy {
   public workflow: WritableSignal<WorkflowEntity>;
   public runProgress: WritableSignal<RunProgressModel | undefined>;
   public traces: WritableSignal<TraceProgressModel[]>;
+  public informations: WritableSignal<InformationProgressModel[]>;
   public runAssets: WritableSignal<AssetSummary[]>;
   public runs: WritableSignal<RunProgressModel[]>;
   public runsTotal: WritableSignal<number>;
@@ -58,6 +60,9 @@ export class WorkflowService implements OnDestroy {
     this.onRunProgress(data);
   private readonly traceProgressListener = (data: TraceProgressModel) =>
     this.onTraceProgress(data);
+  private readonly informationsProgressListener = (
+    data: InformationProgressModel[],
+  ) => this.onInformationsProgress(data);
 
   constructor() {
     this.workflow = signal(
@@ -65,6 +70,7 @@ export class WorkflowService implements OnDestroy {
     );
     this.runProgress = signal(undefined);
     this.traces = signal([]);
+    this.informations = signal([]);
     this.runAssets = signal([]);
     this.runs = signal([]);
     this.runsTotal = signal(0);
@@ -112,6 +118,8 @@ export class WorkflowService implements OnDestroy {
         .nodes()
         .forEach((nodeEntity) => nodeEntity.displayState.set(NodeStatus.None));
       this.runProgress.set(undefined);
+      this.traces.set([]);
+      this.informations.set([]);
       this.runsTotal.set(0);
       this.runsPage.set(1);
       this.runsSortField.set(RunSortField.Created);
@@ -138,9 +146,18 @@ export class WorkflowService implements OnDestroy {
                 });
               }
             });
+          this.serverWorkflowService
+            .getRunInformations(run.runId)
+            .subscribe((informations) => {
+              this.informations.set(
+                this.sortInformations(informations ?? []),
+              );
+            });
           this.updateRunAssetsForRun(run);
           return;
         }
+        this.traces.set([]);
+        this.informations.set([]);
         this.runAssets.set([]);
       });
     });
@@ -174,6 +191,10 @@ export class WorkflowService implements OnDestroy {
       'TraceProgress',
       this.traceProgressListener,
     );
+    this.signalrService.addListener(
+      'InformationsProgress',
+      this.informationsProgressListener,
+    );
   }
 
   removeListeners(): void {
@@ -181,6 +202,10 @@ export class WorkflowService implements OnDestroy {
     this.signalrService.removeListener(
       'TraceProgress',
       this.traceProgressListener,
+    );
+    this.signalrService.removeListener(
+      'InformationsProgress',
+      this.informationsProgressListener,
     );
   }
 
@@ -196,6 +221,7 @@ export class WorkflowService implements OnDestroy {
             );
           this.runProgress.set(data);
           this.traces.set([]);
+          this.informations.set([]);
           this.runAssets.set([]);
           break;
         }
@@ -248,6 +274,34 @@ export class WorkflowService implements OnDestroy {
         }
       }
     }
+  }
+
+  onInformationsProgress(data: InformationProgressModel[]) {
+    if (!data || data.length === 0) {
+      return;
+    }
+
+    const currentRunId = this.runProgress()?.runId;
+    if (!currentRunId) {
+      return;
+    }
+
+    const matchingInformations = data.filter(
+      (information) => information.runId === currentRunId,
+    );
+    if (matchingInformations.length === 0) {
+      return;
+    }
+
+    this.informations.update((informations) => {
+      const byId = new Map(
+        informations.map((information) => [information.informationId, information]),
+      );
+      matchingInformations.forEach((information) =>
+        byId.set(information.informationId, information),
+      );
+      return this.sortInformations([...byId.values()]);
+    });
   }
 
   private updateRunInputsFromWorkflow(): void {
@@ -532,5 +586,17 @@ export class WorkflowService implements OnDestroy {
       .subscribe((assets) => {
         this.runAssets.set(assets ?? []);
       });
+  }
+
+  private sortInformations(
+    informations: InformationProgressModel[],
+  ): InformationProgressModel[] {
+    return [...informations].sort((left, right) => {
+      const leftTime = Date.parse(left.created);
+      const rightTime = Date.parse(right.created);
+      const normalizedLeft = Number.isFinite(leftTime) ? leftTime : 0;
+      const normalizedRight = Number.isFinite(rightTime) ? rightTime : 0;
+      return normalizedLeft - normalizedRight;
+    });
   }
 }

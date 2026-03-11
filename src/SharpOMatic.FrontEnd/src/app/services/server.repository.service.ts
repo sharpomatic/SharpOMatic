@@ -16,6 +16,7 @@ import {
 import { RunProgressModel } from '../pages/workflow/interfaces/run-progress-model';
 import { WorkflowRunPageResult } from '../pages/workflow/interfaces/workflow-run-page-result';
 import { TraceProgressModel } from '../pages/workflow/interfaces/trace-progress-model';
+import { InformationProgressModel } from '../pages/workflow/interfaces/information-progress-model';
 import { Setting } from '../pages/settings/interfaces/setting';
 import { ContextEntryListEntity } from '../entities/definitions/context-entry-list.entity';
 import {
@@ -251,6 +252,20 @@ export class ServerRepositoryService {
       .pipe(
         catchError((error) => {
           this.notifyError('Loading run traces', error);
+          return of(null);
+        }),
+      );
+  }
+
+  public getRunInformations(
+    id: string,
+  ): Observable<InformationProgressModel[] | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .get<InformationProgressModel[]>(`${apiUrl}/api/information/forrun/${id}`)
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading run informations', error);
           return of(null);
         }),
       );

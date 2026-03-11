@@ -271,6 +271,9 @@
   </ng-template>
 
   <ng-template #traceTab>
-    <app-trace-viewer [traces]="workflowService.traces()"></app-trace-viewer>
+    <app-trace-viewer
+      [traces]="workflowService.traces()"
+      [informations]="workflowService.informations()"
+    ></app-trace-viewer>
   </ng-template>
 </div>

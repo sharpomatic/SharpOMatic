@@ -31,6 +31,7 @@ import { AssetSortField } from '../../enumerations/asset-sort-field';
 import { SortDirection } from '../../enumerations/sort-direction';
 import { RunProgressModel } from '../../pages/workflow/interfaces/run-progress-model';
 import { TraceProgressModel } from '../../pages/workflow/interfaces/trace-progress-model';
+import { InformationProgressModel } from '../../pages/workflow/interfaces/information-progress-model';
 import { DIALOG_DATA } from '../services/dialog.service';
 import { ServerRepositoryService } from '../../services/server.repository.service';
 import { MonacoService } from '../../services/monaco.service';
@@ -82,6 +83,7 @@ export class RunViewerDialogComponent implements OnInit {
   public inputContexts: string[] = [];
   public outputContexts: string[] = [];
   public traces: TraceProgressModel[] = [];
+  public informations: InformationProgressModel[] = [];
   public isLoadingTraces = true;
   public runAssets: AssetSummary[] = [];
   public readonly RunStatus = RunStatus;
@@ -243,6 +245,11 @@ export class RunViewerDialogComponent implements OnInit {
       this.traces = traces ?? [];
       this.isLoadingTraces = false;
     });
+    this.serverRepository
+      .getRunInformations(this.run.runId)
+      .subscribe((informations) => {
+        this.informations = this.sortInformations(informations ?? []);
+      });
   }
 
   private loadRunAssets(): void {
@@ -334,4 +341,15 @@ export class RunViewerDialogComponent implements OnInit {
     return value.toString().padStart(2, '0');
   }
 
+  private sortInformations(
+    informations: InformationProgressModel[],
+  ): InformationProgressModel[] {
+    return [...informations].sort((left, right) => {
+      const leftTime = Date.parse(left.created);
+      const rightTime = Date.parse(right.created);
+      const normalizedLeft = Number.isFinite(leftTime) ? leftTime : 0;
+      const normalizedRight = Number.isFinite(rightTime) ? rightTime : 0;
+      return normalizedLeft - normalizedRight;
+    });
+  }
 }

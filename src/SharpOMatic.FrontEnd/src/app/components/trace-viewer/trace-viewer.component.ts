@@ -1,11 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { InformationType } from '../../enumerations/information-type';
 import { getNodeSymbol } from '../../entities/enumerations/node-type';
 import { NodeStatus } from '../../enumerations/node-status';
+import { InformationProgressModel } from '../../pages/workflow/interfaces/information-progress-model';
 import { TraceProgressModel } from '../../pages/workflow/interfaces/trace-progress-model';
 
 interface TraceTreeNode {
   trace: TraceProgressModel;
+  informations: InformationProgressModel[];
   children: TraceTreeNode[];
   expanded: boolean;
 }
@@ -19,14 +22,16 @@ interface TraceTreeNode {
 })
 export class TraceViewerComponent implements OnChanges {
   @Input() traces: TraceProgressModel[] = [];
+  @Input() informations: InformationProgressModel[] = [];
   public traceTree: TraceTreeNode[] = [];
   private readonly expandedState = new Map<string, boolean>();
 
   public readonly NodeStatus = NodeStatus;
+  public readonly InformationType = InformationType;
   public readonly getNodeSymbol = getNodeSymbol;
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['traces']) {
+    if (changes['traces'] || changes['informations']) {
       this.traceTree = this.buildTraceTree(this.traces ?? []);
     }
   }
@@ -37,8 +42,16 @@ export class TraceViewerComponent implements OnChanges {
   }
 
   private buildTraceTree(traces: TraceProgressModel[]): TraceTreeNode[] {
+    const informationsByTraceId = new Map<string, InformationProgressModel[]>();
+    (this.informations ?? []).forEach((information) => {
+      const informations = informationsByTraceId.get(information.traceId) ?? [];
+      informations.push(information);
+      informationsByTraceId.set(information.traceId, informations);
+    });
+
     const nodes = traces.map((trace) => ({
       trace,
+      informations: informationsByTraceId.get(trace.traceId) ?? [],
       children: [],
       expanded: this.expandedState.get(trace.traceId) ?? true,
     }));
@@ -57,5 +70,33 @@ export class TraceViewerComponent implements OnChanges {
     });
 
     return roots;
+  }
+
+  hasExpandableContent(node: TraceTreeNode): boolean {
+    return node.children.length > 0 || node.informations.length > 0;
+  }
+
+  getInformationTypeLabel(type: InformationType): string {
+    switch (type) {
+      case InformationType.ToolCall:
+        return 'Tool Call';
+      case InformationType.Reasoning:
+        return 'Reasoning';
+      default:
+        return 'Unknown';
+    }
+  }
+
+  getInformationPreview(text?: string | null): string {
+    const value = (text ?? '').trim();
+    if (!value) {
+      return '';
+    }
+
+    if (value.length <= 64) {
+      return value;
+    }
+
+    return `${value.slice(0, 64)}...`;
   }
 }

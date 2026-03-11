@@ -6,7 +6,7 @@
         [style.paddingLeft.px]="level * 16"
       >
         <span class="trace-toggle flex-shrink-0">
-          @if (node.children.length > 0) {
+          @if (hasExpandableContent(node)) {
             <button
               type="button"
               class="btn btn-link btn-sm p-0 me-1"
@@ -48,6 +48,32 @@
           }
         </div>
       </div>
+      @if (node.expanded && node.informations.length > 0) {
+        @for (information of node.informations; track information.informationId) {
+          <div
+            class="d-flex flex-row trace-information-line flex-grow-1"
+            [style.paddingLeft.px]="(level + 1) * 16"
+          >
+            <span class="trace-toggle flex-shrink-0">
+              <span class="trace-toggle-spacer me-1"></span>
+            </span>
+            <span
+              class="trace-information-type flex-shrink-0"
+              [class.tool-call]="
+                information.informationType === InformationType.ToolCall
+              "
+              [class.reasoning]="
+                information.informationType === InformationType.Reasoning
+              "
+            >
+              {{ getInformationTypeLabel(information.informationType) }}
+            </span>
+            <span class="trace-information-preview flex-shrink-0">
+              {{ getInformationPreview(information.text) }}
+            </span>
+          </div>
+        }
+      }
       @if (node.expanded && node.children.length > 0) {
         <ng-container
           *ngTemplateOutlet="
