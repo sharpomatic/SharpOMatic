@@ -275,11 +275,11 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("CancelRequested")
-                        .HasColumnType("INTEGER");
-
                     b.Property<double?>("AveragePassRate")
                         .HasColumnType("REAL");
+
+                    b.Property<bool>("CancelRequested")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("CompletedRows")
                         .HasColumnType("INTEGER");
@@ -456,6 +456,38 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.HasIndex("EvalRunRowId");
 
                     b.ToTable("EvalRunRowGraders", "SharpOMatic");
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.Information", b =>
+                {
+                    b.Property<Guid>("InformationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Data")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("InformationType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TraceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("InformationId");
+
+                    b.HasIndex("TraceId", "Created");
+
+                    b.ToTable("Informations", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.ModelConfigMetadata", b =>

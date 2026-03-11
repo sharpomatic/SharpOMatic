@@ -6,6 +6,7 @@ public abstract class RunNode<T> : IRunNode
     protected ThreadContext ThreadContext { get; set; }
     protected T Node { get; init; }
     protected Trace Trace { get; init; }
+    protected List<Information> Informations { get; init; }
     protected ProcessContext ProcessContext => ThreadContext.ProcessContext;
     protected WorkflowContext WorkflowContext => ThreadContext.WorkflowContext;
 
@@ -30,6 +31,8 @@ public abstract class RunNode<T> : IRunNode
             Message = "Running",
             InputContext = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters),
         };
+
+        Informations = [];
     }
 
     public async Task<List<NextNodeData>> Run()
@@ -77,6 +80,7 @@ public abstract class RunNode<T> : IRunNode
         Trace.Message = message;
         Trace.OutputContext = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters);
         await ProcessContext.RepositoryService.UpsertTrace(Trace);
+        await ProcessContext.RepositoryService.UpsertInformations(Informations);
         foreach (var progressService in ProcessContext.ProgressServices)
             await progressService.TraceProgress(Trace);
     }

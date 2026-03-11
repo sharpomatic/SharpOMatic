@@ -1,8 +1,3 @@
-using System.Threading.Tasks;
-using Microsoft.CodeAnalysis;
-using SharpOMatic.Engine.Entities.Definitions;
-using SharpOMatic.Engine.Repository;
-
 namespace SharpOMatic.Engine.Services;
 
 public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContextFactory, IAssetStore? assetStore = null) : IRepositoryService
@@ -332,6 +327,38 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             dbContext.Traces.Add(trace);
         else
             dbContext.Entry(entity).CurrentValues.SetValues(trace);
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    // ------------------------------------------------
+    // Infomration Operations
+    // ------------------------------------------------
+    public async Task<List<Information>> GetRunInformations(Guid runId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        return await (from i in dbContext.Informations.AsNoTracking() where i.RunId == runId orderby i.Created select i).ToListAsync();
+    }
+
+    public async Task UpsertInformations(List<Information> informations)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        if (informations.Count == 0)
+            return;
+
+        var ids = informations.Select(information => information.InformationId).Distinct().ToList();
+        var entities = await (from information in dbContext.Informations where ids.Contains(information.InformationId) select information).ToListAsync();
+
+        foreach (var information in informations)
+        {
+            var entity = entities.Where(e => e.InformationId == information.InformationId).FirstOrDefault();
+            if (entity is null)
+                dbContext.Informations.Add(information);
+            else
+                dbContext.Entry(entity).CurrentValues.SetValues(information);
+        }
 
         await dbContext.SaveChangesAsync();
     }

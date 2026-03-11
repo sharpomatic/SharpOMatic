@@ -6,6 +6,7 @@ public sealed class TestRepositoryService : IRepositoryService
     private readonly ConcurrentDictionary<Guid, WorkflowEntity> _workflows = new();
     private readonly ConcurrentDictionary<Guid, Run> _runs = new();
     private readonly ConcurrentDictionary<Guid, Trace> _traces = new();
+    private readonly ConcurrentDictionary<Guid, Information> _informations = new();
 
     public Task<List<WorkflowSummary>> GetWorkflowSummaries() => throw new NotImplementedException();
 
@@ -63,6 +64,20 @@ public sealed class TestRepositoryService : IRepositoryService
     public Task UpsertTrace(Trace trace)
     {
         _traces[trace.TraceId] = trace;
+        return Task.CompletedTask;
+    }
+
+    public Task<List<Information>> GetRunInformations(Guid runId)
+    {
+        var informations = _informations.Where(i => i.Value.RunId == runId).OrderBy(i => i.Value.Created).Select(i => i.Value).ToList();
+        return Task.FromResult(informations);
+    }
+
+    public Task UpsertInformations(List<Information> informations)
+    {
+        foreach (var information in informations)
+            _informations[information.InformationId] = information;
+
         return Task.CompletedTask;
     }
 

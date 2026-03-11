@@ -30,6 +30,12 @@ public interface IRepositoryService
     Task UpsertTrace(Trace trace);
 
     // ------------------------------------------------
+    // Infomration Operations
+    // ------------------------------------------------
+    Task<List<Information>> GetRunInformations(Guid runId);
+    Task UpsertInformations(List<Information> informations);
+
+    // ------------------------------------------------
     // ConnectorConfig Operations
     // ------------------------------------------------
     Task<List<ConnectorConfig>> GetConnectorConfigs();
