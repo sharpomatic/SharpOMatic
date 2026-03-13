@@ -12,8 +12,8 @@ using SharpOMatic.Engine.Repository;
 namespace SharpOMatic.Engine.SqlServer.Migrations
 {
     [DbContext(typeof(SharpOMaticDbContext))]
-    [Migration("20260302101430_GraderInputContext")]
-    partial class GraderInputContext
+    [Migration("20260313093415_10-0-2")]
+    partial class _1002
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -282,6 +282,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<double?>("AveragePassRate")
+                        .HasColumnType("float");
+
                     b.Property<bool>("CancelRequested")
                         .HasColumnType("bit");
 
@@ -307,6 +310,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("Started")
                         .HasColumnType("datetime2");
 
@@ -318,7 +324,8 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
                     b.HasKey("EvalRunId");
 
-                    b.HasIndex("EvalConfigId");
+                    b.HasIndex("EvalConfigId", "Order")
+                        .IsUnique();
 
                     b.ToTable("EvalRuns", "SharpOMatic");
                 });
@@ -456,6 +463,38 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.HasIndex("EvalRunRowId");
 
                     b.ToTable("EvalRunRowGraders", "SharpOMatic");
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.Information", b =>
+                {
+                    b.Property<Guid>("InformationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Data")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("InformationType")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("TraceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("InformationId");
+
+                    b.HasIndex("TraceId", "Created");
+
+                    b.ToTable("Informations", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.ModelConfigMetadata", b =>
