@@ -70,7 +70,6 @@
 ## Minor Features
 
 Usage - token usage counts
-Trace - Child traces for model call, for thinking and tool calls
 Connectors - allow calling of image generator
 Connectors - allow calling embeddings
 
