@@ -5,6 +5,23 @@
   "Description": "Chat model",
   "ConnectorConfigId": "google",
   "IsCustom": false,
+  "Information": [
+    {
+      "Name": "ContextWindow",
+      "Type": 4,
+      "Value": 1048576
+    },
+    {
+      "Name": "InputPrice",
+      "Type": 5,
+      "Value": 0.1
+    },
+    {
+      "Name": "OutputPrice",
+      "Type": 5,
+      "Value": 0.4
+    }
+  ],
   "Capabilities": [
     {
       "Name": "SupportsTextIn",

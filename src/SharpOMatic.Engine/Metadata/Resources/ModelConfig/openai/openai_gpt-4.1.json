@@ -5,6 +5,23 @@
   "Description": "Chat completion model",
   "ConnectorConfigId": "openai",
   "IsCustom": false,
+  "Information": [
+    {
+      "Name": "ContextWindow",
+      "Type": 4,
+      "Value": 1047576
+    },
+    {
+      "Name": "InputPrice",
+      "Type": 5,
+      "Value": 2.0
+    },
+    {
+      "Name": "OutputPrice",
+      "Type": 5,
+      "Value": 8.0
+    }
+  ],
   "Capabilities": [
     {
       "Name": "SupportsTextIn",

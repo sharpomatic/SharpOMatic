@@ -1,25 +1,25 @@
 {
   "Version": 1,
-  "ConfigId": "google_gemini-3-pro-preview",
-  "DisplayName": "gemini-3-pro-preview",
-  "Description": "Chat model",
-  "ConnectorConfigId": "google",
+  "ConfigId": "azure_openai_gpt-5.3-chat-latest",
+  "DisplayName": "gpt-5.3-chat-latest",
+  "Description": "Chat completion model",
+  "ConnectorConfigId": "openai",
   "IsCustom": false,
   "Information": [
     {
       "Name": "ContextWindow",
       "Type": 4,
-      "Value": 1048576
+      "Value": 128000
     },
     {
       "Name": "InputPrice",
       "Type": 5,
-      "Value": 2.0
+      "Value": 1.75
     },
     {
       "Name": "OutputPrice",
       "Type": 5,
-      "Value": 12.0
+      "Value": 14.0
     }
   ],
   "Capabilities": [
@@ -40,12 +40,8 @@
       "DisplayName": "Supports Max Output Tokens"
     },
     {
-      "Name": "SupportsThinkingLevel",
-      "DisplayName": "Supports Thinking Level"
-    },
-    {
-      "Name": "SupportsSampling",
-      "DisplayName": "Supports Sampling"
+      "Name": "SupportsReasoningEffort",
+      "DisplayName": "Supports Reasoning Effort"
     },
     {
       "Name": "SupportsStructuredOutput",
@@ -65,63 +61,23 @@
       "Type": 5,
       "IsRequired": true,
       "Capability": "SupportsMaxOutputTokens",
-      "DefaultValue": 65536,
+      "DefaultValue": 16384,
       "Min": 0,
-      "Max": 65536,
+      "Max": 16384,
       "Step": 1000
     },
     {
-      "Name": "thinking_level",
-      "Label": "Thinking Level",
+      "Name": "reasoning_effort",
+      "Label": "Reasoning Effort",
       "Description": "",
       "CallDefined": true,
       "Type": 3,
       "IsRequired": false,
-      "Capability": "SupportsThinkingLevel",
-      "DefaultValue": "High",
+      "Capability": "SupportsReasoningEffort",
+      "DefaultValue": "None",
       "EnumOptions": [
-        "Low",
-        "High"
+        "Medium"
       ]
-    },
-    {
-      "Name": "temperature",
-      "Description": "",
-      "Label": "Temperature",
-      "CallDefined": true,
-      "Type": 5,
-      "IsRequired": false,
-      "Capability": "SupportsSampling",
-      "DefaultValue": 1,
-      "Min": 0,
-      "Max": 2,
-      "Step": 0.1
-    },
-    {
-      "Name": "top_p",
-      "Description": "",
-      "Label": "Top P",
-      "CallDefined": true,
-      "IsRequired": false,
-      "Type": 5,
-      "Capability": "SupportsSampling",
-      "DefaultValue": 1,
-      "Min": 0,
-      "Max": 1,
-      "Step": 0.1
-    },
-    {
-      "Name": "top_k",
-      "Description": "",
-      "Label": "Top K",
-      "CallDefined": true,
-      "IsRequired": false,
-      "Type": 4,
-      "Capability": "SupportsSampling",
-      "DefaultValue": 40,
-      "Min": 0,
-      "Max": 1000,
-      "Step": 10
     },
     {
       "Name": "structured_output",
@@ -138,6 +94,16 @@
         "Schema",
         "Configured Type"
       ]
+    },
+    {
+      "Name": "parallel_tool_calls",
+      "Description": "",
+      "Label": "Parallel Tool Calls",
+      "CallDefined": true,
+      "IsRequired": false,
+      "Type": 2,
+      "Capability": "SupportsToolCalling",
+      "DefaultValue": true
     },
     {
       "Name": "tool_choice",

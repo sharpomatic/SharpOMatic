@@ -8,6 +8,7 @@ public class ModelConfig
     public required string Description { get; set; }
     public required string ConnectorConfigId { get; set; }
     public required bool IsCustom { get; set; }
+    public List<ModelInformation>? Information { get; set; }
     public required List<ModelCapability> Capabilities { get; set; }
     public required List<FieldDescriptor> ParameterFields { get; set; }
 }

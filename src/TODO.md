@@ -2,10 +2,9 @@
 
 ## Major Features
 
-### Information
+### Bugs
 
-- Store the tool call arguments
-- New information for tool result, store the result
+- Only if we hit run do we take notice of the signalR feedback for a running model trace/information/toastie 
 
 ### Model Calls
 
@@ -21,15 +20,8 @@
 
 ### Metadata
 
-- Add 'list models' for a connector so you can see the available models.
 - List models in descending order so higher numbers appear first
-- Include information only, pricing and context length
-
-### Roboflow
-
-- Add Roboflow connector
-- Probably don't need model for roboflow
-- Add Roboflow calling node
+- Include as information only, pricing and context length
 
 ### Engine
 
@@ -67,11 +59,6 @@
 - Add YouTube channel and some initial videos
 - Add tab that links to you tube and website etc
 
-## Minor Features
-
-Usage - token usage counts
-Connectors - allow calling of image generator
-Connectors - allow calling embeddings
 
 
 

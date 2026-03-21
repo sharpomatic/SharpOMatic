@@ -5,6 +5,23 @@
   "Description": "Reasoning model",
   "ConnectorConfigId": "openai",
   "IsCustom": false,
+  "Information": [
+    {
+      "Name": "ContextWindow",
+      "Type": 4,
+      "Value": 400000
+    },
+    {
+      "Name": "InputPrice",
+      "Type": 5,
+      "Value": 1.75
+    },
+    {
+      "Name": "OutputPrice",
+      "Type": 5,
+      "Value": 14.0
+    }
+  ],
   "Capabilities": [
     {
       "Name": "SupportsTextIn",

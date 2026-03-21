@@ -5,6 +5,23 @@
   "Description": "Coding model",
   "ConnectorConfigId": "azure_openai",
   "IsCustom": false,
+  "Information": [
+    {
+      "Name": "ContextWindow",
+      "Type": 4,
+      "Value": 400000
+    },
+    {
+      "Name": "InputPrice",
+      "Type": 5,
+      "Value": 1.25
+    },
+    {
+      "Name": "OutputPrice",
+      "Type": 5,
+      "Value": 10.0
+    }
+  ],
   "Capabilities": [
     {
       "Name": "SupportsTextIn",
