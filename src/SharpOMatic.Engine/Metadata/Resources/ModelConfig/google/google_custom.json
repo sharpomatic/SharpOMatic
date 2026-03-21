@@ -116,7 +116,6 @@
       "Max": 1000,
       "Step": 10
     },
-
     {
       "Name": "structured_output",
       "Label": "Structured Output",

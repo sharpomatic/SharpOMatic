@@ -54,7 +54,8 @@
 
       @if (
         field.type === fieldDescriptorType.Integer ||
-        field.type === fieldDescriptorType.Double
+        field.type === fieldDescriptorType.Double ||
+        field.type === fieldDescriptorType.Currency
       ) {
         <label class="form-label field-label">{{ field.label }}</label>
         <div class="flex-fill control-column tiny">

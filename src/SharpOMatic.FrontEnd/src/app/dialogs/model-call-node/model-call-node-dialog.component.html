@@ -52,6 +52,22 @@
           </div>
         </div>
 
+        @if (informationEntries().length) {
+          <div class="mb-3 form-line">
+            <label class="form-label field-label align-top">Information</label>
+            <div class="flex-fill control-column long">
+              <div class="information-list">
+                @for (entry of informationEntries(); track entry.label) {
+                  <div class="information-item">
+                    <span class="information-label">{{ entry.label }}</span>
+                    <span class="information-value">{{ entry.value }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
         <app-dynamic-fields
           [fields]="modelConfig?.parameterFields ?? []"
           [values]="node.parameterValues()"

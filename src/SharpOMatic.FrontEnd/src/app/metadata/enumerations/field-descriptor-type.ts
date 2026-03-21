@@ -5,4 +5,5 @@ export enum FieldDescriptorType {
   Enum = 3,
   Integer = 4,
   Double = 5,
+  Currency = 6,
 }

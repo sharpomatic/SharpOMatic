@@ -8,18 +8,21 @@
   "Information": [
     {
       "Name": "ContextWindow",
+      "DisplayName": "Context Window",
       "Type": 4,
       "Value": 1048576
     },
     {
       "Name": "InputPrice",
-      "Type": 5,
-      "Value": 2.0
+      "DisplayName": "Input Price per Milion",
+      "Type": 6,
+      "Value": 2
     },
     {
       "Name": "OutputPrice",
-      "Type": 5,
-      "Value": 12.0
+      "DisplayName": "Output Price per Milion",
+      "Type": 6,
+      "Value": 12
     }
   ],
   "Capabilities": [

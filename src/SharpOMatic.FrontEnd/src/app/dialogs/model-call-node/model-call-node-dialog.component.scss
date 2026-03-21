@@ -79,6 +79,34 @@
   font-size: 1.5rem;
 }
 
+.information-list {
+  border: 1px solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  background: var(--bs-body-bg);
+}
+
+.information-item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0.85rem;
+}
+
+.information-item + .information-item {
+  border-top: 1px solid var(--bs-border-color);
+}
+
+.information-label {
+  font-weight: 600;
+}
+
+.information-value {
+  text-align: right;
+  color: var(--bs-secondary-color);
+  word-break: break-word;
+}
+
 .tiny {
   max-width: 200px;
   width: 100%;

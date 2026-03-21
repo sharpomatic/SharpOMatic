@@ -20,6 +20,10 @@ import { MetadataService } from '../../services/metadata.service';
 import { ServerRepositoryService } from '../../services/server.repository.service';
 import { Connector } from '../../metadata/definitions/connector';
 import { CanLeaveWithUnsavedChanges } from '../../helper/unsaved-changes.guard';
+import {
+  buildModelInformationEntries,
+  ModelInformationDisplayEntry,
+} from '../../helper/model-information-display';
 import { Observable, map } from 'rxjs';
 import {
   DynamicFieldsCapabilityContext,
@@ -200,6 +204,10 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
     return this.model.customCapabilities().has(capability);
   }
 
+  public informationEntries(): ModelInformationDisplayEntry[] {
+    return buildModelInformationEntries(this.modelConfig?.information);
+  }
+
   private setModelConfig(configId: string, resetValues: boolean): void {
     if (!configId) {
       this.modelConfig = null;
@@ -290,7 +298,8 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
     const isNumericField =
       field.type === FieldDescriptorType.Integer ||
-      field.type === FieldDescriptorType.Double;
+      field.type === FieldDescriptorType.Double ||
+      field.type === FieldDescriptorType.Currency;
     if (!isNumericField) {
       return value;
     }

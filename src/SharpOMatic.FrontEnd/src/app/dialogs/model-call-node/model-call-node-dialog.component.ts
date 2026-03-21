@@ -27,6 +27,10 @@ import {
 } from '../../components/dynamic-fields/dynamic-fields.component';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { MonacoService } from '../../services/monaco.service';
+import {
+  buildModelInformationEntries,
+  ModelInformationDisplayEntry,
+} from '../../helper/model-information-display';
 
 @Component({
   selector: 'app-model-call-node-dialog',
@@ -67,6 +71,10 @@ export class ModelCallNodeDialogComponent implements OnInit {
   public structuredSchemaEditorOptions = MonacoService.editorOptionsJson;
   public typeSchemaNames: string[] = [];
   public toolDisplayNames: string[] = [];
+  public informationEntries(): ModelInformationDisplayEntry[] {
+    return buildModelInformationEntries(this.modelConfig?.information);
+  }
+
   public get capabilityContext(): DynamicFieldsCapabilityContext | null {
     if (!this.modelConfig) {
       return null;
@@ -320,7 +328,8 @@ export class ModelCallNodeDialogComponent implements OnInit {
 
     const isNumericField =
       field.type === FieldDescriptorType.Integer ||
-      field.type === FieldDescriptorType.Double;
+      field.type === FieldDescriptorType.Double ||
+      field.type === FieldDescriptorType.Currency;
     if (!isNumericField) {
       return value;
     }
