@@ -20,7 +20,7 @@ public class GoogleGenAIModelCaller : BaseModelCaller
             throw new SharpOMaticException("Model does not support text input.");
 
         // Setup the basic capabilities, then the more specialized options
-        (var chatOptions, var generateContentConfig) = SetupGoogleBasicCapabilities(model, modelConfig, processContext, threadContext, node);
+        var chatOptions = SetupGoogleBasicCapabilities(model, modelConfig, processContext, threadContext, node);
         var jsonOutput = SetupStrucuturedOutput(chatOptions, model, modelConfig, processContext, node);
         var agentServiceProvider = SetupToolCalling(chatOptions, model, modelConfig, processContext, threadContext, node);
 
@@ -58,7 +58,7 @@ public class GoogleGenAIModelCaller : BaseModelCaller
         return (authenticationModel, connectionFields);
     }
 
-    protected virtual (ChatOptions, Google.GenAI.Types.GenerateContentConfig) SetupGoogleBasicCapabilities(
+    protected virtual ChatOptions SetupGoogleBasicCapabilities(
         Model model,
         ModelConfig modelConfig,
         ProcessContext processContext,
@@ -68,8 +68,15 @@ public class GoogleGenAIModelCaller : BaseModelCaller
     )
     {
         // Mostly we have set the ChatOptions but sometimes we have to drop down to the Google AI specific GenerateContentConfig
-        var generateContentConfig = new Google.GenAI.Types.GenerateContentConfig();
-        chatOptions = chatOptions ?? new ChatOptions() { AdditionalProperties = [], RawRepresentationFactory = (_) => generateContentConfig };
+        List<Action<Google.GenAI.Types.GenerateContentConfig>> rawActions = [];
+        chatOptions = chatOptions ?? new ChatOptions() { AdditionalProperties = [], RawRepresentationFactory = (_) =>
+        {
+            var config = new Google.GenAI.Types.GenerateContentConfig();
+            foreach (var rawAction in rawActions)
+                rawAction(config);
+            return config;
+        }
+        };
 
         chatOptions = SetupBasicCapabilities(model, modelConfig, processContext, threadContext, node, chatOptions);
 
@@ -94,14 +101,14 @@ public class GoogleGenAIModelCaller : BaseModelCaller
                     break;
             }
 
-            generateContentConfig.ThinkingConfig = new Google.GenAI.Types.ThinkingConfig() { ThinkingBudget = thinkingBudget, IncludeThoughts = true };
+            rawActions.Add((config) => config.ThinkingConfig = new Google.GenAI.Types.ThinkingConfig() { ThinkingBudget = thinkingBudget, IncludeThoughts = true });
         }
 
         // Gemini 3 models have a thinking level
         if (GetCapabilityString(model, modelConfig, node, "SupportsThinkingLevel", "thinking_level", out string thinkingLevel))
-            generateContentConfig.ThinkingConfig = new Google.GenAI.Types.ThinkingConfig() { ThinkingLevel = FindThinkingLevel(thinkingLevel), IncludeThoughts = true };
+            rawActions.Add((config) => config.ThinkingConfig = new Google.GenAI.Types.ThinkingConfig() { ThinkingLevel = FindThinkingLevel(thinkingLevel), IncludeThoughts = true });
 
-        return (chatOptions, generateContentConfig);
+        return chatOptions;
     }
 
     private Google.GenAI.Types.ThinkingLevel FindThinkingLevel(string thinkingLevel)

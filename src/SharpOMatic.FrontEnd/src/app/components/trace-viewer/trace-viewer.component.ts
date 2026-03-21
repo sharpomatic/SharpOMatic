@@ -86,17 +86,4 @@ export class TraceViewerComponent implements OnChanges {
         return 'Unknown';
     }
   }
-
-  getInformationPreview(text?: string | null): string {
-    const value = (text ?? '').trim();
-    if (!value) {
-      return '';
-    }
-
-    if (value.length <= 64) {
-      return value;
-    }
-
-    return `${value.slice(0, 64)}...`;
-  }
 }

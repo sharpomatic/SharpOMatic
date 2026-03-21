@@ -12,12 +12,10 @@
 ### Upgrade
 
 - Move packages to latest once the GA of MAF occurs
-- Check for when the Google Tool Calling bug is fixed
 
 ### Metadata
 
 - List models in descending order so higher numbers appear first
-- Include as information only, pricing and context length
 
 ### Engine
 
@@ -25,7 +23,6 @@
 
 ### Connectors
 
-- Gemini connector (tool calling fails with: Duplicate function declaration found: GetTime when using raw factory)
 - Anthropic connector
 
 ### Evaluations

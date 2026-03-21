@@ -14,7 +14,7 @@
 
 .trace-information-line {
   margin: 4px;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .trace-symbol {
@@ -71,6 +71,10 @@
 .trace-information-preview {
   padding-left: 16px;
   display: inline-block;
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .trace-text {
