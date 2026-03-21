@@ -54,7 +54,7 @@
     @if (model.connectorId()) {
       <div class="mb-3 form-line">
         <label for="model-type" class="form-label field-label">Model</label>
-        <div class="flex-fill control-column short">
+        <div class="flex-fill control-column long">
           <select
             id="model-type"
             class="form-select w-100"
@@ -64,7 +64,7 @@
           >
             @for (config of availableModelConfigs(); track config.configId) {
               <option [ngValue]="config.configId">
-                {{ config.displayName }}
+                {{ modelConfigOptionLabel(config) }}
               </option>
             }
           </select>

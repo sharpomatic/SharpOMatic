@@ -21,6 +21,8 @@ import { ServerRepositoryService } from '../../services/server.repository.servic
 import { Connector } from '../../metadata/definitions/connector';
 import { CanLeaveWithUnsavedChanges } from '../../helper/unsaved-changes.guard';
 import {
+  buildModelCostSummary,
+  buildModelContextSummary,
   buildModelInformationEntries,
   ModelInformationDisplayEntry,
 } from '../../helper/model-information-display';
@@ -206,6 +208,27 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
   public informationEntries(): ModelInformationDisplayEntry[] {
     return buildModelInformationEntries(this.modelConfig?.information);
+  }
+
+  public modelConfigOptionLabel(config: ModelConfig): string {
+    const costSummary = buildModelCostSummary(config.information);
+    const contextSummary = buildModelContextSummary(config.information);
+    const detailParts = [costSummary, contextSummary].filter(
+      (part): part is string => part != null && part.length > 0,
+    );
+    if (!detailParts.length) {
+      return config.displayName;
+    }
+
+    const detailSummary = detailParts.join(' / ');
+    const maxDisplayNameLength = this.availableModelConfigs().reduce(
+      (max, item) => Math.max(max, item.displayName.length),
+      0,
+    );
+    const padding = '\u00A0'.repeat(
+      Math.max(2, maxDisplayNameLength - config.displayName.length + 2),
+    );
+    return `${config.displayName}${padding}${detailSummary}`;
   }
 
   private setModelConfig(configId: string, resetValues: boolean): void {

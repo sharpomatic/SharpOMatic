@@ -30,6 +30,34 @@ export function buildModelInformationEntries(
   }));
 }
 
+export function buildModelCostSummary(
+  information: ModelInformation[] | null | undefined,
+): string | null {
+  const input = findInformationEntry(information, 'InputPrice');
+  const output = findInformationEntry(information, 'OutputPrice');
+  if (!input || !output) {
+    return null;
+  }
+
+  return `${formatInformationValue(input)} / ${formatInformationValue(output)}`;
+}
+
+export function buildModelContextSummary(
+  information: ModelInformation[] | null | undefined,
+): string | null {
+  const contextWindow = findInformationEntry(information, 'ContextWindow');
+  if (!contextWindow) {
+    return null;
+  }
+
+  const numeric = tryGetNumber(contextWindow.value);
+  if (numeric === null) {
+    return null;
+  }
+
+  return `${integerFormatter.format(Math.round(numeric / 1000))}k`;
+}
+
 function getInformationLabel(entry: ModelInformation): string {
   const displayName = entry.displayName?.trim();
   return displayName && displayName.length > 0 ? displayName : entry.name;
@@ -46,6 +74,15 @@ function formatInformationValue(entry: ModelInformation): string {
     default:
       return formatGenericValue(entry.value);
   }
+}
+
+function findInformationEntry(
+  information: ModelInformation[] | null | undefined,
+  name: string,
+): ModelInformation | null {
+  return (
+    (information ?? []).find((entry) => entry.name === name) ?? null
+  );
 }
 
 function formatInteger(value: unknown): string {
