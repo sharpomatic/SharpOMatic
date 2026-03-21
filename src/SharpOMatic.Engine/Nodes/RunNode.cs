@@ -58,7 +58,7 @@ public abstract class RunNode<T> : IRunNode
     {
         await ProcessContext.RepositoryService.UpsertTrace(Trace);
         foreach (var progressService in ProcessContext.ProgressServices)
-            await progressService.TraceProgress(Trace);
+            await progressService.TraceProgress(ProcessContext.Run, Trace);
     }
 
     protected Task NodeSuccess(string message)
@@ -83,8 +83,8 @@ public abstract class RunNode<T> : IRunNode
         await ProcessContext.RepositoryService.UpsertInformations(Informations);
         foreach (var progressService in ProcessContext.ProgressServices)
         {
-            await progressService.TraceProgress(Trace);
-            await progressService.InformationsProgress(Informations);
+            await progressService.TraceProgress(ProcessContext.Run, Trace);
+            await progressService.InformationsProgress(ProcessContext.Run, Informations);
         }
     }
 

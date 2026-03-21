@@ -68,7 +68,7 @@ public class WorkflowController : ControllerBase
         using var reader = new StreamReader(Request.Body);
         var contextEntryListEntity = JsonSerializer.Deserialize<ContextEntryListEntity>(await reader.ReadToEndAsync(), _options);
 
-        var runId = await engineService.CreateWorkflowRun(id);
+        var runId = await engineService.CreateWorkflowRun(id, needsEditorEvents: true);
         await engineService.StartWorkflowRunAndNotify(runId, inputEntries: contextEntryListEntity);
         return runId;
     }

@@ -16,6 +16,10 @@ At this point the run has not started execution, but it will perform some valida
   var runId = await engine.CreateWorkflowRun(workflowId);
 ```
 
+`CreateWorkflowRun` also accepts an optional `needsEditorEvents` flag.
+This is primarily used by the embedded editor so that only editor-started runs publish live trace and status updates back to the browser UI.
+Most programmatic callers should leave it as the default `false`.
+
 You can get the workflow identifier from the workflow details page.
 
 <img src="/img/programmatic_workflowid.png" alt="Custom model setup" width="600" style={{ maxWidth: '100%', height: 'auto' }} />
@@ -185,13 +189,15 @@ The interface includes workflow run progress, trace progress, and evaluation run
   public interface IProgressService
   {
     Task RunProgress(Run run);
-    Task TraceProgress(Trace trace);
+    Task TraceProgress(Run run, Trace trace);
+    Task InformationsProgress(Run run, List<Information> informations);
     Task EvalRunProgress(EvalRun evalRun);
   }
 ```
 
 The **RunProgress** method is invoked each time a **Run** changes state.
 **TraceProgress** is called whenever a new **Trace** record is created or changes its value.
+**InformationsProgress** is called whenever informational records are added or updated for the run.
 A trace record is used to track the state of an individual node as it is processed.
 Here is a simple implementation.
 The **EvalRunProgress** method is invoked as each row of the evaluation is processed.
@@ -213,9 +219,14 @@ The **EvalRunProgress** method is invoked as each row of the evaluation is proce
       }
     }
 
-    public async Task TraceProgress(Trace model)
+    public async Task TraceProgress(Run run, Trace model)
     {
         Console.WriteLine($"Workflow {model.WorkflowId} Node {model.NodeEntityId} is now {model.Message}");
+    }
+
+    public async Task InformationsProgress(Run run, List<Information> informations)
+    {
+        Console.WriteLine($"Workflow {run.WorkflowId} published {informations.Count} information updates");
     }
 
     public async Task EvalRunProgress(EvalRun evalRun)
@@ -226,6 +237,7 @@ The **EvalRunProgress** method is invoked as each row of the evaluation is proce
 ```
 
 Note that you can add more than one **IProgressService** implementation if you need to split up functionality, in that case, they are called in sequence.
+If you are hosting the embedded editor, live browser updates are typically only sent for runs created with `needsEditorEvents: true`.
 
 ### Synchronous
 

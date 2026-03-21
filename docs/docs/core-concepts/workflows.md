@@ -50,6 +50,10 @@ You can see traces in the editor by selecting a run.
 Trace records include a `ThreadId`, which is useful when diagnosing fan-out/fan-in and batch parallel execution.
 Traces can also include parent-child relationships across nested workflow calls such as **Gosub**.
 
+All runs and traces are still persisted in the repository, including workflow runs created indirectly by evaluation rows and graders.
+However, the editor only live-updates the workflow trace panel for runs that were started directly from the workflow editor.
+If you open a workflow while an evaluation is running in the background, you may still see the latest saved run snapshot, but the trace panel does not keep following those evaluation-driven background runs live.
+
 ## Workflow Completion
 
 A workflow completes when either:

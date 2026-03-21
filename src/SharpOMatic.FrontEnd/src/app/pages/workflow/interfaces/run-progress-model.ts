@@ -4,6 +4,7 @@ export interface RunProgressModel {
   workflowId: string;
   runId: string;
   created: string;
+  needsEditorEvents: boolean;
   started?: string | null;
   stopped?: string | null;
   inputEntries?: string;

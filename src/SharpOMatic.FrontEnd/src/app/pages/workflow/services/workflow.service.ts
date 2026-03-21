@@ -54,6 +54,7 @@ export class WorkflowService implements OnDestroy {
   public isRunning: WritableSignal<boolean>;
   public runInputs: WritableSignal<ContextEntryListEntity>;
   private lastStartInputsSnapshot?: ContextEntryListSnapshot;
+  private activeLiveRunId?: string;
 
   // Create a stable references for listener functions, so they run in correct zone
   private readonly runProgressListener = (data: RunProgressModel) =>
@@ -125,12 +126,14 @@ export class WorkflowService implements OnDestroy {
       this.runsSortField.set(RunSortField.Created);
       this.runsSortDirection.set(SortDirection.Descending);
       this.runAssets.set([]);
+      this.activeLiveRunId = undefined;
       this.updateRunInputsFromWorkflow();
       this.workflow().markClean();
       this.loadRunsPageForWorkflow(id, 1);
       this.serverWorkflowService.getLatestWorkflowRun(id).subscribe((run) => {
         if (run) {
           this.runProgress.set(run);
+          this.activeLiveRunId = this.isLiveRun(run) ? run.runId : undefined;
           this.updateRunInputsFromLatestRun();
           this.serverWorkflowService
             .getRunTraces(run.runId)
@@ -156,6 +159,7 @@ export class WorkflowService implements OnDestroy {
           this.updateRunAssetsForRun(run);
           return;
         }
+        this.activeLiveRunId = undefined;
         this.traces.set([]);
         this.informations.set([]);
         this.runAssets.set([]);
@@ -177,6 +181,17 @@ export class WorkflowService implements OnDestroy {
     return this.serverWorkflowService.runWorkflow(
       this.workflow().id,
       this.runInputs(),
+    ).pipe(
+      map((runId) => {
+        if (!runId) {
+          this.isRunning.set(false);
+          return undefined;
+        }
+
+        this.activeLiveRunId = runId;
+        this.resetLiveRunState();
+        return runId;
+      }),
     );
   }
 
@@ -211,67 +226,75 @@ export class WorkflowService implements OnDestroy {
 
   onRunProgress(data: RunProgressModel) {
     const workflow = this.workflow();
-    if (workflow) {
-      switch (data.runStatus) {
-        case RunStatus.Created: {
-          workflow
-            .nodes()
-            .forEach((nodeEntity) =>
-              nodeEntity.displayState.set(NodeStatus.None),
-            );
-          this.runProgress.set(data);
-          this.traces.set([]);
-          this.informations.set([]);
-          this.runAssets.set([]);
-          break;
-        }
-        case RunStatus.Running: {
-          this.runProgress.set(data);
-          break;
-        }
-        case RunStatus.Success: {
-          this.runProgress.set(data);
-          this.isRunning.set(false);
-          const workflowName = workflow.name();
-          const successMessage = `${workflowName} completed successfully.`;
-          this.toastService.success(successMessage);
-          this.updateRunAssetsForRun(data);
-          break;
-        }
-        case RunStatus.Failed: {
-          this.runProgress.set(data);
-          this.isRunning.set(false);
-          const workflowName = workflow.name();
-          const errorMessage = (data.error ?? '').trim();
-          const failureMessage = errorMessage
-            ? `${workflowName} failed: ${errorMessage}`
-            : `${workflowName} failed.`;
-          this.toastService.error(failureMessage);
-          this.updateRunAssetsForRun(data);
-          break;
-        }
+    if (!workflow || !this.shouldHandleRunProgress(data)) {
+      return;
+    }
+
+    switch (data.runStatus) {
+      case RunStatus.Created: {
+        workflow
+          .nodes()
+          .forEach((nodeEntity) =>
+            nodeEntity.displayState.set(NodeStatus.None),
+          );
+        this.runProgress.set(data);
+        this.traces.set([]);
+        this.informations.set([]);
+        this.runAssets.set([]);
+        break;
+      }
+      case RunStatus.Running: {
+        this.runProgress.set(data);
+        break;
+      }
+      case RunStatus.Success: {
+        this.runProgress.set(data);
+        this.isRunning.set(false);
+        this.activeLiveRunId = undefined;
+        const workflowName = workflow.name();
+        const successMessage = `${workflowName} completed successfully.`;
+        this.toastService.success(successMessage);
+        this.updateRunAssetsForRun(data);
+        break;
+      }
+      case RunStatus.Failed: {
+        this.runProgress.set(data);
+        this.isRunning.set(false);
+        this.activeLiveRunId = undefined;
+        const workflowName = workflow.name();
+        const errorMessage = (data.error ?? '').trim();
+        const failureMessage = errorMessage
+          ? `${workflowName} failed: ${errorMessage}`
+          : `${workflowName} failed.`;
+        this.toastService.error(failureMessage);
+        this.updateRunAssetsForRun(data);
+        break;
       }
     }
   }
 
   onTraceProgress(data: TraceProgressModel) {
     const workflow = this.workflow();
-    if (workflow) {
-      const nodeEntity = workflow
-        .nodes()
-        .find((n) => n.id == data.nodeEntityId);
-      if (nodeEntity) {
-        nodeEntity.displayState.set(data.nodeStatus);
-      }
-      if (data.nodeStatus === NodeStatus.Running) {
-        this.traces.update((traces) => [...traces, data]);
+    if (!workflow || !this.shouldHandleTraceProgress(data)) {
+      return;
+    }
+
+    const nodeEntity = workflow
+      .nodes()
+      .find((n) => n.id == data.nodeEntityId);
+    if (nodeEntity) {
+      nodeEntity.displayState.set(data.nodeStatus);
+    }
+    if (data.nodeStatus === NodeStatus.Running) {
+      this.traces.update((traces) => [...traces, data]);
+    } else {
+      const traces = this.traces();
+      const idx = traces.findIndex((t) => t.traceId === data.traceId);
+      if (idx >= 0) {
+        traces[idx] = data;
+        this.traces.set([...traces]);
       } else {
-        const traces = this.traces();
-        const idx = traces.findIndex((t) => t.traceId === data.traceId);
-        if (idx >= 0) {
-          traces[idx] = data;
-          this.traces.set([...traces]);
-        }
+        this.traces.update((currentTraces) => [...currentTraces, data]);
       }
     }
   }
@@ -281,7 +304,7 @@ export class WorkflowService implements OnDestroy {
       return;
     }
 
-    const currentRunId = this.runProgress()?.runId;
+    const currentRunId = this.activeLiveRunId;
     if (!currentRunId) {
       return;
     }
@@ -598,5 +621,50 @@ export class WorkflowService implements OnDestroy {
       const normalizedRight = Number.isFinite(rightTime) ? rightTime : 0;
       return normalizedLeft - normalizedRight;
     });
+  }
+
+  private shouldHandleRunProgress(data: RunProgressModel): boolean {
+    if (data.workflowId !== this.workflow().id) {
+      return false;
+    }
+
+    if (this.activeLiveRunId) {
+      return data.runId === this.activeLiveRunId;
+    }
+
+    if (
+      this.runProgress()?.runId === data.runId &&
+      this.isLiveRun(data)
+    ) {
+      this.activeLiveRunId = data.runId;
+      return true;
+    }
+
+    return false;
+  }
+
+  private shouldHandleTraceProgress(data: TraceProgressModel): boolean {
+    return (
+      data.workflowId === this.workflow().id &&
+      !!this.activeLiveRunId &&
+      data.runId === this.activeLiveRunId
+    );
+  }
+
+  private isLiveRun(run: RunProgressModel): boolean {
+    return (
+      run.needsEditorEvents &&
+      (run.runStatus === RunStatus.Created || run.runStatus === RunStatus.Running)
+    );
+  }
+
+  private resetLiveRunState(): void {
+    this.workflow()
+      .nodes()
+      .forEach((nodeEntity) => nodeEntity.displayState.set(NodeStatus.None));
+    this.runProgress.set(undefined);
+    this.traces.set([]);
+    this.informations.set([]);
+    this.runAssets.set([]);
   }
 }

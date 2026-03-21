@@ -561,6 +561,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<string>("Message")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("NeedsEditorEvents")
+                        .HasColumnType("bit");
+
                     b.Property<string>("OutputContext")
                         .HasColumnType("nvarchar(max)");
 

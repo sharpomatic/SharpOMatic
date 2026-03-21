@@ -4,16 +4,25 @@ public class ProgressService(IHubContext<NotificationHub> hubContext) : IProgres
 {
     public async Task RunProgress(Run model)
     {
+        if (!model.NeedsEditorEvents)
+            return;
+
         await hubContext.Clients.All.SendAsync("RunProgress", model);
     }
 
-    public async Task TraceProgress(Trace model)
+    public async Task TraceProgress(Run run, Trace model)
     {
+        if (!run.NeedsEditorEvents)
+            return;
+
         await hubContext.Clients.All.SendAsync("TraceProgress", model);
     }
 
-    public async Task InformationsProgress(List<Information> models)
+    public async Task InformationsProgress(Run run, List<Information> models)
     {
+        if (!run.NeedsEditorEvents)
+            return;
+
         await hubContext.Clients.All.SendAsync("InformationsProgress", models);
     }
 

@@ -3,7 +3,7 @@ namespace SharpOMatic.Engine.Interfaces;
 public interface IProgressService
 {
     Task RunProgress(Run run);
-    Task TraceProgress(Trace trace);
-    Task InformationsProgress(List<Information> informations);
+    Task TraceProgress(Run run, Trace trace);
+    Task InformationsProgress(Run run, List<Information> informations);
     Task EvalRunProgress(EvalRun evalRun);
 }

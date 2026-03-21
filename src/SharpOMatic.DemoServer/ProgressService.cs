@@ -19,9 +19,9 @@ public class ProgressService(IServiceProvider serviceProvider) : IProgressServic
         }
     }
 
-    public async Task InformationsProgress(List<Information> models) { }
+    public async Task InformationsProgress(Run run, List<Information> models) { }
 
-    public async Task TraceProgress(Trace model) { }
+    public async Task TraceProgress(Run run, Trace model) { }
 
     public async Task EvalRunProgress(EvalRun model) { }
 }

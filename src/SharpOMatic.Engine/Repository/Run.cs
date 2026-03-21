@@ -9,6 +9,7 @@ public class Run
     public required Guid WorkflowId { get; set; }
     public required DateTime Created { get; set; }
     public required RunStatus RunStatus { get; set; }
+    public bool NeedsEditorEvents { get; set; }
     public DateTime? Started { get; set; }
     public DateTime? Stopped { get; set; }
     public string? InputEntries { get; set; }

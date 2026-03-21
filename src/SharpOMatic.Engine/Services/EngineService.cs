@@ -35,9 +35,9 @@ public class EngineService(
         return matches[0].Id;
     }
 
-    public async Task<Guid> CreateWorkflowRun(Guid workflowId)
+    public async Task<Guid> CreateWorkflowRun(Guid workflowId, bool needsEditorEvents = false)
     {
-        var run = await CreateRunInternal(workflowId);
+        var run = await CreateRunInternal(workflowId, needsEditorEvents);
         return run.RunId;
     }
 
@@ -68,9 +68,9 @@ public class EngineService(
         await StartRunInternal(run, nodeContext, inputEntries, completionSource);
     }
 
-    public Guid CreateWorkflowRunSynchronously(Guid workflowId)
+    public Guid CreateWorkflowRunSynchronously(Guid workflowId, bool needsEditorEvents = false)
     {
-        return CreateWorkflowRun(workflowId).GetAwaiter().GetResult();
+        return CreateWorkflowRun(workflowId, needsEditorEvents).GetAwaiter().GetResult();
     }
 
     public Run StartWorkflowRunSynchronously(Guid runId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null)
@@ -83,7 +83,7 @@ public class EngineService(
         return await StartEvalRunInternal(evalConfigId, name, sampleCount);
     }
 
-    private async Task<Run> CreateRunInternal(Guid workflowId)
+    private async Task<Run> CreateRunInternal(Guid workflowId, bool needsEditorEvents)
     {
         var workflow = await RepositoryService.GetWorkflow(workflowId);
         if (workflow is null)
@@ -100,6 +100,7 @@ public class EngineService(
             WorkflowId = workflowId,
             RunId = Guid.NewGuid(),
             RunStatus = RunStatus.Created,
+            NeedsEditorEvents = needsEditorEvents,
             Message = "Created",
             Created = DateTime.Now,
             InputContext = JsonSerializer.Serialize(inputContext, new JsonSerializerOptions().BuildOptions(converters)),

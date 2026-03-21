@@ -2,10 +2,6 @@
 
 ## Major Features
 
-### Bugs
-
-- Only if we hit run do we take notice of the signalR feedback for a running model trace/information/toastie 
-
 ### Model Calls
 
 - Separate table to record each model call, time, tokens, error

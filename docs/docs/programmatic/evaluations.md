@@ -81,6 +81,8 @@ public class EngineNotification : IEngineNotification
 ## Progress notifications
 
 If you register `IProgressService`, eval progress updates arrive through `EvalRunProgress`.
+Evaluation rows and graders also create underlying workflow runs, but editor live workflow updates are typically reserved for explicit editor-started runs.
+For evaluation monitoring, rely on `EvalRunProgress` for the aggregate progress signal.
 
 ```csharp
 public class ProgressService : IProgressService
@@ -90,7 +92,12 @@ public class ProgressService : IProgressService
         return Task.CompletedTask;
     }
 
-    public Task TraceProgress(Trace trace)
+    public Task TraceProgress(Run run, Trace trace)
+    {
+        return Task.CompletedTask;
+    }
+
+    public Task InformationsProgress(Run run, List<Information> informations)
     {
         return Task.CompletedTask;
     }

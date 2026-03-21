@@ -71,6 +71,10 @@ Each run is stored with status and progress information.
 You can review run summaries, open detailed results, and inspect grader outcomes.
 Runs can be canceled while in progress, and completed/failed/canceled runs remain in history for later comparison.
 
+Evaluation execution creates underlying workflow runs for the main workflow and any grader workflows.
+Those child workflow runs are stored like normal runs, but they are treated as background execution by the editor.
+This means the evaluation pages continue to show evaluation progress, while the workflow page trace panel does not live-follow those evaluation-driven runs or show workflow completion toasts for them.
+
 ## Transfer Import Behavior
 
 When evaluations are imported from a transfer package, SharpOMatic creates new evaluation entries with new identifiers.
