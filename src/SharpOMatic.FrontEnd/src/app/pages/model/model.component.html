@@ -55,19 +55,15 @@
       <div class="mb-3 form-line">
         <label for="model-type" class="form-label field-label">Model</label>
         <div class="flex-fill control-column long">
-          <select
-            id="model-type"
-            class="form-select w-100"
-            [ngModel]="model.configId()"
-            (ngModelChange)="onModelConfigChange($event)"
-            [disabled]="!availableModelConfigs().length"
+          <app-model-picker
+            controlId="model-type"
+            [options]="availableModelConfigOptions()"
+            [selectedId]="model.configId()"
+            [disabled]="!availableModelConfigOptions().length"
+            placeholder="Select model"
+            (selectionChange)="onModelConfigChange($event)"
           >
-            @for (config of availableModelConfigs(); track config.configId) {
-              <option [ngValue]="config.configId">
-                {{ modelConfigOptionLabel(config) }}
-              </option>
-            }
-          </select>
+          </app-model-picker>
         </div>
       </div>
 

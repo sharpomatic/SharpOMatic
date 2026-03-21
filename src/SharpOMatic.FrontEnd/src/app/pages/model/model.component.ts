@@ -27,6 +27,8 @@ import {
   ModelInformationDisplayEntry,
 } from '../../helper/model-information-display';
 import { Observable, map } from 'rxjs';
+import { ModelPickerComponent } from '../../components/model-picker/model-picker.component';
+import { ModelPickerOption } from '../../components/model-picker/model-picker-option';
 import {
   DynamicFieldsCapabilityContext,
   DynamicFieldsComponent,
@@ -36,7 +38,7 @@ import { FieldDescriptorType } from '../../metadata/enumerations/field-descripto
 @Component({
   selector: 'app-model',
   standalone: true,
-  imports: [CommonModule, FormsModule, DynamicFieldsComponent],
+  imports: [CommonModule, FormsModule, DynamicFieldsComponent, ModelPickerComponent],
   templateUrl: './model.component.html',
   styleUrls: ['./model.component.scss'],
 })
@@ -51,6 +53,7 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
   private readonly connectorConfigId = signal<string | null>(null);
   private readonly modelVersion = signal(0);
   public readonly availableModelConfigs: Signal<ModelConfig[]>;
+  public readonly availableModelConfigOptions: Signal<ModelPickerOption[]>;
   public connectorSummaries: ConnectorSummary[] = [];
 
   constructor() {
@@ -73,6 +76,14 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
           return a.displayName.localeCompare(b.displayName);
         });
     });
+    this.availableModelConfigOptions = computed(() =>
+      this.availableModelConfigs().map((config) => ({
+        id: config.configId,
+        label: config.displayName,
+        costSummary: buildModelCostSummary(config.information),
+        contextSummary: buildModelContextSummary(config.information),
+      })),
+    );
 
     effect(() => {
       this.modelVersion();
@@ -135,7 +146,11 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
     this.saveChanges().subscribe();
   }
 
-  public onModelConfigChange(configId: string): void {
+  public onModelConfigChange(configId: string | null): void {
+    if (!configId) {
+      return;
+    }
+
     const previousConfig = this.modelConfig;
     const currentName = this.model.name();
     const shouldRename = this.shouldRenameOnConfigChange(
@@ -208,27 +223,6 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
   public informationEntries(): ModelInformationDisplayEntry[] {
     return buildModelInformationEntries(this.modelConfig?.information);
-  }
-
-  public modelConfigOptionLabel(config: ModelConfig): string {
-    const costSummary = buildModelCostSummary(config.information);
-    const contextSummary = buildModelContextSummary(config.information);
-    const detailParts = [costSummary, contextSummary].filter(
-      (part): part is string => part != null && part.length > 0,
-    );
-    if (!detailParts.length) {
-      return config.displayName;
-    }
-
-    const detailSummary = detailParts.join(' / ');
-    const maxDisplayNameLength = this.availableModelConfigs().reduce(
-      (max, item) => Math.max(max, item.displayName.length),
-      0,
-    );
-    const padding = '\u00A0'.repeat(
-      Math.max(2, maxDisplayNameLength - config.displayName.length + 2),
-    );
-    return `${config.displayName}${padding}${detailSummary}`;
   }
 
   private setModelConfig(configId: string, resetValues: boolean): void {

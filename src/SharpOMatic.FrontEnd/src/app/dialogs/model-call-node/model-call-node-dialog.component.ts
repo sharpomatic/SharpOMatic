@@ -28,9 +28,14 @@ import {
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { MonacoService } from '../../services/monaco.service';
 import {
+  buildModelCostSummary,
+  buildModelContextSummary,
   buildModelInformationEntries,
   ModelInformationDisplayEntry,
 } from '../../helper/model-information-display';
+import { ModelPickerComponent } from '../../components/model-picker/model-picker.component';
+import { ModelPickerOption } from '../../components/model-picker/model-picker-option';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-model-call-node-dialog',
@@ -42,6 +47,7 @@ import {
     ContextViewerComponent,
     DynamicFieldsComponent,
     MonacoEditorModule,
+    ModelPickerComponent,
   ],
   templateUrl: './model-call-node-dialog.component.html',
   styleUrls: ['./model-call-node-dialog.component.scss'],
@@ -65,6 +71,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
   public tabs: TabItem[] = [];
   public activeTabId = 'details';
   public availableModels: ModelSummary[] = [];
+  public modelPickerOptions: ModelPickerOption[] = [];
   public selectedModelId: string | null = null;
   public showTextInFields = false;
   public showTextOutFields = false;
@@ -89,6 +96,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
 
   private loadedModel: Model | null = null;
   public modelConfig: ModelConfig | null = null;
+  private readonly modelDetailsCache = new Map<string, Model>();
   private modelConfigsCache: ModelConfig[] = [];
   private typeSchemaNamesLoaded = false;
   private toolDisplayNamesLoaded = false;
@@ -130,6 +138,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
 
     if (!modelId || modelId === '') {
       this.node.modelId.set(null);
+      this.refreshTabs();
       return;
     }
 
@@ -141,9 +150,29 @@ export class ModelCallNodeDialogComponent implements OnInit {
   }
 
   private loadAvailableModels(): void {
-    this.serverRepository.getModelSummaries().subscribe((models) => {
+    forkJoin({
+      models: this.serverRepository.getModelSummaries(),
+      configs: this.serverRepository.getModelConfigs(),
+    }).subscribe(({ models, configs }) => {
       this.availableModels = models;
-      this.syncSelectedModel();
+      this.modelConfigsCache = configs;
+      this.modelDetailsCache.clear();
+      this.refreshModelPickerOptions();
+
+      if (!models.length) {
+        this.syncSelectedModel();
+        return;
+      }
+
+      forkJoin(models.map((model) => this.serverRepository.getModel(model.modelId))).subscribe((details) => {
+        details.forEach((detail) => {
+          if (detail) {
+            this.modelDetailsCache.set(detail.modelId, detail);
+          }
+        });
+        this.refreshModelPickerOptions();
+        this.syncSelectedModel();
+      });
     });
   }
 
@@ -169,17 +198,18 @@ export class ModelCallNodeDialogComponent implements OnInit {
   }
 
   private loadModel(modelId: string): void {
+    const cached = this.modelDetailsCache.get(modelId) ?? null;
+    if (cached) {
+      this.applyLoadedModel(cached);
+      return;
+    }
+
     this.serverRepository.getModel(modelId).subscribe((model) => {
-      this.loadedModel = model;
-      this.showTextInFields = false;
-
-      if (!model) {
-        this.refreshTabs();
-        return;
+      if (model) {
+        this.modelDetailsCache.set(model.modelId, model);
+        this.refreshModelPickerOptions();
       }
-
-      this.node.modelId.set(model.modelId);
-      this.loadModelConfig(model.configId());
+      this.applyLoadedModel(model);
     });
   }
 
@@ -200,6 +230,38 @@ export class ModelCallNodeDialogComponent implements OnInit {
     this.serverRepository.getModelConfigs().subscribe((configs) => {
       this.modelConfigsCache = configs;
       applyConfig(configs);
+    });
+  }
+
+  private applyLoadedModel(model: Model | null): void {
+    this.loadedModel = model;
+    this.showTextInFields = false;
+
+    if (!model) {
+      this.refreshTabs();
+      return;
+    }
+
+    this.node.modelId.set(model.modelId);
+    this.loadModelConfig(model.configId());
+  }
+
+  private refreshModelPickerOptions(): void {
+    const configsById = new Map(
+      this.modelConfigsCache.map((config) => [config.configId, config] as const),
+    );
+
+    this.modelPickerOptions = this.availableModels.map((model) => {
+      const detail = this.modelDetailsCache.get(model.modelId) ?? null;
+      const config = detail ? (configsById.get(detail.configId()) ?? null) : null;
+      return {
+        id: model.modelId,
+        label: model.name,
+        costSummary: config ? buildModelCostSummary(config.information) : null,
+        contextSummary: config
+          ? buildModelContextSummary(config.information)
+          : null,
+      };
     });
   }
 

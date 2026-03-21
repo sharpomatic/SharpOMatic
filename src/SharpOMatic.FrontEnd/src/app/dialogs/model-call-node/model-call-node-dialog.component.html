@@ -34,21 +34,18 @@
           <label for="model-call-model" class="form-label field-label"
             >Model</label
           >
-          <div class="flex-fill control-column short">
-            <select
-              id="model-call-model"
-              class="form-select w-100"
-              [ngModel]="selectedModelId"
-              (ngModelChange)="onModelSelectionChange($event)"
+          <div class="flex-fill control-column long">
+            <app-model-picker
+              controlId="model-call-model"
+              [options]="modelPickerOptions"
+              [selectedId]="selectedModelId"
               [disabled]="!availableModels.length"
+              [allowEmptySelection]="true"
+              emptyOptionLabel="(None)"
+              placeholder="Select model"
+              (selectionChange)="onModelSelectionChange($event)"
             >
-              <option [ngValue]="null"></option>
-              @for (model of availableModels; track model.modelId) {
-                <option [ngValue]="model.modelId">
-                  {{ model.name }}
-                </option>
-              }
-            </select>
+            </app-model-picker>
           </div>
         </div>
 

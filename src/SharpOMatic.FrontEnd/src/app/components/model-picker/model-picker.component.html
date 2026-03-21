@@ -1,0 +1,76 @@
+<div class="dropdown model-picker" dropdown>
+  <button
+    type="button"
+    class="model-picker-toggle"
+    [id]="resolvedControlId"
+    [disabled]="triggerDisabled"
+    dropdownToggle
+  >
+    <span class="model-picker-trigger-content">
+      <span
+        class="model-picker-name"
+        [class.model-picker-placeholder]="!selectedOption"
+      >
+        {{ selectedOption?.label ?? placeholder }}
+      </span>
+
+      @if (selectedOption?.costSummary || selectedOption?.contextSummary) {
+        <span class="model-picker-meta">
+          @if (selectedOption?.costSummary; as costSummary) {
+            <span class="model-picker-price">{{ costSummary }}</span>
+          }
+          @if (selectedOption?.costSummary && selectedOption?.contextSummary) {
+            <span class="model-picker-separator"> / </span>
+          }
+          @if (selectedOption?.contextSummary; as contextSummary) {
+            <span class="model-picker-context">{{ contextSummary }}</span>
+          }
+        </span>
+      }
+    </span>
+
+    <span class="model-picker-chevron bi bi-chevron-down"></span>
+  </button>
+
+  <div
+    class="dropdown-menu model-picker-menu"
+    [attr.aria-labelledby]="resolvedControlId"
+    *dropdownMenu
+  >
+    @if (allowEmptySelection) {
+      <button
+        type="button"
+        class="dropdown-item model-picker-option"
+        [class.active]="selectedId === null"
+        (click)="selectOption(null)"
+      >
+        <span class="model-picker-name">{{ emptyOptionLabel }}</span>
+      </button>
+    }
+
+    @for (option of options; track option.id) {
+      <button
+        type="button"
+        class="dropdown-item model-picker-option"
+        [class.active]="option.id === selectedId"
+        (click)="selectOption(option.id)"
+      >
+        <span class="model-picker-name">{{ option.label }}</span>
+
+        @if (option.costSummary || option.contextSummary) {
+          <span class="model-picker-meta">
+            @if (option.costSummary; as costSummary) {
+              <span class="model-picker-price">{{ costSummary }}</span>
+            }
+            @if (option.costSummary && option.contextSummary) {
+              <span class="model-picker-separator"> / </span>
+            }
+            @if (option.contextSummary; as contextSummary) {
+              <span class="model-picker-context">{{ contextSummary }}</span>
+            }
+          </span>
+        }
+      </button>
+    }
+  </div>
+</div>
