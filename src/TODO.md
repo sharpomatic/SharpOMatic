@@ -4,9 +4,11 @@
 
 ### Conversations
 
-- Have same variations on conversation as start workflow.
-- Interactive use should allow resume and resume with defined data
-- Evaluations should allows a list of resumes to be added of available null/context types.
+- Add conversation to summary and show with badge in workflows page
+- Interactive use should handle the conversation
+Switch to input tab whenever it suspends allowing entry of resume data
+Load all runs for the last conversation, show the runs sequentially in trace
+- Evaluations only allow selected of non-conversation workflows
 
 ### Model Calls
 
