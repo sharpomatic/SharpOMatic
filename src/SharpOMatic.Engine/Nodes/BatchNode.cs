@@ -3,7 +3,7 @@ namespace SharpOMatic.Engine.Nodes;
 [RunNode(NodeType.Batch)]
 public class BatchNode(ThreadContext threadContext, BatchNodeEntity node) : RunNode<BatchNodeEntity>(threadContext, node)
 {
-    protected override async Task<(string, List<NextNodeData>)> RunInternal()
+    protected override async Task<NodeExecutionResult> RunInternal()
     {
         if (Node.BatchSize < 1)
             throw new SharpOMaticException("Batch node batch size must be greater than or equal to 1.");
@@ -33,10 +33,10 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node) : RunN
         if (processNode is null || arrayList.Count == 0)
         {
             if (continueNode is null)
-                return ("continue, no items", []);
+                return NodeExecutionResult.Continue("continue, no items", []);
 
             ThreadContext.NodeContext = ContextObject.Deserialize(baseContextJson, ProcessContext.JsonConverters);
-            return ("continue, no items", [new NextNodeData(ThreadContext, continueNode)]);
+            return NodeExecutionResult.Continue("continue, no items", [new NextNodeData(ThreadContext, continueNode)]);
         }
 
         var batchContext = new BatchContext(ThreadContext.CurrentContext)
@@ -90,13 +90,13 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node) : RunN
         if (nextNodes.Count == 0)
         {
             if (continueNode is null)
-                return ("continue, no items", []);
+                return NodeExecutionResult.Continue("continue, no items", []);
 
             ThreadContext.NodeContext = ContextObject.Deserialize(baseContextJson, ProcessContext.JsonConverters);
-            return ("continue, no items", [new NextNodeData(ThreadContext, continueNode)]);
+            return NodeExecutionResult.Continue("continue, no items", [new NextNodeData(ThreadContext, continueNode)]);
         }
 
-        return ($"process {batchContext.BatchItems.Count}", nextNodes);
+        return NodeExecutionResult.Continue($"process {batchContext.BatchItems.Count}", nextNodes);
     }
 
     private ContextObject CreateBatchContextObject(string? contextJson, ContextList slice)

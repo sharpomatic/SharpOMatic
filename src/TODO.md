@@ -2,6 +2,12 @@
 
 ## Major Features
 
+### Conversations
+
+- Have same variations on conversation as start workflow.
+- Interactive use should allow resume and resume with defined data
+- Evaluations should allows a list of resumes to be added of available null/context types.
+
 ### Model Calls
 
 - Separate table to record each model call, time, tokens, error
@@ -24,6 +30,15 @@
 ### Connectors
 
 - Anthropic connector
+
+Investigate adding the hosted tools
+
+Microsoft.Extensions.AI.AIFunctionDeclaration
+Microsoft.Extensions.AI.HostedCodeInterpreterTool
+Microsoft.Extensions.AI.HostedFileSearchTool
+Microsoft.Extensions.AI.HostedImageGenerationTool
+Microsoft.Extensions.AI.HostedMcpServerTool
+Microsoft.Extensions.AI.HostedWebSearchTool
 
 ### Evaluations
 

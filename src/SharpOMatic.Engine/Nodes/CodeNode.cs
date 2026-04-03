@@ -3,7 +3,7 @@
 [RunNode(NodeType.Code)]
 public class CodeNode(ThreadContext threadContext, CodeNodeEntity node) : RunNode<CodeNodeEntity>(threadContext, node)
 {
-    protected override async Task<(string, List<NextNodeData>)> RunInternal()
+    protected override async Task<NodeExecutionResult> RunInternal()
     {
         if (!string.IsNullOrWhiteSpace(Node.Code))
         {
@@ -45,6 +45,6 @@ public class CodeNode(ThreadContext threadContext, CodeNodeEntity node) : RunNod
             }
         }
 
-        return ("Code executed", ResolveOptionalSingleOutput(ThreadContext));
+        return NodeExecutionResult.Continue("Code executed", ResolveOptionalSingleOutput(ThreadContext));
     }
 }

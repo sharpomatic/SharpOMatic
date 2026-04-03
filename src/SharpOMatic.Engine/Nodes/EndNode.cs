@@ -5,7 +5,7 @@ namespace SharpOMatic.Engine.Nodes;
 [RunNode(NodeType.End)]
 public class EndNode(ThreadContext threadContext, EndNodeEntity node) : RunNode<EndNodeEntity>(threadContext, node)
 {
-    protected override async Task<(string, List<NextNodeData>)> RunInternal()
+    protected override async Task<NodeExecutionResult> RunInternal()
     {
         if (Node.ApplyMappings)
         {
@@ -58,14 +58,14 @@ public class EndNode(ThreadContext threadContext, EndNodeEntity node) : RunNode<
             }
 
             if (gosubContext.ReturnNode is null)
-                return (Trace.Message, []);
+                return NodeExecutionResult.Continue(Trace.Message, []);
 
-            return (Trace.Message, [new NextNodeData(ThreadContext, gosubContext.ReturnNode)]);
+            return NodeExecutionResult.Continue(Trace.Message, [new NextNodeData(ThreadContext, gosubContext.ReturnNode)]);
         }
 
         // Last run EndNode has its output used as the output of the workflow
         ProcessContext.Run.OutputContext = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters);
 
-        return (Trace.Message, []);
+        return NodeExecutionResult.Continue(Trace.Message, []);
     }
 }

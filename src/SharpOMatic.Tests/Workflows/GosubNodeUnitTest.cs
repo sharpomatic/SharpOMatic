@@ -488,8 +488,7 @@ public sealed class GosubNodeUnitTest
         {
             await using var scope = provider.CreateAsyncScope();
             var engine = scope.ServiceProvider.GetRequiredService<IEngineService>();
-            var runId = await engine.CreateWorkflowRun(workflow.Id);
-            var run = await engine.StartWorkflowRunAndWait(runId, []);
+            var run = await engine.StartWorkflowRunAndWait(workflow.Id, []);
 
             Assert.NotNull(run);
             Assert.Equal(RunStatus.Failed, run.RunStatus);

@@ -5,7 +5,7 @@ namespace SharpOMatic.Engine.Nodes;
 [RunNode(NodeType.Edit)]
 public class EditNode(ThreadContext threadContext, EditNodeEntity node) : RunNode<EditNodeEntity>(threadContext, node)
 {
-    protected override async Task<(string, List<NextNodeData>)> RunInternal()
+    protected override async Task<NodeExecutionResult> RunInternal()
     {
         foreach (var entry in Node.Edits.Entries)
         {
@@ -89,6 +89,6 @@ public class EditNode(ThreadContext threadContext, EditNodeEntity node) : RunNod
         var numDeletes = Node.Edits.Entries.Where(e => e.Purpose == ContextEntryPurpose.Delete).Count();
 
         var message = $"{numMoves} moved, {numDuplicates} duplicated, {numUpserts} upserted, {numDeletes} deleted";
-        return (message, ResolveOptionalSingleOutput(ThreadContext));
+        return NodeExecutionResult.Continue(message, ResolveOptionalSingleOutput(ThreadContext));
     }
 }

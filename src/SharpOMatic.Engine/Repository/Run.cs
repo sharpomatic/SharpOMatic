@@ -7,6 +7,8 @@ public class Run
     [Key]
     public required Guid RunId { get; set; }
     public required Guid WorkflowId { get; set; }
+    public Guid? ConversationId { get; set; }
+    public int? TurnNumber { get; set; }
     public required DateTime Created { get; set; }
     public required RunStatus RunStatus { get; set; }
     public bool NeedsEditorEvents { get; set; }

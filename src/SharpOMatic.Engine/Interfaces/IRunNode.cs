@@ -2,5 +2,5 @@ namespace SharpOMatic.Engine.Interfaces;
 
 public interface IRunNode
 {
-    Task<List<NextNodeData>> Run();
+    Task<NodeExecutionResult> Execute(NodeExecutionRequest request);
 }

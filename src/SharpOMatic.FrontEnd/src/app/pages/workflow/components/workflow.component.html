@@ -118,9 +118,9 @@
                 <a
                   class="dropdown-item"
                   (click)="
-                    updateService.addInputNode(workflowService.workflow())
+                    updateService.addSuspendNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-chat-dots"></i>Input</a
+                  ><i class="dropdown-icon bi bi-pause-circle"></i>Suspend</a
                 >
               </li>
             </ul>
@@ -227,6 +227,24 @@
           />
         </div>
       </div>
+      <div class="mb-3 form-line">
+        <label for="workflow-conversation" class="form-label field-label">
+        </label>
+        <div class="flex-fill control-column title">
+          <div class="form-check mt-2">
+            <input
+              type="checkbox"
+              class="form-check-input"
+              id="workflow-conversation"
+              [ngModel]="workflowService.workflow().isConversationEnabled()"
+              (ngModelChange)="workflowService.workflow().isConversationEnabled.set($event)"
+            />
+            <label class="form-check-label" for="workflow-conversation">
+              Enable conversations
+            </label>
+          </div>
+        </div>
+      </div>
     </div>
   </ng-template>
 
@@ -300,6 +318,7 @@
                     [class.created]="run.runStatus === RunStatus.Created"
                     [class.running]="run.runStatus === RunStatus.Running"
                     [class.success]="run.runStatus === RunStatus.Success"
+                    [class.suspended]="run.runStatus === RunStatus.Suspended"
                     [class.failed]="run.runStatus === RunStatus.Failed"
                   >
                     {{ run.message }}

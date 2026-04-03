@@ -4,6 +4,8 @@ public sealed class TestRepositoryService : IRepositoryService
 {
     private readonly ConcurrentDictionary<string, Setting> _settings = new();
     private readonly ConcurrentDictionary<Guid, WorkflowEntity> _workflows = new();
+    private readonly ConcurrentDictionary<Guid, Conversation> _conversations = new();
+    private readonly ConcurrentDictionary<Guid, ConversationCheckpoint> _conversationCheckpoints = new();
     private readonly ConcurrentDictionary<Guid, Run> _runs = new();
     private readonly ConcurrentDictionary<Guid, Trace> _traces = new();
     private readonly ConcurrentDictionary<Guid, Information> _informations = new();
@@ -31,6 +33,74 @@ public sealed class TestRepositoryService : IRepositoryService
     public Task DeleteWorkflow(Guid workflowId) => throw new NotImplementedException();
 
     public Task<Guid> CopyWorkflow(Guid workflowId) => throw new NotImplementedException();
+
+    public Task<Conversation?> GetConversation(Guid conversationId)
+    {
+        _conversations.TryGetValue(conversationId, out var conversation);
+        return Task.FromResult(conversation);
+    }
+
+    public Task UpsertConversation(Conversation conversation)
+    {
+        _conversations[conversation.ConversationId] = conversation;
+        return Task.CompletedTask;
+    }
+
+    public Task<ConversationCheckpoint?> GetConversationCheckpoint(Guid conversationId)
+    {
+        _conversationCheckpoints.TryGetValue(conversationId, out var checkpoint);
+        return Task.FromResult(checkpoint);
+    }
+
+    public Task UpsertConversationCheckpoint(ConversationCheckpoint checkpoint)
+    {
+        _conversationCheckpoints[checkpoint.ConversationId] = checkpoint;
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteConversationCheckpoint(Guid conversationId)
+    {
+        _conversationCheckpoints.TryRemove(conversationId, out _);
+        return Task.CompletedTask;
+    }
+
+    public Task<List<Run>> GetConversationRuns(Guid conversationId, int skip = 0, int take = 0)
+    {
+        IEnumerable<Run> runs = _runs.Values.Where(r => r.ConversationId == conversationId).OrderBy(r => r.TurnNumber).ThenBy(r => r.Created);
+        if (skip > 0)
+            runs = runs.Skip(skip);
+        if (take > 0)
+            runs = runs.Take(take);
+
+        return Task.FromResult(runs.ToList());
+    }
+
+    public Task<bool> TryAcquireConversationLease(Guid conversationId, string leaseOwner, DateTime leaseExpiresUtc)
+    {
+        if (!_conversations.TryGetValue(conversationId, out var conversation))
+            return Task.FromResult(false);
+
+        var now = DateTime.UtcNow;
+        if (!string.IsNullOrWhiteSpace(conversation.LeaseOwner) && conversation.LeaseOwner != leaseOwner && conversation.LeaseExpires.HasValue && conversation.LeaseExpires.Value > now)
+            return Task.FromResult(false);
+
+        conversation.LeaseOwner = leaseOwner;
+        conversation.LeaseExpires = leaseExpiresUtc;
+        _conversations[conversationId] = conversation;
+        return Task.FromResult(true);
+    }
+
+    public Task ReleaseConversationLease(Guid conversationId, string leaseOwner)
+    {
+        if (_conversations.TryGetValue(conversationId, out var conversation) && conversation.LeaseOwner == leaseOwner)
+        {
+            conversation.LeaseOwner = null;
+            conversation.LeaseExpires = null;
+            _conversations[conversationId] = conversation;
+        }
+
+        return Task.CompletedTask;
+    }
 
     public Task<Run?> GetRun(Guid runId)
     {

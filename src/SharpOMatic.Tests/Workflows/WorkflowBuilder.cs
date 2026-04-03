@@ -7,6 +7,7 @@ public sealed class WorkflowBuilder
     private string _description = "Generated for tests.";
     private readonly List<NodeEntity> _nodes = [];
     private readonly List<ConnectionEntity> _connections = [];
+    private bool _isConversationEnabled;
 
     public WorkflowBuilder WithId(Guid id)
     {
@@ -23,6 +24,12 @@ public sealed class WorkflowBuilder
     public WorkflowBuilder WithDescription(string description)
     {
         _description = description;
+        return this;
+    }
+
+    public WorkflowBuilder EnableConversations(bool enabled = true)
+    {
+        _isConversationEnabled = enabled;
         return this;
     }
 
@@ -283,13 +290,13 @@ public sealed class WorkflowBuilder
         return this;
     }
 
-    public WorkflowBuilder AddInput(string title = "input")
+    public WorkflowBuilder AddSuspend(string title = "suspend")
     {
-        var node = new InputNodeEntity
+        var node = new SuspendNodeEntity
         {
             Id = Guid.NewGuid(),
             Version = 1,
-            NodeType = NodeType.Input,
+            NodeType = NodeType.Suspend,
             Title = title,
             Top = 0f,
             Left = 0f,
@@ -341,6 +348,7 @@ public sealed class WorkflowBuilder
             Version = 1,
             Name = _name,
             Description = _description,
+            IsConversationEnabled = _isConversationEnabled,
             Nodes = _nodes.ToArray(),
             Connections = _connections.ToArray(),
         };

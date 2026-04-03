@@ -4,6 +4,7 @@ public class ProcessContext : ExecutionContext
 {
     private readonly ConcurrentDictionary<ExecutionContext, byte> _activeContexts = new();
     private readonly ConcurrentDictionary<int, ThreadContext> _threads = new();
+    private readonly ConcurrentDictionary<Guid, string> _pinnedWorkflowSnapshots = new();
     private TaskCompletionSource<Run>? _completionSource;
 
     private int _threadId = 1;
@@ -20,17 +21,40 @@ public class ProcessContext : ExecutionContext
     public IScriptOptionsService ScriptOptionsService { get; }
     public IEnumerable<JsonConverter> JsonConverters { get; }
     public Run Run { get; }
+    public Conversation? Conversation { get; }
+    public ConversationCheckpoint? Checkpoint { get; }
+    public NodeResumeInput? ConversationResumeInput { get; }
+    public int? ConversationTurnNumber { get; }
+    public string? ConversationLeaseOwner { get; }
+    public PendingConversationSuspend? PendingConversationSuspend { get; private set; }
     public TaskCompletionSource<Run>? CompletionSource { get; }
     public int ActiveThreadCount => _threadCount;
     public int RunNodeLimit => _runNodeLimit;
     public int NodesRun => Volatile.Read(ref _nodesRun);
     public IReadOnlyCollection<ExecutionContext> ActiveContexts => _activeContexts.Keys.ToList();
+    public bool HasPendingSuspend => PendingConversationSuspend is not null;
 
-    public ProcessContext(IServiceScope serviceScope, Run run, int runNodeLimit, TaskCompletionSource<Run>? completionSource)
+    public ProcessContext(
+        IServiceScope serviceScope,
+        Run run,
+        int runNodeLimit,
+        TaskCompletionSource<Run>? completionSource,
+        Conversation? conversation = null,
+        ConversationCheckpoint? checkpoint = null,
+        NodeResumeInput? conversationResumeInput = null,
+        int? conversationTurnNumber = null,
+        string? conversationLeaseOwner = null,
+        IEnumerable<ConversationWorkflowSnapshot>? pinnedWorkflowSnapshots = null
+    )
         : base(null)
     {
         ServiceScope = serviceScope;
         Run = run;
+        Conversation = conversation;
+        Checkpoint = checkpoint;
+        ConversationResumeInput = conversationResumeInput;
+        ConversationTurnNumber = conversationTurnNumber;
+        ConversationLeaseOwner = conversationLeaseOwner;
         RepositoryService = serviceScope.ServiceProvider.GetRequiredService<IRepositoryService>();
         AssetStore = serviceScope.ServiceProvider.GetRequiredService<IAssetStore>();
         ProgressServices = serviceScope.ServiceProvider.GetRequiredService<IEnumerable<IProgressService>>();
@@ -42,16 +66,30 @@ public class ProcessContext : ExecutionContext
         CompletionSource = completionSource;
         _completionSource = completionSource;
 
+        if (pinnedWorkflowSnapshots is not null)
+        {
+            foreach (var snapshot in pinnedWorkflowSnapshots)
+                _pinnedWorkflowSnapshots[snapshot.WorkflowId] = snapshot.WorkflowJson;
+        }
+
         TrackContext(this);
     }
 
-    public ThreadContext CreateThread(ContextObject nodeContext, ExecutionContext currentContext)
+    public ThreadContext CreateThread(ContextObject nodeContext, ExecutionContext currentContext, bool incrementGosubThreads = true)
     {
         var threadContext = new ThreadContext(this, currentContext, nodeContext);
         _threads.TryAdd(threadContext.ThreadId, threadContext);
-        var gosubContext = GosubContext.Find(currentContext);
-        gosubContext?.IncrementThreads();
+        if (incrementGosubThreads)
+        {
+            var gosubContext = GosubContext.Find(currentContext);
+            gosubContext?.IncrementThreads();
+        }
         return threadContext;
+    }
+
+    public ThreadContext RestoreThread(ContextObject nodeContext, ExecutionContext currentContext)
+    {
+        return CreateThread(nodeContext, currentContext, incrementGosubThreads: false);
     }
 
     public void RemoveThread(ThreadContext threadContext)
@@ -100,8 +138,102 @@ public class ProcessContext : ExecutionContext
         await RepositoryService.UpsertRun(Run);
         foreach (var progressService in ProgressServices)
             await progressService.RunProgress(Run);
-        if (Run.RunStatus is RunStatus.Success or RunStatus.Failed)
+        if (Run.RunStatus is RunStatus.Success or RunStatus.Failed or RunStatus.Suspended)
             CompleteRun();
+    }
+
+    public void PinWorkflowSnapshot(WorkflowEntity workflow)
+    {
+        _pinnedWorkflowSnapshots[workflow.Id] = WorkflowSnapshotSerializer.SerializeWorkflow(workflow);
+    }
+
+    public async Task<WorkflowEntity> GetOrCreatePinnedWorkflow(Guid workflowId)
+    {
+        if (_pinnedWorkflowSnapshots.TryGetValue(workflowId, out var workflowJson))
+            return WorkflowSnapshotSerializer.DeserializeWorkflow(workflowJson);
+
+        var workflow = await RepositoryService.GetWorkflow(workflowId);
+        PinWorkflowSnapshot(workflow);
+        return workflow;
+    }
+
+    public IReadOnlyList<ConversationWorkflowSnapshot> GetPinnedWorkflowSnapshots()
+    {
+        return _pinnedWorkflowSnapshots
+            .Select(item => new ConversationWorkflowSnapshot() { WorkflowId = item.Key, WorkflowJson = item.Value })
+            .OrderBy(item => item.WorkflowId)
+            .ToList();
+    }
+
+    public void RequestConversationSuspend(ThreadContext threadContext, NodeEntity node, NodeExecutionResult result)
+    {
+        if (Conversation is null)
+            throw new SharpOMaticException("Node suspension requires an active conversation.");
+
+        if (PendingConversationSuspend is not null)
+            throw new SharpOMaticException("Only one node can be waiting for conversation resume at a time.");
+
+        if (node is not SuspendNodeEntity)
+            throw new SharpOMaticException("Only suspend nodes can wait for resume.");
+
+        if (result.NextNodes.Count > 0)
+            throw new SharpOMaticException("A suspended node cannot continue to downstream nodes.");
+
+        if (!IsSupportedConversationSuspendScope(threadContext.CurrentContext))
+            throw new SharpOMaticException("Conversation suspension is only supported in the root workflow and gosub scopes.");
+
+        PendingConversationSuspend = new PendingConversationSuspend()
+        {
+            ResumeNodeId = node.Id,
+            ContextJson = threadContext.NodeContext.Serialize(JsonConverters),
+            ResumeStateJson = result.ResumeStateJson,
+            WorkflowSnapshotsJson = JsonSerializer.Serialize(GetPinnedWorkflowSnapshots()),
+            GosubStackJson = JsonSerializer.Serialize(BuildConversationGosubFrames(threadContext)),
+            Message = result.Message,
+        };
+    }
+
+    private bool IsSupportedConversationSuspendScope(ExecutionContext currentContext)
+    {
+        var scope = currentContext;
+        while (scope is not null)
+        {
+            if (scope is BatchContext or FanOutInContext)
+                return false;
+
+            scope = scope.Parent!;
+        }
+
+        return true;
+    }
+
+    private List<ConversationGosubFrame> BuildConversationGosubFrames(ThreadContext threadContext)
+    {
+        var frames = new List<ConversationGosubFrame>();
+        var scope = threadContext.CurrentContext;
+
+        while (scope is not null)
+        {
+            if (scope is WorkflowContext workflowContext && scope.Parent is GosubContext gosubContext)
+            {
+                frames.Add(
+                    new ConversationGosubFrame()
+                    {
+                        ChildWorkflowId = workflowContext.WorkflowId,
+                        ParentContextJson = gosubContext.ParentContext.Serialize(JsonConverters),
+                        ReturnNodeId = gosubContext.ReturnNode?.Id,
+                        ParentTraceId = gosubContext.ParentTraceId,
+                        ApplyOutputMappings = gosubContext.ApplyOutputMappings,
+                        OutputMappingsJson = JsonSerializer.Serialize(gosubContext.OutputMappings),
+                    }
+                );
+            }
+
+            scope = scope.Parent;
+        }
+
+        frames.Reverse();
+        return frames;
     }
 
     public void MergeContexts(ContextObject target, ContextObject source)

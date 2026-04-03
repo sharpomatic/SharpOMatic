@@ -22,7 +22,7 @@ import { FanOutNodeEntity } from '../../../entities/definitions/fan-out-node.ent
 import { ModelCallNodeEntity } from '../../../entities/definitions/model-call-node.entity';
 import { BatchNodeEntity } from '../../../entities/definitions/batch-node.entity';
 import { GosubNodeEntity } from '../../../entities/definitions/gosub-node.entity';
-import { InputNodeEntity } from '../../../entities/definitions/input-node.entity';
+import { SuspendNodeEntity } from '../../../entities/definitions/suspend-node.entity';
 
 @Injectable({
   providedIn: 'root',
@@ -122,11 +122,11 @@ export class DesignerUpdateService {
     ]);
   }
 
-  addInputNode(workflow: WorkflowEntity) {
+  addSuspendNode(workflow: WorkflowEntity) {
     const [top, left] = this.getAddLocation();
     workflow.nodes.update((nodes) => [
       ...nodes,
-      InputNodeEntity.create(top, left),
+      SuspendNodeEntity.create(top, left),
     ]);
   }
 

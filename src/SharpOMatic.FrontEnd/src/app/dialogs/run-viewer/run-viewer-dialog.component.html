@@ -31,6 +31,7 @@
                   [class.created]="run.runStatus === RunStatus.Created"
                   [class.running]="run.runStatus === RunStatus.Running"
                   [class.success]="run.runStatus === RunStatus.Success"
+                  [class.suspended]="run.runStatus === RunStatus.Suspended"
                   [class.failed]="run.runStatus === RunStatus.Failed"
                 >
                   {{ property.value }}

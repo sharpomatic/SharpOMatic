@@ -3,13 +3,13 @@
 [RunNode(NodeType.FanOut)]
 public class FanOutNode(ThreadContext threadContext, FanOutNodeEntity node) : RunNode<FanOutNodeEntity>(threadContext, node)
 {
-    protected override async Task<(string, List<NextNodeData>)> RunInternal()
+    protected override async Task<NodeExecutionResult> RunInternal()
     {
         var json = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters);
 
         var connectedOutputs = Node.Outputs.Where(IsOutputConnected).ToList();
         if (connectedOutputs.Count == 0)
-            return ("No outputs connected", []);
+            return NodeExecutionResult.Continue("No outputs connected", []);
 
         var fanOutContext = new FanOutInContext(ThreadContext.CurrentContext)
         {
@@ -30,6 +30,6 @@ public class FanOutNode(ThreadContext threadContext, FanOutNodeEntity node) : Ru
         }
 
         var message = $"{nextNodes.Count} threads started";
-        return (message, nextNodes);
+        return NodeExecutionResult.Continue(message, nextNodes);
     }
 }

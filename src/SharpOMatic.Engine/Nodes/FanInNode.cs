@@ -3,7 +3,7 @@
 [RunNode(NodeType.FanIn)]
 public class FanInNode(ThreadContext threadContext, FanInNodeEntity node) : RunNode<FanInNodeEntity>(threadContext, node)
 {
-    protected override async Task<(string, List<NextNodeData>)> RunInternal()
+    protected override async Task<NodeExecutionResult> RunInternal()
     {
         if (ThreadContext.CurrentContext is not FanOutInContext fanOutContext)
             throw new SharpOMaticException($"Arriving thread did not originate from a Fan Out.");
@@ -37,7 +37,7 @@ public class FanInNode(ThreadContext threadContext, FanInNodeEntity node) : RunN
             if (fanOutContext.FanInArrived < fanOutContext.FanOutCount)
             {
                 // Exit thread, exited wait for other threads to arrive
-                return ("Thread arrived", []);
+                return NodeExecutionResult.Continue("Thread arrived", []);
             }
             else
             {
@@ -48,7 +48,7 @@ public class FanInNode(ThreadContext threadContext, FanInNodeEntity node) : RunN
 
                 ThreadContext.CurrentContext = fanOutContext.Parent;
                 ProcessContext.UntrackContext(fanOutContext);
-                return ("Threads synchronized", ResolveOptionalSingleOutput(ThreadContext));
+                return NodeExecutionResult.Continue("Threads synchronized", ResolveOptionalSingleOutput(ThreadContext));
             }
         }
     }

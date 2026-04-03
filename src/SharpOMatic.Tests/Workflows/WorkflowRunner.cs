@@ -24,8 +24,7 @@ public class WorkflowRunner
             // Run the first provided workflow
             await using var scope = provider.CreateAsyncScope();
             var engine = scope.ServiceProvider.GetRequiredService<IEngineService>();
-            var runId = await engine.CreateWorkflowRun(workflows[0].Id);
-            var run = await engine.StartWorkflowRunAndWait(runId, ctx);
+            var run = await engine.StartWorkflowRunAndWait(workflows[0].Id, ctx);
             await Task.Delay(100);
             return run;
         }
@@ -56,8 +55,7 @@ public class WorkflowRunner
             // Run the first provided workflow
             await using var scope = provider.CreateAsyncScope();
             var engine = scope.ServiceProvider.GetRequiredService<IEngineService>();
-            var runId = await engine.CreateWorkflowRun(workflows[0].Id);
-            var run = await engine.StartWorkflowRunAndWait(runId, ctx);
+            var run = await engine.StartWorkflowRunAndWait(workflows[0].Id, ctx);
             await Task.Delay(100);
             return (run, provider);
         }

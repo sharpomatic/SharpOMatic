@@ -13,7 +13,7 @@ import {
 } from './model-call-node.entity';
 import { BatchNodeEntity, BatchNodeSnapshot } from './batch-node.entity';
 import { GosubNodeEntity, GosubNodeSnapshot } from './gosub-node.entity';
-import { InputNodeEntity, InputNodeSnapshot } from './input-node.entity';
+import { SuspendNodeEntity, SuspendNodeSnapshot } from './suspend-node.entity';
 
 export function nodeFromSnapshot(
   snapshot: NodeSnapshot,
@@ -41,7 +41,7 @@ export function nodeFromSnapshot(
       return BatchNodeEntity.fromSnapshot(snapshot as BatchNodeSnapshot);
     case NodeType.Gosub:
       return GosubNodeEntity.fromSnapshot(snapshot as GosubNodeSnapshot);
-    case NodeType.Input:
-      return InputNodeEntity.fromSnapshot(snapshot as InputNodeSnapshot);
+    case NodeType.Suspend:
+      return SuspendNodeEntity.fromSnapshot(snapshot as SuspendNodeSnapshot);
   }
 }

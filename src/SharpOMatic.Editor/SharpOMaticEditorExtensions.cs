@@ -18,6 +18,22 @@ public static class SharpOMaticEditorExtensions
         mvcBuilder.AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+
+            var builtOptions = options.JsonSerializerOptions.BuildOptions();
+            if (builtOptions.TypeInfoResolver is not null)
+            {
+                if (options.JsonSerializerOptions.TypeInfoResolver is null)
+                    options.JsonSerializerOptions.TypeInfoResolver = builtOptions.TypeInfoResolver;
+                else if (!ReferenceEquals(options.JsonSerializerOptions.TypeInfoResolver, builtOptions.TypeInfoResolver))
+                    options.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, builtOptions.TypeInfoResolver);
+            }
+
+            foreach (var converter in builtOptions.Converters)
+            {
+                if (!options.JsonSerializerOptions.Converters.Any(existing => existing.GetType() == converter.GetType()))
+                    options.JsonSerializerOptions.Converters.Add(converter);
+            }
+
             options.JsonSerializerOptions.Converters.Add(new NodeEntityConverter());
         });
 

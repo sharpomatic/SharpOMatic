@@ -18,6 +18,22 @@ public class EngineService(
     IJsonConverterService JsonConverterService
 ) : IEngineService
 {
+    private const int ConversationLeaseMinutes = 5;
+
+    private static void ValidateWorkflowExecutionMode(WorkflowEntity workflow, bool allowConversation)
+    {
+        if (allowConversation)
+        {
+            if (!workflow.IsConversationEnabled)
+                throw new SharpOMaticException("Workflow is not enabled for conversations.");
+
+            return;
+        }
+
+        if (workflow.IsConversationEnabled)
+            throw new SharpOMaticException("Conversation-enabled workflows must be started through conversation APIs.");
+    }
+
     public async Task<Guid> GetWorkflowId(string workflowName)
     {
         if (string.IsNullOrWhiteSpace(workflowName))
@@ -35,47 +51,37 @@ public class EngineService(
         return matches[0].Id;
     }
 
-    public async Task<Guid> CreateWorkflowRun(Guid workflowId, bool needsEditorEvents = false)
+    public async Task<Run> StartWorkflowRunAndWait(
+        Guid workflowId,
+        ContextObject? nodeContext = null,
+        ContextEntryListEntity? inputEntries = null,
+        bool needsEditorEvents = false
+    )
     {
-        var run = await CreateRunInternal(workflowId, needsEditorEvents);
+        var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
+        return await StartWorkflowRunInternal(workflowId, nodeContext, inputEntries, needsEditorEvents, completionSource, waitForCompletion: true);
+    }
+
+    public async Task<Guid> StartWorkflowRunAndNotify(
+        Guid workflowId,
+        ContextObject? nodeContext = null,
+        ContextEntryListEntity? inputEntries = null,
+        bool needsEditorEvents = false
+    )
+    {
+        var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var run = await StartWorkflowRunInternal(workflowId, nodeContext, inputEntries, needsEditorEvents, completionSource, waitForCompletion: false);
         return run.RunId;
     }
 
-    public async Task<Run> StartWorkflowRunAndWait(Guid runId, ContextObject? nodeContext = null, ContextEntryListEntity? inputEntries = null)
+    public Run StartWorkflowRunSynchronously(
+        Guid workflowId,
+        ContextObject? context = null,
+        ContextEntryListEntity? inputEntries = null,
+        bool needsEditorEvents = false
+    )
     {
-        var run = await RepositoryService.GetRun(runId);
-        if (run is null)
-            throw new SharpOMaticException($"Run '{runId}' cannot be found.");
-
-        if (run.RunStatus != RunStatus.Created)
-            throw new SharpOMaticException($"Run '{runId}' is not in a Created state.");
-
-        var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
-        await StartRunInternal(run, nodeContext, inputEntries, completionSource);
-        return await completionSource.Task.ConfigureAwait(false);
-    }
-
-    public async Task StartWorkflowRunAndNotify(Guid runId, ContextObject? nodeContext = null, ContextEntryListEntity? inputEntries = null)
-    {
-        var run = await RepositoryService.GetRun(runId);
-        if (run is null)
-            throw new SharpOMaticException($"Run '{runId}' cannot be found.");
-
-        if (run.RunStatus != RunStatus.Created)
-            throw new SharpOMaticException($"Run '{runId}' is not in a Created state.");
-
-        var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
-        await StartRunInternal(run, nodeContext, inputEntries, completionSource);
-    }
-
-    public Guid CreateWorkflowRunSynchronously(Guid workflowId, bool needsEditorEvents = false)
-    {
-        return CreateWorkflowRun(workflowId, needsEditorEvents).GetAwaiter().GetResult();
-    }
-
-    public Run StartWorkflowRunSynchronously(Guid runId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null)
-    {
-        return StartWorkflowRunAndWait(runId, context, inputEntries).GetAwaiter().GetResult();
+        return StartWorkflowRunAndWait(workflowId, context, inputEntries, needsEditorEvents).GetAwaiter().GetResult();
     }
 
     public async Task<EvalRun> StartEvalRun(Guid evalConfigId, string? name = null, int? sampleCount = null)
@@ -83,11 +89,132 @@ public class EngineService(
         return await StartEvalRunInternal(evalConfigId, name, sampleCount);
     }
 
+    public Task<Run> StartOrResumeConversationAndWait(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, bool needsEditorEvents = false)
+    {
+        var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
+        return StartOrResumeConversationInternal(workflowId, conversationId, resumeInput, needsEditorEvents, completionSource, waitForCompletion: true);
+    }
+
+    public async Task StartOrResumeConversationAndNotify(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, bool needsEditorEvents = false)
+    {
+        var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await StartOrResumeConversationInternal(workflowId, conversationId, resumeInput, needsEditorEvents, completionSource, waitForCompletion: false);
+    }
+
+    public Run StartOrResumeConversationSynchronously(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, bool needsEditorEvents = false)
+    {
+        return StartOrResumeConversationAndWait(workflowId, conversationId, resumeInput, needsEditorEvents).GetAwaiter().GetResult();
+    }
+
+    private async Task<Run> StartOrResumeConversationInternal(
+        Guid workflowId,
+        Guid conversationId,
+        NodeResumeInput? resumeInput,
+        bool needsEditorEvents,
+        TaskCompletionSource<Run> completionSource,
+        bool waitForCompletion
+    )
+    {
+        var leaseOwner = Guid.NewGuid().ToString("N");
+        resumeInput ??= new ContinueResumeInput();
+        var conversation = await RepositoryService.GetConversation(conversationId);
+        if (conversation is null)
+        {
+            var rootWorkflow = await RepositoryService.GetWorkflow(workflowId);
+            ValidateConversationWorkflow(rootWorkflow);
+
+            conversation = new Conversation()
+            {
+                ConversationId = conversationId,
+                WorkflowId = workflowId,
+                Status = ConversationStatus.Created,
+                Created = DateTime.UtcNow,
+                Updated = DateTime.UtcNow,
+                CurrentTurnNumber = 0,
+            };
+            await RepositoryService.UpsertConversation(conversation);
+        }
+        else if (conversation.WorkflowId != workflowId)
+        {
+            throw new SharpOMaticException("Conversation id does not belong to the requested workflow.");
+        }
+
+        if (!await RepositoryService.TryAcquireConversationLease(conversationId, leaseOwner, DateTime.UtcNow.AddMinutes(ConversationLeaseMinutes)))
+            throw new SharpOMaticException("Conversation is already running.");
+
+        conversation = await RepositoryService.GetConversation(conversationId) ?? conversation;
+        var previousCheckpoint = await RepositoryService.GetConversationCheckpoint(conversationId);
+        var turnNumber = conversation.CurrentTurnNumber + 1;
+
+        var run = new Run()
+        {
+            WorkflowId = workflowId,
+            ConversationId = conversationId,
+            TurnNumber = turnNumber,
+            RunId = Guid.NewGuid(),
+            RunStatus = RunStatus.Created,
+            NeedsEditorEvents = needsEditorEvents,
+            Message = "Created",
+            Created = DateTime.Now,
+            InputContext = JsonSerializer.Serialize(new ContextObject(), new JsonSerializerOptions().BuildOptions(JsonConverterService.GetConverters())),
+        };
+        await RepositoryService.UpsertRun(run);
+
+        var nodeRunLimitSetting = await RepositoryService.GetSetting("RunNodeLimit");
+        var nodeRunLimit = nodeRunLimitSetting?.ValueInteger ?? NodeExecutionService.DEFAULT_NODE_RUN_LIMIT;
+
+        var serviceScope = ScopeFactory.CreateScope();
+        try
+        {
+            var processContext = new ProcessContext(
+                serviceScope,
+                run,
+                nodeRunLimit,
+                completionSource,
+                conversation,
+                previousCheckpoint,
+                resumeInput,
+                turnNumber,
+                leaseOwner,
+                DeserializeWorkflowSnapshots(previousCheckpoint?.WorkflowSnapshotsJson)
+            );
+
+            NextNodeData nextNode;
+            if (conversation.Status == ConversationStatus.Suspended)
+                nextNode = await BuildSuspendedTurnStart(processContext, workflowId, previousCheckpoint, resumeInput);
+            else
+                nextNode = await BuildFreshTurnStart(processContext, workflowId, previousCheckpoint, resumeInput);
+
+            conversation.Status = ConversationStatus.Running;
+            conversation.Updated = DateTime.UtcNow;
+            conversation.CurrentTurnNumber = turnNumber;
+            conversation.LastRunId = run.RunId;
+            conversation.LastError = null;
+            await RepositoryService.UpsertConversation(conversation);
+
+            await processContext.RunUpdated();
+            QueueService.Enqueue(nextNode);
+
+            if (waitForCompletion)
+                return await completionSource.Task.ConfigureAwait(false);
+
+            return run;
+        }
+        catch
+        {
+            serviceScope.Dispose();
+            await RepositoryService.ReleaseConversationLease(conversation.ConversationId, leaseOwner);
+            throw;
+        }
+    }
+
     private async Task<Run> CreateRunInternal(Guid workflowId, bool needsEditorEvents)
     {
         var workflow = await RepositoryService.GetWorkflow(workflowId);
         if (workflow is null)
             throw new SharpOMaticException($"Could not load workflow {workflowId}.");
+
+        ValidateWorkflowExecutionMode(workflow, allowConversation: false);
 
         if (workflow.Nodes.Count(n => n.NodeType == NodeType.Start) != 1)
             throw new SharpOMaticException("Must have exactly one start node.");
@@ -110,6 +237,31 @@ public class EngineService(
         return run;
     }
 
+    private async Task<Run> StartWorkflowRunInternal(
+        Guid workflowId,
+        ContextObject? nodeContext,
+        ContextEntryListEntity? inputEntries,
+        bool needsEditorEvents,
+        TaskCompletionSource<Run> completionSource,
+        bool waitForCompletion
+    )
+    {
+        var run = await CreateRunInternal(workflowId, needsEditorEvents);
+        await StartRunInternal(run, nodeContext, inputEntries, completionSource);
+
+        if (waitForCompletion)
+            return await completionSource.Task.ConfigureAwait(false);
+
+        return run;
+    }
+
+    private async Task<Run> StartCreatedRunAndWait(Run run, ContextObject? nodeContext = null, ContextEntryListEntity? inputEntries = null)
+    {
+        var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await StartRunInternal(run, nodeContext, inputEntries, completionSource);
+        return await completionSource.Task.ConfigureAwait(false);
+    }
+
     private async Task StartRunInternal(Run run, ContextObject? nodeContext, ContextEntryListEntity? inputEntries, TaskCompletionSource<Run>? completionSource)
     {
         nodeContext ??= [];
@@ -120,6 +272,7 @@ public class EngineService(
             var inputJson = await ApplyInputEntries(serviceScope.ServiceProvider, nodeContext, inputEntries, run.RunId);
 
             var workflow = await RepositoryService.GetWorkflow(run.WorkflowId) ?? throw new SharpOMaticException($"Could not load workflow {run.WorkflowId}.");
+            ValidateWorkflowExecutionMode(workflow, allowConversation: false);
             var currentNodes = workflow.Nodes.Where(n => n.NodeType == NodeType.Start).ToList();
             if (currentNodes.Count != 1)
                 throw new SharpOMaticException("Must have exactly one start node.");
@@ -388,8 +541,7 @@ public class EngineService(
                 throw new SharpOMaticException($"Row '{evalRow.Order}' does not have mandatory 'Name' column.");
 
             var rowName = nameData.StringValue ?? "Unnamed";
-            var runId = await CreateWorkflowRun(evalConfigDetail.EvalConfig.WorkflowId ?? Guid.Empty);
-
+            var run = await CreateRunInternal(evalConfigDetail.EvalConfig.WorkflowId ?? Guid.Empty, needsEditorEvents: false);
             ContextObject inputContext = [];
             foreach (var column in evalConfigDetail.Columns.Where(c => c.Order > 0))
             {
@@ -446,7 +598,7 @@ public class EngineService(
                                 {
                                     Context = [],
                                     ServiceProvider = serviceProvider,
-                                    Assets = new AssetHelper(repository, assetStore, runId),
+                                    Assets = new AssetHelper(repository, assetStore, run.RunId),
                                 };
 
                                 try
@@ -503,7 +655,7 @@ public class EngineService(
 
             var serializedInput = inputContext.Serialize(jsonConverterService);
             evalRunRow.InputContext = serializedInput;
-            var runResult = await StartWorkflowRunAndWait(runId, inputContext);
+            var runResult = await StartCreatedRunAndWait(run, inputContext);
             if (runResult.RunStatus == RunStatus.Failed)
             {
                 evalRunRow.OutputContext = runResult.OutputContext;
@@ -556,8 +708,7 @@ public class EngineService(
             if (!string.IsNullOrWhiteSpace(jsonContext))
                 inputContext = ContextObject.Deserialize(jsonContext, jsonConverterService);
 
-            var runId = await CreateWorkflowRun(evalGrader.WorkflowId ?? Guid.Empty);
-            var runResult = await StartWorkflowRunAndWait(runId, inputContext);
+            var runResult = await StartWorkflowRunAndWait(evalGrader.WorkflowId ?? Guid.Empty, inputContext);
             evalRunRowGrader.InputContext = jsonContext;
             evalRunRowGrader.OutputContext = runResult.OutputContext;
 
@@ -636,5 +787,107 @@ public class EngineService(
             return normalized;
 
         return started.ToString("yyyy-MM-dd HH:mm:ss");
+    }
+
+    private async Task<NextNodeData> BuildFreshTurnStart(ProcessContext processContext, Guid workflowId, ConversationCheckpoint? previousCheckpoint, NodeResumeInput resumeInput)
+    {
+        var rootWorkflow = await RepositoryService.GetWorkflow(workflowId);
+        ValidateConversationWorkflow(rootWorkflow);
+        processContext.PinWorkflowSnapshot(rootWorkflow);
+
+        ContextObject nodeContext;
+        if (!string.IsNullOrWhiteSpace(previousCheckpoint?.ContextJson))
+            nodeContext = ContextObject.Deserialize(previousCheckpoint.ContextJson, processContext.JsonConverters);
+        else
+            nodeContext = [];
+
+        ApplyConversationStartInput(nodeContext, resumeInput);
+
+        processContext.Run.InputContext = nodeContext.Serialize(processContext.JsonConverters);
+        var workflowContext = new WorkflowContext(processContext, rootWorkflow);
+        var startNode = rootWorkflow.Nodes.Single(n => n.NodeType == NodeType.Start);
+        var threadContext = processContext.CreateThread(nodeContext, workflowContext);
+        return new NextNodeData(threadContext, startNode);
+    }
+
+    private async Task<NextNodeData> BuildSuspendedTurnStart(
+        ProcessContext processContext,
+        Guid workflowId,
+        ConversationCheckpoint? checkpoint,
+        NodeResumeInput resumeInput
+    )
+    {
+        if (checkpoint is null)
+            throw new SharpOMaticException("Conversation is suspended but has no checkpoint.");
+
+        var workflowSnapshots = processContext.GetPinnedWorkflowSnapshots();
+        var rootSnapshot = workflowSnapshots.FirstOrDefault(snapshot => snapshot.WorkflowId == workflowId)
+            ?? throw new SharpOMaticException("Suspended conversation is missing the root workflow snapshot.");
+
+        var rootWorkflow = WorkflowSnapshotSerializer.DeserializeWorkflow(rootSnapshot.WorkflowJson);
+        var currentContext = (SharpOMatic.Engine.Contexts.ExecutionContext)new WorkflowContext(processContext, rootWorkflow);
+
+        var gosubFrames = DeserializeGosubFrames(checkpoint.GosubStackJson);
+        foreach (var frame in gosubFrames)
+        {
+            var parentWorkflowContext = currentContext.GetWorkflowContext();
+            var returnNode = frame.ReturnNodeId.HasValue ? parentWorkflowContext.Workflow.Nodes.Single(n => n.Id == frame.ReturnNodeId.Value) : null;
+            var parentContext = ContextObject.Deserialize(frame.ParentContextJson, processContext.JsonConverters);
+            var outputMappings = JsonSerializer.Deserialize<ContextEntryListEntity>(frame.OutputMappingsJson)
+                ?? new ContextEntryListEntity() { Id = Guid.NewGuid(), Version = 1, Entries = [] };
+
+            var gosubContext = new GosubContext(currentContext, frame.ParentTraceId, parentContext, returnNode, frame.ApplyOutputMappings, outputMappings);
+            gosubContext.IncrementThreads();
+
+            var childSnapshot = workflowSnapshots.FirstOrDefault(snapshot => snapshot.WorkflowId == frame.ChildWorkflowId)
+                ?? throw new SharpOMaticException($"Suspended conversation is missing workflow snapshot '{frame.ChildWorkflowId}'.");
+
+            var childWorkflow = WorkflowSnapshotSerializer.DeserializeWorkflow(childSnapshot.WorkflowJson);
+            var childWorkflowContext = new WorkflowContext(gosubContext, childWorkflow);
+            gosubContext.ChildWorkflowContext = childWorkflowContext;
+            currentContext = childWorkflowContext;
+        }
+
+        var nodeContext = ContextObject.Deserialize(checkpoint.ContextJson, processContext.JsonConverters);
+
+        processContext.Run.InputContext = nodeContext.Serialize(processContext.JsonConverters);
+        var threadContext = processContext.RestoreThread(nodeContext, currentContext);
+        var resumeNode = currentContext.GetWorkflowContext().Workflow.Nodes.Single(n => n.Id == checkpoint.ResumeNodeId);
+        return new NextNodeData(threadContext, resumeNode, NodeInvocationKind.Resume, resumeInput);
+    }
+
+    private static IReadOnlyList<ConversationWorkflowSnapshot> DeserializeWorkflowSnapshots(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return [];
+
+        return JsonSerializer.Deserialize<List<ConversationWorkflowSnapshot>>(json) ?? [];
+    }
+
+    private static IReadOnlyList<ConversationGosubFrame> DeserializeGosubFrames(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return [];
+
+        return JsonSerializer.Deserialize<List<ConversationGosubFrame>>(json) ?? [];
+    }
+
+    private static void ValidateConversationWorkflow(WorkflowEntity workflow)
+    {
+        ValidateWorkflowExecutionMode(workflow, allowConversation: true);
+    }
+
+    private static void ApplyConversationStartInput(ContextObject nodeContext, NodeResumeInput resumeInput)
+    {
+        switch (resumeInput)
+        {
+            case ContinueResumeInput:
+                return;
+            case ContextMergeResumeInput contextMerge:
+                ContextHelpers.OverwriteContexts(nodeContext, contextMerge.Context);
+                return;
+            default:
+                throw new SharpOMaticException($"Conversation start cannot handle resume input type '{resumeInput.GetType().Name}'.");
+        }
     }
 }

@@ -53,9 +53,9 @@ import { TraceProgressModel } from '../../../pages/workflow/interfaces/trace-pro
 import { BatchNodeEntity } from '../../../entities/definitions/batch-node.entity';
 import { BatchNodeDialogComponent } from '../../../dialogs/batch-node/batch-node-dialog.component';
 import { GosubNodeEntity } from '../../../entities/definitions/gosub-node.entity';
-import { InputNodeEntity } from '../../../entities/definitions/input-node.entity';
+import { SuspendNodeEntity } from '../../../entities/definitions/suspend-node.entity';
 import { GosubNodeDialogComponent } from '../../../dialogs/gosub-node/gosub-node-dialog.component';
-import { InputNodeDialogComponent } from '../../../dialogs/input-node/input-node-dialog.component';
+import { SuspendNodeDialogComponent } from '../../../dialogs/suspend-node/suspend-node-dialog.component';
 
 @Component({
   selector: 'app-designer',
@@ -367,8 +367,8 @@ export class DesignerComponent {
       this.dialogService.open(BatchNodeDialogComponent, { node, nodeTraces });
     } else if (node instanceof GosubNodeEntity) {
       this.dialogService.open(GosubNodeDialogComponent, { node, nodeTraces });
-    } else if (node instanceof InputNodeEntity) {
-      this.dialogService.open(InputNodeDialogComponent, { node, nodeTraces });
+    } else if (node instanceof SuspendNodeEntity) {
+      this.dialogService.open(SuspendNodeDialogComponent, { node, nodeTraces });
     }
   }
 

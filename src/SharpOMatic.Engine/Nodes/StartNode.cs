@@ -3,7 +3,7 @@
 [RunNode(NodeType.Start)]
 public class StartNode(ThreadContext threadContext, StartNodeEntity node) : RunNode<StartNodeEntity>(threadContext, node)
 {
-    protected override async Task<(string, List<NextNodeData>)> RunInternal()
+    protected override async Task<NodeExecutionResult> RunInternal()
     {
         // Record when the workflow is running because the start node is processing
         if (ProcessContext.Run.RunStatus == RunStatus.Created)
@@ -52,6 +52,6 @@ public class StartNode(ThreadContext threadContext, StartNodeEntity node) : RunN
         else
             Trace.Message = "Entered workflow";
 
-        return (Trace.Message, ResolveOptionalSingleOutput(ThreadContext));
+        return NodeExecutionResult.Continue(Trace.Message, ResolveOptionalSingleOutput(ThreadContext));
     }
 }

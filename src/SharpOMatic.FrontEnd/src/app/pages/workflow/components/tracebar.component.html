@@ -20,6 +20,9 @@
       [class.success]="
         workflowService.runProgress()?.runStatus === RunStatus.Success
       "
+      [class.suspended]="
+        workflowService.runProgress()?.runStatus === RunStatus.Suspended
+      "
       [class.failed]="
         workflowService.runProgress()?.runStatus === RunStatus.Failed
       "

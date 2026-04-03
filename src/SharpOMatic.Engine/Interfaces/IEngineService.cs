@@ -3,10 +3,11 @@ namespace SharpOMatic.Engine.Interfaces;
 public interface IEngineService
 {
     Task<Guid> GetWorkflowId(string workflowName);
-    Task<Guid> CreateWorkflowRun(Guid workflowId, bool needsEditorEvents = false);
-    Task<Run> StartWorkflowRunAndWait(Guid runId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null);
-    Task StartWorkflowRunAndNotify(Guid runId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null);
-    Guid CreateWorkflowRunSynchronously(Guid workflowId, bool needsEditorEvents = false);
-    Run StartWorkflowRunSynchronously(Guid runId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null);
+    Task<Run> StartWorkflowRunAndWait(Guid workflowId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false);
+    Task<Guid> StartWorkflowRunAndNotify(Guid workflowId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false);
+    Run StartWorkflowRunSynchronously(Guid workflowId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false);
     Task<EvalRun> StartEvalRun(Guid evalConfigId, string? name = null, int? sampleCount = null);
+    Task<Run> StartOrResumeConversationAndWait(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, bool needsEditorEvents = false);
+    Task StartOrResumeConversationAndNotify(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, bool needsEditorEvents = false);
+    Run StartOrResumeConversationSynchronously(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, bool needsEditorEvents = false);
 }

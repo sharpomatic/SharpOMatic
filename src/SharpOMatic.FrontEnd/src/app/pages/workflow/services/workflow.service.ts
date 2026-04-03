@@ -247,6 +247,14 @@ export class WorkflowService implements OnDestroy {
         this.runProgress.set(data);
         break;
       }
+      case RunStatus.Suspended: {
+        this.runProgress.set(data);
+        this.isRunning.set(false);
+        this.activeLiveRunId = undefined;
+        this.toastService.success(`${workflow.name()} suspended.`);
+        this.updateRunAssetsForRun(data);
+        break;
+      }
       case RunStatus.Success: {
         this.runProgress.set(data);
         this.isRunning.set(false);
@@ -590,6 +598,7 @@ export class WorkflowService implements OnDestroy {
 
     if (
       run.runStatus !== RunStatus.Success &&
+      run.runStatus !== RunStatus.Suspended &&
       run.runStatus !== RunStatus.Failed
     ) {
       this.runAssets.set([]);

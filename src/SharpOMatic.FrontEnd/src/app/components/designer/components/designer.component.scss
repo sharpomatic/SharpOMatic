@@ -98,6 +98,10 @@
     border-color: #198754;
   }
 
+  &.suspended {
+    border-color: #f6c343;
+  }
+
   &.failed {
     border-color: #ff5454;
   }

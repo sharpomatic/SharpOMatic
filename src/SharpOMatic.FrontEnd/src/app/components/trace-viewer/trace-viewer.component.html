@@ -39,6 +39,7 @@
             class="trace-text"
             [class.running]="node.trace.nodeStatus === NodeStatus.Running"
             [class.success]="node.trace.nodeStatus === NodeStatus.Success"
+            [class.suspended]="node.trace.nodeStatus === NodeStatus.Suspended"
             [class.failed]="node.trace.nodeStatus === NodeStatus.Failed"
           >
             {{ node.trace.message }}

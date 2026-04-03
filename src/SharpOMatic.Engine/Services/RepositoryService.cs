@@ -61,6 +61,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 Id = workflow.WorkflowId,
                 Name = workflow.Named,
                 Description = workflow.Description,
+                IsConversationEnabled = workflow.IsConversationEnabled,
                 Nodes = JsonSerializer.Deserialize<NodeEntity[]>(workflow.Nodes, _options)!,
                 Connections = JsonSerializer.Deserialize<ConnectionEntity[]>(workflow.Connections, _options)!,
             };
@@ -80,6 +81,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 WorkflowId = workflow.Id,
                 Named = "",
                 Description = "",
+                IsConversationEnabled = false,
                 Nodes = "",
                 Connections = "",
             };
@@ -89,6 +91,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         entry.Named = workflow.Name;
         entry.Description = workflow.Description;
+        entry.IsConversationEnabled = workflow.IsConversationEnabled;
         entry.Nodes = JsonSerializer.Serialize(workflow.Nodes, _options);
         entry.Connections = JsonSerializer.Serialize(workflow.Connections, _options);
 
@@ -158,6 +161,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             Version = workflow.Version,
             Named = copyName,
             Description = workflow.Description,
+            IsConversationEnabled = workflow.IsConversationEnabled,
             Nodes = workflow.Nodes,
             Connections = workflow.Connections,
         };
@@ -223,6 +227,104 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 ? workflows.OrderBy(workflow => workflow.Named).ThenBy(workflow => workflow.Description)
                 : workflows.OrderByDescending(workflow => workflow.Named).ThenByDescending(workflow => workflow.Description),
         };
+    }
+
+    // ------------------------------------------------
+    // Conversation Operations
+    // ------------------------------------------------
+    public async Task<Conversation?> GetConversation(Guid conversationId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        return await dbContext.Conversations.AsNoTracking().FirstOrDefaultAsync(c => c.ConversationId == conversationId);
+    }
+
+    public async Task UpsertConversation(Conversation conversation)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var entity = await dbContext.Conversations.FirstOrDefaultAsync(c => c.ConversationId == conversation.ConversationId);
+        if (entity is null)
+            dbContext.Conversations.Add(conversation);
+        else
+            dbContext.Entry(entity).CurrentValues.SetValues(conversation);
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task<ConversationCheckpoint?> GetConversationCheckpoint(Guid conversationId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        return await dbContext.ConversationCheckpoints.AsNoTracking().FirstOrDefaultAsync(c => c.ConversationId == conversationId);
+    }
+
+    public async Task UpsertConversationCheckpoint(ConversationCheckpoint checkpoint)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var entity = await dbContext.ConversationCheckpoints.FirstOrDefaultAsync(c => c.ConversationId == checkpoint.ConversationId);
+        if (entity is null)
+            dbContext.ConversationCheckpoints.Add(checkpoint);
+        else
+            dbContext.Entry(entity).CurrentValues.SetValues(checkpoint);
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task DeleteConversationCheckpoint(Guid conversationId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var entity = await dbContext.ConversationCheckpoints.FirstOrDefaultAsync(c => c.ConversationId == conversationId);
+        if (entity is null)
+            return;
+
+        dbContext.ConversationCheckpoints.Remove(entity);
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task<List<Run>> GetConversationRuns(Guid conversationId, int skip = 0, int take = 0)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        IQueryable<Run> query = dbContext.Runs.AsNoTracking().Where(r => r.ConversationId == conversationId).OrderBy(r => r.TurnNumber).ThenBy(r => r.Created);
+        if (skip > 0)
+            query = query.Skip(skip);
+        if (take > 0)
+            query = query.Take(take);
+
+        return await query.ToListAsync();
+    }
+
+    public async Task<bool> TryAcquireConversationLease(Guid conversationId, string leaseOwner, DateTime leaseExpiresUtc)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var entity = await dbContext.Conversations.FirstOrDefaultAsync(c => c.ConversationId == conversationId);
+        if (entity is null)
+            return false;
+
+        var now = DateTime.UtcNow;
+        if (!string.IsNullOrWhiteSpace(entity.LeaseOwner) && entity.LeaseOwner != leaseOwner && entity.LeaseExpires.HasValue && entity.LeaseExpires.Value > now)
+            return false;
+
+        entity.LeaseOwner = leaseOwner;
+        entity.LeaseExpires = leaseExpiresUtc;
+        entity.Updated = now;
+        await dbContext.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task ReleaseConversationLease(Guid conversationId, string leaseOwner)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var entity = await dbContext.Conversations.FirstOrDefaultAsync(c => c.ConversationId == conversationId);
+        if (entity is null)
+            return;
+
+        if (entity.LeaseOwner != leaseOwner)
+            return;
+
+        entity.LeaseOwner = null;
+        entity.LeaseExpires = null;
+        entity.Updated = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync();
     }
 
     // ------------------------------------------------

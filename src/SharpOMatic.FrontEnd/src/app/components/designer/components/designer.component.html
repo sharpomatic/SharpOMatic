@@ -108,6 +108,10 @@
             !selectedEntities().includes(node) &&
             node.displayState() === NodeStatus.Success
           "
+          [class.suspended]="
+            !selectedEntities().includes(node) &&
+            node.displayState() === NodeStatus.Suspended
+          "
           [class.failed]="
             !selectedEntities().includes(node) &&
             node.displayState() === NodeStatus.Failed

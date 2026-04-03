@@ -91,6 +91,11 @@
     background-color: #198754;
   }
 
+  &.suspended {
+    color: black;
+    background-color: #f6c343;
+  }
+
   &.failed {
     color: white;
     background-color: #ff5454;

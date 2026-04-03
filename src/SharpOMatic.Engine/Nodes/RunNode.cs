@@ -35,15 +35,25 @@ public abstract class RunNode<T> : IRunNode
         Informations = [];
     }
 
-    public async Task<List<NextNodeData>> Run()
+    public async Task<NodeExecutionResult> Execute(NodeExecutionRequest request)
     {
         await NodeRunning();
 
         try
         {
-            (var message, var nextNodes) = await RunInternal();
-            await NodeSuccess(message);
-            return nextNodes;
+            var result = request.InvocationKind switch
+            {
+                NodeInvocationKind.Run => await RunInternal(),
+                NodeInvocationKind.Resume => await ResumeInternal(request.ResumeInput ?? throw new SharpOMaticException("Resume input is required.")),
+                _ => throw new SharpOMaticException($"Unsupported node invocation kind '{request.InvocationKind}'."),
+            };
+
+            if (result.Outcome == NodeExecutionOutcome.Suspend)
+                await NodeSuspended(result.Message);
+            else
+                await NodeSuccess(result.Message);
+
+            return result;
         }
         catch (Exception ex)
         {
@@ -52,7 +62,12 @@ public abstract class RunNode<T> : IRunNode
         }
     }
 
-    protected abstract Task<(string, List<NextNodeData>)> RunInternal();
+    protected abstract Task<NodeExecutionResult> RunInternal();
+
+    protected virtual Task<NodeExecutionResult> ResumeInternal(NodeResumeInput input)
+    {
+        throw new SharpOMaticException($"Node '{Node.NodeType}' does not support conversation resume.");
+    }
 
     protected async Task NodeRunning()
     {
@@ -64,6 +79,12 @@ public abstract class RunNode<T> : IRunNode
     protected Task NodeSuccess(string message)
     {
         Trace.NodeStatus = NodeStatus.Success;
+        return NodeUpdated(message);
+    }
+
+    protected Task NodeSuspended(string message)
+    {
+        Trace.NodeStatus = NodeStatus.Suspended;
         return NodeUpdated(message);
     }
 

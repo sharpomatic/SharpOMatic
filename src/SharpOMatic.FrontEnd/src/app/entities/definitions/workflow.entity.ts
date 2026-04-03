@@ -8,6 +8,7 @@ import { ConnectorEntity } from './connector.entity';
 export interface WorkflowSnapshot extends EntitySnapshot {
   name: string;
   description: string;
+  isConversationEnabled: boolean;
   nodes: NodeSnapshot[];
   connections: ConnectionSnapshot[];
 }
@@ -19,6 +20,7 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
 
   public name: WritableSignal<string>;
   public description: WritableSignal<string>;
+  public isConversationEnabled: WritableSignal<boolean>;
   public nodes: WritableSignal<NodeEntity<NodeSnapshot>[]>;
   public connections: WritableSignal<ConnectionEntity[]>;
   public isDirty: Signal<boolean>;
@@ -28,6 +30,7 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
 
     this.name = signal(snapshot.name);
     this.description = signal(snapshot.description);
+    this.isConversationEnabled = signal(snapshot.isConversationEnabled);
     this.nodes = signal(snapshot.nodes.map(nodeFromSnapshot));
     this.connections = signal(
       snapshot.connections.map(ConnectionEntity.fromSnapshot),
@@ -43,6 +46,7 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
       // Must touch all property signals
       const currentName = this.name();
       const currentDescription = this.description();
+      const currentIsConversationEnabled = this.isConversationEnabled();
       const currentNodes = this.nodes();
       const currentConnections = this.connections();
 
@@ -70,7 +74,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
       const isDirty =
         needsRefresh ||
         currentName !== snapshot.name ||
-        currentDescription !== snapshot.description;
+        currentDescription !== snapshot.description ||
+        currentIsConversationEnabled !== snapshot.isConversationEnabled;
 
       if (needsRefresh) {
         setTimeout(() => this.refreshCache(), 0);
@@ -86,6 +91,7 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
       version: this.version,
       name: this.name(),
       description: this.description(),
+      isConversationEnabled: this.isConversationEnabled(),
       nodes: this.nodes().map((node) => node.toSnapshot()),
       connections: this.connections().map((connection) =>
         connection.toSnapshot(),
@@ -98,6 +104,7 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
       ...Entity.defaultSnapshot(),
       name: 'Untitled',
       description: '',
+      isConversationEnabled: false,
       nodes: [],
       connections: [],
     };

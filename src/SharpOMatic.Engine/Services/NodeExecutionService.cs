@@ -15,7 +15,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
 
             try
             {
-                var (threadContext, node) = await queue.DequeueAsync(cancellationToken);
+                var nextNode = await queue.DequeueAsync(cancellationToken);
 
                 _ = Task.Run(
                     async () =>
@@ -23,8 +23,8 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
                         try
                         {
                             // If the workflow has already been failed, then ignore the node execution
-                            if (threadContext.ProcessContext.Run.RunStatus != RunStatus.Failed)
-                                await ProcessNode(threadContext, node);
+                            if (nextNode.ThreadContext.ProcessContext.Run.RunStatus != RunStatus.Failed)
+                                await ProcessNode(nextNode);
                         }
                         finally
                         {
@@ -49,8 +49,10 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         }
     }
 
-    private async Task ProcessNode(ThreadContext threadContext, NodeEntity node)
+    private async Task ProcessNode(NextNodeData nextNode)
     {
+        var threadContext = nextNode.ThreadContext;
+        var node = nextNode.Node;
         var processContext = threadContext.ProcessContext;
 
         try
@@ -72,10 +74,22 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             if (!processContext.TryIncrementNodesRun(out _))
                 throw new SharpOMaticException($"Hit run node limit of {processContext.RunNodeLimit}");
 
-            List<NextNodeData> nextNodes = await RunNode(threadContext, node);
+            var nodeResult = await RunNode(nextNode);
             if (processContext.Run.RunStatus == RunStatus.Failed)
                 return;
 
+            if (nodeResult.Outcome == NodeExecutionOutcome.Suspend)
+            {
+                processContext.RequestConversationSuspend(threadContext, node, nodeResult);
+                processContext.RemoveThread(threadContext);
+
+                if (processContext.UpdateThreadCount(-1) == 0)
+                    await RunCompleted(threadContext, RunStatus.Suspended, nodeResult.Message);
+
+                return;
+            }
+
+            List<NextNodeData> nextNodes = nodeResult.NextNodes;
             if (nextNodes.Count == 0 && TryHandleBatchCompletion(threadContext, out var batchNextNodes))
                 nextNodes = batchNextNodes;
 
@@ -118,8 +132,8 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             }
             else
             {
-                foreach (var nextNode in nextNodes)
-                    queue.Enqueue(nextNode.ThreadContext, nextNode.Node);
+                foreach (var queuedNode in nextNodes)
+                    queue.Enqueue(queuedNode);
             }
         }
         catch (Exception ex)
@@ -141,6 +155,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         if (processContext.Run.OutputContext is null)
             processContext.Run.OutputContext = threadContext.NodeContext.Serialize(processContext.JsonConverters);
 
+        await UpdateConversationState(processContext, runStatus, error);
         await processContext.RunUpdated();
 
         processContext.CompletionSource?.TrySetResult(processContext.Run);
@@ -153,17 +168,96 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             // Notify in separate task in case called instance performs a long running action
             _ = Task.Run(async () =>
             {
-                await notification.RunCompleted(processContext.Run.RunId, processContext.Run.WorkflowId, processContext.Run.RunStatus, processContext.Run.OutputContext, processContext.Run.Error);
+                await notification.RunCompleted(
+                    processContext.Run.RunId,
+                    processContext.Run.WorkflowId,
+                    processContext.Run.ConversationId,
+                    processContext.Run.RunStatus,
+                    processContext.Run.OutputContext,
+                    processContext.Run.Error
+                );
             });
         }
+
+        if (processContext.Conversation is not null && !string.IsNullOrWhiteSpace(processContext.ConversationLeaseOwner))
+            await processContext.RepositoryService.ReleaseConversationLease(processContext.Conversation.ConversationId, processContext.ConversationLeaseOwner);
 
         processContext.ServiceScope.Dispose();
     }
 
-    private Task<List<NextNodeData>> RunNode(ThreadContext threadContext, NodeEntity node)
+    private Task<NodeExecutionResult> RunNode(NextNodeData nextNode)
     {
-        var runner = runNodeFactory.Create(threadContext, node);
-        return runner.Run();
+        var runner = runNodeFactory.Create(nextNode.ThreadContext, nextNode.Node);
+        return runner.Execute(
+            new NodeExecutionRequest()
+            {
+                InvocationKind = nextNode.InvocationKind,
+                ResumeInput = nextNode.ResumeInput,
+            }
+        );
+    }
+
+    private async Task UpdateConversationState(ProcessContext processContext, RunStatus runStatus, string? error)
+    {
+        if (processContext.Conversation is null)
+            return;
+
+        var conversation = processContext.Conversation;
+        conversation.Updated = DateTime.UtcNow;
+        conversation.LastRunId = processContext.Run.RunId;
+
+        if (runStatus == RunStatus.Suspended)
+        {
+            var pending = processContext.PendingConversationSuspend ?? throw new SharpOMaticException("Suspended run is missing a conversation checkpoint.");
+            conversation.Status = ConversationStatus.Suspended;
+            conversation.LastError = null;
+            await processContext.RepositoryService.UpsertConversationCheckpoint(
+                new ConversationCheckpoint()
+                {
+                    ConversationId = conversation.ConversationId,
+                    ResumeMode = ConversationResumeMode.ResumeNode,
+                    ResumeNodeId = pending.ResumeNodeId,
+                    ContextJson = pending.ContextJson,
+                    ResumeStateJson = pending.ResumeStateJson,
+                    WorkflowSnapshotsJson = pending.WorkflowSnapshotsJson,
+                    GosubStackJson = pending.GosubStackJson,
+                    CheckpointCreated = DateTime.UtcNow,
+                    SourceRunId = processContext.Run.RunId,
+                }
+            );
+        }
+        else if (runStatus == RunStatus.Success)
+        {
+            conversation.Status = ConversationStatus.Completed;
+            conversation.LastError = null;
+            await processContext.RepositoryService.UpsertConversationCheckpoint(
+                new ConversationCheckpoint()
+                {
+                    ConversationId = conversation.ConversationId,
+                    ResumeMode = ConversationResumeMode.StartNode,
+                    ResumeNodeId = null,
+                    ContextJson = processContext.Run.OutputContext,
+                    ResumeStateJson = null,
+                    WorkflowSnapshotsJson = null,
+                    GosubStackJson = null,
+                    CheckpointCreated = DateTime.UtcNow,
+                    SourceRunId = processContext.Run.RunId,
+                }
+            );
+        }
+        else if (runStatus == RunStatus.Failed)
+        {
+            if (processContext.Checkpoint is null)
+                conversation.Status = ConversationStatus.Created;
+            else
+                conversation.Status = processContext.Checkpoint.ResumeMode == ConversationResumeMode.StartNode
+                    ? ConversationStatus.Completed
+                    : ConversationStatus.Suspended;
+
+            conversation.LastError = error;
+        }
+
+        await processContext.RepositoryService.UpsertConversation(conversation);
     }
 
     private bool TryHandleBatchCompletion(ThreadContext threadContext, out List<NextNodeData> nextNodes)

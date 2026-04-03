@@ -53,7 +53,14 @@ public class GoogleGenAIModelCaller : BaseModelCaller
         // Allow the user notifications to customize the field values
         var notifications = processContext.ServiceScope.ServiceProvider.GetServices<IEngineNotification>();
         foreach (var notification in notifications)
-            notification.ConnectionOverride(processContext.Run.RunId, processContext.Run.WorkflowId, connector.ConfigId, authenticationModel, connectionFields);
+            notification.ConnectionOverride(
+                processContext.Run.RunId,
+                processContext.Run.WorkflowId,
+                processContext.Run.ConversationId,
+                connector.ConfigId,
+                authenticationModel,
+                connectionFields
+            );
 
         return (authenticationModel, connectionFields);
     }

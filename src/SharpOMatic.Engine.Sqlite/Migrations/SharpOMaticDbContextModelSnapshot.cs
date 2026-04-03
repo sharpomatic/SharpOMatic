@@ -131,6 +131,80 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.ToTable("ConnectorMetadata", "SharpOMatic");
                 });
 
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.Conversation", b =>
+                {
+                    b.Property<Guid>("ConversationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CurrentTurnNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("LastRunId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LeaseExpires")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LeaseOwner")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("Updated")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkflowId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ConversationId");
+
+                    b.HasIndex("WorkflowId");
+
+                    b.ToTable("Conversations", "SharpOMatic");
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.ConversationCheckpoint", b =>
+                {
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CheckpointCreated")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ContextJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GosubStackJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ResumeMode")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("ResumeNodeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ResumeStateJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("SourceRunId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WorkflowSnapshotsJson")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ConversationId");
+
+                    b.ToTable("ConversationCheckpoints", "SharpOMatic");
+                });
+
             modelBuilder.Entity("SharpOMatic.Engine.Repository.EvalColumn", b =>
                 {
                     b.Property<Guid>("EvalColumnId")
@@ -539,6 +613,9 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
 
@@ -571,6 +648,9 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 
                     b.Property<DateTime?>("Stopped")
                         .HasColumnType("TEXT");
+
+                    b.Property<int?>("TurnNumber")
+                        .HasColumnType("INTEGER");
 
                     b.Property<Guid>("WorkflowId")
                         .HasColumnType("TEXT");
@@ -694,6 +774,9 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsConversationEnabled")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Named")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -721,6 +804,24 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .WithMany()
                         .HasForeignKey("RunId")
                         .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.Conversation", b =>
+                {
+                    b.HasOne("SharpOMatic.Engine.Repository.Workflow", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.ConversationCheckpoint", b =>
+                {
+                    b.HasOne("SharpOMatic.Engine.Repository.Conversation", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.EvalColumn", b =>

@@ -3,6 +3,8 @@
 public class SharpOMaticDbContext : DbContext
 {
     public DbSet<Workflow> Workflows { get; set; }
+    public DbSet<Conversation> Conversations { get; set; }
+    public DbSet<ConversationCheckpoint> ConversationCheckpoints { get; set; }
     public DbSet<Run> Runs { get; set; }
     public DbSet<Trace> Traces { get; set; }
     public DbSet<Information> Informations { get; set; }
@@ -40,6 +42,12 @@ public class SharpOMaticDbContext : DbContext
 
         // Cascade delete: Deleting a Workflow deletes its Runs
         modelBuilder.Entity<Run>().HasOne<Workflow>().WithMany().HasForeignKey(r => r.WorkflowId).OnDelete(DeleteBehavior.Cascade);
+
+        // Cascade delete: Deleting a Workflow deletes its Conversations
+        modelBuilder.Entity<Conversation>().HasOne<Workflow>().WithMany().HasForeignKey(c => c.WorkflowId).OnDelete(DeleteBehavior.Cascade);
+
+        // Cascade delete: Deleting a Conversation deletes its Checkpoint
+        modelBuilder.Entity<ConversationCheckpoint>().HasOne<Conversation>().WithMany().HasForeignKey(c => c.ConversationId).OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting a Run deletes its Traces
         modelBuilder.Entity<Trace>().HasOne<Run>().WithMany().HasForeignKey(t => t.RunId).OnDelete(DeleteBehavior.Cascade);

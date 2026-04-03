@@ -3,12 +3,12 @@ namespace SharpOMatic.Engine.Nodes;
 [RunNode(NodeType.Gosub)]
 public class GosubNode(ThreadContext threadContext, GosubNodeEntity node) : RunNode<GosubNodeEntity>(threadContext, node)
 {
-    protected override async Task<(string, List<NextNodeData>)> RunInternal()
+    protected override async Task<NodeExecutionResult> RunInternal()
     {
         if (Node.WorkflowId is null || Node.WorkflowId == Guid.Empty)
             throw new SharpOMaticException("Gosub node workflow id must be set.");
 
-        var workflow = await ProcessContext.RepositoryService.GetWorkflow(Node.WorkflowId.Value);
+        var workflow = await ProcessContext.GetOrCreatePinnedWorkflow(Node.WorkflowId.Value);
         var startNodes = workflow.Nodes.Where(n => n.NodeType == NodeType.Start).ToList();
         if (startNodes.Count != 1)
             throw new SharpOMaticException("Must have exactly one start node.");
@@ -71,6 +71,6 @@ public class GosubNode(ThreadContext threadContext, GosubNodeEntity node) : RunN
         ThreadContext.CurrentContext = workflowContext;
         ThreadContext.NodeContext = childContext;
 
-        return ($"{workflow.Name}", [new NextNodeData(ThreadContext, startNodes[0])]);
+        return NodeExecutionResult.Continue($"{workflow.Name}", [new NextNodeData(ThreadContext, startNodes[0])]);
     }
 }

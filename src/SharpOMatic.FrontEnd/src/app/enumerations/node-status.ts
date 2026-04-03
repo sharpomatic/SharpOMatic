@@ -3,4 +3,5 @@ export enum NodeStatus {
   Success = 1,
   Failed = 2,
   None = 3,
+  Suspended = 4,
 }

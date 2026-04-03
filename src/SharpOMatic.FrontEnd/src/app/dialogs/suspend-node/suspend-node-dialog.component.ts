@@ -13,21 +13,21 @@ import { DIALOG_DATA } from '../services/dialog.service';
 import { TabComponent, TabItem } from '../../components/tab/tab.component';
 import { ContextViewerComponent } from '../../components/context-viewer/context-viewer.component';
 import { TraceProgressModel } from '../../pages/workflow/interfaces/trace-progress-model';
-import { InputNodeEntity } from '../../entities/definitions/input-node.entity';
+import { SuspendNodeEntity } from '../../entities/definitions/suspend-node.entity';
 
 @Component({
-  selector: 'app-input-node-dialog',
+  selector: 'app-suspend-node-dialog',
   imports: [CommonModule, FormsModule, TabComponent, ContextViewerComponent],
-  templateUrl: './input-node-dialog.component.html',
-  styleUrls: ['./input-node-dialog.component.scss'],
+  templateUrl: './suspend-node-dialog.component.html',
+  styleUrls: ['./suspend-node-dialog.component.scss'],
 })
-export class InputNodeDialogComponent implements OnInit {
+export class SuspendNodeDialogComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
   @ViewChild('detailsTab', { static: true }) detailsTab!: TemplateRef<unknown>;
   @ViewChild('inputsTab', { static: true }) inputsTab!: TemplateRef<unknown>;
   @ViewChild('outputsTab', { static: true }) outputsTab!: TemplateRef<unknown>;
 
-  public node: InputNodeEntity;
+  public node: SuspendNodeEntity;
   public inputTraces: string[];
   public outputTraces: string[];
   public tabs: TabItem[] = [];
@@ -36,7 +36,7 @@ export class InputNodeDialogComponent implements OnInit {
   constructor(
     @Inject(DIALOG_DATA)
     data: {
-      node: InputNodeEntity;
+      node: SuspendNodeEntity;
       nodeTraces: TraceProgressModel[];
     },
   ) {

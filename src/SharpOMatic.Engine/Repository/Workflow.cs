@@ -9,4 +9,5 @@ public class Workflow
     public required string Description { get; set; }
     public required string Nodes { get; set; }
     public required string Connections { get; set; }
+    public bool IsConversationEnabled { get; set; }
 }

@@ -9,7 +9,7 @@ export enum NodeType {
   ModelCall = 7,
   Batch = 8,
   Gosub = 9,
-  Input = 10,
+  Suspend = 10,
 }
 
 export function getNodeSymbol(nodeType: NodeType): string {
@@ -34,8 +34,8 @@ export function getNodeSymbol(nodeType: NodeType): string {
       return 'bi-layers';
     case NodeType.Gosub:
       return 'bi-diagram-3';
-    case NodeType.Input:
-      return 'bi-chat-dots';
+    case NodeType.Suspend:
+      return 'bi-pause-circle';
     default:
       return '';
   }

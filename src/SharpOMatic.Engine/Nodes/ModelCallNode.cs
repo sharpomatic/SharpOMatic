@@ -6,7 +6,7 @@ namespace SharpOMatic.Engine.Nodes;
 [RunNode(NodeType.ModelCall)]
 public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node) : RunNode<ModelCallNodeEntity>(threadContext, node)
 {
-    protected override async Task<(string, List<NextNodeData>)> RunInternal()
+    protected override async Task<NodeExecutionResult> RunInternal()
     {
         // Validate and load the model and connector instances
         (var model, var modelConfig, var connector, var connectorConfig) = await LoadModelAndConnector();
@@ -35,7 +35,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             ThreadContext.NodeContext.TrySet(Node.ChatOutputPath, chatList);
         }
 
-        return ($"{model.Name ?? "(empty)"}", ResolveOptionalSingleOutput(ThreadContext));
+        return NodeExecutionResult.Continue($"{model.Name ?? "(empty)"}", ResolveOptionalSingleOutput(ThreadContext));
     }
 
     private async Task<(Model, ModelConfig, Connector, ConnectorConfig)> LoadModelAndConnector()

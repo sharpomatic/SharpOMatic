@@ -14,6 +14,18 @@ public interface IRepositoryService
     Task<Guid> CopyWorkflow(Guid workflowId);
 
     // ------------------------------------------------
+    // Conversation Operations
+    // ------------------------------------------------
+    Task<Conversation?> GetConversation(Guid conversationId);
+    Task UpsertConversation(Conversation conversation);
+    Task<ConversationCheckpoint?> GetConversationCheckpoint(Guid conversationId);
+    Task UpsertConversationCheckpoint(ConversationCheckpoint checkpoint);
+    Task DeleteConversationCheckpoint(Guid conversationId);
+    Task<List<Run>> GetConversationRuns(Guid conversationId, int skip = 0, int take = 0);
+    Task<bool> TryAcquireConversationLease(Guid conversationId, string leaseOwner, DateTime leaseExpiresUtc);
+    Task ReleaseConversationLease(Guid conversationId, string leaseOwner);
+
+    // ------------------------------------------------
     // Run Operations
     // ------------------------------------------------
     Task<Run?> GetRun(Guid runId);

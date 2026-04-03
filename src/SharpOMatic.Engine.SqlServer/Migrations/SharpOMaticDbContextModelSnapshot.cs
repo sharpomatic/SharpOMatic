@@ -135,6 +135,80 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.ToTable("ConnectorMetadata", "SharpOMatic");
                 });
 
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.Conversation", b =>
+                {
+                    b.Property<Guid>("ConversationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CurrentTurnNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("LastRunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("LeaseExpires")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LeaseOwner")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Updated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("WorkflowId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("ConversationId");
+
+                    b.HasIndex("WorkflowId");
+
+                    b.ToTable("Conversations", "SharpOMatic");
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.ConversationCheckpoint", b =>
+                {
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CheckpointCreated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ContextJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("GosubStackJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ResumeMode")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("ResumeNodeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ResumeStateJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("SourceRunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("WorkflowSnapshotsJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("ConversationId");
+
+                    b.ToTable("ConversationCheckpoints", "SharpOMatic");
+                });
+
             modelBuilder.Entity("SharpOMatic.Engine.Repository.EvalColumn", b =>
                 {
                     b.Property<Guid>("EvalColumnId")
@@ -543,6 +617,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime2");
 
@@ -575,6 +652,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
                     b.Property<DateTime?>("Stopped")
                         .HasColumnType("datetime2");
+
+                    b.Property<int?>("TurnNumber")
+                        .HasColumnType("int");
 
                     b.Property<Guid>("WorkflowId")
                         .HasColumnType("uniqueidentifier");
@@ -698,6 +778,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsConversationEnabled")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Named")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -725,6 +808,24 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .WithMany()
                         .HasForeignKey("RunId")
                         .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.Conversation", b =>
+                {
+                    b.HasOne("SharpOMatic.Engine.Repository.Workflow", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.ConversationCheckpoint", b =>
+                {
+                    b.HasOne("SharpOMatic.Engine.Repository.Conversation", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.EvalColumn", b =>

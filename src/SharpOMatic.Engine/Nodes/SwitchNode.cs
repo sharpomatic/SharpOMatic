@@ -3,7 +3,7 @@
 [RunNode(NodeType.Switch)]
 public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node) : RunNode<SwitchNodeEntity>(threadContext, node)
 {
-    protected override async Task<(string, List<NextNodeData>)> RunInternal()
+    protected override async Task<NodeExecutionResult> RunInternal()
     {
         var lastIndex = Node.Switches.Length - 1;
         if (!IsOutputConnected(Node.Outputs[lastIndex]))
@@ -39,7 +39,7 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node) : Ru
                         if (!IsOutputConnected(Node.Outputs[i]))
                             continue;
 
-                        return ($"Switched to {switcher.Name}", [new NextNodeData(ThreadContext, WorkflowContext.ResolveOutput(Node.Outputs[i]))]);
+                        return NodeExecutionResult.Continue($"Switched to {switcher.Name}", [new NextNodeData(ThreadContext, WorkflowContext.ResolveOutput(Node.Outputs[i]))]);
                     }
                 }
                 catch (CompilationErrorException e1)
@@ -62,6 +62,6 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node) : Ru
             }
         }
 
-        return ($"Switched to {Node.Switches[lastIndex].Name}", [new NextNodeData(ThreadContext, WorkflowContext.ResolveOutput(Node.Outputs[lastIndex]))]);
+        return NodeExecutionResult.Continue($"Switched to {Node.Switches[lastIndex].Name}", [new NextNodeData(ThreadContext, WorkflowContext.ResolveOutput(Node.Outputs[lastIndex]))]);
     }
 }
