@@ -35,6 +35,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("FolderId")
                         .HasColumnType("uniqueidentifier");
 
@@ -64,6 +67,8 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.HasIndex("FolderId");
 
                     b.HasIndex("Name");
+
+                    b.HasIndex("ConversationId");
 
                     b.HasIndex("RunId");
 
@@ -664,6 +669,8 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
                     b.HasKey("RunId");
 
+                    b.HasIndex("ConversationId");
+
                     b.HasIndex("WorkflowId", "Created");
 
                     b.HasIndex("WorkflowId", "RunStatus");
@@ -802,6 +809,11 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Asset", b =>
                 {
+                    b.HasOne("SharpOMatic.Engine.Repository.Conversation", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("SharpOMatic.Engine.Repository.AssetFolder", null)
                         .WithMany()
                         .HasForeignKey("FolderId")
@@ -829,6 +841,14 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.Run", b =>
+                {
+                    b.HasOne("SharpOMatic.Engine.Repository.Conversation", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.EvalColumn", b =>

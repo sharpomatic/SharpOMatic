@@ -22,6 +22,13 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
             migrationBuilder.AddColumn<Guid>(
                 name: "ConversationId",
                 schema: "SharpOMatic",
+                table: "Assets",
+                type: "uniqueidentifier",
+                nullable: true);
+
+            migrationBuilder.AddColumn<Guid>(
+                name: "ConversationId",
+                schema: "SharpOMatic",
                 table: "Runs",
                 type: "uniqueidentifier",
                 nullable: true);
@@ -93,11 +100,63 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                 schema: "SharpOMatic",
                 table: "Conversations",
                 column: "WorkflowId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Assets_ConversationId",
+                schema: "SharpOMatic",
+                table: "Assets",
+                column: "ConversationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Runs_ConversationId",
+                schema: "SharpOMatic",
+                table: "Runs",
+                column: "ConversationId");
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_Assets_Conversations_ConversationId",
+                schema: "SharpOMatic",
+                table: "Assets",
+                column: "ConversationId",
+                principalSchema: "SharpOMatic",
+                principalTable: "Conversations",
+                principalColumn: "ConversationId",
+                onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_Runs_Conversations_ConversationId",
+                schema: "SharpOMatic",
+                table: "Runs",
+                column: "ConversationId",
+                principalSchema: "SharpOMatic",
+                principalTable: "Conversations",
+                principalColumn: "ConversationId",
+                onDelete: ReferentialAction.Cascade);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropForeignKey(
+                name: "FK_Assets_Conversations_ConversationId",
+                schema: "SharpOMatic",
+                table: "Assets");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_Runs_Conversations_ConversationId",
+                schema: "SharpOMatic",
+                table: "Runs");
+
+            migrationBuilder.DropIndex(
+                name: "IX_Assets_ConversationId",
+                schema: "SharpOMatic",
+                table: "Assets");
+
+            migrationBuilder.DropIndex(
+                name: "IX_Runs_ConversationId",
+                schema: "SharpOMatic",
+                table: "Runs");
+
             migrationBuilder.DropTable(
                 name: "ConversationCheckpoints",
                 schema: "SharpOMatic");
@@ -110,6 +169,11 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                 name: "IsConversationEnabled",
                 schema: "SharpOMatic",
                 table: "Workflows");
+
+            migrationBuilder.DropColumn(
+                name: "ConversationId",
+                schema: "SharpOMatic",
+                table: "Assets");
 
             migrationBuilder.DropColumn(
                 name: "ConversationId",

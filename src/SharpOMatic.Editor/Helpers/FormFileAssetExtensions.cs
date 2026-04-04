@@ -7,6 +7,7 @@ public static class FormFileAssetExtensions
         IAssetService assetService,
         AssetScope scope,
         Guid? runId = null,
+        Guid? conversationId = null,
         Guid? folderId = null,
         string? name = null,
         string? mediaType = null
@@ -25,6 +26,6 @@ public static class FormFileAssetExtensions
         var resolvedMediaType = string.IsNullOrWhiteSpace(mediaType) ? (string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType) : mediaType;
 
         await using var stream = file.OpenReadStream();
-        return await assetService.CreateFromStreamAsync(stream, file.Length, resolvedName, resolvedMediaType, scope, runId, folderId);
+        return await assetService.CreateFromStreamAsync(stream, file.Length, resolvedName, resolvedMediaType, scope, runId, conversationId, folderId);
     }
 }

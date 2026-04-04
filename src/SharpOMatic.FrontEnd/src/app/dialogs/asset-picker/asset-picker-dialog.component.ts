@@ -189,6 +189,7 @@ export class AssetPickerDialogComponent implements OnInit {
         AssetScope.Library,
         search,
         undefined,
+        undefined,
         folderId ?? undefined,
         topLevelOnly,
       )
@@ -215,6 +216,7 @@ export class AssetPickerDialogComponent implements OnInit {
         this.assetsSortField,
         this.assetsSortDirection,
         search,
+        undefined,
         undefined,
         folderId ?? undefined,
         topLevelOnly,

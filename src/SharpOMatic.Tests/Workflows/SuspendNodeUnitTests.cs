@@ -78,7 +78,8 @@ public sealed class SuspendNodeUnitTests
             await using var scope = provider.CreateAsyncScope();
             var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
 
-            await engineService.StartOrResumeConversationAndNotify(workflow.Id, conversationId);
+            var runId = await engineService.StartOrResumeConversationAndNotify(workflow.Id, conversationId);
+            Assert.NotEqual(Guid.Empty, runId);
 
             var run = await WaitForConversationRun(repositoryService, conversationId, RunStatus.Suspended);
             Assert.Equal(RunStatus.Suspended, run.RunStatus);
@@ -86,6 +87,48 @@ public sealed class SuspendNodeUnitTests
             var conversation = await repositoryService.GetConversation(conversationId);
             Assert.NotNull(conversation);
             Assert.Equal(ConversationStatus.Suspended, conversation!.Status);
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Conversation_can_start_with_input_entries()
+    {
+        var workflow = new WorkflowBuilder()
+            .EnableConversations()
+            .AddStart()
+            .AddCode("code", "Context.Set<string>(\"output.value\", Context.Get<string>(\"input.value\"));")
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var inputEntries = WorkflowBuilder.CreateContextEntryList(
+                WorkflowBuilder.CreateStringInput("input.value", entryValue: "from input entry")
+            );
+
+            var run = await engineService.StartOrResumeConversationAndWait(workflow.Id, Guid.NewGuid(), inputEntries: inputEntries);
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
+            var output = ContextObject.Deserialize(run.OutputContext, jsonConverters.GetConverters());
+            Assert.Equal("from input entry", output.Get<string>("output.value"));
         }
         finally
         {
@@ -187,6 +230,194 @@ public sealed class SuspendNodeUnitTests
             cts.Cancel();
             await queueTask;
         }
+    }
+
+    [Fact]
+    public async Task Conversation_asset_can_be_resolved_by_name_across_turns()
+    {
+        var workflow = new WorkflowBuilder()
+            .EnableConversations()
+            .AddStart()
+            .AddCode("create", """
+                var created = await Assets.AddAssetFromBytesAsync(System.Text.Encoding.UTF8.GetBytes("hello"), "conversation-file.txt", "text/plain", AssetScope.Conversation);
+                Context.Set<AssetRef>("output.createdAsset", created);
+                """)
+            .AddSuspend("ask")
+            .AddCode("read", """
+                var stored = Context.Get<AssetRef>("output.createdAsset");
+                var byName = await Assets.GetAssetRefAsync("conversation-file.txt");
+                Context.Set<Guid>("output.storedAssetId", stored.AssetId);
+                Context.Set<Guid>("output.byNameAssetId", byName.AssetId);
+                """)
+            .AddEnd()
+            .Connect("start", "create")
+            .Connect("create", "ask")
+            .Connect("ask", "read")
+            .Connect("read", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+        var conversationId = Guid.NewGuid();
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+
+            var firstTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId);
+            Assert.Equal(RunStatus.Suspended, firstTurn.RunStatus);
+
+            var secondTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId);
+            Assert.Equal(RunStatus.Success, secondTurn.RunStatus);
+
+            var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
+            var output = ContextObject.Deserialize(secondTurn.OutputContext, jsonConverters.GetConverters());
+            Assert.Equal(output.Get<Guid>("output.storedAssetId"), output.Get<Guid>("output.byNameAssetId"));
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Conversation_history_prunes_whole_conversations_but_run_pruning_only_prunes_non_conversation_runs()
+    {
+        var workflow = new WorkflowBuilder()
+            .EnableConversations()
+            .AddStart()
+            .AddCode("code", "Context.Set<string>(\"output.value\", \"done\");")
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        var regularWorkflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", "Context.Set<string>(\"output.value\", \"done\");")
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+        await repositoryService.UpsertWorkflow(regularWorkflow);
+        await repositoryService.UpsertSetting(new Setting()
+        {
+            SettingId = Guid.NewGuid(),
+            Name = "ConversationHistoryLimit",
+            DisplayName = "Conversation History Limit",
+            SettingType = SettingType.Integer,
+            UserEditable = true,
+            ValueInteger = 1
+        });
+        await repositoryService.UpsertSetting(new Setting()
+        {
+            SettingId = Guid.NewGuid(),
+            Name = "RunHistoryLimit",
+            DisplayName = "Run History Limit",
+            SettingType = SettingType.Integer,
+            UserEditable = true,
+            ValueInteger = 1
+        });
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+
+            var firstConversationId = Guid.NewGuid();
+            var secondConversationId = Guid.NewGuid();
+
+            var firstConversationRun = await engineService.StartOrResumeConversationAndWait(workflow.Id, firstConversationId);
+            var secondConversationRun = await engineService.StartOrResumeConversationAndWait(workflow.Id, secondConversationId);
+            Assert.Equal(RunStatus.Success, firstConversationRun.RunStatus);
+            Assert.Equal(RunStatus.Success, secondConversationRun.RunStatus);
+
+            await repositoryService.PruneWorkflowConversations(workflow.Id, 1);
+
+            var firstConversation = await repositoryService.GetConversation(firstConversationId);
+            var secondConversation = await repositoryService.GetConversation(secondConversationId);
+            Assert.True((firstConversation is null) ^ (secondConversation is null));
+
+            if (firstConversation is null)
+            {
+                Assert.Empty(await repositoryService.GetConversationRuns(firstConversationId));
+                Assert.Single(await repositoryService.GetConversationRuns(secondConversationId));
+            }
+            else
+            {
+                Assert.Single(await repositoryService.GetConversationRuns(firstConversationId));
+                Assert.Empty(await repositoryService.GetConversationRuns(secondConversationId));
+            }
+
+            await engineService.StartWorkflowRunAndWait(regularWorkflow.Id);
+            await engineService.StartWorkflowRunAndWait(regularWorkflow.Id);
+            await repositoryService.PruneWorkflowRuns(regularWorkflow.Id, 1);
+
+            var regularRuns = await repositoryService.GetWorkflowRuns(regularWorkflow.Id, RunSortField.Created, SortDirection.Descending, 0, 10);
+            Assert.Single(regularRuns);
+            Assert.All(regularRuns, run => Assert.Null(run.ConversationId));
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Workflow_returns_latest_conversation_by_updated()
+    {
+        var workflow = new WorkflowBuilder()
+            .EnableConversations()
+            .AddStart()
+            .AddEnd()
+            .Connect("start", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        var firstConversation = new Conversation()
+        {
+            ConversationId = Guid.NewGuid(),
+            WorkflowId = workflow.Id,
+            Status = ConversationStatus.Completed,
+            Created = DateTime.UtcNow.AddMinutes(-10),
+            Updated = DateTime.UtcNow.AddMinutes(-5),
+            CurrentTurnNumber = 1,
+        };
+        var secondConversation = new Conversation()
+        {
+            ConversationId = Guid.NewGuid(),
+            WorkflowId = workflow.Id,
+            Status = ConversationStatus.Completed,
+            Created = DateTime.UtcNow.AddMinutes(-9),
+            Updated = DateTime.UtcNow,
+            CurrentTurnNumber = 2,
+        };
+
+        await repositoryService.UpsertConversation(firstConversation);
+        await repositoryService.UpsertConversation(secondConversation);
+
+        var latestConversation = await repositoryService.GetLatestConversationForWorkflow(workflow.Id);
+        Assert.NotNull(latestConversation);
+        Assert.Equal(secondConversation.ConversationId, latestConversation!.ConversationId);
     }
 
     [Fact]

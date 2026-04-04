@@ -13,6 +13,7 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         [FromQuery] int skip = 0,
         [FromQuery] int take = 0,
         [FromQuery] Guid? runId = null,
+        [FromQuery] Guid? conversationId = null,
         [FromQuery] Guid? folderId = null,
         [FromQuery] bool topLevelOnly = false
     )
@@ -20,7 +21,10 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         if (scope == AssetScope.Run && runId is null)
             return BadRequest("RunId is required for run scope queries.");
 
-        if (scope == AssetScope.Run && (folderId.HasValue || topLevelOnly))
+        if (scope == AssetScope.Conversation && conversationId is null)
+            return BadRequest("ConversationId is required for conversation scope queries.");
+
+        if ((scope == AssetScope.Run || scope == AssetScope.Conversation) && (folderId.HasValue || topLevelOnly))
             return BadRequest("Folder filters are only valid for library scope queries.");
 
         if (scope == AssetScope.Library && topLevelOnly && folderId.HasValue)
@@ -33,7 +37,7 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
             take = 0;
 
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
-        var assets = await repositoryService.GetAssetsByScope(scope, normalizedSearch, sortBy, sortDirection, skip, take, runId, folderId, topLevelOnly);
+        var assets = await repositoryService.GetAssetsByScope(scope, normalizedSearch, sortBy, sortDirection, skip, take, runId, conversationId, folderId, topLevelOnly);
         var folderLookup = await BuildFolderNameLookup(assets);
         var summaries = assets
             .Select(asset =>
@@ -58,6 +62,7 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         [FromQuery] AssetScope scope = AssetScope.Library,
         [FromQuery] string? search = null,
         [FromQuery] Guid? runId = null,
+        [FromQuery] Guid? conversationId = null,
         [FromQuery] Guid? folderId = null,
         [FromQuery] bool topLevelOnly = false
     )
@@ -68,14 +73,17 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         if (scope == AssetScope.Run && runId is null)
             return BadRequest("RunId is required for run scope queries.");
 
-        if (scope == AssetScope.Run && (folderId.HasValue || topLevelOnly))
+        if (scope == AssetScope.Conversation && conversationId is null)
+            return BadRequest("ConversationId is required for conversation scope queries.");
+
+        if ((scope == AssetScope.Run || scope == AssetScope.Conversation) && (folderId.HasValue || topLevelOnly))
             return BadRequest("Folder filters are only valid for library scope queries.");
 
         if (scope == AssetScope.Library && topLevelOnly && folderId.HasValue)
             return BadRequest("Specify either folderId or topLevelOnly, not both.");
 
         var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
-        return await repositoryService.GetAssetCount(scope, normalizedSearch, runId, folderId, topLevelOnly);
+        return await repositoryService.GetAssetCount(scope, normalizedSearch, runId, conversationId, folderId, topLevelOnly);
     }
 
     [HttpGet("{id}")]
@@ -129,6 +137,7 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         {
             AssetId = asset.AssetId,
             RunId = asset.RunId,
+            ConversationId = asset.ConversationId,
             FolderId = asset.FolderId,
             Name = asset.Name,
             Scope = asset.Scope,
@@ -176,6 +185,7 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         {
             AssetId = assetId,
             RunId = null,
+            ConversationId = null,
             FolderId = request.FolderId,
             Name = name,
             Scope = AssetScope.Library,
@@ -212,6 +222,7 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         {
             AssetId = asset.AssetId,
             RunId = asset.RunId,
+            ConversationId = asset.ConversationId,
             FolderId = request.FolderId,
             Name = asset.Name,
             Scope = asset.Scope,

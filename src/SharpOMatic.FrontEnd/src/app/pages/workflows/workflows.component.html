@@ -75,7 +75,18 @@
         @for (workflow of workflows; track workflow.id) {
           <div class="card workflow-card">
             <div class="card-header">
-              <h5>{{ workflow.name() }}</h5>
+              <div class="d-flex align-items-center justify-content-between gap-2">
+                <h5 class="mb-0">{{ workflow.name() }}</h5>
+                @if (workflow.isConversationEnabled()) {
+                  <span
+                    class="text-primary"
+                    title="Conversation workflow"
+                    aria-label="Conversation workflow"
+                  >
+                    <i class="bi bi-chat-dots-fill"></i>
+                  </span>
+                }
+              </div>
             </div>
             <div class="card-body">
               <p class="card-text">{{ workflow.description() }}</p>

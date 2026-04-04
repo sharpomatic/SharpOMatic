@@ -207,76 +207,301 @@
     <div
       class="bg-body-tertiary flex-grow-1 d-flex flex-column p-3 h-100 run-assets"
     >
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <div class="fw-semibold">
-          Assets ({{ workflowService.runAssets().length }})
-        </div>
-      </div>
-      @if (workflowService.runAssets().length === 0) {
-        <div class="empty-state text-body-secondary">
-          <div class="empty-icon"><i class="bi bi-images"></i></div>
-          <div class="empty-title">No run assets</div>
-          <div class="empty-subtitle">
-            This run did not generate any assets.
+      @if (workflowService.workflow().isConversationEnabled()) {
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div class="fw-semibold">
+            Assets ({{
+              workflowService.conversationAssets().length +
+                workflowService.conversationTurns().length
+            }}
+            sections)
           </div>
         </div>
-      } @else {
-        <div class="table-responsive run-assets-table">
-          <table class="table table-sm table-striped table-hover align-middle">
-            <thead>
-              <tr>
-                <th scope="col" class="col-name">Name</th>
-                <th scope="col" class="col-type">Type</th>
-                <th scope="col" class="col-size">Size</th>
-                <th scope="col" class="col-actions text-end"></th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (asset of workflowService.runAssets(); track asset.assetId) {
-                <tr>
-                  <td class="col-name text-truncate" title="{{ asset.name }}">
-                    {{ asset.name }}
-                  </td>
-                  <td
-                    class="col-type text-truncate"
-                    title="{{ asset.mediaType }}"
+        @if (
+          workflowService.conversationTurns().length === 0 &&
+          workflowService.conversationAssets().length === 0
+        ) {
+          <div class="empty-state text-body-secondary">
+            <div class="empty-icon"><i class="bi bi-images"></i></div>
+            <div class="empty-title">No conversation assets</div>
+            <div class="empty-subtitle">
+              This conversation has not generated any assets yet.
+            </div>
+          </div>
+        } @else {
+          <div class="history-sections">
+            @for (
+              turn of workflowService.conversationTurns();
+              track turn.run.runId;
+              let index = $index
+            ) {
+              <div class="history-section">
+                <div class="history-section-header">
+                  <div class="fw-semibold">
+                    {{ getTurnLabel(turn.run.turnNumber, index) }} Assets
+                  </div>
+                  <span
+                    class="run-text"
+                    [class.created]="turn.run.runStatus === RunStatus.Created"
+                    [class.running]="turn.run.runStatus === RunStatus.Running"
+                    [class.success]="turn.run.runStatus === RunStatus.Success"
+                    [class.suspended]="
+                      turn.run.runStatus === RunStatus.Suspended
+                    "
+                    [class.failed]="turn.run.runStatus === RunStatus.Failed"
                   >
-                    {{ asset.mediaType }}
-                  </td>
-                  <td class="col-size">{{ formatSize(asset.sizeBytes) }}</td>
-                  <td class="col-actions text-end">
-                    <div class="d-inline-flex gap-2">
-                      @if (isImageAsset(asset)) {
-                        <button
-                          class="btn btn-sm btn-outline-primary"
-                          (click)="openAssetPreview(asset)"
-                        >
-                          View
-                        </button>
+                    {{ turn.run.message }}
+                  </span>
+                </div>
+                @if (turn.assets.length === 0) {
+                  <div class="small text-body-secondary section-empty-state">
+                    No run assets for this turn.
+                  </div>
+                } @else {
+                  <div class="table-responsive run-assets-table">
+                    <table
+                      class="table table-sm table-striped table-hover align-middle"
+                    >
+                      <thead>
+                        <tr>
+                          <th scope="col" class="col-name">Name</th>
+                          <th scope="col" class="col-type">Type</th>
+                          <th scope="col" class="col-size">Size</th>
+                          <th scope="col" class="col-actions text-end"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (asset of turn.assets; track asset.assetId) {
+                          <tr>
+                            <td
+                              class="col-name text-truncate"
+                              title="{{ asset.name }}"
+                            >
+                              {{ asset.name }}
+                            </td>
+                            <td
+                              class="col-type text-truncate"
+                              title="{{ asset.mediaType }}"
+                            >
+                              {{ asset.mediaType }}
+                            </td>
+                            <td class="col-size">
+                              {{ formatSize(asset.sizeBytes) }}
+                            </td>
+                            <td class="col-actions text-end">
+                              <div class="d-inline-flex gap-2">
+                                @if (isImageAsset(asset)) {
+                                  <button
+                                    class="btn btn-sm btn-outline-primary"
+                                    (click)="openAssetPreview(asset)"
+                                  >
+                                    View
+                                  </button>
+                                }
+                                @if (isViewableTextAsset(asset)) {
+                                  <button
+                                    class="btn btn-sm btn-outline-primary"
+                                    (click)="openAssetViewer(asset)"
+                                  >
+                                    View
+                                  </button>
+                                }
+                              </div>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (workflowService.conversationAssets().length > 0) {
+              <div class="history-section">
+                <div class="history-section-header">
+                  <div class="fw-semibold">Conversation Assets</div>
+                </div>
+                <div class="table-responsive run-assets-table">
+                  <table
+                    class="table table-sm table-striped table-hover align-middle"
+                  >
+                    <thead>
+                      <tr>
+                        <th scope="col" class="col-name">Name</th>
+                        <th scope="col" class="col-type">Type</th>
+                        <th scope="col" class="col-size">Size</th>
+                        <th scope="col" class="col-actions text-end"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (
+                        asset of workflowService.conversationAssets();
+                        track asset.assetId
+                      ) {
+                        <tr>
+                          <td
+                            class="col-name text-truncate"
+                            title="{{ asset.name }}"
+                          >
+                            {{ asset.name }}
+                          </td>
+                          <td
+                            class="col-type text-truncate"
+                            title="{{ asset.mediaType }}"
+                          >
+                            {{ asset.mediaType }}
+                          </td>
+                          <td class="col-size">
+                            {{ formatSize(asset.sizeBytes) }}
+                          </td>
+                          <td class="col-actions text-end">
+                            <div class="d-inline-flex gap-2">
+                              @if (isImageAsset(asset)) {
+                                <button
+                                  class="btn btn-sm btn-outline-primary"
+                                  (click)="openAssetPreview(asset)"
+                                >
+                                  View
+                                </button>
+                              }
+                              @if (isViewableTextAsset(asset)) {
+                                <button
+                                  class="btn btn-sm btn-outline-primary"
+                                  (click)="openAssetViewer(asset)"
+                                >
+                                  View
+                                </button>
+                              }
+                            </div>
+                          </td>
+                        </tr>
                       }
-                      @if (isViewableTextAsset(asset)) {
-                        <button
-                          class="btn btn-sm btn-outline-primary"
-                          (click)="openAssetViewer(asset)"
-                        >
-                          View
-                        </button>
-                      }
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      } @else {
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div class="fw-semibold">
+            Assets ({{ workflowService.runAssets().length }})
+          </div>
         </div>
+        @if (workflowService.runAssets().length === 0) {
+          <div class="empty-state text-body-secondary">
+            <div class="empty-icon"><i class="bi bi-images"></i></div>
+            <div class="empty-title">No run assets</div>
+            <div class="empty-subtitle">
+              This run did not generate any assets.
+            </div>
+          </div>
+        } @else {
+          <div class="table-responsive run-assets-table">
+            <table class="table table-sm table-striped table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col" class="col-name">Name</th>
+                  <th scope="col" class="col-type">Type</th>
+                  <th scope="col" class="col-size">Size</th>
+                  <th scope="col" class="col-actions text-end"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (asset of workflowService.runAssets(); track asset.assetId) {
+                  <tr>
+                    <td class="col-name text-truncate" title="{{ asset.name }}">
+                      {{ asset.name }}
+                    </td>
+                    <td
+                      class="col-type text-truncate"
+                      title="{{ asset.mediaType }}"
+                    >
+                      {{ asset.mediaType }}
+                    </td>
+                    <td class="col-size">{{ formatSize(asset.sizeBytes) }}</td>
+                    <td class="col-actions text-end">
+                      <div class="d-inline-flex gap-2">
+                        @if (isImageAsset(asset)) {
+                          <button
+                            class="btn btn-sm btn-outline-primary"
+                            (click)="openAssetPreview(asset)"
+                          >
+                            View
+                          </button>
+                        }
+                        @if (isViewableTextAsset(asset)) {
+                          <button
+                            class="btn btn-sm btn-outline-primary"
+                            (click)="openAssetViewer(asset)"
+                          >
+                            View
+                          </button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
       }
     </div>
   </ng-template>
 
   <ng-template #traceTab>
-    <app-trace-viewer
-      [traces]="workflowService.traces()"
-      [informations]="workflowService.informations()"
-    ></app-trace-viewer>
+    @if (workflowService.workflow().isConversationEnabled()) {
+      <div class="bg-body-tertiary flex-grow-1 d-flex flex-column p-3 h-100">
+        @if (workflowService.conversationTurns().length === 0) {
+          <div class="empty-state text-body-secondary">
+            <div class="empty-icon"><i class="bi bi-diagram-3"></i></div>
+            <div class="empty-title">No conversation trace</div>
+            <div class="empty-subtitle">
+              This conversation has not executed any turns yet.
+            </div>
+          </div>
+        } @else {
+          <div class="history-sections">
+            @for (
+              turn of workflowService.conversationTurns();
+              track turn.run.runId;
+              let index = $index
+            ) {
+              <div class="history-section">
+                <div class="history-section-header">
+                  <div class="fw-semibold">
+                    {{ getTurnLabel(turn.run.turnNumber, index) }}
+                  </div>
+                  <span
+                    class="run-text"
+                    [class.created]="turn.run.runStatus === RunStatus.Created"
+                    [class.running]="turn.run.runStatus === RunStatus.Running"
+                    [class.success]="turn.run.runStatus === RunStatus.Success"
+                    [class.suspended]="
+                      turn.run.runStatus === RunStatus.Suspended
+                    "
+                    [class.failed]="turn.run.runStatus === RunStatus.Failed"
+                  >
+                    {{ turn.run.message }}
+                  </span>
+                </div>
+                <app-trace-viewer
+                  [traces]="turn.traces"
+                  [informations]="turn.informations"
+                ></app-trace-viewer>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    } @else {
+      <app-trace-viewer
+        [traces]="workflowService.traces()"
+        [informations]="workflowService.informations()"
+      ></app-trace-viewer>
+    }
   </ng-template>
 </div>

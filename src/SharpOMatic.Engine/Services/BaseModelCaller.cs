@@ -252,13 +252,21 @@ public abstract class BaseModelCaller : IModelCaller
                 threadContext.NodeContext,
                 processContext.RepositoryService,
                 processContext.AssetStore,
-                processContext.Run.RunId
+                processContext.Run.RunId,
+                processContext.Run.ConversationId
             );
         }
 
         if (!string.IsNullOrWhiteSpace(node.Prompt))
         {
-            var prompt = await ContextHelpers.SubstituteValuesAsync(node.Prompt, threadContext.NodeContext, processContext.RepositoryService, processContext.AssetStore, processContext.Run.RunId);
+            var prompt = await ContextHelpers.SubstituteValuesAsync(
+                node.Prompt,
+                threadContext.NodeContext,
+                processContext.RepositoryService,
+                processContext.AssetStore,
+                processContext.Run.RunId,
+                processContext.Run.ConversationId
+            );
 
             chat.Add(new ChatMessage(ChatRole.User, [new TextContent(prompt)]));
         }

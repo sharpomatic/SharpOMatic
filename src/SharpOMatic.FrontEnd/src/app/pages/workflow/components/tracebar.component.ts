@@ -343,6 +343,13 @@ export class TracebarComponent implements OnInit, OnDestroy {
     return formatByteSize(bytes);
   }
 
+  public getTurnLabel(
+    turnNumber: number | null | undefined,
+    index: number,
+  ): string {
+    return `Turn ${turnNumber ?? index + 1}`;
+  }
+
   public isImageAsset(asset: AssetSummary): boolean {
     const mediaType = normalizeMediaType(asset.mediaType);
     return mediaType.startsWith('image/');

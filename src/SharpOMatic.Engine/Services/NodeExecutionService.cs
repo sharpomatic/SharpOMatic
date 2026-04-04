@@ -160,7 +160,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
 
         processContext.CompletionSource?.TrySetResult(processContext.Run);
 
-        await PruneRunHistory(processContext);
+        await PruneExecutionHistory(processContext);
 
         var notifications = processContext.ServiceScope.ServiceProvider.GetServices<IEngineNotification>();
         foreach (var notification in notifications)
@@ -348,21 +348,33 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         return slice;
     }
 
-    private async Task PruneRunHistory(ProcessContext processContext)
+    private async Task PruneExecutionHistory(ProcessContext processContext)
     {
         try
         {
-            var runHistoryLimitSetting = await processContext.RepositoryService.GetSetting("RunHistoryLimit");
+            if (processContext.Run.ConversationId.HasValue)
+            {
+                var conversationHistoryLimitSetting = await processContext.RepositoryService.GetSetting("ConversationHistoryLimit");
+                var conversationHistoryLimit = conversationHistoryLimitSetting?.ValueInteger ?? DEFAULT_RUN_HISTORY_LIMIT;
+                if (conversationHistoryLimit < 0)
+                    conversationHistoryLimit = 0;
 
-            var runHistoryLimit = runHistoryLimitSetting?.ValueInteger ?? DEFAULT_RUN_HISTORY_LIMIT;
-            if (runHistoryLimit < 0)
-                runHistoryLimit = 0;
+                await processContext.RepositoryService.PruneWorkflowConversations(processContext.Run.WorkflowId, conversationHistoryLimit);
+            }
+            else
+            {
+                var runHistoryLimitSetting = await processContext.RepositoryService.GetSetting("RunHistoryLimit");
 
-            await processContext.RepositoryService.PruneWorkflowRuns(processContext.Run.WorkflowId, runHistoryLimit);
+                var runHistoryLimit = runHistoryLimitSetting?.ValueInteger ?? DEFAULT_RUN_HISTORY_LIMIT;
+                if (runHistoryLimit < 0)
+                    runHistoryLimit = 0;
+
+                await processContext.RepositoryService.PruneWorkflowRuns(processContext.Run.WorkflowId, runHistoryLimit);
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to prune run history for workflow '{processContext.Run.WorkflowId}': {ex.Message}");
+            Console.WriteLine($"Failed to prune execution history for workflow '{processContext.Run.WorkflowId}': {ex.Message}");
         }
     }
 }

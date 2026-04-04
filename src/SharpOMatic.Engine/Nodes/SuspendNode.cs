@@ -5,7 +5,7 @@ public class SuspendNode(ThreadContext threadContext, SuspendNodeEntity node) : 
 {
     protected override Task<NodeExecutionResult> RunInternal()
     {
-        return Task.FromResult(NodeExecutionResult.Suspend("Waiting for resume"));
+        return Task.FromResult(NodeExecutionResult.Suspend("Suspended"));
     }
 
     protected override Task<NodeExecutionResult> ResumeInternal(NodeResumeInput input)

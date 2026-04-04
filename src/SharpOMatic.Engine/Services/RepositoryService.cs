@@ -41,6 +41,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 Id = workflow.WorkflowId,
                 Name = workflow.Named,
                 Description = workflow.Description,
+                IsConversationEnabled = workflow.IsConversationEnabled,
             })
             .ToListAsync();
     }
@@ -232,6 +233,12 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     // ------------------------------------------------
     // Conversation Operations
     // ------------------------------------------------
+    public async Task<Conversation?> GetLatestConversationForWorkflow(Guid workflowId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        return await dbContext.Conversations.AsNoTracking().Where(c => c.WorkflowId == workflowId).OrderByDescending(c => c.Updated).ThenByDescending(c => c.Created).FirstOrDefaultAsync();
+    }
+
     public async Task<Conversation?> GetConversation(Guid conversationId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
@@ -327,6 +334,29 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
+    public async Task PruneWorkflowConversations(Guid workflowId, int keepLatest)
+    {
+        if (keepLatest < 0)
+            keepLatest = 0;
+
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var conversationsToDelete = await dbContext
+            .Conversations
+            .Where(c => c.WorkflowId == workflowId && c.Status != ConversationStatus.Suspended && c.Status != ConversationStatus.Running)
+            .OrderByDescending(c => c.Updated)
+            .Skip(keepLatest)
+            .Select(c => c.ConversationId)
+            .ToListAsync();
+
+        if (conversationsToDelete.Count == 0)
+            return;
+
+        await DeleteAssetStorageForConversations(conversationsToDelete);
+
+        await dbContext.Conversations.Where(c => conversationsToDelete.Contains(c.ConversationId)).ExecuteDeleteAsync();
+    }
+
     // ------------------------------------------------
     // Run Operations
     // ------------------------------------------------
@@ -388,7 +418,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var runIdsToDelete = await dbContext.Runs.Where(r => r.WorkflowId == workflowId).OrderByDescending(r => r.Created).Skip(keepLatest).Select(r => r.RunId).ToListAsync();
+        var runIdsToDelete = await dbContext.Runs.Where(r => r.WorkflowId == workflowId && r.ConversationId == null).OrderByDescending(r => r.Created).Skip(keepLatest).Select(r => r.RunId).ToListAsync();
 
         if (runIdsToDelete.Count == 0)
             return;
@@ -1791,7 +1821,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return asset;
     }
 
-    public async Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null, Guid? folderId = null, bool topLevelOnly = false)
+    public async Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null, Guid? conversationId = null, Guid? folderId = null, bool topLevelOnly = false)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -1803,6 +1833,13 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 throw new SharpOMaticException("Run asset queries require a runId.");
 
             assets = assets.Where(a => a.RunId == runId.Value);
+        }
+        else if (scope == AssetScope.Conversation)
+        {
+            if (!conversationId.HasValue)
+                throw new SharpOMaticException("Conversation asset queries require a conversationId.");
+
+            assets = assets.Where(a => a.ConversationId == conversationId.Value);
         }
         else if (scope == AssetScope.Library)
         {
@@ -1830,6 +1867,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         int skip,
         int take,
         Guid? runId = null,
+        Guid? conversationId = null,
         Guid? folderId = null,
         bool topLevelOnly = false
     )
@@ -1844,6 +1882,13 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 throw new SharpOMaticException("Run asset queries require a runId.");
 
             assets = assets.Where(a => a.RunId == runId.Value);
+        }
+        else if (scope == AssetScope.Conversation)
+        {
+            if (!conversationId.HasValue)
+                throw new SharpOMaticException("Conversation asset queries require a conversationId.");
+
+            assets = assets.Where(a => a.ConversationId == conversationId.Value);
         }
         else if (scope == AssetScope.Library)
         {
@@ -1911,6 +1956,21 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             .FirstOrDefaultAsync();
     }
 
+    public async Task<Asset?> GetConversationAssetByName(Guid conversationId, string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var normalizedName = name.Trim().ToLower();
+
+        return await dbContext
+            .Assets.AsNoTracking()
+            .Where(a => a.Scope == AssetScope.Conversation && a.ConversationId == conversationId && a.Name.ToLower() == normalizedName)
+            .OrderByDescending(a => a.Created)
+            .FirstOrDefaultAsync();
+    }
+
     public async Task<Asset?> GetLibraryAssetByFolderAndName(string folderName, string name)
     {
         if (string.IsNullOrWhiteSpace(folderName) || string.IsNullOrWhiteSpace(name))
@@ -1942,8 +2002,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
     public async Task UpsertAsset(Asset asset)
     {
-        if (asset.Scope == AssetScope.Run && asset.FolderId.HasValue)
-            throw new SharpOMaticException("Run assets cannot be assigned to folders.");
+        if (asset.Scope != AssetScope.Library && asset.FolderId.HasValue)
+            throw new SharpOMaticException($"{asset.Scope} assets cannot be assigned to folders.");
 
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -2061,6 +2121,19 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         using var dbContext = dbContextFactory.CreateDbContext();
 
         var storageKeys = await dbContext.Assets.AsNoTracking().Where(a => a.RunId.HasValue && runIds.Contains(a.RunId.Value)).Select(a => a.StorageKey).ToListAsync();
+
+        foreach (var storageKey in storageKeys)
+            await assetStore.DeleteAsync(storageKey);
+    }
+
+    private async Task DeleteAssetStorageForConversations(IReadOnlyCollection<Guid> conversationIds)
+    {
+        if (assetStore is null || conversationIds.Count == 0)
+            return;
+
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var storageKeys = await dbContext.Assets.AsNoTracking().Where(a => a.ConversationId.HasValue && conversationIds.Contains(a.ConversationId.Value)).Select(a => a.StorageKey).ToListAsync();
 
         foreach (var storageKey in storageKeys)
             await assetStore.DeleteAsync(storageKey);

@@ -9,6 +9,8 @@ public sealed class TestRepositoryService : IRepositoryService
     private readonly ConcurrentDictionary<Guid, Run> _runs = new();
     private readonly ConcurrentDictionary<Guid, Trace> _traces = new();
     private readonly ConcurrentDictionary<Guid, Information> _informations = new();
+    private readonly ConcurrentDictionary<Guid, Asset> _assets = new();
+    private readonly ConcurrentDictionary<Guid, AssetFolder> _assetFolders = new();
 
     public Task<List<WorkflowSummary>> GetWorkflowSummaries() => throw new NotImplementedException();
 
@@ -33,6 +35,11 @@ public sealed class TestRepositoryService : IRepositoryService
     public Task DeleteWorkflow(Guid workflowId) => throw new NotImplementedException();
 
     public Task<Guid> CopyWorkflow(Guid workflowId) => throw new NotImplementedException();
+
+    public Task<Conversation?> GetLatestConversationForWorkflow(Guid workflowId)
+    {
+        return Task.FromResult(_conversations.Values.Where(c => c.WorkflowId == workflowId).OrderByDescending(c => c.Updated).ThenByDescending(c => c.Created).FirstOrDefault());
+    }
 
     public Task<Conversation?> GetConversation(Guid conversationId)
     {
@@ -102,17 +109,81 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.CompletedTask;
     }
 
+    public Task PruneWorkflowConversations(Guid workflowId, int keepLatest)
+    {
+        var conversationsToDelete = _conversations.Values
+            .Where(c => c.WorkflowId == workflowId && c.Status != ConversationStatus.Suspended && c.Status != ConversationStatus.Running)
+            .OrderByDescending(c => c.Updated)
+            .Skip(keepLatest)
+            .Select(c => c.ConversationId)
+            .ToList();
+
+        foreach (var conversationId in conversationsToDelete)
+        {
+            _conversationCheckpoints.TryRemove(conversationId, out _);
+
+            var runIds = _runs.Values.Where(r => r.ConversationId == conversationId).Select(r => r.RunId).ToList();
+            foreach (var runId in runIds)
+            {
+                _runs.TryRemove(runId, out _);
+
+                foreach (var trace in _traces.Where(t => t.Value.RunId == runId).Select(t => t.Key).ToList())
+                    _traces.TryRemove(trace, out _);
+
+                foreach (var information in _informations.Where(i => i.Value.RunId == runId).Select(i => i.Key).ToList())
+                    _informations.TryRemove(information, out _);
+
+                foreach (var asset in _assets.Where(a => a.Value.RunId == runId).Select(a => a.Key).ToList())
+                    _assets.TryRemove(asset, out _);
+            }
+
+            foreach (var asset in _assets.Where(a => a.Value.ConversationId == conversationId).Select(a => a.Key).ToList())
+                _assets.TryRemove(asset, out _);
+
+            _conversations.TryRemove(conversationId, out _);
+        }
+
+        return Task.CompletedTask;
+    }
+
     public Task<Run?> GetRun(Guid runId)
     {
         _runs.TryGetValue(runId, out var run);
         return Task.FromResult(run);
     }
 
-    public Task<Run?> GetLatestRunForWorkflow(Guid workflowId) => throw new NotImplementedException();
+    public Task<Run?> GetLatestRunForWorkflow(Guid workflowId)
+    {
+        return Task.FromResult(_runs.Values.Where(r => r.WorkflowId == workflowId).OrderByDescending(r => r.Created).FirstOrDefault());
+    }
 
-    public Task<int> GetWorkflowRunCount(Guid workflowId) => throw new NotImplementedException();
+    public Task<int> GetWorkflowRunCount(Guid workflowId)
+    {
+        return Task.FromResult(_runs.Values.Count(r => r.WorkflowId == workflowId));
+    }
 
-    public Task<List<Run>> GetWorkflowRuns(Guid workflowId, RunSortField sortBy, SortDirection sortDirection, int skip, int take) => throw new NotImplementedException();
+    public Task<List<Run>> GetWorkflowRuns(Guid workflowId, RunSortField sortBy, SortDirection sortDirection, int skip, int take)
+    {
+        IEnumerable<Run> runs = _runs.Values.Where(r => r.WorkflowId == workflowId);
+
+        runs = sortBy switch
+        {
+            RunSortField.Status => sortDirection == SortDirection.Ascending
+                ? runs.OrderBy(r => r.RunStatus).ThenByDescending(r => r.Created)
+                : runs.OrderByDescending(r => r.RunStatus).ThenByDescending(r => r.Created),
+            _ => sortDirection == SortDirection.Ascending
+                ? runs.OrderBy(r => r.Created)
+                : runs.OrderByDescending(r => r.Created)
+        };
+
+        if (skip > 0)
+            runs = runs.Skip(skip);
+
+        if (take > 0)
+            runs = runs.Take(take);
+
+        return Task.FromResult(runs.ToList());
+    }
 
     public Task UpsertRun(Run run)
     {
@@ -122,6 +193,27 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task PruneWorkflowRuns(Guid workflowId, int keepLatest)
     {
+        var runIdsToDelete = _runs.Values
+            .Where(r => r.WorkflowId == workflowId && r.ConversationId == null)
+            .OrderByDescending(r => r.Created)
+            .Skip(keepLatest)
+            .Select(r => r.RunId)
+            .ToList();
+
+        foreach (var runId in runIdsToDelete)
+        {
+            _runs.TryRemove(runId, out _);
+
+            foreach (var trace in _traces.Where(t => t.Value.RunId == runId).Select(t => t.Key).ToList())
+                _traces.TryRemove(trace, out _);
+
+            foreach (var information in _informations.Where(i => i.Value.RunId == runId).Select(i => i.Key).ToList())
+                _informations.TryRemove(information, out _);
+
+            foreach (var asset in _assets.Where(a => a.Value.RunId == runId).Select(a => a.Key).ToList())
+                _assets.TryRemove(asset, out _);
+        }
+
         return Task.CompletedTask;
     }
 
@@ -263,9 +355,18 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.CompletedTask;
     }
 
-    public Task<Asset> GetAsset(Guid assetId) => throw new NotImplementedException();
+    public Task<Asset> GetAsset(Guid assetId)
+    {
+        if (!_assets.TryGetValue(assetId, out var asset))
+            throw new SharpOMaticException($"Asset '{assetId}' cannot be found.");
 
-    public Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null, Guid? folderId = null, bool topLevelOnly = false) => throw new NotImplementedException();
+        return Task.FromResult(asset);
+    }
+
+    public Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null, Guid? conversationId = null, Guid? folderId = null, bool topLevelOnly = false)
+    {
+        return Task.FromResult(FilterAssets(scope, search, runId, conversationId, folderId, topLevelOnly).Count());
+    }
 
     public Task<List<Asset>> GetAssetsByScope(
         AssetScope scope,
@@ -275,34 +376,125 @@ public sealed class TestRepositoryService : IRepositoryService
         int skip,
         int take,
         Guid? runId = null,
+        Guid? conversationId = null,
         Guid? folderId = null,
         bool topLevelOnly = false
-    ) =>
-        throw new NotImplementedException();
+    )
+    {
+        IEnumerable<Asset> assets = FilterAssets(scope, search, runId, conversationId, folderId, topLevelOnly).OrderByDescending(a => a.Created);
+        if (skip > 0)
+            assets = assets.Skip(skip);
+        if (take > 0)
+            assets = assets.Take(take);
 
-    public Task<List<Asset>> GetRunAssets(Guid runId) => throw new NotImplementedException();
+        return Task.FromResult(assets.ToList());
+    }
 
-    public Task<Asset?> GetRunAssetByName(Guid runId, string name) => throw new NotImplementedException();
+    public Task<List<Asset>> GetRunAssets(Guid runId)
+    {
+        return Task.FromResult(_assets.Values.Where(a => a.RunId == runId).OrderByDescending(a => a.Created).ToList());
+    }
 
-    public Task<Asset?> GetLibraryAssetByFolderAndName(string folderName, string name) => throw new NotImplementedException();
+    public Task<Asset?> GetRunAssetByName(Guid runId, string name)
+    {
+        return Task.FromResult(_assets.Values.Where(a => a.Scope == AssetScope.Run && a.RunId == runId && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).OrderByDescending(a => a.Created).FirstOrDefault());
+    }
 
-    public Task<Asset?> GetLibraryAssetByName(string name) => throw new NotImplementedException();
+    public Task<Asset?> GetConversationAssetByName(Guid conversationId, string name)
+    {
+        return Task.FromResult(_assets.Values.Where(a => a.Scope == AssetScope.Conversation && a.ConversationId == conversationId && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).OrderByDescending(a => a.Created).FirstOrDefault());
+    }
 
-    public Task UpsertAsset(Asset asset) => throw new NotImplementedException();
+    public Task<Asset?> GetLibraryAssetByFolderAndName(string folderName, string name)
+    {
+        var folder = _assetFolders.Values.FirstOrDefault(f => f.Name.Equals(folderName, StringComparison.Ordinal));
+        if (folder is null)
+            return Task.FromResult<Asset?>(null);
 
-    public Task DeleteAsset(Guid assetId) => throw new NotImplementedException();
+        return Task.FromResult(_assets.Values.Where(a => a.Scope == AssetScope.Library && a.FolderId == folder.FolderId && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).OrderByDescending(a => a.Created).FirstOrDefault());
+    }
 
-    public Task<AssetFolder> GetAssetFolder(Guid folderId) => throw new NotImplementedException();
+    public Task<Asset?> GetLibraryAssetByName(string name)
+    {
+        return Task.FromResult(_assets.Values.Where(a => a.Scope == AssetScope.Library && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).OrderByDescending(a => a.Created).FirstOrDefault());
+    }
 
-    public Task<AssetFolder?> GetAssetFolderByName(string name) => throw new NotImplementedException();
+    public Task UpsertAsset(Asset asset)
+    {
+        _assets[asset.AssetId] = asset;
+        return Task.CompletedTask;
+    }
 
-    public Task<int> GetAssetFolderCount(string? search) => throw new NotImplementedException();
+    public Task DeleteAsset(Guid assetId)
+    {
+        _assets.TryRemove(assetId, out _);
+        return Task.CompletedTask;
+    }
 
-    public Task<List<AssetFolder>> GetAssetFolders(string? search, SortDirection sortDirection, int skip, int take) => throw new NotImplementedException();
+    public Task<AssetFolder> GetAssetFolder(Guid folderId)
+    {
+        if (!_assetFolders.TryGetValue(folderId, out var folder))
+            throw new SharpOMaticException($"Asset folder '{folderId}' cannot be found.");
 
-    public Task<int> GetAssetFolderAssetCount(Guid folderId) => throw new NotImplementedException();
+        return Task.FromResult(folder);
+    }
 
-    public Task UpsertAssetFolder(AssetFolder folder) => throw new NotImplementedException();
+    public Task<AssetFolder?> GetAssetFolderByName(string name)
+    {
+        return Task.FromResult(_assetFolders.Values.FirstOrDefault(f => f.Name.Equals(name, StringComparison.Ordinal)));
+    }
 
-    public Task DeleteAssetFolder(Guid folderId) => throw new NotImplementedException();
+    public Task<int> GetAssetFolderCount(string? search)
+    {
+        return Task.FromResult(_assetFolders.Count);
+    }
+
+    public Task<List<AssetFolder>> GetAssetFolders(string? search, SortDirection sortDirection, int skip, int take)
+    {
+        IEnumerable<AssetFolder> folders = _assetFolders.Values.OrderBy(f => f.Name);
+        if (skip > 0)
+            folders = folders.Skip(skip);
+        if (take > 0)
+            folders = folders.Take(take);
+
+        return Task.FromResult(folders.ToList());
+    }
+
+    public Task<int> GetAssetFolderAssetCount(Guid folderId)
+    {
+        return Task.FromResult(_assets.Values.Count(a => a.Scope == AssetScope.Library && a.FolderId == folderId));
+    }
+
+    public Task UpsertAssetFolder(AssetFolder folder)
+    {
+        _assetFolders[folder.FolderId] = folder;
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAssetFolder(Guid folderId)
+    {
+        _assetFolders.TryRemove(folderId, out _);
+        return Task.CompletedTask;
+    }
+
+    private IEnumerable<Asset> FilterAssets(AssetScope scope, string? search, Guid? runId, Guid? conversationId, Guid? folderId, bool topLevelOnly)
+    {
+        IEnumerable<Asset> assets = _assets.Values.Where(a => a.Scope == scope);
+        if (scope == AssetScope.Run && runId.HasValue)
+            assets = assets.Where(a => a.RunId == runId);
+        else if (scope == AssetScope.Conversation && conversationId.HasValue)
+            assets = assets.Where(a => a.ConversationId == conversationId);
+        else if (scope == AssetScope.Library)
+        {
+            if (topLevelOnly)
+                assets = assets.Where(a => a.FolderId == null);
+            else if (folderId.HasValue)
+                assets = assets.Where(a => a.FolderId == folderId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+            assets = assets.Where(a => a.Name.Contains(search, StringComparison.OrdinalIgnoreCase));
+
+        return assets;
+    }
 }

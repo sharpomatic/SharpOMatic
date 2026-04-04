@@ -5,6 +5,7 @@ public static class AssetStorageKey
     private const string LibraryPrefix = "library";
     private const string LibraryFolderPrefix = "folders";
     private const string RunPrefix = "runs";
+    private const string ConversationPrefix = "conversations";
 
     public static string ForLibrary(Guid assetId, Guid? folderId = null)
     {
@@ -16,13 +17,17 @@ public static class AssetStorageKey
 
     public static string ForRun(Guid runId, Guid assetId) => $"{RunPrefix}/{runId:N}/{assetId:N}";
 
-    public static string ForScope(AssetScope scope, Guid assetId, Guid? runId = null, Guid? folderId = null)
+    public static string ForConversation(Guid conversationId, Guid assetId) => $"{ConversationPrefix}/{conversationId:N}/{assetId:N}";
+
+    public static string ForScope(AssetScope scope, Guid assetId, Guid? runId = null, Guid? conversationId = null, Guid? folderId = null)
     {
         return scope switch
         {
             AssetScope.Library => ForLibrary(assetId, folderId),
             AssetScope.Run when runId.HasValue => ForRun(runId.Value, assetId),
             AssetScope.Run => throw new SharpOMaticException("Run assets require a runId."),
+            AssetScope.Conversation when conversationId.HasValue => ForConversation(conversationId.Value, assetId),
+            AssetScope.Conversation => throw new SharpOMaticException("Conversation assets require a conversationId."),
             _ => throw new SharpOMaticException($"Unsupported asset scope '{scope}'."),
         };
     }

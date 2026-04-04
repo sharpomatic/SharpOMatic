@@ -89,27 +89,29 @@ public class EngineService(
         return await StartEvalRunInternal(evalConfigId, name, sampleCount);
     }
 
-    public Task<Run> StartOrResumeConversationAndWait(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, bool needsEditorEvents = false)
+    public Task<Run> StartOrResumeConversationAndWait(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false)
     {
         var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
-        return StartOrResumeConversationInternal(workflowId, conversationId, resumeInput, needsEditorEvents, completionSource, waitForCompletion: true);
+        return StartOrResumeConversationInternal(workflowId, conversationId, resumeInput, inputEntries, needsEditorEvents, completionSource, waitForCompletion: true);
     }
 
-    public async Task StartOrResumeConversationAndNotify(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, bool needsEditorEvents = false)
+    public async Task<Guid> StartOrResumeConversationAndNotify(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false)
     {
         var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
-        await StartOrResumeConversationInternal(workflowId, conversationId, resumeInput, needsEditorEvents, completionSource, waitForCompletion: false);
+        var run = await StartOrResumeConversationInternal(workflowId, conversationId, resumeInput, inputEntries, needsEditorEvents, completionSource, waitForCompletion: false);
+        return run.RunId;
     }
 
-    public Run StartOrResumeConversationSynchronously(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, bool needsEditorEvents = false)
+    public Run StartOrResumeConversationSynchronously(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false)
     {
-        return StartOrResumeConversationAndWait(workflowId, conversationId, resumeInput, needsEditorEvents).GetAwaiter().GetResult();
+        return StartOrResumeConversationAndWait(workflowId, conversationId, resumeInput, inputEntries, needsEditorEvents).GetAwaiter().GetResult();
     }
 
     private async Task<Run> StartOrResumeConversationInternal(
         Guid workflowId,
         Guid conversationId,
         NodeResumeInput? resumeInput,
+        ContextEntryListEntity? inputEntries,
         bool needsEditorEvents,
         TaskCompletionSource<Run> completionSource,
         bool waitForCompletion
@@ -181,9 +183,14 @@ public class EngineService(
 
             NextNodeData nextNode;
             if (conversation.Status == ConversationStatus.Suspended)
+            {
+                if (inputEntries?.Entries.Length > 0)
+                    throw new SharpOMaticException("Suspended conversations cannot accept start input entries.");
+
                 nextNode = await BuildSuspendedTurnStart(processContext, workflowId, previousCheckpoint, resumeInput);
+            }
             else
-                nextNode = await BuildFreshTurnStart(processContext, workflowId, previousCheckpoint, resumeInput);
+                nextNode = await BuildFreshTurnStart(processContext, workflowId, previousCheckpoint, resumeInput, inputEntries);
 
             conversation.Status = ConversationStatus.Running;
             conversation.Updated = DateTime.UtcNow;
@@ -594,12 +601,12 @@ public class EngineService(
                             if (!string.IsNullOrWhiteSpace(columnData.StringValue))
                             {
                                 var options = scriptOptionsService.GetScriptOptions();
-                                var globals = new ScriptCodeContext()
-                                {
-                                    Context = [],
-                                    ServiceProvider = serviceProvider,
-                                    Assets = new AssetHelper(repository, assetStore, run.RunId),
-                                };
+                                    var globals = new ScriptCodeContext()
+                                    {
+                                        Context = [],
+                                        ServiceProvider = serviceProvider,
+                                        Assets = new AssetHelper(repository, assetStore, run.RunId),
+                                    };
 
                                 try
                                 {
@@ -789,7 +796,13 @@ public class EngineService(
         return started.ToString("yyyy-MM-dd HH:mm:ss");
     }
 
-    private async Task<NextNodeData> BuildFreshTurnStart(ProcessContext processContext, Guid workflowId, ConversationCheckpoint? previousCheckpoint, NodeResumeInput resumeInput)
+    private async Task<NextNodeData> BuildFreshTurnStart(
+        ProcessContext processContext,
+        Guid workflowId,
+        ConversationCheckpoint? previousCheckpoint,
+        NodeResumeInput resumeInput,
+        ContextEntryListEntity? inputEntries
+    )
     {
         var rootWorkflow = await RepositoryService.GetWorkflow(workflowId);
         ValidateConversationWorkflow(rootWorkflow);
@@ -802,6 +815,7 @@ public class EngineService(
             nodeContext = [];
 
         ApplyConversationStartInput(nodeContext, resumeInput);
+        processContext.Run.InputEntries = await ApplyInputEntries(processContext.ServiceScope.ServiceProvider, nodeContext, inputEntries, processContext.Run.RunId);
 
         processContext.Run.InputContext = nodeContext.Serialize(processContext.JsonConverters);
         var workflowContext = new WorkflowContext(processContext, rootWorkflow);

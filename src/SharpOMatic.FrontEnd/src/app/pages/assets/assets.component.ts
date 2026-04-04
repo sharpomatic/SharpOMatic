@@ -186,7 +186,7 @@ export class AssetsComponent implements AfterViewInit {
     }
 
     this.serverRepository
-      .getAssetsCount(AssetScope.Library, '', undefined, folderId, false)
+      .getAssetsCount(AssetScope.Library, '', undefined, undefined, folderId, false)
       .subscribe((assetCount) => {
         if (assetCount > 0) {
           this.showInfoDialog(
@@ -574,6 +574,7 @@ export class AssetsComponent implements AfterViewInit {
         AssetScope.Library,
         search,
         undefined,
+        undefined,
         folderId ?? undefined,
         topLevelOnly,
       )
@@ -599,6 +600,7 @@ export class AssetsComponent implements AfterViewInit {
         this.assetsSortField,
         this.assetsSortDirection,
         search,
+        undefined,
         undefined,
         folderId ?? undefined,
         topLevelOnly,

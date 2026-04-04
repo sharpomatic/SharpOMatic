@@ -13,7 +13,7 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node) : Ru
         {
             Context = ThreadContext.NodeContext,
             ServiceProvider = ProcessContext.ServiceScope.ServiceProvider,
-            Assets = new AssetHelper(ProcessContext.RepositoryService, ProcessContext.AssetStore, ProcessContext.Run.RunId),
+            Assets = new AssetHelper(ProcessContext.RepositoryService, ProcessContext.AssetStore, ProcessContext.Run.RunId, ProcessContext.Run.ConversationId),
         };
 
         // Check each switch that has linked code

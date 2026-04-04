@@ -55,6 +55,12 @@ import { RunSortField } from '../enumerations/run-sort-field';
 import { SortDirection } from '../enumerations/sort-direction';
 import { AssetScope } from '../enumerations/asset-scope';
 import { AssetSortField } from '../enumerations/asset-sort-field';
+import { ConversationSummaryModel } from '../pages/workflow/interfaces/conversation-summary-model';
+import { ConversationHistoryModel } from '../pages/workflow/interfaces/conversation-history-model';
+import { ConversationStatus } from '../enumerations/conversation-status';
+import { NodeStatus } from '../enumerations/node-status';
+import { NodeType } from '../entities/enumerations/node-type';
+import { RunStatus } from '../enumerations/run-status';
 import { WorkflowSortField } from '../enumerations/workflow-sort-field';
 import { ConnectorSortField } from '../enumerations/connector-sort-field';
 import { ModelSortField } from '../enumerations/model-sort-field';
@@ -157,6 +163,28 @@ export class ServerRepositoryService {
       .pipe(
         catchError((error) => {
           this.notifyError('Starting workflow run', error);
+          return of(undefined);
+        }),
+      );
+  }
+
+  public runConversationWorkflow(
+    workflowId: string,
+    conversationId: string,
+    entryList?: ContextEntryListEntity,
+  ): Observable<string | undefined> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .post<string>(
+        `${apiUrl}/api/conversation/notify/${workflowId}/${conversationId}`,
+        {
+          inputEntries: entryList?.toSnapshot() ?? null,
+          needsEditorEvents: true,
+        },
+      )
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Starting conversation run', error);
           return of(undefined);
         }),
       );
@@ -269,6 +297,106 @@ export class ServerRepositoryService {
           return of(null);
         }),
       );
+  }
+
+  public getLatestWorkflowConversation(
+    workflowId: string,
+  ): Observable<ConversationSummaryModel | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .get<ConversationSummaryModel>(
+        `${apiUrl}/api/conversation/workflow/${workflowId}/latest`,
+      )
+      .pipe(
+        map((conversation) =>
+          conversation
+            ? {
+                ...conversation,
+                status: this.normalizeEnumValue(
+                  ConversationStatus,
+                  conversation.status,
+                ),
+              }
+            : null,
+        ),
+        catchError((error) => {
+          this.notifyError('Loading latest workflow conversation', error);
+          return of(null);
+        }),
+      );
+  }
+
+  public getConversationHistory(
+    conversationId: string,
+  ): Observable<ConversationHistoryModel | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .get<ConversationHistoryModel>(
+        `${apiUrl}/api/conversation/${conversationId}/history`,
+      )
+      .pipe(
+        map((history) => this.normalizeConversationHistory(history)),
+        catchError((error) => {
+          this.notifyError('Loading conversation history', error);
+          return of(null);
+        }),
+      );
+  }
+
+  private normalizeConversationHistory(
+    history: ConversationHistoryModel | null,
+  ): ConversationHistoryModel | null {
+    if (!history) {
+      return null;
+    }
+
+    return {
+      ...history,
+      latestRun: history.latestRun
+        ? {
+            ...history.latestRun,
+            runStatus: this.normalizeEnumValue(
+              RunStatus,
+              history.latestRun.runStatus,
+            ),
+          }
+        : history.latestRun,
+      turns: (history.turns ?? []).map((turn) => ({
+        ...turn,
+        run: {
+          ...turn.run,
+          runStatus: this.normalizeEnumValue(RunStatus, turn.run.runStatus),
+        },
+        traces: (turn.traces ?? []).map((trace) => ({
+          ...trace,
+          nodeType: this.normalizeEnumValue(NodeType, trace.nodeType),
+          nodeStatus: this.normalizeEnumValue(NodeStatus, trace.nodeStatus),
+        })),
+      })),
+    };
+  }
+
+  private normalizeEnumValue<T extends Record<string, string | number>>(
+    enumType: T,
+    value: string | number | null | undefined,
+  ): T[keyof T] {
+    if (typeof value === 'number') {
+      return value as T[keyof T];
+    }
+
+    if (typeof value === 'string') {
+      const normalized = enumType[value as keyof T];
+      if (normalized !== undefined) {
+        return normalized as T[keyof T];
+      }
+
+      const numeric = Number(value);
+      if (!Number.isNaN(numeric)) {
+        return numeric as T[keyof T];
+      }
+    }
+
+    return value as T[keyof T];
   }
 
   public getSettings(): Observable<Setting[]> {
@@ -880,6 +1008,7 @@ export class ServerRepositoryService {
     sortDirection = SortDirection.Descending,
     search = '',
     runId?: string,
+    conversationId?: string,
     folderId?: string,
     topLevelOnly = false,
   ): Observable<AssetSummary[]> {
@@ -887,6 +1016,14 @@ export class ServerRepositoryService {
       this.notifyError(
         'Loading assets',
         new Error('Run scope queries require a runId.'),
+      );
+      return of([]);
+    }
+
+    if (scope === AssetScope.Conversation && !conversationId) {
+      this.notifyError(
+        'Loading assets',
+        new Error('Conversation scope queries require a conversationId.'),
       );
       return of([]);
     }
@@ -905,6 +1042,9 @@ export class ServerRepositoryService {
     if (runId) {
       params = params.set('runId', runId);
     }
+    if (conversationId) {
+      params = params.set('conversationId', conversationId);
+    }
     if (folderId) {
       params = params.set('folderId', folderId);
     }
@@ -922,6 +1062,7 @@ export class ServerRepositoryService {
     scope: AssetScope = AssetScope.Library,
     search = '',
     runId?: string,
+    conversationId?: string,
     folderId?: string,
     topLevelOnly = false,
   ): Observable<number> {
@@ -929,6 +1070,14 @@ export class ServerRepositoryService {
       this.notifyError(
         'Loading asset count',
         new Error('Run scope queries require a runId.'),
+      );
+      return of(0);
+    }
+
+    if (scope === AssetScope.Conversation && !conversationId) {
+      this.notifyError(
+        'Loading asset count',
+        new Error('Conversation scope queries require a conversationId.'),
       );
       return of(0);
     }
@@ -942,6 +1091,9 @@ export class ServerRepositoryService {
     }
     if (runId) {
       params = params.set('runId', runId);
+    }
+    if (conversationId) {
+      params = params.set('conversationId', conversationId);
     }
     if (folderId) {
       params = params.set('folderId', folderId);

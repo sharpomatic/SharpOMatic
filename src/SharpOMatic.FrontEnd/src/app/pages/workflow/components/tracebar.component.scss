@@ -134,6 +134,7 @@
 
 .run-assets {
   min-height: 0;
+  overflow-y: auto;
 }
 
 .run-assets-table {
@@ -193,4 +194,27 @@
 
 .empty-subtitle {
   font-size: 0.9rem;
+}
+
+.history-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.history-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.history-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.section-empty-state {
+  padding: 0.25rem 0;
 }

@@ -3,12 +3,14 @@ namespace SharpOMatic.Engine.Repository;
 [Index(nameof(Scope), nameof(FolderId), nameof(Created))]
 [Index(nameof(Scope), nameof(Created))]
 [Index(nameof(RunId))]
+[Index(nameof(ConversationId))]
 [Index(nameof(Name))]
 public class Asset
 {
     [Key]
     public required Guid AssetId { get; set; }
     public required Guid? RunId { get; set; }
+    public required Guid? ConversationId { get; set; }
     public required Guid? FolderId { get; set; }
     public required string Name { get; set; }
     public required AssetScope Scope { get; set; }

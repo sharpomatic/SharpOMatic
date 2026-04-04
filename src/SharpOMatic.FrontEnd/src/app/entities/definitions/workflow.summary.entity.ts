@@ -4,11 +4,13 @@ import { Entity, EntitySnapshot } from './entity.entity';
 export interface WorkflowSummarySnapshot extends EntitySnapshot {
   name: string;
   description: string;
+  isConversationEnabled: boolean;
 }
 
 export class WorkflowSummaryEntity extends Entity<WorkflowSummarySnapshot> {
   public name: WritableSignal<string>;
   public description: WritableSignal<string>;
+  public isConversationEnabled: WritableSignal<boolean>;
   public isDirty: Signal<boolean>;
 
   constructor(snapshot: WorkflowSummarySnapshot) {
@@ -16,6 +18,7 @@ export class WorkflowSummaryEntity extends Entity<WorkflowSummarySnapshot> {
 
     this.name = signal(snapshot.name);
     this.description = signal(snapshot.description);
+    this.isConversationEnabled = signal(snapshot.isConversationEnabled);
 
     this.isDirty = computed(() => {
       const snapshot = this.snapshot();
@@ -23,10 +26,12 @@ export class WorkflowSummaryEntity extends Entity<WorkflowSummarySnapshot> {
       // Must touch all property signals
       const currentName = this.name();
       const currentDescription = this.description();
+      const currentIsConversationEnabled = this.isConversationEnabled();
 
       return (
         currentName !== snapshot.name ||
-        currentDescription !== snapshot.description
+        currentDescription !== snapshot.description ||
+        currentIsConversationEnabled !== snapshot.isConversationEnabled
       );
     });
   }
@@ -37,6 +42,7 @@ export class WorkflowSummaryEntity extends Entity<WorkflowSummarySnapshot> {
       version: this.version,
       name: this.name(),
       description: this.description(),
+      isConversationEnabled: this.isConversationEnabled(),
     };
   }
 
@@ -45,6 +51,7 @@ export class WorkflowSummaryEntity extends Entity<WorkflowSummarySnapshot> {
       ...Entity.defaultSnapshot(),
       name: 'Untitled',
       description: '',
+      isConversationEnabled: false,
     };
   }
 

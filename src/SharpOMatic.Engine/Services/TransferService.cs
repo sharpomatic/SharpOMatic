@@ -262,6 +262,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             {
                 AssetId = assetEntry.AssetId,
                 RunId = null,
+                ConversationId = null,
                 FolderId = folderId,
                 Name = assetEntry.Name,
                 Scope = AssetScope.Library,

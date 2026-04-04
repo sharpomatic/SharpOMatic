@@ -6,12 +6,14 @@ public class AssetHelper
     private readonly IRepositoryService _repositoryService;
     private readonly IAssetStore _assetStore;
     private readonly Guid? _runId;
+    private readonly Guid? _conversationId;
 
-    public AssetHelper(IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId = null)
+    public AssetHelper(IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId = null, Guid? conversationId = null)
     {
         _repositoryService = repositoryService ?? throw new ArgumentNullException(nameof(repositoryService));
         _assetStore = assetStore ?? throw new ArgumentNullException(nameof(assetStore));
         _runId = runId;
+        _conversationId = conversationId;
     }
 
     public async Task<Asset> GetAssetAsync(string name)
@@ -309,8 +311,11 @@ public class AssetHelper
         if (scope == AssetScope.Run && !_runId.HasValue)
             throw new SharpOMaticException("Run assets require a runId.");
 
+        if (scope == AssetScope.Conversation && !_conversationId.HasValue)
+            throw new SharpOMaticException("Conversation assets require a conversationId.");
+
         var assetId = Guid.NewGuid();
-        var storageKey = AssetStorageKey.ForScope(scope, assetId, _runId);
+        var storageKey = AssetStorageKey.ForScope(scope, assetId, _runId, _conversationId);
 
         using var countingStream = new CountingStream(content, leaveOpen: true);
         await _assetStore.SaveAsync(storageKey, countingStream);
@@ -319,6 +324,7 @@ public class AssetHelper
         {
             AssetId = assetId,
             RunId = scope == AssetScope.Run ? _runId : null,
+            ConversationId = scope == AssetScope.Conversation ? _conversationId : null,
             FolderId = null,
             Name = name.Trim(),
             Scope = scope,
@@ -348,6 +354,13 @@ public class AssetHelper
             var runAsset = await _repositoryService.GetRunAssetByName(_runId.Value, normalizedName);
             if (runAsset is not null)
                 return runAsset;
+        }
+
+        if (_conversationId.HasValue)
+        {
+            var conversationAsset = await _repositoryService.GetConversationAssetByName(_conversationId.Value, normalizedName);
+            if (conversationAsset is not null)
+                return conversationAsset;
         }
 
         if (AssetNameParser.TryParseFolderQualifiedName(normalizedName, out var folderName, out var assetName))

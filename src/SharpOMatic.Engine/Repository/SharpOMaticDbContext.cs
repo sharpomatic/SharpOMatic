@@ -49,11 +49,17 @@ public class SharpOMaticDbContext : DbContext
         // Cascade delete: Deleting a Conversation deletes its Checkpoint
         modelBuilder.Entity<ConversationCheckpoint>().HasOne<Conversation>().WithMany().HasForeignKey(c => c.ConversationId).OnDelete(DeleteBehavior.Cascade);
 
+        // Cascade delete: Deleting a Conversation deletes its Runs
+        modelBuilder.Entity<Run>().HasOne<Conversation>().WithMany().HasForeignKey(r => r.ConversationId).OnDelete(DeleteBehavior.Cascade);
+
         // Cascade delete: Deleting a Run deletes its Traces
         modelBuilder.Entity<Trace>().HasOne<Run>().WithMany().HasForeignKey(t => t.RunId).OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting a Run deletes its Assets
         modelBuilder.Entity<Asset>().HasOne<Run>().WithMany().HasForeignKey(a => a.RunId).OnDelete(DeleteBehavior.Cascade);
+
+        // Cascade delete: Deleting a Conversation deletes its conversation assets
+        modelBuilder.Entity<Asset>().HasOne<Conversation>().WithMany().HasForeignKey(a => a.ConversationId).OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting an AssetFolder deletes its Assets
         modelBuilder.Entity<Asset>().HasOne<AssetFolder>().WithMany().HasForeignKey(a => a.FolderId).OnDelete(DeleteBehavior.Restrict);

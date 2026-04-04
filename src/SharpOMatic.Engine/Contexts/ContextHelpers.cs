@@ -201,13 +201,13 @@ public static class ContextHelpers
         );
     }
 
-    public static async Task<string> SubstituteValuesAsync(string input, ContextObject context, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId)
+    public static async Task<string> SubstituteValuesAsync(string input, ContextObject context, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId, Guid? conversationId = null)
     {
         var substituted = SubstituteValues(input, context);
-        return await SubstituteAssetValuesAsync(substituted, repositoryService, assetStore, runId);
+        return await SubstituteAssetValuesAsync(substituted, repositoryService, assetStore, runId, conversationId);
     }
 
-    private static async Task<string> SubstituteAssetValuesAsync(string input, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId)
+    private static async Task<string> SubstituteAssetValuesAsync(string input, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId, Guid? conversationId)
     {
         if (string.IsNullOrWhiteSpace(input))
             return input;
@@ -224,7 +224,7 @@ public static class ContextHelpers
             sb.Append(input, lastIndex, match.Index - lastIndex);
 
             var assetName = match.Groups[1].Value.Trim();
-            var replacement = await ResolveAssetTextAsync(assetName, repositoryService, assetStore, runId);
+            var replacement = await ResolveAssetTextAsync(assetName, repositoryService, assetStore, runId, conversationId);
             sb.Append(replacement);
 
             lastIndex = match.Index + match.Length;
@@ -234,7 +234,7 @@ public static class ContextHelpers
         return sb.ToString();
     }
 
-    private static async Task<string> ResolveAssetTextAsync(string assetName, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId)
+    private static async Task<string> ResolveAssetTextAsync(string assetName, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId, Guid? conversationId)
     {
         if (string.IsNullOrWhiteSpace(assetName))
             return string.Empty;
@@ -244,6 +244,9 @@ public static class ContextHelpers
 
         if (runId.HasValue)
             asset = await repositoryService.GetRunAssetByName(runId.Value, normalizedAssetName);
+
+        if (asset is null && conversationId.HasValue)
+            asset = await repositoryService.GetConversationAssetByName(conversationId.Value, normalizedAssetName);
 
         if (asset is null && AssetNameParser.TryParseFolderQualifiedName(normalizedAssetName, out var folderName, out var folderAssetName))
             asset = await repositoryService.GetLibraryAssetByFolderAndName(folderName, folderAssetName);

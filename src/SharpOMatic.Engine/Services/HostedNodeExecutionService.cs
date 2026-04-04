@@ -28,46 +28,29 @@ public class HostedNodeExecutionService(IServiceScopeFactory scopeFactory, INode
     {
         using var scope = scopeFactory.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositoryService>();
-        var versionSetting = await repository.GetSetting("Version");
+        await EnsureSetting(repository, "Version", "Version", false, SettingType.Integer, 1);
+        await EnsureSetting(repository, "RunHistoryLimit", "Run History Limit", true, SettingType.Integer, NodeExecutionService.DEFAULT_RUN_HISTORY_LIMIT);
+        await EnsureSetting(repository, "ConversationHistoryLimit", "Conversation History Limit", true, SettingType.Integer, NodeExecutionService.DEFAULT_RUN_HISTORY_LIMIT);
+        await EnsureSetting(repository, "RunNodeLimit", "Run Node Limit", true, SettingType.Integer, NodeExecutionService.DEFAULT_NODE_RUN_LIMIT);
+    }
 
-        if (versionSetting is null)
-        {
-            await repository.UpsertSetting(
-                new Setting()
-                {
-                    SettingId = Guid.NewGuid(),
-                    Name = "Version",
-                    DisplayName = "Version",
-                    UserEditable = false,
-                    SettingType = SettingType.Integer,
-                    ValueInteger = 1,
-                }
-            );
+    private static async Task EnsureSetting(IRepositoryService repository, string name, string displayName, bool userEditable, SettingType settingType, int valueInteger)
+    {
+        var existing = await repository.GetSetting(name);
+        if (existing is not null)
+            return;
 
-            await repository.UpsertSetting(
-                new Setting()
-                {
-                    SettingId = Guid.NewGuid(),
-                    Name = "RunHistoryLimit",
-                    DisplayName = "Run History Limit",
-                    UserEditable = true,
-                    SettingType = SettingType.Integer,
-                    ValueInteger = NodeExecutionService.DEFAULT_RUN_HISTORY_LIMIT,
-                }
-            );
-
-            await repository.UpsertSetting(
-                new Setting()
-                {
-                    SettingId = Guid.NewGuid(),
-                    Name = "RunNodeLimit",
-                    UserEditable = true,
-                    DisplayName = "Run Node Limit",
-                    SettingType = SettingType.Integer,
-                    ValueInteger = NodeExecutionService.DEFAULT_NODE_RUN_LIMIT,
-                }
-            );
-        }
+        await repository.UpsertSetting(
+            new Setting()
+            {
+                SettingId = Guid.NewGuid(),
+                Name = name,
+                DisplayName = displayName,
+                UserEditable = userEditable,
+                SettingType = settingType,
+                ValueInteger = valueInteger,
+            }
+        );
     }
 
     private async Task LoadMetadata()

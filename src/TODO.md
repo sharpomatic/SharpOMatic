@@ -4,11 +4,11 @@
 
 ### Conversations
 
-- Add conversation to summary and show with badge in workflows page
-- Interactive use should handle the conversation
-Switch to input tab whenever it suspends allowing entry of resume data
-Load all runs for the last conversation, show the runs sequentially in trace
-- Evaluations only allow selected of non-conversation workflows
+- Fix he persistence bug on the suspend node
+-   check the background serialization
+-	check the front end matches
+- Have a conversations tab when conversation is enabled
+- Evaluations only allow selection of non-conversation workflows
 
 ### Model Calls
 

@@ -4,6 +4,8 @@ namespace SharpOMatic.Editor.Controllers;
 [Route("api/[controller]")]
 public class ConversationController : ControllerBase
 {
+    private static readonly JsonSerializerOptions _options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
     [HttpPost("{workflowId}/{conversationId}")]
     public async Task<ActionResult<Run>> StartOrResumeConversation(
         IEngineService engineService,
@@ -12,13 +14,30 @@ public class ConversationController : ControllerBase
         [FromBody] ConversationTurnRequest request
     )
     {
-        return await engineService.StartOrResumeConversationAndWait(workflowId, conversationId, request.ResumeInput, request.NeedsEditorEvents);
+        return await engineService.StartOrResumeConversationAndWait(workflowId, conversationId, request.ResumeInput, request.InputEntries, request.NeedsEditorEvents);
+    }
+
+    [HttpPost("notify/{workflowId}/{conversationId}")]
+    public async Task<ActionResult<Guid>> StartOrResumeConversationAndNotify(
+        IEngineService engineService,
+        Guid workflowId,
+        Guid conversationId,
+        [FromBody] ConversationTurnRequest request
+    )
+    {
+        return await engineService.StartOrResumeConversationAndNotify(workflowId, conversationId, request.ResumeInput, request.InputEntries, request.NeedsEditorEvents);
     }
 
     [HttpGet("{conversationId}")]
     public async Task<ActionResult<Conversation?>> GetConversation(IRepositoryService repositoryService, Guid conversationId)
     {
         return await repositoryService.GetConversation(conversationId);
+    }
+
+    [HttpGet("workflow/{workflowId}/latest")]
+    public async Task<ActionResult<Conversation?>> GetLatestConversationForWorkflow(IRepositoryService repositoryService, Guid workflowId)
+    {
+        return await repositoryService.GetLatestConversationForWorkflow(workflowId);
     }
 
     [HttpGet("{conversationId}/runs")]
@@ -30,5 +49,92 @@ public class ConversationController : ControllerBase
     )
     {
         return await repositoryService.GetConversationRuns(conversationId, skip, take);
+    }
+
+    [HttpGet("{conversationId}/history")]
+    public async Task<ActionResult<ConversationHistoryResult>> GetConversationHistory(IRepositoryService repositoryService, Guid conversationId)
+    {
+        var conversation = await repositoryService.GetConversation(conversationId);
+        if (conversation is null)
+            return NotFound();
+
+        var runs = await repositoryService.GetConversationRuns(conversationId);
+        foreach (var run in runs)
+            NormalizeInputEntriesForClient(run);
+
+        var turns = new List<ConversationHistoryTurnResult>(runs.Count);
+        foreach (var run in runs)
+        {
+            var tracesTask = repositoryService.GetRunTraces(run.RunId);
+            var informationsTask = repositoryService.GetRunInformations(run.RunId);
+            var runAssetsTask = repositoryService.GetRunAssets(run.RunId);
+            await Task.WhenAll(tracesTask, informationsTask, runAssetsTask);
+
+            turns.Add(
+                new ConversationHistoryTurnResult(
+                    run,
+                    await tracesTask,
+                    await informationsTask,
+                    await BuildAssetSummaries(repositoryService, await runAssetsTask)
+                )
+            );
+        }
+
+        var latestRun = runs.LastOrDefault();
+        if (conversation.LastRunId.HasValue)
+            latestRun = runs.LastOrDefault(r => r.RunId == conversation.LastRunId.Value) ?? latestRun;
+
+        var conversationAssets = await repositoryService.GetAssetsByScope(
+            AssetScope.Conversation,
+            null,
+            AssetSortField.Created,
+            SortDirection.Ascending,
+            0,
+            0,
+            conversationId: conversationId
+        );
+
+        return Ok(
+            new ConversationHistoryResult(
+                conversation.ConversationId,
+                conversation.WorkflowId,
+                latestRun,
+                turns,
+                await BuildAssetSummaries(repositoryService, conversationAssets)
+            )
+        );
+    }
+
+    private static void NormalizeInputEntriesForClient(Run run)
+    {
+        if (run.InputEntries is null)
+            return;
+
+        var entries = JsonSerializer.Deserialize<ContextEntryListEntity>(run.InputEntries);
+        run.InputEntries = JsonSerializer.Serialize(entries, _options);
+    }
+
+    private static async Task<List<AssetSummary>> BuildAssetSummaries(IRepositoryService repositoryService, IEnumerable<Asset> assets)
+    {
+        var assetList = assets.ToList();
+        var folderIds = assetList.Where(asset => asset.FolderId.HasValue).Select(asset => asset.FolderId!.Value).Distinct().ToList();
+        var folderLookup = new Dictionary<Guid, string>();
+        foreach (var folderId in folderIds)
+            folderLookup[folderId] = (await repositoryService.GetAssetFolder(folderId)).Name;
+
+        return assetList
+            .Select(asset =>
+                new AssetSummary(
+                    asset.AssetId,
+                    asset.Name,
+                    asset.MediaType,
+                    asset.SizeBytes,
+                    asset.Scope,
+                    asset.Created,
+                    asset.FolderId,
+                    asset.FolderId.HasValue && folderLookup.TryGetValue(asset.FolderId.Value, out var folderName) ? folderName : null
+                )
+            )
+            .ToList();
     }
 }

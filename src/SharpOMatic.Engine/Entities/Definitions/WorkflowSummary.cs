@@ -4,4 +4,5 @@ public class WorkflowSummary : Entity
 {
     public required string Name { get; set; }
     public required string Description { get; set; }
+    public required bool IsConversationEnabled { get; set; }
 }

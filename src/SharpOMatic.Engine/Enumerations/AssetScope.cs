@@ -4,4 +4,5 @@ public enum AssetScope
 {
     Library = 0,
     Run = 1,
+    Conversation = 2,
 }

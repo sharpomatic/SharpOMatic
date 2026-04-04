@@ -76,6 +76,34 @@ public class WorkflowRunner
         services.AddSingleton<IRepositoryService, TestRepositoryService>();
 
         var assetStoreMock = new Mock<IAssetStore>();
+        var assetStorage = new ConcurrentDictionary<string, byte[]>();
+        assetStoreMock
+            .Setup(store => store.SaveAsync(It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .Returns<string, Stream, CancellationToken>(async (storageKey, stream, _) =>
+            {
+                using var memory = new MemoryStream();
+                await stream.CopyToAsync(memory);
+                assetStorage[storageKey] = memory.ToArray();
+            });
+        assetStoreMock
+            .Setup(store => store.OpenReadAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns<string, CancellationToken>((storageKey, _) =>
+            {
+                if (!assetStorage.TryGetValue(storageKey, out var data))
+                    throw new FileNotFoundException($"Asset '{storageKey}' cannot be found.");
+
+                return Task.FromResult<Stream>(new MemoryStream(data, writable: false));
+            });
+        assetStoreMock
+            .Setup(store => store.ExistsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns<string, CancellationToken>((storageKey, _) => Task.FromResult(assetStorage.ContainsKey(storageKey)));
+        assetStoreMock
+            .Setup(store => store.DeleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns<string, CancellationToken>((storageKey, cancellationToken) =>
+            {
+                assetStorage.TryRemove(storageKey, out var removedBytes);
+                return Task.CompletedTask;
+            });
         services.AddSingleton(assetStoreMock.Object);
 
         return services.BuildServiceProvider();

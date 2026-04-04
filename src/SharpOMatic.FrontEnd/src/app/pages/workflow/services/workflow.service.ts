@@ -31,6 +31,8 @@ import { SortDirection } from '../../../enumerations/sort-direction';
 import { AssetSummary } from '../../assets/interfaces/asset-summary';
 import { AssetScope } from '../../../enumerations/asset-scope';
 import { AssetSortField } from '../../../enumerations/asset-sort-field';
+import { ConversationHistoryTurnModel } from '../interfaces/conversation-history-turn-model';
+import { ConversationHistoryModel } from '../interfaces/conversation-history-model';
 
 @Injectable({
   providedIn: 'root',
@@ -46,6 +48,8 @@ export class WorkflowService implements OnDestroy {
   public traces: WritableSignal<TraceProgressModel[]>;
   public informations: WritableSignal<InformationProgressModel[]>;
   public runAssets: WritableSignal<AssetSummary[]>;
+  public conversationTurns: WritableSignal<ConversationHistoryTurnModel[]>;
+  public conversationAssets: WritableSignal<AssetSummary[]>;
   public runs: WritableSignal<RunProgressModel[]>;
   public runsTotal: WritableSignal<number>;
   public runsPage: WritableSignal<number>;
@@ -55,6 +59,7 @@ export class WorkflowService implements OnDestroy {
   public runInputs: WritableSignal<ContextEntryListEntity>;
   private lastStartInputsSnapshot?: ContextEntryListSnapshot;
   private activeLiveRunId?: string;
+  private activeConversationId?: string;
 
   // Create a stable references for listener functions, so they run in correct zone
   private readonly runProgressListener = (data: RunProgressModel) =>
@@ -73,6 +78,8 @@ export class WorkflowService implements OnDestroy {
     this.traces = signal([]);
     this.informations = signal([]);
     this.runAssets = signal([]);
+    this.conversationTurns = signal([]);
+    this.conversationAssets = signal([]);
     this.runs = signal([]);
     this.runsTotal = signal(0);
     this.runsPage = signal(1);
@@ -114,7 +121,11 @@ export class WorkflowService implements OnDestroy {
 
   load(id: string) {
     this.serverWorkflowService.getWorkflow(id).subscribe((workflow) => {
-      this.workflow.set(workflow as WorkflowEntity);
+      if (!workflow) {
+        return;
+      }
+
+      this.workflow.set(workflow);
       this.workflow()
         .nodes()
         .forEach((nodeEntity) => nodeEntity.displayState.set(NodeStatus.None));
@@ -126,44 +137,14 @@ export class WorkflowService implements OnDestroy {
       this.runsSortField.set(RunSortField.Created);
       this.runsSortDirection.set(SortDirection.Descending);
       this.runAssets.set([]);
+      this.conversationTurns.set([]);
+      this.conversationAssets.set([]);
       this.activeLiveRunId = undefined;
+      this.activeConversationId = undefined;
       this.updateRunInputsFromWorkflow();
       this.workflow().markClean();
       this.loadRunsPageForWorkflow(id, 1);
-      this.serverWorkflowService.getLatestWorkflowRun(id).subscribe((run) => {
-        if (run) {
-          this.runProgress.set(run);
-          this.activeLiveRunId = this.isLiveRun(run) ? run.runId : undefined;
-          this.updateRunInputsFromLatestRun();
-          this.serverWorkflowService
-            .getRunTraces(run.runId)
-            .subscribe((traces) => {
-              if (traces) {
-                this.traces.set(traces);
-                const nodes = this.workflow().nodes();
-                traces.forEach((t) => {
-                  const nodeEntity = nodes.find((n) => n.id == t.nodeEntityId);
-                  if (nodeEntity) {
-                    nodeEntity.displayState.set(t.nodeStatus);
-                  }
-                });
-              }
-            });
-          this.serverWorkflowService
-            .getRunInformations(run.runId)
-            .subscribe((informations) => {
-              this.informations.set(
-                this.sortInformations(informations ?? []),
-              );
-            });
-          this.updateRunAssetsForRun(run);
-          return;
-        }
-        this.activeLiveRunId = undefined;
-        this.traces.set([]);
-        this.informations.set([]);
-        this.runAssets.set([]);
-      });
+      this.loadLatestExecutionState(id, workflow.isConversationEnabled());
     });
   }
 
@@ -178,10 +159,18 @@ export class WorkflowService implements OnDestroy {
 
   run(): Observable<string | undefined> {
     this.isRunning.set(true);
-    return this.serverWorkflowService.runWorkflow(
-      this.workflow().id,
-      this.runInputs(),
-    ).pipe(
+    const workflow = this.workflow();
+    const runRequest = workflow.isConversationEnabled()
+      ? this.serverWorkflowService.runConversationWorkflow(
+          workflow.id,
+          this.getOrCreateActiveConversationId(),
+          this.shouldSendConversationInputEntries()
+            ? this.runInputs()
+            : undefined,
+        )
+      : this.serverWorkflowService.runWorkflow(workflow.id, this.runInputs());
+
+    return runRequest.pipe(
       map((runId) => {
         if (!runId) {
           this.isRunning.set(false);
@@ -189,7 +178,11 @@ export class WorkflowService implements OnDestroy {
         }
 
         this.activeLiveRunId = runId;
-        this.resetLiveRunState();
+        if (workflow.isConversationEnabled()) {
+          this.prepareConversationLiveRun();
+        } else {
+          this.resetLiveRunState();
+        }
         return runId;
       }),
     );
@@ -230,21 +223,30 @@ export class WorkflowService implements OnDestroy {
       return;
     }
 
+    if (workflow.isConversationEnabled() && data.conversationId) {
+      this.activeConversationId = data.conversationId;
+    }
+
     switch (data.runStatus) {
       case RunStatus.Created: {
-        workflow
-          .nodes()
-          .forEach((nodeEntity) =>
-            nodeEntity.displayState.set(NodeStatus.None),
-          );
+        this.resetNodeDisplayStates();
         this.runProgress.set(data);
-        this.traces.set([]);
-        this.informations.set([]);
-        this.runAssets.set([]);
+        if (workflow.isConversationEnabled()) {
+          this.upsertConversationTurnRun(data);
+          this.syncLatestTurnSignals(data.runId);
+        } else {
+          this.traces.set([]);
+          this.informations.set([]);
+          this.runAssets.set([]);
+        }
         break;
       }
       case RunStatus.Running: {
         this.runProgress.set(data);
+        if (workflow.isConversationEnabled()) {
+          this.upsertConversationTurnRun(data);
+          this.syncLatestTurnSignals(data.runId);
+        }
         break;
       }
       case RunStatus.Suspended: {
@@ -252,7 +254,12 @@ export class WorkflowService implements OnDestroy {
         this.isRunning.set(false);
         this.activeLiveRunId = undefined;
         this.toastService.success(`${workflow.name()} suspended.`);
-        this.updateRunAssetsForRun(data);
+        if (workflow.isConversationEnabled() && data.conversationId) {
+          this.upsertConversationTurnRun(data);
+          this.loadConversationHistory(data.conversationId);
+        } else {
+          this.updateRunAssetsForRun(data);
+        }
         break;
       }
       case RunStatus.Success: {
@@ -262,7 +269,12 @@ export class WorkflowService implements OnDestroy {
         const workflowName = workflow.name();
         const successMessage = `${workflowName} completed successfully.`;
         this.toastService.success(successMessage);
-        this.updateRunAssetsForRun(data);
+        if (workflow.isConversationEnabled() && data.conversationId) {
+          this.upsertConversationTurnRun(data);
+          this.loadConversationHistory(data.conversationId);
+        } else {
+          this.updateRunAssetsForRun(data);
+        }
         break;
       }
       case RunStatus.Failed: {
@@ -275,7 +287,12 @@ export class WorkflowService implements OnDestroy {
           ? `${workflowName} failed: ${errorMessage}`
           : `${workflowName} failed.`;
         this.toastService.error(failureMessage);
-        this.updateRunAssetsForRun(data);
+        if (workflow.isConversationEnabled() && data.conversationId) {
+          this.upsertConversationTurnRun(data);
+          this.loadConversationHistory(data.conversationId);
+        } else {
+          this.updateRunAssetsForRun(data);
+        }
         break;
       }
     }
@@ -293,6 +310,12 @@ export class WorkflowService implements OnDestroy {
     if (nodeEntity) {
       nodeEntity.displayState.set(data.nodeStatus);
     }
+    if (workflow.isConversationEnabled()) {
+      this.upsertConversationTurnTrace(data);
+      this.syncLatestTurnSignals(data.runId);
+      return;
+    }
+
     if (data.nodeStatus === NodeStatus.Running) {
       this.traces.update((traces) => [...traces, data]);
     } else {
@@ -321,6 +344,12 @@ export class WorkflowService implements OnDestroy {
       (information) => information.runId === currentRunId,
     );
     if (matchingInformations.length === 0) {
+      return;
+    }
+
+    if (this.workflow().isConversationEnabled()) {
+      this.upsertConversationTurnInformations(currentRunId, matchingInformations);
+      this.syncLatestTurnSignals(currentRunId);
       return;
     }
 
@@ -620,6 +649,145 @@ export class WorkflowService implements OnDestroy {
       });
   }
 
+  private prepareConversationLiveRun(): void {
+    this.resetNodeDisplayStates();
+    const runId = this.activeLiveRunId;
+    if (!runId) {
+      return;
+    }
+
+    this.conversationTurns.update((turns) =>
+      turns.map((turn) =>
+        turn.run.runId === runId
+          ? { ...turn, traces: [], informations: [], assets: [] }
+          : turn,
+      ),
+    );
+  }
+
+  private upsertConversationTurnRun(run: RunProgressModel): void {
+    this.conversationTurns.update((turns) => {
+      const index = turns.findIndex((turn) => turn.run.runId === run.runId);
+      const nextTurns = [...turns];
+      if (index >= 0) {
+        nextTurns[index] = { ...nextTurns[index], run };
+      } else {
+        nextTurns.push({ run, traces: [], informations: [], assets: [] });
+      }
+
+      return this.sortConversationTurns(nextTurns);
+    });
+  }
+
+  private upsertConversationTurnTrace(trace: TraceProgressModel): void {
+    this.conversationTurns.update((turns) =>
+      turns.map((turn) => {
+        if (turn.run.runId !== trace.runId) {
+          return turn;
+        }
+
+        if (trace.nodeStatus === NodeStatus.Running) {
+          return { ...turn, traces: [...turn.traces, trace] };
+        }
+
+        const traces = [...turn.traces];
+        const index = traces.findIndex((entry) => entry.traceId === trace.traceId);
+        if (index >= 0) {
+          traces[index] = trace;
+        } else {
+          traces.push(trace);
+        }
+
+        return { ...turn, traces };
+      }),
+    );
+  }
+
+  private upsertConversationTurnInformations(
+    runId: string,
+    informations: InformationProgressModel[],
+  ): void {
+    this.conversationTurns.update((turns) =>
+      turns.map((turn) => {
+        if (turn.run.runId !== runId) {
+          return turn;
+        }
+
+        const byId = new Map(
+          turn.informations.map((information) => [information.informationId, information]),
+        );
+        informations.forEach((information) =>
+          byId.set(information.informationId, information),
+        );
+
+        return {
+          ...turn,
+          informations: this.sortInformations([...byId.values()]),
+        };
+      }),
+    );
+  }
+
+  private sortConversationTurns(
+    turns: ConversationHistoryTurnModel[],
+  ): ConversationHistoryTurnModel[] {
+    return [...turns]
+      .map((turn) => ({
+        ...turn,
+        traces: [...(turn.traces ?? [])],
+        informations: this.sortInformations(turn.informations ?? []),
+        assets: this.sortAssetsByCreated(turn.assets ?? []),
+      }))
+      .sort((left, right) => {
+        const leftTurn = left.run.turnNumber ?? 0;
+        const rightTurn = right.run.turnNumber ?? 0;
+        if (leftTurn !== rightTurn) {
+          return leftTurn - rightTurn;
+        }
+
+        const leftTime = Date.parse(left.run.created);
+        const rightTime = Date.parse(right.run.created);
+        const normalizedLeft = Number.isFinite(leftTime) ? leftTime : 0;
+        const normalizedRight = Number.isFinite(rightTime) ? rightTime : 0;
+        return normalizedLeft - normalizedRight;
+      });
+  }
+
+  private sortAssetsByCreated(assets: AssetSummary[]): AssetSummary[] {
+    return [...assets].sort((left, right) => {
+      const leftTime = Date.parse(left.created);
+      const rightTime = Date.parse(right.created);
+      const normalizedLeft = Number.isFinite(leftTime) ? leftTime : 0;
+      const normalizedRight = Number.isFinite(rightTime) ? rightTime : 0;
+      return normalizedLeft - normalizedRight;
+    });
+  }
+
+  private getTurnTraces(runId: string): TraceProgressModel[] {
+    return (
+      this.conversationTurns().find((turn) => turn.run.runId === runId)?.traces ?? []
+    );
+  }
+
+  private getTurnInformations(runId: string): InformationProgressModel[] {
+    return (
+      this.conversationTurns().find((turn) => turn.run.runId === runId)?.informations ??
+      []
+    );
+  }
+
+  private getTurnAssets(runId: string): AssetSummary[] {
+    return (
+      this.conversationTurns().find((turn) => turn.run.runId === runId)?.assets ?? []
+    );
+  }
+
+  private syncLatestTurnSignals(runId: string): void {
+    this.traces.set([...this.getTurnTraces(runId)]);
+    this.informations.set(this.sortInformations(this.getTurnInformations(runId)));
+    this.runAssets.set([...this.getTurnAssets(runId)]);
+  }
+
   private sortInformations(
     informations: InformationProgressModel[],
   ): InformationProgressModel[] {
@@ -630,6 +798,101 @@ export class WorkflowService implements OnDestroy {
       const normalizedRight = Number.isFinite(rightTime) ? rightTime : 0;
       return normalizedLeft - normalizedRight;
     });
+  }
+
+  private loadLatestExecutionState(
+    workflowId: string,
+    isConversationEnabled: boolean,
+  ): void {
+    if (isConversationEnabled) {
+      this.serverWorkflowService
+        .getLatestWorkflowConversation(workflowId)
+        .subscribe((conversation) => {
+          if (!conversation?.conversationId) {
+            this.clearLatestExecutionState();
+            return;
+          }
+
+          this.loadConversationHistory(conversation.conversationId);
+        });
+      return;
+    }
+
+    this.serverWorkflowService.getLatestWorkflowRun(workflowId).subscribe((run) => {
+      if (run) {
+        this.applySingleRunState(run);
+        return;
+      }
+
+      this.clearLatestExecutionState();
+    });
+  }
+
+  private loadConversationHistory(conversationId: string): void {
+    this.serverWorkflowService
+      .getConversationHistory(conversationId)
+      .subscribe((history) => {
+        if (!history) {
+          this.clearLatestExecutionState();
+          return;
+        }
+
+        this.activeConversationId = history.conversationId;
+        const sortedTurns = this.sortConversationTurns(history.turns ?? []);
+        this.conversationTurns.set(sortedTurns);
+        this.conversationAssets.set(
+          this.sortAssetsByCreated(history.conversationAssets ?? []),
+        );
+
+        const latestRun = history.latestRun ?? sortedTurns.at(-1)?.run;
+        if (!latestRun) {
+          this.clearLatestExecutionState();
+          this.activeConversationId = conversationId;
+          this.conversationTurns.set(sortedTurns);
+          this.conversationAssets.set(
+            this.sortAssetsByCreated(history.conversationAssets ?? []),
+          );
+          return;
+        }
+
+        this.runProgress.set(latestRun);
+        this.activeLiveRunId = this.isLiveRun(latestRun) ? latestRun.runId : undefined;
+        this.updateRunInputsFromLatestRun();
+        this.syncLatestTurnSignals(latestRun.runId);
+        this.applyNodeDisplayStates(this.getTurnTraces(latestRun.runId));
+      });
+  }
+
+  private applySingleRunState(run: RunProgressModel): void {
+    this.runProgress.set(run);
+    this.activeLiveRunId = this.isLiveRun(run) ? run.runId : undefined;
+    this.activeConversationId = run.conversationId ?? undefined;
+    this.conversationTurns.set([]);
+    this.conversationAssets.set([]);
+    this.updateRunInputsFromLatestRun();
+    this.serverWorkflowService.getRunTraces(run.runId).subscribe((traces) => {
+      const nextTraces = traces ?? [];
+      this.traces.set(nextTraces);
+      this.applyNodeDisplayStates(nextTraces);
+    });
+    this.serverWorkflowService
+      .getRunInformations(run.runId)
+      .subscribe((informations) => {
+        this.informations.set(this.sortInformations(informations ?? []));
+      });
+    this.updateRunAssetsForRun(run);
+  }
+
+  private clearLatestExecutionState(): void {
+    this.activeLiveRunId = undefined;
+    this.activeConversationId = undefined;
+    this.runProgress.set(undefined);
+    this.traces.set([]);
+    this.informations.set([]);
+    this.runAssets.set([]);
+    this.conversationTurns.set([]);
+    this.conversationAssets.set([]);
+    this.resetNodeDisplayStates();
   }
 
   private shouldHandleRunProgress(data: RunProgressModel): boolean {
@@ -668,12 +931,47 @@ export class WorkflowService implements OnDestroy {
   }
 
   private resetLiveRunState(): void {
-    this.workflow()
-      .nodes()
-      .forEach((nodeEntity) => nodeEntity.displayState.set(NodeStatus.None));
+    this.resetNodeDisplayStates();
     this.runProgress.set(undefined);
     this.traces.set([]);
     this.informations.set([]);
     this.runAssets.set([]);
+  }
+
+  private resetNodeDisplayStates(): void {
+    this.workflow()
+      .nodes()
+      .forEach((nodeEntity) => nodeEntity.displayState.set(NodeStatus.None));
+  }
+
+  private applyNodeDisplayStates(traces: TraceProgressModel[]): void {
+    this.resetNodeDisplayStates();
+    const nodes = this.workflow().nodes();
+    traces.forEach((trace) => {
+      const nodeEntity = nodes.find((node) => node.id == trace.nodeEntityId);
+      if (nodeEntity) {
+        nodeEntity.displayState.set(trace.nodeStatus);
+      }
+    });
+  }
+
+  private getOrCreateActiveConversationId(): string {
+    if (!this.activeConversationId) {
+      this.activeConversationId = crypto.randomUUID();
+    }
+
+    return this.activeConversationId;
+  }
+
+  private shouldSendConversationInputEntries(): boolean {
+    const run = this.runProgress();
+    if (!this.activeConversationId || !run) {
+      return true;
+    }
+
+    return !(
+      run.conversationId === this.activeConversationId &&
+      run.runStatus === RunStatus.Suspended
+    );
   }
 }
