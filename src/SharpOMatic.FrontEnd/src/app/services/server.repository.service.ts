@@ -135,6 +135,7 @@ export class ServerRepositoryService {
     return this.http.get<WorkflowSnapshot>(`${apiUrl}/api/workflow/${id}`).pipe(
       map((snapshot) => WorkflowEntity.fromSnapshot(snapshot)),
       catchError((error) => {
+        debugger;
         this.notifyError('Loading workflow', error);
         return of(null);
       }),

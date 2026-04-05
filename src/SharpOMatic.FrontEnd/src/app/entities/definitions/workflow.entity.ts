@@ -26,6 +26,7 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
   public isDirty: Signal<boolean>;
 
   constructor(snapshot: WorkflowSnapshot) {
+    debugger;
     super(snapshot);
 
     this.name = signal(snapshot.name);

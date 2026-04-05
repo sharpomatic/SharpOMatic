@@ -18,6 +18,7 @@ import { SuspendNodeEntity, SuspendNodeSnapshot } from './suspend-node.entity';
 export function nodeFromSnapshot(
   snapshot: NodeSnapshot,
 ): NodeEntity<NodeSnapshot> {
+  debugger;
   switch (snapshot.nodeType) {
     case NodeType.Start:
       return StartNodeEntity.fromSnapshot(snapshot as StartNodeSnapshot);

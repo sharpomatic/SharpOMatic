@@ -6,6 +6,7 @@ export interface SuspendNodeSnapshot extends NodeSnapshot {}
 
 export class SuspendNodeEntity extends NodeEntity<SuspendNodeSnapshot> {
   constructor(snapshot: SuspendNodeSnapshot) {
+    debugger;
     super(snapshot);
   }
 
