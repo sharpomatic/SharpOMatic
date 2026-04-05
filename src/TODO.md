@@ -4,10 +4,9 @@
 
 ### Conversations
 
-- Fix he persistence bug on the suspend node
--   check the background serialization
--	check the front end matches
-- Have a conversations tab when conversation is enabled
+- Add a Resume tab when it is suspended, with the Resume simple option.
+- Add a context builder helper component and then show in the Resume as another option (or cheap way as JSON converted into ContextObject)
+- Have a conversations tab when conversation is enabled, do we hide Runs when it is for conversations?
 - Evaluations only allow selection of non-conversation workflows
 
 ### Model Calls

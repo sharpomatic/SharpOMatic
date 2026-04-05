@@ -161,13 +161,7 @@ export class WorkflowService implements OnDestroy {
     this.isRunning.set(true);
     const workflow = this.workflow();
     const runRequest = workflow.isConversationEnabled()
-      ? this.serverWorkflowService.runConversationWorkflow(
-          workflow.id,
-          this.getOrCreateActiveConversationId(),
-          this.shouldSendConversationInputEntries()
-            ? this.runInputs()
-            : undefined,
-        )
+      ? this.startNewConversationRun(workflow.id)
       : this.serverWorkflowService.runWorkflow(workflow.id, this.runInputs());
 
     return runRequest.pipe(
@@ -895,6 +889,20 @@ export class WorkflowService implements OnDestroy {
     this.resetNodeDisplayStates();
   }
 
+  private startNewConversationRun(
+    workflowId: string,
+  ): Observable<string | undefined> {
+    const conversationId = crypto.randomUUID();
+    this.clearLatestExecutionState();
+    this.activeConversationId = conversationId;
+
+    return this.serverWorkflowService.runConversationWorkflow(
+      workflowId,
+      conversationId,
+      this.runInputs(),
+    );
+  }
+
   private shouldHandleRunProgress(data: RunProgressModel): boolean {
     if (data.workflowId !== this.workflow().id) {
       return false;
@@ -955,23 +963,4 @@ export class WorkflowService implements OnDestroy {
     });
   }
 
-  private getOrCreateActiveConversationId(): string {
-    if (!this.activeConversationId) {
-      this.activeConversationId = crypto.randomUUID();
-    }
-
-    return this.activeConversationId;
-  }
-
-  private shouldSendConversationInputEntries(): boolean {
-    const run = this.runProgress();
-    if (!this.activeConversationId || !run) {
-      return true;
-    }
-
-    return !(
-      run.conversationId === this.activeConversationId &&
-      run.runStatus === RunStatus.Suspended
-    );
-  }
 }
