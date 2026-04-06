@@ -43,6 +43,9 @@ Graders are workflows that score or assess the output from the main evaluation w
 You can define multiple graders and set a pass threshold for each one.
 After the run completes, grader summaries provide statistics such as average score and pass rate.
 
+Evaluation workflows and grader workflows must be standard one-shot workflows.
+Conversation-enabled workflows are intentionally excluded from the evaluation workflow selectors because evaluations do not provide a way to answer suspend events during row execution.
+
 ### Grader Output Contract
 
 A grader workflow is expected to write its numeric score to the context path `score`.
@@ -103,6 +106,7 @@ Evaluation run result data is not transferred:
 Common causes of evaluation run failures:
 
 - **Missing workflow reference**: the evaluation workflow or grader workflow is not set or no longer exists.
+- **Conversation workflow selected previously**: if an older configuration references a conversation-enabled workflow, SharpOMatic clears that selection because evaluations cannot execute conversation turns.
 - **Missing mandatory row data**: a required column has no value for one or more rows.
 - **Invalid sample count**: the sample count is outside the valid range for the current row total.
 - **Missing grader score**: the grader workflow does not output a numeric value at `score`, so score summaries may look incomplete.

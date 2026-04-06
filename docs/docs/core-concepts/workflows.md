@@ -20,6 +20,7 @@ Common node types include:
 - **FanOut** / **FanIn** - run multiple paths in parallel.
 - **Batch** - process list inputs in chunked, optionally parallel batches.
 - **Gosub** - call a child workflow and optionally map context in and out.
+- **Suspend** - pause a conversation turn and continue it later.
 
 ## Connections
 
@@ -37,6 +38,10 @@ Nodes read from and write to a shared context, which is the mechanism for passin
 - On workflow completion, the final context is returned as the workflow result.
 - The context stores intermediate and temporary values. Modify it using configuration via the **Edit** node, or use the **Code** node for full access.
 
+For conversation-enabled workflows, the same context can continue across turns.
+If a conversation completes successfully and is later run again, the new turn starts at the **Start** node using the previous turn's output context as its base state.
+If a conversation suspends, the next turn resumes from the saved continuation point instead.
+
 ## Runs and Traces
 
 Each workflow run creates a record in the database that tracks:
@@ -53,6 +58,9 @@ Traces can also include parent-child relationships across nested workflow calls 
 All runs and traces are still persisted in the repository, including workflow runs created indirectly by evaluation rows and graders.
 However, the editor only live-updates the workflow trace panel for runs that were started directly from the workflow editor.
 If you open a workflow while an evaluation is running in the background, you may still see the latest saved run snapshot, but the trace panel does not keep following those evaluation-driven background runs live.
+
+Conversation-enabled workflows also keep per-conversation history in addition to individual runs.
+That includes turn-level traces and conversation-scoped assets.
 
 ## Workflow Completion
 

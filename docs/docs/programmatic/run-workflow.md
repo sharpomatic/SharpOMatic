@@ -5,288 +5,258 @@ sidebar_position: 1
 
 This section covers how to run workflows programmatically from your own code.
 
-## Create a new Run
+## Get `IEngineService`
 
-You need a reference to the **IEngineService** interface from your service provider.
-Call the **CreateWorkflowRun** method to create a new run instance and get back its run identifier.
-At this point the run has not started execution, but it will perform some validation steps.
+Workflow execution starts from `IEngineService`.
 
 ```csharp
-  var engine = serviceProvider.GetRequiredService<IEngineService>();
-  var runId = await engine.CreateWorkflowRun(workflowId);
+var engine = serviceProvider.GetRequiredService<IEngineService>();
 ```
 
-`CreateWorkflowRun` also accepts an optional `needsEditorEvents` flag.
-This is primarily used by the embedded editor so that only editor-started runs publish live trace and status updates back to the browser UI.
-Most programmatic callers should leave it as the default `false`.
-
-You can get the workflow identifier from the workflow details page.
-
-<img src="/img/programmatic_workflowid.png" alt="Custom model setup" width="600" style={{ maxWidth: '100%', height: 'auto' }} />
-
-If you prefer to use workflow names, use the helper method **GetWorkflowId**.
-Note that workflow names are not guaranteed to be unique, so you can add multiple workflows and give them the same name.
-When there is no match, or more than one match, it will throw an exception.
+If you prefer workflow names instead of stored identifiers, use `GetWorkflowId`.
+Workflow names are not guaranteed to be unique, so the helper throws if there is no match or more than one match.
 
 ```csharp
-  var engine = serviceProvider.GetRequiredService<IEngineService>();
-  var workflowId = await engine.GetWorkflowId("Example Workflow");
-  var runId = await engine.CreateWorkflowRun(workflowId);
+var engine = serviceProvider.GetRequiredService<IEngineService>();
+var workflowId = await engine.GetWorkflowId("Example Workflow");
 ```
 
-## Start the Run
+You can also get the workflow identifier directly from the editor UI.
 
-There are multiple engine methods for starting the workflow, to match different requirements.
+<img src="/img/programmatic_workflowid.png" alt="Workflow identifier" width="600" style={{ maxWidth: '100%', height: 'auto' }} />
 
-### Await result
+## Run A Standard Workflow
 
-When you are inside an async method, you can start the run and wait for the workflow to finish by using the **StartWorkflowRunAndWait** method.
-The workflow will actually execute on background threads, but once it finishes your await will complete.
-A **Run** object is always returned that contains a **RunStatus** property.
-Examine this to discover the **RunStatus.Success** or **RunStatus.Failed** outcome.
+Standard workflows are one-shot runs started directly from the workflow identifier.
 
-On success the **OutputContext** property has a JSON-serialized string of the finishing context.
-To access the contents, use the **Deserialize** helper on **ContextObject**.
-The example below shows how to perform that conversion.
+### Await the result
+
+Use `StartWorkflowRunAndWait` when you want the completed `Run` back in the current async flow.
 
 ```csharp
-  var engine = serviceProvider.GetRequiredService<IEngineService>();
-  var workflowId = await engine.GetWorkflowId("Example Workflow");
-  var runId = await engine.CreateWorkflowRun(workflowId);
+var engine = serviceProvider.GetRequiredService<IEngineService>();
+var workflowId = await engine.GetWorkflowId("Example Workflow");
 
-  var completed = await engine.StartWorkflowRunAndWait(runId);
-  if (completed.RunStatus == RunStatus.Failed)
-  {
-    // Log or otherwise process a failure as needed
+var completed = await engine.StartWorkflowRunAndWait(workflowId);
+if (completed.RunStatus == RunStatus.Failed)
+{
     Console.WriteLine($"Failed with error {completed.Error}");
-  }
-  else if (completed.RunStatus == RunStatus.Success)
-  {
-    // Deserialize needs access to the customized list of json converters
+}
+else if (completed.RunStatus == RunStatus.Success)
+{
     var jsonConverters = serviceProvider.GetRequiredService<IJsonConverterService>();
-    ContextObject context = ContextObject.Deserialize(completed.OutputContext, jsonConverters);
-
-    // Perform success actions here
-  }
+    var context = ContextObject.Deserialize(completed.OutputContext, jsonConverters);
+}
 ```
 
-The advantage of this approach is that it is easy to implement and can be exposed as the logic of a REST endpoint.
-As long as your workflow is expected to finish before the timeout of the REST call, it provides a synchronous result to the caller.
-If you cannot guarantee completion within the timeout period, then this approach will not be reliable.
-In that case, consider using the next option.
+### Start and return immediately
 
-### Notify result
-
-Instead of waiting for the result, you can start the workflow executing and then return immediately.
-In this scenario, completion is reported through the **IEngineNotification** interface that you must implement and register.
-Here is the code to start the workflow running.
+Use `StartWorkflowRunAndNotify` when you want to begin execution and return the `runId` immediately.
+Completion then arrives through `IEngineNotification`.
 
 ```csharp
-  var engine = serviceProvider.GetRequiredService<IEngineService>();
-  var workflowId = await engine.GetWorkflowId("Example Workflow");
-  var runId = await engine.CreateWorkflowRun(workflowId);
+var engine = serviceProvider.GetRequiredService<IEngineService>();
+var workflowId = await engine.GetWorkflowId("Example Workflow");
 
-  await engine.StartWorkflowRunAndNotify(runId);
+var runId = await engine.StartWorkflowRunAndNotify(workflowId);
 ```
 
-The interface includes workflow completion, evaluation completion, and connection override hooks.
+### Synchronous execution
+
+`StartWorkflowRunSynchronously` is available when you deliberately want blocking execution.
+This is usually not recommended for web request paths.
 
 ```csharp
-  public interface IEngineNotification
-  {
+var engine = serviceProvider.GetRequiredService<IEngineService>();
+var workflowId = await engine.GetWorkflowId("Example Workflow");
+
+var completed = engine.StartWorkflowRunSynchronously(workflowId);
+```
+
+## Pass Initial State
+
+All standard workflow start methods accept an optional `ContextObject`.
+That object becomes the initial run context.
+
+```csharp
+var engine = serviceProvider.GetRequiredService<IEngineService>();
+var workflowId = await engine.GetWorkflowId("Tenant Summary");
+
+var context = new ContextObject();
+context.Set("input.tenantId", "tenant-42");
+context.Set("input.userId", "user-9");
+context.Set("input.prompt", "Summarize the latest support tickets.");
+
+var completed = await engine.StartWorkflowRunAndWait(workflowId, context);
+```
+
+If you want to mirror the editor's typed start-input experience, you can also pass `ContextEntryListEntity` through the `inputEntries` parameter.
+That is useful when you want SharpOMatic to perform the same type conversions used by the **Start** node input editor.
+
+## Run A Conversation Workflow
+
+Conversation workflows use different methods because they carry state across turns.
+
+Use:
+
+- `StartOrResumeConversationAndWait`
+- `StartOrResumeConversationAndNotify`
+- `StartOrResumeConversationSynchronously`
+
+These methods require both `workflowId` and `conversationId`.
+
+### Start the first turn
+
+If the conversation does not exist yet, SharpOMatic creates it and starts from the **Start** node.
+
+```csharp
+var engine = serviceProvider.GetRequiredService<IEngineService>();
+var workflowId = await engine.GetWorkflowId("Support Chat");
+var conversationId = Guid.NewGuid();
+
+var firstTurn = await engine.StartOrResumeConversationAndWait(
+    workflowId,
+    conversationId);
+```
+
+### Continue after a completed turn
+
+If the latest turn completed successfully, calling the same method again starts a new turn from the **Start** node.
+The previous turn's output context becomes the base context for the next turn.
+
+```csharp
+var nextTurn = await engine.StartOrResumeConversationAndWait(
+    workflowId,
+    conversationId);
+```
+
+### Resume a suspended turn
+
+If the latest turn suspended, SharpOMatic resumes from the waiting continuation point instead of the **Start** node.
+The default resume input is `ContinueResumeInput`, so a plain call is enough when no extra resume data is needed.
+
+```csharp
+var resumed = await engine.StartOrResumeConversationAndWait(
+    workflowId,
+    conversationId,
+    new ContinueResumeInput());
+```
+
+If the suspend point expects extra data, use `ContextMergeResumeInput` and merge a `ContextObject` into the resume operation.
+
+```csharp
+var resumeContext = new ContextObject();
+resumeContext.Set("resume.answer", "final answer");
+resumeContext.Set("resume.approved", true);
+
+var resumed = await engine.StartOrResumeConversationAndWait(
+    workflowId,
+    conversationId,
+    new ContextMergeResumeInput { Context = resumeContext });
+```
+
+### Conversation notifications
+
+The notify variant works the same way but returns immediately with the new `runId`.
+
+```csharp
+var runId = await engine.StartOrResumeConversationAndNotify(
+    workflowId,
+    conversationId);
+```
+
+## `IEngineNotification`
+
+`IEngineNotification` is used for workflow and evaluation completion plus connection overrides.
+
+```csharp
+public class EngineNotification(IServiceProvider serviceProvider) : IEngineNotification
+{
     public Task RunCompleted(
-        Guid runId, 
-        Guid workflowId, 
-        RunStatus runStatus, 
-        string? outputContext, 
-        string? error);
+        Guid runId,
+        Guid workflowId,
+        RunStatus runStatus,
+        string? outputContext,
+        string? error)
+    {
+        if (runStatus == RunStatus.Failed)
+        {
+            Console.WriteLine($"Failed with error {error ?? ""}");
+        }
+        else if (runStatus == RunStatus.Success)
+        {
+            var jsonConverters = serviceProvider.GetRequiredService<IJsonConverterService>();
+            var context = ContextObject.Deserialize(outputContext, jsonConverters);
+        }
+
+        return Task.CompletedTask;
+    }
 
     public Task EvalRunCompleted(
         Guid evalRunId,
         EvalRunStatus runStatus,
-        string? error);
-
-    public void ConnectionOverride(
-        Guid runId, 
-        Guid workflowId, 
-        string connectorId, 
-        AuthenticationModeConfig authenticationModel, 
-        Dictionary<string, string?> parameters);
-  }
-```
-
-The **RunCompleted** method is invoked each time a **Run** completes with success or failure.
-Likewise the **EvalRunCompleted** is invoked when an evaluation run completes.
-**ConnectionOverride** is called whenever a connection is about to be used.
-It allows you to override the connection properties such as the target endpoint and API key.
-This makes it easy to implement different values per environment.
-For example, your application could retrieve the values from Azure Key Vault.
-
-Here is a simple implementation of the interface to duplicate the previous logic.
-
-```csharp
-  public class EngineNotification(IServiceProvider serviceProvider) : IEngineNotification
-  {
-    public async Task RunCompleted(
-        Guid runId, 
-        Guid workflowId, 
-        RunStatus runStatus, 
-        string? outputContext, 
         string? error)
     {
-      if (runStatus == RunStatus.Failed)
-      {
-        // Log or otherwise process a failure as needed
-        Console.WriteLine($"Failed with error {error ?? ""}");
-      }
-      else if (runStatus == RunStatus.Success)
-      { 
-        // Deserialize needs access to the customized list of json converters
-        var jsonConverters = serviceProvider.GetRequiredService<IJsonConverterService>();
-        ContextObject context = ContextObject.Deserialize(outputContext, jsonConverters);
-
-        // Perform success actions here
-      }        
-    }
-
-    public Task EvalRunCompleted(
-      Guid evalRunId,
-      EvalRunStatus runStatus,
-      string? error)
-    {
-      // Handle evaluation completion if your host uses eval runs
-      return Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     public void ConnectionOverride(
-        Guid runId, 
-        Guid workflowId, 
-        string connectorId, 
-        AuthenticationModeConfig authenticationModel, 
+        Guid runId,
+        Guid workflowId,
+        string connectorId,
+        AuthenticationModeConfig authenticationModel,
         Dictionary<string, string?> parameters)
     {
-      if (connectorId == "azure_openai")
-      {
-        if (authenticationModel.Id == "api_key")
+        if (connectorId == "azure_openai" && authenticationModel.Id == "api_key")
         {
-          // Override settings with values from environment or Azure Key Vault etc...
-          parameters["endpoint"] = "myEndpoint";
-          parameters["api_key"] = "mySecret";
+            parameters["endpoint"] = "myEndpoint";
+            parameters["api_key"] = "mySecret";
         }
-      }
     }
-  }
+}
 ```
 
-### Progress Notifications
+## `IProgressService`
 
-If you need to monitor workflow execution at a more granular level, then implement the **IProgressService** interface.
-This interface is used internally to notify the front end during run and eval run execution.
-
-The interface includes workflow run progress, trace progress, and evaluation run progress.
+If you need run-state updates while execution is in progress, implement `IProgressService`.
 
 ```csharp
-  public interface IProgressService
-  {
-    Task RunProgress(Run run);
-    Task TraceProgress(Run run, Trace trace);
-    Task InformationsProgress(Run run, List<Information> informations);
-    Task EvalRunProgress(EvalRun evalRun);
-  }
-```
-
-The **RunProgress** method is invoked each time a **Run** changes state.
-**TraceProgress** is called whenever a new **Trace** record is created or changes its value.
-**InformationsProgress** is called whenever informational records are added or updated for the run.
-A trace record is used to track the state of an individual node as it is processed.
-Here is a simple implementation.
-The **EvalRunProgress** method is invoked as each row of the evaluation is processed.
-
-```csharp
-  public class ProgressService(IServiceProvider serviceProvider) : IProgressService
-  {
-    public async Task RunProgress(Run model)
+public class ProgressService : IProgressService
+{
+    public Task RunProgress(Run run)
     {
-      if (model.RunStatus == RunStatus.Failed)
-      {
-        // Log or otherwise process a failure
-        Console.WriteLine($"Workflow {model.WorkflowId} failed with error {model.Error}");
-      }
-      else
-      { 
-        // Log all other state changes
-        Console.WriteLine($"Workflow {model.WorkflowId} is now {model.RunStatus}");
-      }
+        Console.WriteLine($"Workflow {run.WorkflowId} is now {run.RunStatus}");
+        return Task.CompletedTask;
     }
 
-    public async Task TraceProgress(Run run, Trace model)
+    public Task TraceProgress(Run run, Trace trace)
     {
-        Console.WriteLine($"Workflow {model.WorkflowId} Node {model.NodeEntityId} is now {model.Message}");
+        Console.WriteLine(
+            $"Workflow {trace.WorkflowId} Node {trace.NodeEntityId} is now {trace.Message}");
+        return Task.CompletedTask;
     }
 
-    public async Task InformationsProgress(Run run, List<Information> informations)
+    public Task InformationsProgress(Run run, List<Information> informations)
     {
         Console.WriteLine($"Workflow {run.WorkflowId} published {informations.Count} information updates");
+        return Task.CompletedTask;
     }
 
-    public async Task EvalRunProgress(EvalRun evalRun)
+    public Task EvalRunProgress(EvalRun evalRun)
     {
         Console.WriteLine($"Eval run {evalRun.EvalRunId} is now {evalRun.Status}");
+        return Task.CompletedTask;
     }
-  }
+}
 ```
 
-Note that you can add more than one **IProgressService** implementation if you need to split up functionality, in that case, they are called in sequence.
-If you are hosting the embedded editor, live browser updates are typically only sent for runs created with `needsEditorEvents: true`.
+If you are hosting the embedded editor, live browser updates are normally only sent for runs created with `needsEditorEvents: true`.
 
-### Synchronous
+## Notes
 
-This is not a recommended approach, but you can perform a synchronous call and wait for the workflow to finish.
-The problem is that a long-running request is going to cause the thread to be suspended until the workflow finishes.
-Potentially, this can result in thread starvation if you have many parallel workflows.
+- Use standard workflow methods for one-shot workflows.
+- Use conversation methods only for conversation-enabled workflows.
+- Conversation-enabled workflows cannot be started through the standard workflow methods.
+- Suspended conversations cannot accept start input entries during resume.
 
-```csharp
-  var engine = serviceProvider.GetRequiredService<IEngineService>();
-  var workflowId = await engine.GetWorkflowId("Example Workflow");
-  var runId = await engine.CreateWorkflowRun(workflowId);
-
-  // NOTICE: It does not use await on the call, making it synchronous
-  var completed = engine.StartWorkflowRunSynchronously(runId);
-  if (completed.RunStatus == RunStatus.Failed)
-  {
-    // Log or otherwise process a failure as needed
-    Console.WriteLine($"Failed with error {completed.Error}");
-  }
-  else if (completed.RunStatus == RunStatus.Success)
-  {
-    // Deserialize needs access to the customized list of json converters
-    var jsonConverters = serviceProvider.GetRequiredService<IJsonConverterService>();
-    ContextObject context = ContextObject.Deserialize(completed.OutputContext, jsonConverters);
-
-    // Perform success actions here
-  }
-```
-
-## Initializing the context
-
-Most real-world workflows are going to have inputs that are used to parameterize the workflow operation.
-All of the above methods for starting a workflow have a second parameter of type **ContextObject**.
-This is the initial context instance that will be given to the start node.
-If you do not provide the second parameter it will default to an empty instance.
-
-How to provide a context:
-
-```csharp
-  var engine = serviceProvider.GetRequiredService<IEngineService>();
-  var workflowId = await engine.GetWorkflowId("Example Workflow");
-  var runId = await engine.CreateWorkflowRun(workflowId);
-
-  var context = new ContextObject();
-  context.Set<string>("input.prompt", "What is the capital of Brazil?");
-  context.Set<int>("input.user_id", 42);
-  context.Set<DateTimeOffset>("input.now", DateTimeOffset.Now);
-
-  var completed = await engine.StartWorkflowRunAndWait(runId, context);
-```
-
-For more detailed information about contexts, see the [Context](../core-concepts/context.md) section.
+For more detail on state handling, see [Managing State](./managing-state.md).

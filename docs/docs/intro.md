@@ -18,6 +18,11 @@ All AI based workflows should have evaluations.
 They compound the benefit of configuration over code because your evaluation is run for each new prompt, design change and model release.
 Objective measures are needed for reliable production systems, not just eye balling results.
 
+## Conversations
+
+SharpOMatic also supports multi-turn conversations.
+Conversation workflows can suspend, persist their state, and later resume from the waiting continuation point or start a new turn from the saved conversation context.
+
 ## Host your own execution
 
 The execution engine is hosted in your project so you retain complete control over the environment and storage of all data.
@@ -33,6 +38,7 @@ Expose your C# types for structured outputs and C# functions for tool calling.
 ## What you can do
 
 - Build workflows with nodes for models, code, branching, and orchestration.
+- Build multi-turn conversation workflows with persisted history and resume support.
 - Run and debug workflows with rich run state and persisted history.
 - Configure and run evaluations against datasets with grader workflows.
 - Embed the editor into your own ASP.NET Core host.
@@ -53,6 +59,7 @@ Use the [Getting Started](./getting-started/start-with-github-code.md) guides to
 
 Read the [Core Concepts](./core-concepts/workflows.md) section before continuing to more specific features.
 
-To evaluate your workflows, go to [Evaluations](./core-concepts/evaluations.md).
+For multi-turn workflows, go to [Conversations](./core-concepts/conversations.md).
 
+To evaluate your workflows, go to [Evaluations](./core-concepts/evaluations.md).
 

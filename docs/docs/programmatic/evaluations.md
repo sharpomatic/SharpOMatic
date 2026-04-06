@@ -10,6 +10,8 @@ For evaluation concepts and editor flows, see [Evaluations](../core-concepts/eva
 
 Use the editor to design and maintain evaluation configurations (columns, rows, and graders).
 Use programmatic APIs when your application needs to start runs, monitor progress, and process run outcomes as part of automation.
+Evaluation runs must reference non-conversation workflows for both the main workflow and all graders.
+Conversation-enabled workflows are excluded from the editor selectors because evaluation execution cannot respond to suspend events.
 
 ## Start an evaluation run
 

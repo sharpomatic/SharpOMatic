@@ -8,31 +8,65 @@
 
 # SharpOMatic
 
-SharpOMatic is an open-source workflow builder focused on AI-driven tasks.
+SharpOMatic is an open-source workflow builder for AI-heavy .NET applications.
+It combines a browser-based editor with a host-it-yourself execution engine so you can design workflows visually, run them inside your own backend, and keep complete control over data, storage, and integrations.
 
-## Configuration over code
+## What SharpOMatic Does
 
-One of the biggest challenges when building an AI-focused workflow is cycle time. 
-Constantly changing code to try new ideas slows you down. 
-AI is notorious for needing lots of experiments to find the right combination of model, prompts, tool calls, and glue logic to get the outcome you need. 
-Using SharpOMatic, you can prefer configuration over code, which lets you iterate on ideas much faster.
+- Build AI workflows with nodes for models, code, branching, batching, gosub calls, and suspend/resume control.
+- Run workflows either as one-shot executions or as multi-turn conversations.
+- Persist runs, traces, assets, and conversation history for debugging and auditing.
+- Call directly into your backend from C# code nodes and expose backend types and methods for structured output and tool calling.
+- Configure and run evaluations against datasets with grader workflows.
+- Embed the editor into your own ASP.NET Core host instead of relying on a managed SaaS.
 
 <img width="1048" height="481" alt="hero" src="https://github.com/user-attachments/assets/4494018b-90b8-4a8f-a815-93c7afd3e0ee" />
 
-## Host your own execution
+## Why Use It
 
-The execution engine is hosted in your project so you retain complete control over the environment and storage of all data. 
-There is no reliance on other providers, so you control access, permissions, uptime, and scaling.
+### Configuration over code
 
-## Deep integration
+AI systems usually need rapid iteration across prompts, models, tools, and orchestration.
+SharpOMatic keeps most of that experimentation in workflow configuration instead of forcing a full code-edit-build-run cycle for every change.
 
-SharpOMatic is a .NET native project, so you can use familiar C# for glue logic in workflow code nodes. 
-You can call from code nodes directly into your backend code for fast, simple integration. 
-Expose your C# types for structured outputs and C# functions for tool calling.
+### Host your own execution
+
+The engine runs in your project.
+That means workflow state, run history, assets, credentials, and provider access all stay under your control.
+
+### Deep .NET integration
+
+SharpOMatic is .NET-native.
+Code nodes use C#, structured output can target your C# types, and tool calling can invoke your existing application services directly.
+
+## Key Features Added Since 10.0.2
+
+- Multi-turn conversation workflows with persisted conversation state.
+- Suspend node support for waiting on a later turn and resuming safely.
+- Resume options in the editor for continuing a conversation turn or merging JSON context before resume.
+- Conversation run history, trace history, and conversation-scoped assets in the workflow UI.
+- Programmatic APIs for starting or resuming conversations.
+- Evaluation UI filtering so conversation-enabled workflows are not selectable for evaluation execution or graders.
+
+## Project Layout
+
+- Frontend UI: `src/SharpOMatic.FrontEnd`
+- Editor host: `src/SharpOMatic.Editor`
+- Workflow engine: `src/SharpOMatic.Engine`
+- Sqlite repository package: `src/SharpOMatic.Engine.Sqlite`
+- SQL Server repository package: `src/SharpOMatic.Engine.SqlServer`
+- Demo host: `src/SharpOMatic.DemoServer`
+- Documentation site: `docs`
 
 ## Documentation
 
-Use the getting started guides to be up and running in just a few minutes.
+Start here:
+
+- [Getting Started](docs/docs/getting-started/start-with-github-code.md)
+- [Core Concepts](docs/docs/core-concepts/workflows.md)
+- [Conversations](docs/docs/core-concepts/conversations.md)
+- [Evaluations](docs/docs/core-concepts/evaluations.md)
+- [Programmatic workflow execution](docs/docs/programmatic/run-workflow.md)
 
 ## Affiliation
 

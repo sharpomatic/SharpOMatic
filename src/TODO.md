@@ -7,6 +7,8 @@
 - Allow model call checkbox for outputting stream events for text, thinking, tool calls
 - Add node for templated output of text or thinking stream events
 - Trace tab to show list of stream outputs
+- Engine notification to get the events
+- Extend the UI notification and signalR to send the evenst for live feedback
 
 ### Model Calls
 

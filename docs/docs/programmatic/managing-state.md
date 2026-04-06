@@ -36,14 +36,13 @@ initial state for the workflow.
 ```csharp
 var engine = serviceProvider.GetRequiredService<IEngineService>();
 var workflowId = await engine.GetWorkflowId("Tenant Summary");
-var runId = await engine.CreateWorkflowRun(workflowId);
 
 var context = new ContextObject();
 context.Set("input.tenantId", "tenant-42");
 context.Set("input.userId", "user-9");
 context.Set("input.prompt", "Summarize the latest support tickets.");
 
-var completed = await engine.StartWorkflowRunAndWait(runId, context);
+var completed = await engine.StartWorkflowRunAndWait(workflowId, context);
 ```
 
 ## Accessing State In Code Nodes
@@ -109,7 +108,7 @@ The final context is returned on the `Run` after completion as a JSON string.
 Use `ContextObject.Deserialize` to get the structured object back.
 
 ```csharp
-var completed = await engine.StartWorkflowRunAndWait(runId, context);
+var completed = await engine.StartWorkflowRunAndWait(workflowId, context);
 if (completed.RunStatus == RunStatus.Success)
 {
   var jsonConverters = serviceProvider.GetRequiredService<IJsonConverterService>();
@@ -130,14 +129,13 @@ the final output.
 // Host code: start a run with tenant/user state
 var engine = serviceProvider.GetRequiredService<IEngineService>();
 var workflowId = await engine.GetWorkflowId("Tenant Summary");
-var runId = await engine.CreateWorkflowRun(workflowId);
 
 var context = new ContextObject();
 context.Set("input.tenantId", "tenant-42");
 context.Set("input.userId", "user-9");
 context.Set("input.prompt", "Summarize this user's recent activity.");
 
-var completed = await engine.StartWorkflowRunAndWait(runId, context);
+var completed = await engine.StartWorkflowRunAndWait(workflowId, context);
 ```
 
 ```csharp
