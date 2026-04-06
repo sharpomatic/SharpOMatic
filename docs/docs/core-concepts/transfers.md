@@ -4,6 +4,7 @@ sidebar_position: 7
 ---
 
 Transfers let you export and import workflows, evaluations, connectors, models, and library assets between environments.
+Library asset folder structure is included as part of the transfer data.
 A typical usage is to export new or updated entities from your development environment.
 These can then be imported into downstream environments, such as staging or production, as part of a release process.
 Another use is to back up your entities for safekeeping.
@@ -16,13 +17,14 @@ You can select all items or choose specific workflows, evaluations, connectors, 
 The export is a zip package that includes a manifest and the selected data.
 By default, secrets are not exported to prevent accidental exposure of sensitive data.
 You can use the checkbox to override this and export secrets as well.
+If selected assets belong to folders, those folders are included automatically.
 
 <img src="/img/transfers_export.png" alt="Custom model setup" width="700" style={{ maxWidth: '100%', height: 'auto' }} />
 
 ## Import
 
 Imports are performed by uploading a transfer package in the editor.
-Workflows, connectors, models, and assets are upserted by ID, so existing entries are updated and missing entries are created.
+Workflows, connectors, models, library asset folders, and library assets are imported with their stored metadata so existing content can be matched and updated where possible.
 Evaluations are imported as new instances with new identifiers to avoid collisions when importing into the same system.
 This means existing evaluation runs remain intact and linked to the original evaluation configuration.
 When secrets are excluded from the export, existing secret values are preserved during import.
@@ -48,7 +50,7 @@ Evaluation run result data is not transferred:
 ## Assets
 
 Transfers only include library assets.
-Run-scoped assets are excluded.
+Run-scoped and conversation-scoped assets are excluded.
 Asset binaries are included in the package.
 
 ## Program Setup

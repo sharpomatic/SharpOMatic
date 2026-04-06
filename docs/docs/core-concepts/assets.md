@@ -4,8 +4,8 @@ sidebar_position: 6
 ---
 
 Assets are files that workflows can reference, such as text, images, and other media.
-Rather than embedding file contents directly into context (which can bloat the database), store assets separately and reference them.
-Assets are also reusable, so the same asset can be used by or passed into multiple workflows.
+Rather than embedding file contents directly into context (which can bloat the database), store assets separately and reference them by `AssetRef`.
+Depending on their scope, assets can be reused across workflows, reused across conversation turns, or kept private to a single run.
 
 ## AssetRef
 
@@ -18,22 +18,37 @@ It contains the unique identifier of the asset along with helpful metadata such 
 
 ## Asset Scopes
 
-Assets are scoped in two ways:
+Assets are scoped in three ways:
 
 - **Library** assets are independent of workflows.
 - **Run** assets are tied to a specific run.
+- **Conversation** assets are tied to a specific conversation across multiple turns.
 
 ### Library Assets
 
 Library assets allow for reuse and are not tied to a specific workflow or workflow run.
-They are typically added via the editor where you can list, add, and delete them.
-Programmatic changes are also possible, as well as importing from a previous export.
+They are typically added via the editor where you can list, add, move, and delete them.
+Library assets can be organized into folders, and those folders are preserved during transfer export/import.
+Programmatic changes are also possible.
 
 ### Run Assets
 
 Run assets are scoped to a specific workflow run; when that run is deleted, the linked assets are deleted as well.
 You cannot view run assets in the editor asset library; instead, navigate to the workflow run.
 These assets are typically used when you want to provide a one-off asset for a single run or for images created as part of the run.
+
+### Conversation Assets
+
+Conversation assets are scoped to a specific conversation and remain available across later turns in that same conversation.
+When the conversation is deleted, the linked conversation assets are deleted as well.
+They do not appear in the editor asset library because they are not shared assets.
+Instead, they are shown on the workflow trace panel separately from per-turn run assets.
+
+Conversation assets are useful when a conversation-enabled workflow needs to accumulate artifacts across turns.
+For example, you might store a generated transcript, an uploaded reference file, or a draft document that later turns keep reusing.
+
+Only library assets support folders.
+Run and conversation assets cannot be assigned to folders.
 
 ## Programmatic Examples
 
@@ -91,6 +106,25 @@ These examples assume you have resolved **IAssetService** and **IRepositoryServi
   // Only an AssetRef or AssetRefList can be added into Context
   var context = new ContextObject();
   context.Set("input.image", runAssetRef);
+```
+
+### Add conversation-scoped asset
+
+```csharp
+  // File helper loads bytes from a named file on your local system
+  var data = await File.ReadAllBytesAsync("transcript.txt");
+
+  // Specify Conversation scope and provide the conversation identifier
+  var conversationAssetRef = await assetService.CreateFromBytesAsync(
+      data,
+      "transcript.txt",
+      "text/plain",
+      AssetScope.Conversation,
+      conversationId: conversationId);
+
+  // Only an AssetRef or AssetRefList can be added into Context
+  var context = new ContextObject();
+  context.Set("input.transcript", conversationAssetRef);
 ```
 
 ## Storage

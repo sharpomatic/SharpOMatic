@@ -168,6 +168,8 @@ var runId = await engine.StartOrResumeConversationAndNotify(
 ## `IEngineNotification`
 
 `IEngineNotification` is used for workflow and evaluation completion plus connection overrides.
+For standard one-shot runs, `conversationId` is `null`.
+For conversation turns, `conversationId` is populated and `RunCompleted` can arrive with `RunStatus.Suspended` when the turn stops at a **Suspend** node.
 
 ```csharp
 public class EngineNotification(IServiceProvider serviceProvider) : IEngineNotification
@@ -175,6 +177,7 @@ public class EngineNotification(IServiceProvider serviceProvider) : IEngineNotif
     public Task RunCompleted(
         Guid runId,
         Guid workflowId,
+        Guid? conversationId,
         RunStatus runStatus,
         string? outputContext,
         string? error)
@@ -203,6 +206,7 @@ public class EngineNotification(IServiceProvider serviceProvider) : IEngineNotif
     public void ConnectionOverride(
         Guid runId,
         Guid workflowId,
+        Guid? conversationId,
         string connectorId,
         AuthenticationModeConfig authenticationModel,
         Dictionary<string, string?> parameters)
@@ -219,6 +223,7 @@ public class EngineNotification(IServiceProvider serviceProvider) : IEngineNotif
 ## `IProgressService`
 
 If you need run-state updates while execution is in progress, implement `IProgressService`.
+`RunProgress` is also raised for conversation turns, including the final persisted `RunStatus.Suspended` state when a turn pauses for resume.
 
 ```csharp
 public class ProgressService : IProgressService

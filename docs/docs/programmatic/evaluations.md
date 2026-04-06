@@ -53,6 +53,7 @@ public class EngineNotification : IEngineNotification
     public Task RunCompleted(
         Guid runId,
         Guid workflowId,
+        Guid? conversationId,
         RunStatus runStatus,
         string? outputContext,
         string? error)
@@ -72,6 +73,7 @@ public class EngineNotification : IEngineNotification
     public void ConnectionOverride(
         Guid runId,
         Guid workflowId,
+        Guid? conversationId,
         string connectorId,
         AuthenticationModeConfig authenticationModel,
         Dictionary<string, string?> parameters)

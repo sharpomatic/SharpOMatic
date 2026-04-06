@@ -27,7 +27,7 @@ Missing or invalid paths are ignored, but an empty path causes the run to fail.
 
 You can specify a single asset or a list of assets from the asset library.
 In both cases, these come only from the asset library and are the same each time you run the workflow.
-You cannot add run assets this way; add run assets programmatically by inserting them directly into the context.
+You cannot add run-scoped or conversation-scoped assets this way; add those programmatically by inserting `AssetRef` values directly into the context.
 
 <img src="/img/edit_assets.png" alt="Assets values" width="900" style={{ maxWidth: '100%', height: 'auto' }} />
 

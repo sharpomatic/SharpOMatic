@@ -47,10 +47,13 @@ Context.Set("input.logo", logo);
 Names can be:
 
 - a run asset name
+- a conversation asset name
 - a library asset name
 - a folder-qualified library name such as `branding/logo.png`
 
-When a run is active, the helper checks run assets first and then falls back to library assets.
+Name-based resolution uses the current execution scope.
+Inside a conversation turn, the helper checks run assets first, then conversation assets, then library assets.
+Outside conversations, it checks run assets and then library assets.
 
 ### GetAssetAsync
 
@@ -221,6 +224,25 @@ var sharedAsset = await Assets.AddAssetFromBytesAsync(
 Context.Set("output.sharedAsset", sharedAsset);
 ```
 
+### Creating Conversation Assets
+
+If you are inside a conversation-enabled workflow and want the asset to remain available to later turns, pass `AssetScope.Conversation`:
+
+```csharp
+var bytes = System.Text.Encoding.UTF8.GetBytes("Turn summary");
+
+var conversationAsset = await Assets.AddAssetFromBytesAsync(
+    bytes,
+    "turn-summary.txt",
+    "text/plain",
+    AssetScope.Conversation);
+
+Context.Set("output.summaryAsset", conversationAsset);
+```
+
+This only works when the current run belongs to a conversation.
+If you call it from a standard one-shot workflow run, SharpOMatic throws because there is no active `conversationId`.
+
 ## Deleting Assets
 
 Use `DeleteAssetAsync` when you created a temporary asset and no longer want to keep it.
@@ -234,6 +256,7 @@ Context.Set("temp.generatedFile", null);
 ```
 
 Be careful with deletion if you are working with shared library assets.
+If you delete by name, the same scope precedence applies: run first, then conversation, then library.
 
 ## Choosing The Right Method
 

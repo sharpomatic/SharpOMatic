@@ -26,7 +26,7 @@ This allows you to insert integers, floats, booleans, and other types because th
 
 ## Asset substitution **&lt;&lt;$name&gt;&gt;**
 
-You can also substitute text assets by using the **&lt;&lt;$name&gt;&gt;** pattern, where the **name** is the library asset or run asset name.
+You can also substitute text assets by using the **&lt;&lt;$name&gt;&gt;** pattern, where the **name** is the library, conversation, or run asset name.
 If no matching asset is found, nothing is inserted and no runtime error occurs.
 Note that only text media types such as **text/plain** can be inserted.
 You cannot insert images, PDF documents, or binary data, only text.
