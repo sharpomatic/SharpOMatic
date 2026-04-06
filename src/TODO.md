@@ -2,12 +2,11 @@
 
 ## Major Features
 
-### Conversations
+### Output Stream
 
-- Add a Resume tab when it is suspended, with the Resume simple option.
-- Add a context builder helper component and then show in the Resume as another option (or cheap way as JSON converted into ContextObject)
-- Have a conversations tab when conversation is enabled, do we hide Runs when it is for conversations?
-- Evaluations only allow selection of non-conversation workflows
+- Allow model call checkbox for outputting stream events for text, thinking, tool calls
+- Add node for templated output of text or thinking stream events
+- Trace tab to show list of stream outputs
 
 ### Model Calls
 
@@ -62,6 +61,11 @@ Microsoft.Extensions.AI.HostedWebSearchTool
 ### Assets
 
 - Check that removing a run gets rid of run assets and the run assets folder for that run
+
+### Examples
+
+- Chatbot where the workflow is started each time from the start node
+- Chatbot where the covnersation is restarted from the suspend point
 
 ### Promotion
 

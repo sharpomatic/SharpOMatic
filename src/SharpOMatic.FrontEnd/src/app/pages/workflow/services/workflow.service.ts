@@ -15,7 +15,7 @@ import { InformationProgressModel } from '../interfaces/information-progress-mod
 import { SignalrService } from '../../../services/signalr.service';
 import { RunStatus } from '../../../enumerations/run-status';
 import { NodeStatus } from '../../../enumerations/node-status';
-import { Observable, map } from 'rxjs';
+import { Observable, map, of } from 'rxjs';
 import {
   ContextEntryListEntity,
   ContextEntryListSnapshot,
@@ -180,6 +180,46 @@ export class WorkflowService implements OnDestroy {
         return runId;
       }),
     );
+  }
+
+  resumeConversation(
+    resumeContextJson?: string,
+  ): Observable<string | undefined> {
+    const workflow = this.workflow();
+    const conversationId =
+      this.activeConversationId ?? this.runProgress()?.conversationId ?? undefined;
+
+    if (
+      !workflow.isConversationEnabled() ||
+      !conversationId ||
+      (this.runProgress()?.runStatus !== RunStatus.Suspended &&
+        this.runProgress()?.runStatus !== RunStatus.Success)
+    ) {
+      this.toastService.error('No resumable conversation is available.');
+      return of(undefined);
+    }
+
+    this.isRunning.set(true);
+
+    return this.serverWorkflowService
+      .resumeConversationWorkflow(
+        workflow.id,
+        conversationId,
+        resumeContextJson,
+      )
+      .pipe(
+        map((runId) => {
+          if (!runId) {
+            this.isRunning.set(false);
+            return undefined;
+          }
+
+          this.activeConversationId = conversationId;
+          this.activeLiveRunId = runId;
+          this.resetNodeDisplayStates();
+          return runId;
+        }),
+      );
   }
 
   markClean(): void {

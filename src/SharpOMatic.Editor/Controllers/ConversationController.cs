@@ -14,7 +14,8 @@ public class ConversationController : ControllerBase
         [FromBody] ConversationTurnRequest request
     )
     {
-        return await engineService.StartOrResumeConversationAndWait(workflowId, conversationId, request.ResumeInput, request.InputEntries, request.NeedsEditorEvents);
+        var resumeInput = ResolveResumeInput(request);
+        return await engineService.StartOrResumeConversationAndWait(workflowId, conversationId, resumeInput, request.InputEntries, request.NeedsEditorEvents);
     }
 
     [HttpPost("notify/{workflowId}/{conversationId}")]
@@ -25,7 +26,8 @@ public class ConversationController : ControllerBase
         [FromBody] ConversationTurnRequest request
     )
     {
-        return await engineService.StartOrResumeConversationAndNotify(workflowId, conversationId, request.ResumeInput, request.InputEntries, request.NeedsEditorEvents);
+        var resumeInput = ResolveResumeInput(request);
+        return await engineService.StartOrResumeConversationAndNotify(workflowId, conversationId, resumeInput, request.InputEntries, request.NeedsEditorEvents);
     }
 
     [HttpGet("{conversationId}")]
@@ -136,5 +138,39 @@ public class ConversationController : ControllerBase
                 )
             )
             .ToList();
+    }
+
+    private static NodeResumeInput? ResolveResumeInput(ConversationTurnRequest request)
+    {
+        if (request.ResumeContextJson is null)
+            return request.ResumeInput;
+
+        if (request.ResumeInput is not null)
+            throw new SharpOMaticException("Resume context json cannot be combined with resume input.");
+
+        try
+        {
+            var parsed = ContextHelpers.FastDeserializeString(request.ResumeContextJson);
+            if (parsed is not ContextObject context)
+            {
+                if (parsed is ContextList contextList)
+                {
+                    context = new ContextObject();
+                    context.Set("resume", parsed);
+                }
+                else
+                    throw new SharpOMaticException("Resume context json must be a JSON object or list.");
+            }
+
+            return new ContextMergeResumeInput() { Context = context };
+        }
+        catch (Exception ex) when (ex is FastSerializationException or JsonException)
+        {
+            throw new SharpOMaticException($"Resume context json could not be parsed as json. {ex.Message}");
+        }
+        catch (SharpOMaticException)
+        {
+            throw;
+        }
     }
 }

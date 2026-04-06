@@ -37,6 +37,7 @@ public abstract class RunNode<T> : IRunNode
 
     public async Task<NodeExecutionResult> Execute(NodeExecutionRequest request)
     {
+        await EnsureRunStarted();
         await NodeRunning();
 
         try
@@ -60,6 +61,17 @@ public abstract class RunNode<T> : IRunNode
             await NodeFailed(ex.Message);
             throw;
         }
+    }
+
+    private async Task EnsureRunStarted()
+    {
+        if (ProcessContext.Run.RunStatus != RunStatus.Created)
+            return;
+
+        ProcessContext.Run.RunStatus = RunStatus.Running;
+        ProcessContext.Run.Message = "Running";
+        ProcessContext.Run.Started ??= DateTime.Now;
+        await ProcessContext.RunUpdated();
     }
 
     protected abstract Task<NodeExecutionResult> RunInternal();

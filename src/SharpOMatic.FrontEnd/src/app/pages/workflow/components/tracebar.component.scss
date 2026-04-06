@@ -110,6 +110,31 @@
   height: 100px;
 }
 
+.resume-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 0.5rem;
+  margin-top: 16px;
+}
+
+.resume-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.resume-button {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.resumeJson {
+  height: 220px;
+  width: 100%;
+}
+
 .editBoolValue {
   width: 120px;
   flex: 0 0 auto;

@@ -40,6 +40,8 @@ public sealed class SuspendNodeUnitTests
 
             var secondTurn = await conversations.StartOrResumeConversationAndWait(workflow.Id, conversationId, CreateContextResumeInput("resume.answer", "final answer"));
             Assert.Equal(RunStatus.Success, secondTurn.RunStatus);
+            Assert.NotNull(secondTurn.Started);
+            Assert.NotNull(secondTurn.Stopped);
 
             var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
             var output = ContextObject.Deserialize(secondTurn.OutputContext, jsonConverters.GetConverters());

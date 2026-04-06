@@ -278,6 +278,7 @@
                   }
                 </button>
               </th>
+              <th scope="col" class="col-conversation-id">Conversation Id</th>
               <th scope="col" class="col-status">
                 <button
                   class="btn btn-link p-0 runs-sort"
@@ -310,7 +311,17 @@
             @for (run of workflowService.runs(); track run.runId) {
               <tr class="run-row" (dblclick)="onRunRowDoubleClick(run)">
                 <td class="col-created">
-                  {{ run.created ? (run.created | date: "short") : "" }}
+                  {{
+                    run.created
+                      ? (run.created | date: "yyyy-MM-dd HH:mm:ss.SS")
+                      : ""
+                  }}
+                </td>
+                <td
+                  class="col-conversation-id text-truncate"
+                  [title]="run.conversationId || ''"
+                >
+                  {{ run.conversationId || "" }}
                 </td>
                 <td class="col-status">
                   <span

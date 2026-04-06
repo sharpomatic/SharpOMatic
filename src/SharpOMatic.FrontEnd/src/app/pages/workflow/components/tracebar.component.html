@@ -203,6 +203,42 @@
     </div>
   </ng-template>
 
+  <ng-template #resumeTab>
+    <div class="bg-body-tertiary flex-grow-1 d-flex flex-column p-3 h-100">
+      <div class="resume-panel">
+        <div class="resume-actions">
+          <button
+            class="btn btn-primary resume-button"
+            type="button"
+            [disabled]="workflowService.isRunning()"
+            (click)="resumeConversation()"
+          >
+            Continue Resume
+          </button>
+        </div>
+
+        <hr class="my-3" />
+
+        <div class="resume-actions">
+          <button
+            class="btn btn-primary resume-button"
+            type="button"
+            [disabled]="workflowService.isRunning()"
+            (click)="mergeContextResumeConversation()"
+          >
+            Merge Context Resume
+          </button>
+          <ngx-monaco-editor
+            class="resumeJson"
+            [options]="jsonEditorOptions"
+            [ngModel]="resumeContextJson"
+            (ngModelChange)="resumeContextJson = $event ?? ''"
+          />
+        </div>
+      </div>
+    </div>
+  </ng-template>
+
   <ng-template #assetsTab>
     <div
       class="bg-body-tertiary flex-grow-1 d-flex flex-column p-3 h-100 run-assets"

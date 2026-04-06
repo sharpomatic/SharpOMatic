@@ -1254,7 +1254,9 @@ export class EvaluationComponent
         SortDirection.Ascending,
       )
       .subscribe((workflows) => {
-        this.workflowSummaries = workflows;
+        this.workflowSummaries = workflows.filter(
+          (workflow) => !workflow.isConversationEnabled(),
+        );
         this.hasLoadedWorkflows = true;
         this.tryNormalizeWorkflowSelection();
       });

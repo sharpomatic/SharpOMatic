@@ -69,21 +69,32 @@
 .runs-table {
   flex: 1 1 auto;
   min-height: 0;
+  position: relative;
   overflow-y: auto;
   overflow-x: auto;
 }
 
 .runs-table .table {
   table-layout: fixed;
-  min-width: 800px;
+  min-width: 1300px;
   width: 100%;
+  margin-bottom: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.runs-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .runs-table thead th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 3;
   background: var(--bs-body-tertiary);
+  box-shadow: inset 0 -1px 0 var(--bs-border-color);
 }
 
 .runs-pagination {
@@ -107,9 +118,15 @@
 }
 
 .col-created {
-  width: 160px;
-  min-width: 160px;
-  max-width: 160px;
+  width: 190px;
+  min-width: 190px;
+  max-width: 190px;
+}
+
+.col-conversation-id {
+  width: 330px;
+  min-width: 330px;
+  max-width: 330px;
 }
 
 .col-status {

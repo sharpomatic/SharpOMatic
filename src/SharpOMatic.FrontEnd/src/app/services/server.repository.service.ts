@@ -191,6 +191,36 @@ export class ServerRepositoryService {
       );
   }
 
+  public resumeConversationWorkflow(
+    workflowId: string,
+    conversationId: string,
+    resumeContextJson?: string,
+  ): Observable<string | undefined> {
+    const apiUrl = this.settingsService.apiUrl();
+    const requestBody: {
+      needsEditorEvents: boolean;
+      resumeContextJson?: string;
+    } = {
+      needsEditorEvents: true,
+    };
+
+    if (resumeContextJson !== undefined) {
+      requestBody.resumeContextJson = resumeContextJson;
+    }
+
+    return this.http
+      .post<string>(
+        `${apiUrl}/api/conversation/notify/${workflowId}/${conversationId}`,
+        requestBody,
+      )
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Resuming conversation run', error);
+          return of(undefined);
+        }),
+      );
+  }
+
   public deleteWorkflow(id: string): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
     return this.http.delete<void>(`${apiUrl}/api/workflow/${id}`).pipe(

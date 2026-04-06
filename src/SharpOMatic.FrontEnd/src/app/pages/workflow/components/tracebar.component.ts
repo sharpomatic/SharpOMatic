@@ -9,6 +9,7 @@ import {
   TemplateRef,
   ViewChild,
   computed,
+  effect,
   inject,
 } from '@angular/core';
 import { RunStatus } from '../../../enumerations/run-status';
@@ -57,6 +58,7 @@ import { ServerRepositoryService } from '../../../services/server.repository.ser
 export class TracebarComponent implements OnInit, OnDestroy {
   @ViewChild('inputTab', { static: true }) inputTab!: TemplateRef<unknown>;
   @ViewChild('outputTab', { static: true }) outputTab!: TemplateRef<unknown>;
+  @ViewChild('resumeTab', { static: true }) resumeTab!: TemplateRef<unknown>;
   @ViewChild('traceTab', { static: true }) traceTab!: TemplateRef<unknown>;
   @ViewChild('assetsTab', { static: true }) assetsTab!: TemplateRef<unknown>;
   @Output() public tracebarWidthChange = new EventEmitter<number>();
@@ -78,6 +80,18 @@ export class TracebarComponent implements OnInit, OnDestroy {
     const output = this.workflowService.runProgress()?.outputContext;
     return output ? [output] : [];
   });
+  public readonly isResumeTabVisible = computed(
+    () =>
+      this.workflowService.workflow().isConversationEnabled() &&
+      (this.workflowService.runProgress()?.runStatus === RunStatus.Suspended ||
+        this.workflowService.runProgress()?.runStatus === RunStatus.Success) &&
+      !!this.workflowService.runProgress()?.conversationId,
+  );
+  public readonly isSuspendedConversation = computed(
+    () => this.workflowService.runProgress()?.runStatus === RunStatus.Suspended,
+  );
+  public readonly jsonEditorOptions = MonacoService.editorOptionsJson;
+  public resumeContextJson = '{}';
 
   private minWidth = 500;
   private maxWidth = 1200;
@@ -108,6 +122,16 @@ export class TracebarComponent implements OnInit, OnDestroy {
   private readonly touchEndListenerOptions: AddEventListenerOptions = {
     capture: true,
   };
+
+  constructor() {
+    effect(() => {
+      this.workflowService.workflow().isConversationEnabled();
+      this.workflowService.runProgress()?.runStatus;
+      this.workflowService.runProgress()?.conversationId;
+      this.updateTabs();
+    });
+  }
+
   public getEntryTypeDisplay(type: ContextEntryType): string {
     switch (type) {
       case ContextEntryType.Expression:
@@ -136,13 +160,7 @@ export class TracebarComponent implements OnInit, OnDestroy {
   }
 
   public ngOnInit(): void {
-    this.tabs = [
-      { id: 'input', title: 'Input', content: this.inputTab },
-      { id: 'output', title: 'Output', content: this.outputTab },
-      { id: 'assets', title: 'Assets', content: this.assetsTab },
-      { id: 'trace', title: 'Trace', content: this.traceTab },
-    ];
-
+    this.updateTabs();
     this.loadStoredWidth();
     this.emitWidth();
   }
@@ -391,4 +409,57 @@ export class TracebarComponent implements OnInit, OnDestroy {
     });
   }
 
+  public resumeConversation(): void {
+    this.workflowService.resumeConversation().subscribe((runId) => {
+      if (!runId) {
+        return;
+      }
+
+      this.onActiveTabIdChange('trace');
+    });
+  }
+
+  public mergeContextResumeConversation(): void {
+    this.workflowService
+      .resumeConversation(this.resumeContextJson)
+      .subscribe((runId) => {
+        if (!runId) {
+          return;
+        }
+
+        this.onActiveTabIdChange('trace');
+      });
+  }
+
+  private updateTabs(): void {
+    if (!this.inputTab || !this.outputTab || !this.assetsTab || !this.traceTab) {
+      return;
+    }
+
+    const tabs: TabItem[] = [];
+
+    if (this.isSuspendedConversation()) {
+      tabs.push({ id: 'resume', title: 'Resume', content: this.resumeTab });
+    } else {
+      tabs.push({ id: 'input', title: 'Input', content: this.inputTab });
+    }
+
+    if (this.isResumeTabVisible() && !this.isSuspendedConversation()) {
+      tabs.push({ id: 'resume', title: 'Resume', content: this.resumeTab });
+    }
+
+    tabs.push({ id: 'output', title: 'Output', content: this.outputTab });
+
+    tabs.push(
+      { id: 'assets', title: 'Assets', content: this.assetsTab },
+      { id: 'trace', title: 'Trace', content: this.traceTab },
+    );
+
+    this.tabs = tabs;
+
+    if (!tabs.some((tab) => tab.id === this.activeTabId)) {
+      this.activeTabId = tabs[0]?.id ?? 'input';
+      this.activeTabIdChange.emit(this.activeTabId);
+    }
+  }
 }
