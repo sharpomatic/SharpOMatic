@@ -144,4 +144,9 @@ public abstract class RunNode<T> : IRunNode
     {
         return ContextHelpers.ResolveContextEntryValue(ProcessContext.ServiceScope.ServiceProvider, ThreadContext.NodeContext, entry, ProcessContext.ScriptOptionsService, ProcessContext.Run.RunId);
     }
+
+    protected Task<List<StreamEvent>> AppendStreamEvents(params StreamEventWrite[] events)
+    {
+        return ProcessContext.AppendStreamEvents(events);
+    }
 }

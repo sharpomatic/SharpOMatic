@@ -11,6 +11,8 @@ public class ProcessContext : ExecutionContext
     private int _threadCount = 1;
     private int _nodesRun = 0;
     private int _runNodeLimit = 0;
+    private int _nextStreamSequence = 0;
+    private int _streamSequenceInitialized = 0;
 
     public IServiceScope ServiceScope { get; }
     public IRepositoryService RepositoryService { get; }
@@ -140,6 +142,62 @@ public class ProcessContext : ExecutionContext
             await progressService.RunProgress(Run);
         if (Run.RunStatus is RunStatus.Success or RunStatus.Failed or RunStatus.Suspended)
             CompleteRun();
+    }
+
+    public void InitializeStreamSequence(int nextSequence)
+    {
+        var normalized = Math.Max(1, nextSequence);
+        Volatile.Write(ref _nextStreamSequence, normalized - 1);
+        Volatile.Write(ref _streamSequenceInitialized, 1);
+    }
+
+    public int AllocateNextStreamSequence()
+    {
+        if (Volatile.Read(ref _streamSequenceInitialized) == 0)
+            throw new SharpOMaticException("Stream event sequence has not been initialized.");
+
+        return Interlocked.Increment(ref _nextStreamSequence);
+    }
+
+    public async Task<List<StreamEvent>> AppendStreamEvents(IEnumerable<StreamEventWrite> events)
+    {
+        ArgumentNullException.ThrowIfNull(events);
+
+        var writes = events.ToList();
+        if (writes.Count == 0)
+            return [];
+
+        var created = DateTime.UtcNow;
+        var streamEvents = new List<StreamEvent>(writes.Count);
+
+        foreach (var write in writes)
+        {
+            ValidateStreamEventWrite(write);
+
+            streamEvents.Add(
+                new StreamEvent()
+                {
+                    StreamEventId = Guid.NewGuid(),
+                    RunId = Run.RunId,
+                    WorkflowId = Run.WorkflowId,
+                    ConversationId = Run.ConversationId,
+                    SequenceNumber = AllocateNextStreamSequence(),
+                    Created = created,
+                    EventKind = write.EventKind,
+                    MessageId = write.MessageId,
+                    MessageRole = write.MessageRole,
+                    TextDelta = write.TextDelta,
+                    Metadata = write.Metadata,
+                }
+            );
+        }
+
+        await RepositoryService.AppendStreamEvents(streamEvents);
+
+        foreach (var progressService in ProgressServices)
+            await progressService.StreamEventProgress(Run, streamEvents);
+
+        return streamEvents;
     }
 
     public void PinWorkflowSnapshot(WorkflowEntity workflow)
@@ -319,5 +377,40 @@ public class ProcessContext : ExecutionContext
     {
         var completionSource = Interlocked.Exchange(ref _completionSource, null);
         completionSource?.TrySetResult(Run);
+    }
+
+    private static void ValidateStreamEventWrite(StreamEventWrite write)
+    {
+        ArgumentNullException.ThrowIfNull(write);
+
+        switch (write.EventKind)
+        {
+            case StreamEventKind.TextStart:
+                if (!write.MessageId.HasValue)
+                    throw new SharpOMaticException("TextStart stream events require a MessageId.");
+
+                if (!write.MessageRole.HasValue)
+                    throw new SharpOMaticException("TextStart stream events require a MessageRole.");
+
+                if (!string.IsNullOrWhiteSpace(write.TextDelta))
+                    throw new SharpOMaticException("TextStart stream events cannot include TextDelta.");
+                break;
+            case StreamEventKind.TextContent:
+                if (!write.MessageId.HasValue)
+                    throw new SharpOMaticException("TextContent stream events require a MessageId.");
+
+                if (string.IsNullOrWhiteSpace(write.TextDelta))
+                    throw new SharpOMaticException("TextContent stream events require a non-empty TextDelta.");
+                break;
+            case StreamEventKind.TextEnd:
+                if (!write.MessageId.HasValue)
+                    throw new SharpOMaticException("TextEnd stream events require a MessageId.");
+
+                if (!string.IsNullOrWhiteSpace(write.TextDelta))
+                    throw new SharpOMaticException("TextEnd stream events cannot include TextDelta.");
+                break;
+            default:
+                throw new SharpOMaticException($"Unsupported stream event kind '{write.EventKind}'.");
+        }
     }
 }

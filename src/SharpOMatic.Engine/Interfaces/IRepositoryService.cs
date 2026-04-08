@@ -50,6 +50,14 @@ public interface IRepositoryService
     Task UpsertInformations(List<Information> informations);
 
     // ------------------------------------------------
+    // Stream Event Operations
+    // ------------------------------------------------
+    Task<int> GetNextStreamSequence(Guid runId, Guid? conversationId);
+    Task AppendStreamEvents(List<StreamEvent> events);
+    Task<List<StreamEvent>> GetRunStreamEvents(Guid runId);
+    Task<List<StreamEvent>> GetConversationStreamEvents(Guid conversationId);
+
+    // ------------------------------------------------
     // ConnectorConfig Operations
     // ------------------------------------------------
     Task<List<ConnectorConfig>> GetConnectorConfigs();

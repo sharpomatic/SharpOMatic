@@ -21,6 +21,8 @@ public class ProgressService(IServiceProvider serviceProvider) : IProgressServic
 
     public async Task InformationsProgress(Run run, List<Information> models) { }
 
+    public async Task StreamEventProgress(Run run, List<StreamEvent> events) { }
+
     public async Task TraceProgress(Run run, Trace model) { }
 
     public async Task EvalRunProgress(EvalRun model) { }

@@ -496,6 +496,45 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     }
 
     // ------------------------------------------------
+    // Stream Event Operations
+    // ------------------------------------------------
+    public async Task<int> GetNextStreamSequence(Guid runId, Guid? conversationId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var maxSequence = conversationId.HasValue
+            ? await dbContext.StreamEvents.AsNoTracking().Where(e => e.ConversationId == conversationId.Value).MaxAsync(e => (int?)e.SequenceNumber)
+            : await dbContext.StreamEvents.AsNoTracking().Where(e => e.RunId == runId).MaxAsync(e => (int?)e.SequenceNumber);
+
+        return (maxSequence ?? 0) + 1;
+    }
+
+    public async Task AppendStreamEvents(List<StreamEvent> events)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        if (events.Count == 0)
+            return;
+
+        dbContext.StreamEvents.AddRange(events);
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task<List<StreamEvent>> GetRunStreamEvents(Guid runId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        return await dbContext.StreamEvents.AsNoTracking().Where(e => e.RunId == runId).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToListAsync();
+    }
+
+    public async Task<List<StreamEvent>> GetConversationStreamEvents(Guid conversationId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        return await dbContext.StreamEvents.AsNoTracking().Where(e => e.ConversationId == conversationId).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToListAsync();
+    }
+
+    // ------------------------------------------------
     // ConnectorConfig Operations
     // ------------------------------------------------
     public async Task<ConnectorConfig?> GetConnectorConfig(string configId)

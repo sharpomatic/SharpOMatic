@@ -12,7 +12,7 @@ public class CodeCheckService(IScriptOptionsService ScriptOptionsService) : ICod
 
             try
             {
-                Script script = CSharpScript.Create(request.Code, options, globalsType: typeof(ScriptCodeContext));
+                Script script = CSharpScript.Create(request.Code, options, globalsType: typeof(CodeNodeScriptContext));
                 Compilation compilation = script.GetCompilation();
                 ImmutableArray<Diagnostic> diagnostics = compilation.GetDiagnostics();
                 foreach (Diagnostic diagnostic in diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error || d.Severity == DiagnosticSeverity.Warning))

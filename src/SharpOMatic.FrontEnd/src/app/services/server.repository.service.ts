@@ -17,6 +17,7 @@ import { RunProgressModel } from '../pages/workflow/interfaces/run-progress-mode
 import { WorkflowRunPageResult } from '../pages/workflow/interfaces/workflow-run-page-result';
 import { TraceProgressModel } from '../pages/workflow/interfaces/trace-progress-model';
 import { InformationProgressModel } from '../pages/workflow/interfaces/information-progress-model';
+import { StreamEventModel } from '../pages/workflow/interfaces/stream-event-model';
 import { Setting } from '../pages/settings/interfaces/setting';
 import { ContextEntryListEntity } from '../entities/definitions/context-entry-list.entity';
 import {
@@ -61,6 +62,8 @@ import { ConversationStatus } from '../enumerations/conversation-status';
 import { NodeStatus } from '../enumerations/node-status';
 import { NodeType } from '../entities/enumerations/node-type';
 import { RunStatus } from '../enumerations/run-status';
+import { StreamEventKind } from '../enumerations/stream-event-kind';
+import { StreamMessageRole } from '../enumerations/stream-message-role';
 import { WorkflowSortField } from '../enumerations/workflow-sort-field';
 import { ConnectorSortField } from '../enumerations/connector-sort-field';
 import { ModelSortField } from '../enumerations/model-sort-field';
@@ -330,6 +333,19 @@ export class ServerRepositoryService {
       );
   }
 
+  public getRunStreamEvents(id: string): Observable<StreamEventModel[] | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .get<StreamEventModel[]>(`${apiUrl}/api/streamevent/forrun/${id}`)
+      .pipe(
+        map((events) => this.normalizeStreamEvents(events)),
+        catchError((error) => {
+          this.notifyError('Loading run stream events', error);
+          return of(null);
+        }),
+      );
+  }
+
   public getLatestWorkflowConversation(
     workflowId: string,
   ): Observable<ConversationSummaryModel | null> {
@@ -403,8 +419,25 @@ export class ServerRepositoryService {
           nodeType: this.normalizeEnumValue(NodeType, trace.nodeType),
           nodeStatus: this.normalizeEnumValue(NodeStatus, trace.nodeStatus),
         })),
+        streamEvents: this.normalizeStreamEvents(turn.streamEvents ?? []),
       })),
     };
+  }
+
+  private normalizeStreamEvents(
+    events: StreamEventModel[] | null | undefined,
+  ): StreamEventModel[] {
+    return (events ?? []).map((streamEvent) => ({
+      ...streamEvent,
+      eventKind: this.normalizeEnumValue(StreamEventKind, streamEvent.eventKind),
+      messageRole:
+        streamEvent.messageRole === null || streamEvent.messageRole === undefined
+          ? streamEvent.messageRole
+          : this.normalizeEnumValue(
+              StreamMessageRole,
+              streamEvent.messageRole,
+            ),
+    }));
   }
 
   private normalizeEnumValue<T extends Record<string, string | number>>(

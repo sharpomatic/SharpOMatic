@@ -8,16 +8,17 @@ public class CodeNode(ThreadContext threadContext, CodeNodeEntity node) : RunNod
         if (!string.IsNullOrWhiteSpace(Node.Code))
         {
             var options = ProcessContext.ScriptOptionsService.GetScriptOptions();
-            var globals = new ScriptCodeContext()
+            var globals = new CodeNodeScriptContext()
             {
                 Context = ThreadContext.NodeContext,
                 ServiceProvider = ProcessContext.ServiceScope.ServiceProvider,
                 Assets = new AssetHelper(ProcessContext.RepositoryService, ProcessContext.AssetStore, ProcessContext.Run.RunId, ProcessContext.Run.ConversationId),
+                StreamEvents = new StreamEventHelper(ProcessContext),
             };
 
             try
             {
-                var result = await CSharpScript.RunAsync(Node.Code, options, globals, typeof(ScriptCodeContext));
+                var result = await CSharpScript.RunAsync(Node.Code, options, globals, typeof(CodeNodeScriptContext));
             }
             catch (CompilationErrorException e1)
             {

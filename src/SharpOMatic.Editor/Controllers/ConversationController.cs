@@ -69,14 +69,16 @@ public class ConversationController : ControllerBase
         {
             var tracesTask = repositoryService.GetRunTraces(run.RunId);
             var informationsTask = repositoryService.GetRunInformations(run.RunId);
+            var streamEventsTask = repositoryService.GetRunStreamEvents(run.RunId);
             var runAssetsTask = repositoryService.GetRunAssets(run.RunId);
-            await Task.WhenAll(tracesTask, informationsTask, runAssetsTask);
+            await Task.WhenAll(tracesTask, informationsTask, streamEventsTask, runAssetsTask);
 
             turns.Add(
                 new ConversationHistoryTurnResult(
                     run,
                     await tracesTask,
                     await informationsTask,
+                    await streamEventsTask,
                     await BuildAssetSummaries(repositoryService, await runAssetsTask)
                 )
             );

@@ -26,6 +26,14 @@ public class ProgressService(IHubContext<NotificationHub> hubContext) : IProgres
         await hubContext.Clients.All.SendAsync("InformationsProgress", models);
     }
 
+    public async Task StreamEventProgress(Run run, List<StreamEvent> events)
+    {
+        if (!run.NeedsEditorEvents)
+            return;
+
+        await hubContext.Clients.All.SendAsync("StreamEventProgress", events);
+    }
+
     public async Task EvalRunProgress(EvalRun model)
     {
         await hubContext.Clients.All.SendAsync("EvalRunProgress", model);

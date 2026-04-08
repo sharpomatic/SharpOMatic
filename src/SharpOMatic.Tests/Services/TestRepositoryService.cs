@@ -9,6 +9,7 @@ public sealed class TestRepositoryService : IRepositoryService
     private readonly ConcurrentDictionary<Guid, Run> _runs = new();
     private readonly ConcurrentDictionary<Guid, Trace> _traces = new();
     private readonly ConcurrentDictionary<Guid, Information> _informations = new();
+    private readonly ConcurrentDictionary<Guid, StreamEvent> _streamEvents = new();
     private readonly ConcurrentDictionary<Guid, Asset> _assets = new();
     private readonly ConcurrentDictionary<Guid, AssetFolder> _assetFolders = new();
 
@@ -133,6 +134,9 @@ public sealed class TestRepositoryService : IRepositoryService
                 foreach (var information in _informations.Where(i => i.Value.RunId == runId).Select(i => i.Key).ToList())
                     _informations.TryRemove(information, out _);
 
+                foreach (var streamEvent in _streamEvents.Where(s => s.Value.RunId == runId).Select(s => s.Key).ToList())
+                    _streamEvents.TryRemove(streamEvent, out _);
+
                 foreach (var asset in _assets.Where(a => a.Value.RunId == runId).Select(a => a.Key).ToList())
                     _assets.TryRemove(asset, out _);
             }
@@ -210,6 +214,9 @@ public sealed class TestRepositoryService : IRepositoryService
             foreach (var information in _informations.Where(i => i.Value.RunId == runId).Select(i => i.Key).ToList())
                 _informations.TryRemove(information, out _);
 
+            foreach (var streamEvent in _streamEvents.Where(s => s.Value.RunId == runId).Select(s => s.Key).ToList())
+                _streamEvents.TryRemove(streamEvent, out _);
+
             foreach (var asset in _assets.Where(a => a.Value.RunId == runId).Select(a => a.Key).ToList())
                 _assets.TryRemove(asset, out _);
         }
@@ -241,6 +248,35 @@ public sealed class TestRepositoryService : IRepositoryService
             _informations[information.InformationId] = information;
 
         return Task.CompletedTask;
+    }
+
+    public Task<int> GetNextStreamSequence(Guid runId, Guid? conversationId)
+    {
+        var maxSequence = conversationId.HasValue
+            ? _streamEvents.Values.Where(e => e.ConversationId == conversationId.Value).Select(e => (int?)e.SequenceNumber).DefaultIfEmpty(null).Max()
+            : _streamEvents.Values.Where(e => e.RunId == runId).Select(e => (int?)e.SequenceNumber).DefaultIfEmpty(null).Max();
+
+        return Task.FromResult((maxSequence ?? 0) + 1);
+    }
+
+    public Task AppendStreamEvents(List<StreamEvent> events)
+    {
+        foreach (var streamEvent in events)
+            _streamEvents[streamEvent.StreamEventId] = streamEvent;
+
+        return Task.CompletedTask;
+    }
+
+    public Task<List<StreamEvent>> GetRunStreamEvents(Guid runId)
+    {
+        var streamEvents = _streamEvents.Values.Where(e => e.RunId == runId).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToList();
+        return Task.FromResult(streamEvents);
+    }
+
+    public Task<List<StreamEvent>> GetConversationStreamEvents(Guid conversationId)
+    {
+        var streamEvents = _streamEvents.Values.Where(e => e.ConversationId == conversationId).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToList();
+        return Task.FromResult(streamEvents);
     }
 
     public Task<List<ConnectorConfig>> GetConnectorConfigs() => throw new NotImplementedException();

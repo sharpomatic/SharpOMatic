@@ -12,6 +12,7 @@ import { WorkflowEntity } from '../../../entities/definitions/workflow.entity';
 import { RunProgressModel } from '../interfaces/run-progress-model';
 import { TraceProgressModel } from '../interfaces/trace-progress-model';
 import { InformationProgressModel } from '../interfaces/information-progress-model';
+import { StreamEventModel } from '../interfaces/stream-event-model';
 import { SignalrService } from '../../../services/signalr.service';
 import { RunStatus } from '../../../enumerations/run-status';
 import { NodeStatus } from '../../../enumerations/node-status';
@@ -47,6 +48,7 @@ export class WorkflowService implements OnDestroy {
   public runProgress: WritableSignal<RunProgressModel | undefined>;
   public traces: WritableSignal<TraceProgressModel[]>;
   public informations: WritableSignal<InformationProgressModel[]>;
+  public streamEvents: WritableSignal<StreamEventModel[]>;
   public runAssets: WritableSignal<AssetSummary[]>;
   public conversationTurns: WritableSignal<ConversationHistoryTurnModel[]>;
   public conversationAssets: WritableSignal<AssetSummary[]>;
@@ -69,6 +71,8 @@ export class WorkflowService implements OnDestroy {
   private readonly informationsProgressListener = (
     data: InformationProgressModel[],
   ) => this.onInformationsProgress(data);
+  private readonly streamEventProgressListener = (data: StreamEventModel[]) =>
+    this.onStreamEventProgress(data);
 
   constructor() {
     this.workflow = signal(
@@ -77,6 +81,7 @@ export class WorkflowService implements OnDestroy {
     this.runProgress = signal(undefined);
     this.traces = signal([]);
     this.informations = signal([]);
+    this.streamEvents = signal([]);
     this.runAssets = signal([]);
     this.conversationTurns = signal([]);
     this.conversationAssets = signal([]);
@@ -132,6 +137,7 @@ export class WorkflowService implements OnDestroy {
       this.runProgress.set(undefined);
       this.traces.set([]);
       this.informations.set([]);
+      this.streamEvents.set([]);
       this.runsTotal.set(0);
       this.runsPage.set(1);
       this.runsSortField.set(RunSortField.Created);
@@ -237,6 +243,10 @@ export class WorkflowService implements OnDestroy {
       'InformationsProgress',
       this.informationsProgressListener,
     );
+    this.signalrService.addListener(
+      'StreamEventProgress',
+      this.streamEventProgressListener,
+    );
   }
 
   removeListeners(): void {
@@ -248,6 +258,10 @@ export class WorkflowService implements OnDestroy {
     this.signalrService.removeListener(
       'InformationsProgress',
       this.informationsProgressListener,
+    );
+    this.signalrService.removeListener(
+      'StreamEventProgress',
+      this.streamEventProgressListener,
     );
   }
 
@@ -271,6 +285,7 @@ export class WorkflowService implements OnDestroy {
         } else {
           this.traces.set([]);
           this.informations.set([]);
+          this.streamEvents.set([]);
           this.runAssets.set([]);
         }
         break;
@@ -395,6 +410,43 @@ export class WorkflowService implements OnDestroy {
         byId.set(information.informationId, information),
       );
       return this.sortInformations([...byId.values()]);
+    });
+  }
+
+  onStreamEventProgress(data: StreamEventModel[]) {
+    if (!data || data.length === 0) {
+      return;
+    }
+
+    const currentRunId = this.activeLiveRunId;
+    if (!currentRunId) {
+      return;
+    }
+
+    const matchingEvents = data.filter(
+      (streamEvent) => streamEvent.runId === currentRunId,
+    );
+    if (matchingEvents.length === 0) {
+      return;
+    }
+
+    if (this.workflow().isConversationEnabled()) {
+      this.upsertConversationTurnStreamEvents(currentRunId, matchingEvents);
+      this.syncLatestTurnSignals(currentRunId);
+      return;
+    }
+
+    this.streamEvents.update((streamEvents) => {
+      const byId = new Map(
+        streamEvents.map((streamEvent) => [
+          streamEvent.streamEventId,
+          streamEvent,
+        ]),
+      );
+      matchingEvents.forEach((streamEvent) =>
+        byId.set(streamEvent.streamEventId, streamEvent),
+      );
+      return this.sortStreamEvents([...byId.values()]);
     });
   }
 
@@ -693,7 +745,7 @@ export class WorkflowService implements OnDestroy {
     this.conversationTurns.update((turns) =>
       turns.map((turn) =>
         turn.run.runId === runId
-          ? { ...turn, traces: [], informations: [], assets: [] }
+          ? { ...turn, traces: [], informations: [], streamEvents: [], assets: [] }
           : turn,
       ),
     );
@@ -706,7 +758,7 @@ export class WorkflowService implements OnDestroy {
       if (index >= 0) {
         nextTurns[index] = { ...nextTurns[index], run };
       } else {
-        nextTurns.push({ run, traces: [], informations: [], assets: [] });
+        nextTurns.push({ run, traces: [], informations: [], streamEvents: [], assets: [] });
       }
 
       return this.sortConversationTurns(nextTurns);
@@ -762,6 +814,34 @@ export class WorkflowService implements OnDestroy {
     );
   }
 
+  private upsertConversationTurnStreamEvents(
+    runId: string,
+    streamEvents: StreamEventModel[],
+  ): void {
+    this.conversationTurns.update((turns) =>
+      turns.map((turn) => {
+        if (turn.run.runId !== runId) {
+          return turn;
+        }
+
+        const byId = new Map(
+          turn.streamEvents.map((streamEvent) => [
+            streamEvent.streamEventId,
+            streamEvent,
+          ]),
+        );
+        streamEvents.forEach((streamEvent) =>
+          byId.set(streamEvent.streamEventId, streamEvent),
+        );
+
+        return {
+          ...turn,
+          streamEvents: this.sortStreamEvents([...byId.values()]),
+        };
+      }),
+    );
+  }
+
   private sortConversationTurns(
     turns: ConversationHistoryTurnModel[],
   ): ConversationHistoryTurnModel[] {
@@ -770,6 +850,7 @@ export class WorkflowService implements OnDestroy {
         ...turn,
         traces: [...(turn.traces ?? [])],
         informations: this.sortInformations(turn.informations ?? []),
+        streamEvents: this.sortStreamEvents(turn.streamEvents ?? []),
         assets: this.sortAssetsByCreated(turn.assets ?? []),
       }))
       .sort((left, right) => {
@@ -810,6 +891,13 @@ export class WorkflowService implements OnDestroy {
     );
   }
 
+  private getTurnStreamEvents(runId: string): StreamEventModel[] {
+    return (
+      this.conversationTurns().find((turn) => turn.run.runId === runId)?.streamEvents ??
+      []
+    );
+  }
+
   private getTurnAssets(runId: string): AssetSummary[] {
     return (
       this.conversationTurns().find((turn) => turn.run.runId === runId)?.assets ?? []
@@ -819,7 +907,22 @@ export class WorkflowService implements OnDestroy {
   private syncLatestTurnSignals(runId: string): void {
     this.traces.set([...this.getTurnTraces(runId)]);
     this.informations.set(this.sortInformations(this.getTurnInformations(runId)));
+    this.streamEvents.set(this.sortStreamEvents(this.getTurnStreamEvents(runId)));
     this.runAssets.set([...this.getTurnAssets(runId)]);
+  }
+
+  private sortStreamEvents(streamEvents: StreamEventModel[]): StreamEventModel[] {
+    return [...streamEvents].sort((left, right) => {
+      if (left.sequenceNumber !== right.sequenceNumber) {
+        return left.sequenceNumber - right.sequenceNumber;
+      }
+
+      const leftTime = Date.parse(left.created);
+      const rightTime = Date.parse(right.created);
+      const normalizedLeft = Number.isFinite(leftTime) ? leftTime : 0;
+      const normalizedRight = Number.isFinite(rightTime) ? rightTime : 0;
+      return normalizedLeft - normalizedRight;
+    });
   }
 
   private sortInformations(
@@ -914,6 +1017,11 @@ export class WorkflowService implements OnDestroy {
       .subscribe((informations) => {
         this.informations.set(this.sortInformations(informations ?? []));
       });
+    this.serverWorkflowService
+      .getRunStreamEvents(run.runId)
+      .subscribe((streamEvents) => {
+        this.streamEvents.set(this.sortStreamEvents(streamEvents ?? []));
+      });
     this.updateRunAssetsForRun(run);
   }
 
@@ -923,6 +1031,7 @@ export class WorkflowService implements OnDestroy {
     this.runProgress.set(undefined);
     this.traces.set([]);
     this.informations.set([]);
+    this.streamEvents.set([]);
     this.runAssets.set([]);
     this.conversationTurns.set([]);
     this.conversationAssets.set([]);
@@ -983,6 +1092,7 @@ export class WorkflowService implements OnDestroy {
     this.runProgress.set(undefined);
     this.traces.set([]);
     this.informations.set([]);
+    this.streamEvents.set([]);
     this.runAssets.set([]);
   }
 

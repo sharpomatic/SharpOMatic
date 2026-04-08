@@ -8,6 +8,7 @@ public class SharpOMaticDbContext : DbContext
     public DbSet<Run> Runs { get; set; }
     public DbSet<Trace> Traces { get; set; }
     public DbSet<Information> Informations { get; set; }
+    public DbSet<StreamEvent> StreamEvents { get; set; }
     public DbSet<Asset> Assets { get; set; }
     public DbSet<AssetFolder> AssetFolders { get; set; }
     public DbSet<ConnectorConfigMetadata> ConnectorConfigMetadata { get; set; }
@@ -57,6 +58,9 @@ public class SharpOMaticDbContext : DbContext
 
         // Cascade delete: Deleting a Run deletes its Assets
         modelBuilder.Entity<Asset>().HasOne<Run>().WithMany().HasForeignKey(a => a.RunId).OnDelete(DeleteBehavior.Cascade);
+
+        // Cascade delete: Deleting a Run deletes its StreamEvents
+        modelBuilder.Entity<StreamEvent>().HasOne<Run>().WithMany().HasForeignKey(s => s.RunId).OnDelete(DeleteBehavior.Cascade);
 
         // Cascade delete: Deleting a Conversation deletes its conversation assets
         modelBuilder.Entity<Asset>().HasOne<Conversation>().WithMany().HasForeignKey(a => a.ConversationId).OnDelete(DeleteBehavior.Cascade);

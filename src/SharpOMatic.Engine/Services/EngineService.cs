@@ -180,6 +180,7 @@ public class EngineService(
                 leaseOwner,
                 DeserializeWorkflowSnapshots(previousCheckpoint?.WorkflowSnapshotsJson)
             );
+            processContext.InitializeStreamSequence(await RepositoryService.GetNextStreamSequence(run.RunId, run.ConversationId));
 
             NextNodeData nextNode;
             if (conversation.Status == ConversationStatus.Suspended)
@@ -292,6 +293,7 @@ public class EngineService(
             var nodeRunLimit = nodeRunLimitSetting?.ValueInteger ?? NodeExecutionService.DEFAULT_NODE_RUN_LIMIT;
 
             var processContext = new ProcessContext(serviceScope, run, nodeRunLimit, completionSource);
+            processContext.InitializeStreamSequence(await RepositoryService.GetNextStreamSequence(run.RunId, run.ConversationId));
             var workflowContext = new WorkflowContext(processContext, workflow);
             var threadContext = processContext.CreateThread(nodeContext, workflowContext);
             await processContext.RunUpdated();

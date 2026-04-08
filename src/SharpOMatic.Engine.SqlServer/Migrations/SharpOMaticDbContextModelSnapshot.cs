@@ -573,6 +573,54 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.ToTable("Informations", "SharpOMatic");
                 });
 
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.StreamEvent", b =>
+                {
+                    b.Property<Guid>("StreamEventId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ConversationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EventKind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("MessageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("MessageRole")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TextDelta")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("WorkflowId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("StreamEventId");
+
+                    b.HasIndex("ConversationId", "SequenceNumber");
+
+                    b.HasIndex("RunId", "SequenceNumber")
+                        .IsUnique();
+
+                    b.HasIndex("WorkflowId", "Created");
+
+                    b.ToTable("StreamEvents", "SharpOMatic");
+                });
+
             modelBuilder.Entity("SharpOMatic.Engine.Repository.ModelConfigMetadata", b =>
                 {
                     b.Property<string>("ConfigId")
@@ -846,6 +894,15 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .WithMany()
                         .HasForeignKey("ConversationId")
                         .OnDelete(DeleteBehavior.Cascade);
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.StreamEvent", b =>
+                {
+                    b.HasOne("SharpOMatic.Engine.Repository.Run", null)
+                        .WithMany()
+                        .HasForeignKey("RunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.EvalColumn", b =>
