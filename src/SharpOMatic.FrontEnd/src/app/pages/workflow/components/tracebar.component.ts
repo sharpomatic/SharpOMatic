@@ -29,6 +29,7 @@ import {
 import { MonacoService } from '../../../services/monaco.service';
 import { TabComponent, TabItem } from '../../../components/tab/tab.component';
 import { ContextViewerComponent } from '../../../components/context-viewer/context-viewer.component';
+import { StreamViewerComponent } from '../../../components/stream-viewer/stream-viewer.component';
 import { TraceViewerComponent } from '../../../components/trace-viewer/trace-viewer.component';
 import { DialogService } from '../../../dialogs/services/dialog.service';
 import { AssetPickerDialogComponent } from '../../../dialogs/asset-picker/asset-picker-dialog.component';
@@ -49,6 +50,7 @@ import { ServerRepositoryService } from '../../../services/server.repository.ser
     MonacoEditorModule,
     TabComponent,
     ContextViewerComponent,
+    StreamViewerComponent,
     TraceViewerComponent,
   ],
   templateUrl: './tracebar.component.html',
@@ -60,6 +62,7 @@ export class TracebarComponent implements OnInit, OnDestroy {
   @ViewChild('outputTab', { static: true }) outputTab!: TemplateRef<unknown>;
   @ViewChild('resumeTab', { static: true }) resumeTab!: TemplateRef<unknown>;
   @ViewChild('traceTab', { static: true }) traceTab!: TemplateRef<unknown>;
+  @ViewChild('streamTab', { static: true }) streamTab!: TemplateRef<unknown>;
   @ViewChild('assetsTab', { static: true }) assetsTab!: TemplateRef<unknown>;
   @Output() public tracebarWidthChange = new EventEmitter<number>();
 
@@ -432,7 +435,13 @@ export class TracebarComponent implements OnInit, OnDestroy {
   }
 
   private updateTabs(): void {
-    if (!this.inputTab || !this.outputTab || !this.assetsTab || !this.traceTab) {
+    if (
+      !this.inputTab ||
+      !this.outputTab ||
+      !this.assetsTab ||
+      !this.traceTab ||
+      !this.streamTab
+    ) {
       return;
     }
 
@@ -453,6 +462,7 @@ export class TracebarComponent implements OnInit, OnDestroy {
     tabs.push(
       { id: 'assets', title: 'Assets', content: this.assetsTab },
       { id: 'trace', title: 'Trace', content: this.traceTab },
+      { id: 'stream', title: 'Stream', content: this.streamTab },
     );
 
     this.tabs = tabs;

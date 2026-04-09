@@ -35,12 +35,14 @@ import { InformationProgressModel } from '../../pages/workflow/interfaces/inform
 import { DIALOG_DATA } from '../services/dialog.service';
 import { ServerRepositoryService } from '../../services/server.repository.service';
 import { MonacoService } from '../../services/monaco.service';
+import { StreamViewerComponent } from '../../components/stream-viewer/stream-viewer.component';
 import { TraceViewerComponent } from '../../components/trace-viewer/trace-viewer.component';
 import { AssetPreviewDialogComponent } from '../asset-preview/asset-preview-dialog.component';
 import { AssetTextDialogComponent } from '../asset-text/asset-text-dialog.component';
 import { AssetSummary } from '../../pages/assets/interfaces/asset-summary';
 import { formatByteSize } from '../../helper/format-size';
 import { isTextLikeMediaType, normalizeMediaType } from '../../helper/asset-media-type';
+import { StreamEventModel } from '../../pages/workflow/interfaces/stream-event-model';
 
 interface RunPropertyRow {
   label: string;
@@ -59,6 +61,7 @@ interface RunPropertyRow {
     MonacoEditorModule,
     TabComponent,
     ContextViewerComponent,
+    StreamViewerComponent,
     TraceViewerComponent,
   ],
   templateUrl: './run-viewer-dialog.component.html',
@@ -71,6 +74,7 @@ export class RunViewerDialogComponent implements OnInit {
   @ViewChild('inputTab', { static: true }) inputTab!: TemplateRef<unknown>;
   @ViewChild('outputTab', { static: true }) outputTab!: TemplateRef<unknown>;
   @ViewChild('traceTab', { static: true }) traceTab!: TemplateRef<unknown>;
+  @ViewChild('streamTab', { static: true }) streamTab!: TemplateRef<unknown>;
   @ViewChild('assetsTab', { static: true }) assetsTab!: TemplateRef<unknown>;
 
   public run: RunProgressModel;
@@ -84,6 +88,7 @@ export class RunViewerDialogComponent implements OnInit {
   public outputContexts: string[] = [];
   public traces: TraceProgressModel[] = [];
   public informations: InformationProgressModel[] = [];
+  public streamEvents: StreamEventModel[] = [];
   public isLoadingTraces = true;
   public runAssets: AssetSummary[] = [];
   public readonly RunStatus = RunStatus;
@@ -115,12 +120,14 @@ export class RunViewerDialogComponent implements OnInit {
       { id: 'input', title: 'Input', content: this.inputTab },
       { id: 'output', title: 'Output', content: this.outputTab },
       { id: 'trace', title: 'Trace', content: this.traceTab },
+      { id: 'stream', title: 'Stream', content: this.streamTab },
       { id: 'assets', title: 'Assets', content: this.assetsTab },
     ];
 
     this.runInputs = this.loadInputEntries();
     this.runProperties = this.buildRunProperties();
     this.loadTraces();
+    this.loadStreamEvents();
     this.loadRunAssets();
   }
 
@@ -270,6 +277,14 @@ export class RunViewerDialogComponent implements OnInit {
       )
       .subscribe((assets) => {
         this.runAssets = assets ?? [];
+      });
+  }
+
+  private loadStreamEvents(): void {
+    this.serverRepository
+      .getRunStreamEvents(this.run.runId)
+      .subscribe((streamEvents) => {
+        this.streamEvents = streamEvents ?? [];
       });
   }
 

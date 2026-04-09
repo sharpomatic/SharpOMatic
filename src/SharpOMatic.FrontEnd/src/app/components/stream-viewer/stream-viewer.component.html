@@ -1,0 +1,63 @@
+<div class="stream-viewer bg-body-tertiary flex-grow-1 d-flex flex-column p-1 h-100">
+  @if (streamEvents.length === 0) {
+    <div class="empty-state text-body-secondary">
+      <div class="empty-icon"><i class="bi bi-chat-left-text"></i></div>
+      <div class="empty-title">No stream events</div>
+      <div class="empty-subtitle">
+        This run has not emitted any stream events.
+      </div>
+    </div>
+  } @else {
+    <div class="stream-events-list">
+      @for (streamEvent of streamEvents; track streamEvent.streamEventId) {
+        <div class="stream-event-line">
+          <span class="stream-sequence">
+            {{ streamEvent.sequenceNumber }}
+          </span>
+          <span
+            class="stream-message-id"
+            [title]="streamEvent.messageId || ''"
+          >
+            {{ streamEvent.messageId || '' }}
+          </span>
+          <span class="stream-role">
+            @if (streamEvent.messageRole !== null && streamEvent.messageRole !== undefined) {
+              <span
+                class="role-badge"
+                [class.user]="streamEvent.messageRole === StreamMessageRole.User"
+                [class.assistant]="
+                  streamEvent.messageRole === StreamMessageRole.Assistant
+                "
+                [class.system]="streamEvent.messageRole === StreamMessageRole.System"
+              >
+                {{ getRoleLabel(streamEvent.messageRole) }}
+              </span>
+            }
+          </span>
+          <span class="stream-kind">
+            <span
+              class="kind-badge"
+              [class.text-start]="streamEvent.eventKind === StreamEventKind.TextStart"
+              [class.text-content]="
+                streamEvent.eventKind === StreamEventKind.TextContent
+              "
+              [class.text-end]="streamEvent.eventKind === StreamEventKind.TextEnd"
+            >
+              {{ getEventKindLabel(streamEvent.eventKind) }}
+            </span>
+          </span>
+          <div class="stream-payload">
+            @if (streamEvent.textDelta) {
+              <span class="payload-value">{{ streamEvent.textDelta }}</span>
+            }
+            @if (streamEvent.metadata) {
+              <span class="payload-value metadata-value">{{
+                streamEvent.metadata
+              }}</span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

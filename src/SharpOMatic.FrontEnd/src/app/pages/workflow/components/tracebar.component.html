@@ -507,4 +507,43 @@
       ></app-trace-viewer>
     }
   </ng-template>
+
+  <ng-template #streamTab>
+    @if (workflowService.workflow().isConversationEnabled()) {
+      <div class="bg-body-tertiary flex-grow-1 d-flex flex-column p-3 h-100">
+        @if (workflowService.conversationTurns().length === 0) {
+          <div class="empty-state text-body-secondary">
+            <div class="empty-icon"><i class="bi bi-chat-left-text"></i></div>
+            <div class="empty-title">No conversation stream</div>
+            <div class="empty-subtitle">
+              This conversation has not emitted any stream events yet.
+            </div>
+          </div>
+        } @else {
+          <div class="history-sections">
+            @for (
+              turn of workflowService.conversationTurns();
+              track turn.run.runId;
+              let index = $index
+            ) {
+              <div class="history-section">
+                <div class="history-section-header">
+                  <div class="fw-semibold">
+                    {{ getTurnLabel(turn.run.turnNumber, index) }}
+                  </div>
+                </div>
+                <app-stream-viewer
+                  [streamEvents]="turn.streamEvents"
+                ></app-stream-viewer>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    } @else {
+      <app-stream-viewer
+        [streamEvents]="workflowService.streamEvents()"
+      ></app-stream-viewer>
+    }
+  </ng-template>
 </div>
