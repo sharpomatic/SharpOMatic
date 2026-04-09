@@ -48,6 +48,37 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.FromResult(conversation);
     }
 
+    public Task<int> GetWorkflowConversationCount(Guid workflowId)
+    {
+        return Task.FromResult(_conversations.Values.Count(c => c.WorkflowId == workflowId));
+    }
+
+    public Task<List<Conversation>> GetWorkflowConversations(Guid workflowId, ConversationSortField sortBy, SortDirection sortDirection, int skip, int take)
+    {
+        IEnumerable<Conversation> conversations = _conversations.Values.Where(c => c.WorkflowId == workflowId);
+
+        conversations = sortBy switch
+        {
+            ConversationSortField.Created => sortDirection == SortDirection.Ascending
+                ? conversations.OrderBy(c => c.Created).ThenByDescending(c => c.Updated)
+                : conversations.OrderByDescending(c => c.Created).ThenByDescending(c => c.Updated),
+            ConversationSortField.Status => sortDirection == SortDirection.Ascending
+                ? conversations.OrderBy(c => c.Status).ThenByDescending(c => c.Updated)
+                : conversations.OrderByDescending(c => c.Status).ThenByDescending(c => c.Updated),
+            _ => sortDirection == SortDirection.Ascending
+                ? conversations.OrderBy(c => c.Updated).ThenByDescending(c => c.Created)
+                : conversations.OrderByDescending(c => c.Updated).ThenByDescending(c => c.Created),
+        };
+
+        if (skip > 0)
+            conversations = conversations.Skip(skip);
+
+        if (take > 0)
+            conversations = conversations.Take(take);
+
+        return Task.FromResult(conversations.ToList());
+    }
+
     public Task UpsertConversation(Conversation conversation)
     {
         _conversations[conversation.ConversationId] = conversation;

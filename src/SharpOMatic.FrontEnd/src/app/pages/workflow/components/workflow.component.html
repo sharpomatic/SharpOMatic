@@ -250,192 +250,408 @@
 
   <ng-template #runsTab>
     <div class="p-3 bg-body-tertiary h-100 d-flex flex-column runs-tab">
-      <div class="table-responsive runs-table">
-        <table class="table table-sm table-striped table-hover align-middle">
-          <thead>
-            <tr>
-              <th scope="col" class="col-created">
-                <button
-                  class="btn btn-link p-0 runs-sort"
-                  type="button"
-                  (click)="onRunsSortChange(RunSortField.Created)"
-                >
-                  Created
-                  @if (
-                    workflowService.runsSortField() === RunSortField.Created
-                  ) {
-                    <i
-                      class="bi"
-                      [class.bi-arrow-down]="
-                        workflowService.runsSortDirection() ===
-                        SortDirection.Descending
-                      "
-                      [class.bi-arrow-up]="
-                        workflowService.runsSortDirection() ===
-                        SortDirection.Ascending
-                      "
-                    ></i>
-                  }
-                </button>
-              </th>
-              <th scope="col" class="col-conversation-id">Conversation Id</th>
-              <th scope="col" class="col-status">
-                <button
-                  class="btn btn-link p-0 runs-sort"
-                  type="button"
-                  (click)="onRunsSortChange(RunSortField.Status)"
-                >
-                  Status
-                  @if (
-                    workflowService.runsSortField() === RunSortField.Status
-                  ) {
-                    <i
-                      class="bi"
-                      [class.bi-arrow-down]="
-                        workflowService.runsSortDirection() ===
-                        SortDirection.Descending
-                      "
-                      [class.bi-arrow-up]="
-                        workflowService.runsSortDirection() ===
-                        SortDirection.Ascending
-                      "
-                    ></i>
-                  }
-                </button>
-              </th>
-              <th scope="col" class="col-duration">Duration</th>
-              <th scope="col" class="col-error">Error</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (run of workflowService.runs(); track run.runId) {
-              <tr class="run-row" (dblclick)="onRunRowDoubleClick(run)">
-                <td class="col-created">
-                  {{
-                    run.created
-                      ? (run.created | date: "yyyy-MM-dd HH:mm:ss.SS")
-                      : ""
-                  }}
-                </td>
-                <td
-                  class="col-conversation-id text-truncate"
-                  [title]="run.conversationId || ''"
-                >
-                  {{ run.conversationId || "" }}
-                </td>
-                <td class="col-status">
-                  <span
-                    class="run-text"
-                    [class.created]="run.runStatus === RunStatus.Created"
-                    [class.running]="run.runStatus === RunStatus.Running"
-                    [class.success]="run.runStatus === RunStatus.Success"
-                    [class.suspended]="run.runStatus === RunStatus.Suspended"
-                    [class.failed]="run.runStatus === RunStatus.Failed"
+      @if (workflowService.workflow().isConversationEnabled()) {
+        <div class="table-responsive runs-table">
+          <table class="table table-sm table-striped table-hover align-middle">
+            <thead>
+              <tr>
+                <th scope="col" class="col-created">
+                  <button
+                    class="btn btn-link p-0 runs-sort"
+                    type="button"
+                    (click)="onConversationsSortChange(ConversationSortField.Created)"
                   >
-                    {{ run.message }}
-                  </span>
-                </td>
-                <td class="col-duration">{{ getRunDuration(run) }}</td>
-                <td class="col-error">{{ run.error || "" }}</td>
+                    Created
+                    @if (
+                      workflowService.conversationsSortField() ===
+                      ConversationSortField.Created
+                    ) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          workflowService.conversationsSortDirection() ===
+                          SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          workflowService.conversationsSortDirection() ===
+                          SortDirection.Ascending
+                        "
+                      ></i>
+                    }
+                  </button>
+                </th>
+                <th scope="col" class="col-conversation-id">Conversation Id</th>
+                <th scope="col" class="col-status">
+                  <button
+                    class="btn btn-link p-0 runs-sort"
+                    type="button"
+                    (click)="onConversationsSortChange(ConversationSortField.Status)"
+                  >
+                    Status
+                    @if (
+                      workflowService.conversationsSortField() ===
+                      ConversationSortField.Status
+                    ) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          workflowService.conversationsSortDirection() ===
+                          SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          workflowService.conversationsSortDirection() ===
+                          SortDirection.Ascending
+                        "
+                      ></i>
+                    }
+                  </button>
+                </th>
+                <th scope="col" class="col-turns">Turns</th>
+                <th scope="col" class="col-error">Error</th>
               </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-      @if (workflowService.runsTotal() > 0) {
-        <div
-          class="d-flex align-items-center justify-content-between runs-pagination"
-        >
-          <div class="text-muted small">
-            Page {{ workflowService.runsPage() }} of {{ runsPageCount() }} ({{
-              workflowService.runsTotal()
-            }}
-            total runs)
-          </div>
-          @if (runsPageCount() > 1) {
-            <nav aria-label="Runs pagination">
-              <ul class="pagination pagination-sm mb-0">
-                <li
-                  class="page-item"
-                  [class.disabled]="workflowService.runsPage() === 1"
+            </thead>
+            <tbody>
+              @for (
+                conversation of workflowService.conversations();
+                track conversation.conversationId
+              ) {
+                <tr
+                  class="run-row"
+                  (dblclick)="onConversationRowDoubleClick(conversation)"
                 >
-                  <button
-                    class="page-link"
-                    type="button"
-                    [disabled]="workflowService.runsPage() === 1"
-                    aria-label="First"
-                    (click)="onRunsPageChange(1)"
+                  <td class="col-created">
+                    {{
+                      conversation.created
+                        ? (conversation.created | date: "yyyy-MM-dd HH:mm:ss.SS")
+                        : ""
+                    }}
+                  </td>
+                  <td
+                    class="col-conversation-id text-truncate"
+                    [title]="conversation.conversationId"
                   >
-                    <span aria-hidden="true">&laquo;</span>
-                  </button>
-                </li>
-                <li
-                  class="page-item"
-                  [class.disabled]="workflowService.runsPage() === 1"
-                >
-                  <button
-                    class="page-link"
-                    type="button"
-                    [disabled]="workflowService.runsPage() === 1"
-                    aria-label="Previous"
-                    (click)="onRunsPageChange(workflowService.runsPage() - 1)"
-                  >
-                    <span aria-hidden="true">&lsaquo;</span>
-                  </button>
-                </li>
-                @for (page of runsPageNumbers(); track page) {
+                    {{ conversation.conversationId }}
+                  </td>
+                  <td class="col-status">
+                    <span
+                      class="run-text"
+                      [class.created]="conversation.status === ConversationStatus.Created"
+                      [class.running]="conversation.status === ConversationStatus.Running"
+                      [class.success]="conversation.status === ConversationStatus.Completed"
+                      [class.suspended]="
+                        conversation.status === ConversationStatus.Suspended
+                      "
+                      [class.failed]="conversation.status === ConversationStatus.Failed"
+                    >
+                      {{ getConversationStatusLabel(conversation.status) }}
+                    </span>
+                  </td>
+                  <td class="col-turns">{{ conversation.currentTurnNumber }}</td>
+                  <td class="col-error">{{ conversation.lastError || "" }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (workflowService.conversationsTotal() > 0) {
+          <div
+            class="d-flex align-items-center justify-content-between runs-pagination"
+          >
+            <div class="text-muted small">
+              Page {{ workflowService.conversationsPage() }} of
+              {{ conversationsPageCount() }} ({{
+                workflowService.conversationsTotal()
+              }}
+              total conversations)
+            </div>
+            @if (conversationsPageCount() > 1) {
+              <nav aria-label="Conversations pagination">
+                <ul class="pagination pagination-sm mb-0">
                   <li
                     class="page-item"
-                    [class.active]="page === workflowService.runsPage()"
-                    [attr.aria-current]="
-                      page === workflowService.runsPage() ? 'page' : null
+                    [class.disabled]="workflowService.conversationsPage() === 1"
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      [disabled]="workflowService.conversationsPage() === 1"
+                      aria-label="First"
+                      (click)="onConversationsPageChange(1)"
+                    >
+                      <span aria-hidden="true">&laquo;</span>
+                    </button>
+                  </li>
+                  <li
+                    class="page-item"
+                    [class.disabled]="workflowService.conversationsPage() === 1"
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      [disabled]="workflowService.conversationsPage() === 1"
+                      aria-label="Previous"
+                      (click)="
+                        onConversationsPageChange(
+                          workflowService.conversationsPage() - 1
+                        )
+                      "
+                    >
+                      <span aria-hidden="true">&lsaquo;</span>
+                    </button>
+                  </li>
+                  @for (page of conversationsPageNumbers(); track page) {
+                    <li
+                      class="page-item"
+                      [class.active]="page === workflowService.conversationsPage()"
+                      [attr.aria-current]="
+                        page === workflowService.conversationsPage()
+                          ? 'page'
+                          : null
+                      "
+                    >
+                      <button
+                        class="page-link"
+                        type="button"
+                        (click)="onConversationsPageChange(page)"
+                      >
+                        {{ page }}
+                      </button>
+                    </li>
+                  }
+                  <li
+                    class="page-item"
+                    [class.disabled]="
+                      workflowService.conversationsPage() >=
+                      conversationsPageCount()
                     "
                   >
                     <button
                       class="page-link"
                       type="button"
-                      (click)="onRunsPageChange(page)"
+                      [disabled]="
+                        workflowService.conversationsPage() >=
+                        conversationsPageCount()
+                      "
+                      aria-label="Next"
+                      (click)="
+                        onConversationsPageChange(
+                          workflowService.conversationsPage() + 1
+                        )
+                      "
                     >
-                      {{ page }}
+                      <span aria-hidden="true">&rsaquo;</span>
                     </button>
                   </li>
-                }
-                <li
-                  class="page-item"
-                  [class.disabled]="
-                    workflowService.runsPage() >= runsPageCount()
-                  "
-                >
-                  <button
-                    class="page-link"
-                    type="button"
-                    [disabled]="workflowService.runsPage() >= runsPageCount()"
-                    aria-label="Next"
-                    (click)="onRunsPageChange(workflowService.runsPage() + 1)"
+                  <li
+                    class="page-item"
+                    [class.disabled]="
+                      workflowService.conversationsPage() >=
+                      conversationsPageCount()
+                    "
                   >
-                    <span aria-hidden="true">&rsaquo;</span>
-                  </button>
-                </li>
-                <li
-                  class="page-item"
-                  [class.disabled]="
-                    workflowService.runsPage() >= runsPageCount()
-                  "
-                >
+                    <button
+                      class="page-link"
+                      type="button"
+                      [disabled]="
+                        workflowService.conversationsPage() >=
+                        conversationsPageCount()
+                      "
+                      aria-label="Last"
+                      (click)="onConversationsPageChange(conversationsPageCount())"
+                    >
+                      <span aria-hidden="true">&raquo;</span>
+                    </button>
+                  </li>
+                </ul>
+              </nav>
+            }
+          </div>
+        }
+      } @else {
+        <div class="table-responsive runs-table">
+          <table class="table table-sm table-striped table-hover align-middle">
+            <thead>
+              <tr>
+                <th scope="col" class="col-created">
                   <button
-                    class="page-link"
+                    class="btn btn-link p-0 runs-sort"
                     type="button"
-                    [disabled]="workflowService.runsPage() >= runsPageCount()"
-                    aria-label="Last"
-                    (click)="onRunsPageChange(runsPageCount())"
+                    (click)="onRunsSortChange(RunSortField.Created)"
                   >
-                    <span aria-hidden="true">&raquo;</span>
+                    Created
+                    @if (
+                      workflowService.runsSortField() === RunSortField.Created
+                    ) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          workflowService.runsSortDirection() ===
+                          SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          workflowService.runsSortDirection() ===
+                          SortDirection.Ascending
+                        "
+                      ></i>
+                    }
                   </button>
-                </li>
-              </ul>
-            </nav>
-          }
+                </th>
+                <th scope="col" class="col-run-id">Run Id</th>
+                <th scope="col" class="col-status">
+                  <button
+                    class="btn btn-link p-0 runs-sort"
+                    type="button"
+                    (click)="onRunsSortChange(RunSortField.Status)"
+                  >
+                    Status
+                    @if (
+                      workflowService.runsSortField() === RunSortField.Status
+                    ) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          workflowService.runsSortDirection() ===
+                          SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          workflowService.runsSortDirection() ===
+                          SortDirection.Ascending
+                        "
+                      ></i>
+                    }
+                  </button>
+                </th>
+                <th scope="col" class="col-duration">Duration</th>
+                <th scope="col" class="col-error">Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (run of workflowService.runs(); track run.runId) {
+                <tr class="run-row" (dblclick)="onRunRowDoubleClick(run)">
+                  <td class="col-created">
+                    {{
+                    run.created
+                      ? (run.created | date: "yyyy-MM-dd HH:mm:ss.SS")
+                      : ""
+                    }}
+                  </td>
+                  <td class="col-run-id text-truncate" [title]="run.runId">
+                    {{ run.runId }}
+                  </td>
+                  <td class="col-status">
+                    <span
+                      class="run-text"
+                      [class.created]="run.runStatus === RunStatus.Created"
+                      [class.running]="run.runStatus === RunStatus.Running"
+                      [class.success]="run.runStatus === RunStatus.Success"
+                      [class.suspended]="run.runStatus === RunStatus.Suspended"
+                      [class.failed]="run.runStatus === RunStatus.Failed"
+                    >
+                      {{ run.message }}
+                    </span>
+                  </td>
+                  <td class="col-duration">{{ getRunDuration(run) }}</td>
+                  <td class="col-error">{{ run.error || "" }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
+        @if (workflowService.runsTotal() > 0) {
+          <div
+            class="d-flex align-items-center justify-content-between runs-pagination"
+          >
+            <div class="text-muted small">
+              Page {{ workflowService.runsPage() }} of {{ runsPageCount() }} ({{
+                workflowService.runsTotal()
+              }}
+              total runs)
+            </div>
+            @if (runsPageCount() > 1) {
+              <nav aria-label="Runs pagination">
+                <ul class="pagination pagination-sm mb-0">
+                  <li
+                    class="page-item"
+                    [class.disabled]="workflowService.runsPage() === 1"
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      [disabled]="workflowService.runsPage() === 1"
+                      aria-label="First"
+                      (click)="onRunsPageChange(1)"
+                    >
+                      <span aria-hidden="true">&laquo;</span>
+                    </button>
+                  </li>
+                  <li
+                    class="page-item"
+                    [class.disabled]="workflowService.runsPage() === 1"
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      [disabled]="workflowService.runsPage() === 1"
+                      aria-label="Previous"
+                      (click)="onRunsPageChange(workflowService.runsPage() - 1)"
+                    >
+                      <span aria-hidden="true">&lsaquo;</span>
+                    </button>
+                  </li>
+                  @for (page of runsPageNumbers(); track page) {
+                    <li
+                      class="page-item"
+                      [class.active]="page === workflowService.runsPage()"
+                      [attr.aria-current]="
+                        page === workflowService.runsPage() ? 'page' : null
+                      "
+                    >
+                      <button
+                        class="page-link"
+                        type="button"
+                        (click)="onRunsPageChange(page)"
+                      >
+                        {{ page }}
+                      </button>
+                    </li>
+                  }
+                  <li
+                    class="page-item"
+                    [class.disabled]="
+                      workflowService.runsPage() >= runsPageCount()
+                    "
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      [disabled]="workflowService.runsPage() >= runsPageCount()"
+                      aria-label="Next"
+                      (click)="onRunsPageChange(workflowService.runsPage() + 1)"
+                    >
+                      <span aria-hidden="true">&rsaquo;</span>
+                    </button>
+                  </li>
+                  <li
+                    class="page-item"
+                    [class.disabled]="
+                      workflowService.runsPage() >= runsPageCount()
+                    "
+                  >
+                    <button
+                      class="page-link"
+                      type="button"
+                      [disabled]="workflowService.runsPage() >= runsPageCount()"
+                      aria-label="Last"
+                      (click)="onRunsPageChange(runsPageCount())"
+                    >
+                      <span aria-hidden="true">&raquo;</span>
+                    </button>
+                  </li>
+                </ul>
+              </nav>
+            }
+          </div>
+        }
       }
     </div>
   </ng-template>

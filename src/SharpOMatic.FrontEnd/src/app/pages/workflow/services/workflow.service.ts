@@ -29,11 +29,13 @@ import { StartNodeEntity } from '../../../entities/definitions/start-node.entity
 import { ToastService } from '../../../services/toast.service';
 import { RunSortField } from '../../../enumerations/run-sort-field';
 import { SortDirection } from '../../../enumerations/sort-direction';
+import { ConversationSortField } from '../../../enumerations/conversation-sort-field';
 import { AssetSummary } from '../../assets/interfaces/asset-summary';
 import { AssetScope } from '../../../enumerations/asset-scope';
 import { AssetSortField } from '../../../enumerations/asset-sort-field';
 import { ConversationHistoryTurnModel } from '../interfaces/conversation-history-turn-model';
 import { ConversationHistoryModel } from '../interfaces/conversation-history-model';
+import { ConversationSummaryModel } from '../interfaces/conversation-summary-model';
 
 @Injectable({
   providedIn: 'root',
@@ -43,6 +45,7 @@ export class WorkflowService implements OnDestroy {
   private readonly toastService = inject(ToastService);
   public readonly signalrService = inject(SignalrService);
   public readonly runsPageSize = 50;
+  public readonly conversationsPageSize = 50;
 
   public workflow: WritableSignal<WorkflowEntity>;
   public runProgress: WritableSignal<RunProgressModel | undefined>;
@@ -57,6 +60,11 @@ export class WorkflowService implements OnDestroy {
   public runsPage: WritableSignal<number>;
   public runsSortField: WritableSignal<RunSortField>;
   public runsSortDirection: WritableSignal<SortDirection>;
+  public conversations: WritableSignal<ConversationSummaryModel[]>;
+  public conversationsTotal: WritableSignal<number>;
+  public conversationsPage: WritableSignal<number>;
+  public conversationsSortField: WritableSignal<ConversationSortField>;
+  public conversationsSortDirection: WritableSignal<SortDirection>;
   public isRunning: WritableSignal<boolean>;
   public runInputs: WritableSignal<ContextEntryListEntity>;
   private lastStartInputsSnapshot?: ContextEntryListSnapshot;
@@ -90,6 +98,11 @@ export class WorkflowService implements OnDestroy {
     this.runsPage = signal(1);
     this.runsSortField = signal(RunSortField.Created);
     this.runsSortDirection = signal(SortDirection.Descending);
+    this.conversations = signal([]);
+    this.conversationsTotal = signal(0);
+    this.conversationsPage = signal(1);
+    this.conversationsSortField = signal(ConversationSortField.Created);
+    this.conversationsSortDirection = signal(SortDirection.Descending);
     this.isRunning = signal(false);
     this.runInputs = signal(
       ContextEntryListEntity.fromSnapshot(
@@ -142,6 +155,11 @@ export class WorkflowService implements OnDestroy {
       this.runsPage.set(1);
       this.runsSortField.set(RunSortField.Created);
       this.runsSortDirection.set(SortDirection.Descending);
+      this.conversations.set([]);
+      this.conversationsTotal.set(0);
+      this.conversationsPage.set(1);
+      this.conversationsSortField.set(ConversationSortField.Created);
+      this.conversationsSortDirection.set(SortDirection.Descending);
       this.runAssets.set([]);
       this.conversationTurns.set([]);
       this.conversationAssets.set([]);
@@ -149,7 +167,11 @@ export class WorkflowService implements OnDestroy {
       this.activeConversationId = undefined;
       this.updateRunInputsFromWorkflow();
       this.workflow().markClean();
-      this.loadRunsPageForWorkflow(id, 1);
+      if (workflow.isConversationEnabled()) {
+        this.loadConversationsPageForWorkflow(id, 1);
+      } else {
+        this.loadRunsPageForWorkflow(id, 1);
+      }
       this.loadLatestExecutionState(id, workflow.isConversationEnabled());
     });
   }
@@ -533,6 +555,18 @@ export class WorkflowService implements OnDestroy {
     this.loadRunsPageForWorkflow(workflowId, normalizedPage);
   }
 
+  public loadConversationsPage(page: number): void {
+    const workflowId = this.workflow().id;
+    if (!workflowId) {
+      return;
+    }
+
+    const normalizedPage = Number.isFinite(page)
+      ? Math.max(1, Math.floor(page))
+      : 1;
+    this.loadConversationsPageForWorkflow(workflowId, normalizedPage);
+  }
+
   public updateRunsSort(field: RunSortField): void {
     const workflowId = this.workflow().id;
     if (this.runsSortField() === field) {
@@ -551,6 +585,26 @@ export class WorkflowService implements OnDestroy {
     }
 
     this.loadRunsPageForWorkflow(workflowId, 1);
+  }
+
+  public updateConversationsSort(field: ConversationSortField): void {
+    const workflowId = this.workflow().id;
+    if (this.conversationsSortField() === field) {
+      const nextDirection =
+        this.conversationsSortDirection() === SortDirection.Descending
+          ? SortDirection.Ascending
+          : SortDirection.Descending;
+      this.conversationsSortDirection.set(nextDirection);
+    } else {
+      this.conversationsSortField.set(field);
+      this.conversationsSortDirection.set(SortDirection.Descending);
+    }
+
+    if (!workflowId) {
+      return;
+    }
+
+    this.loadConversationsPageForWorkflow(workflowId, 1);
   }
 
   private loadRunsPageForWorkflow(workflowId: string, page: number): void {
@@ -584,12 +638,56 @@ export class WorkflowService implements OnDestroy {
       });
   }
 
+  private loadConversationsPageForWorkflow(
+    workflowId: string,
+    page: number,
+  ): void {
+    const sortBy = this.conversationsSortField();
+    const sortDirection = this.conversationsSortDirection();
+    this.serverWorkflowService
+      .getWorkflowConversations(
+        workflowId,
+        page,
+        this.conversationsPageSize,
+        sortBy,
+        sortDirection,
+      )
+      .subscribe((result) => {
+        if (!result) {
+          this.conversations.set([]);
+          this.conversationsTotal.set(0);
+          return;
+        }
+
+        const totalCount = result.totalCount ?? 0;
+        const totalPages = this.getConversationsPageCount(totalCount);
+        if (totalPages > 0 && page > totalPages) {
+          this.loadConversationsPageForWorkflow(workflowId, totalPages);
+          return;
+        }
+
+        this.conversations.set(result.conversations ?? []);
+        this.conversationsTotal.set(totalCount);
+        this.conversationsPage.set(page);
+      });
+  }
+
   public getRunsPageCount(totalCount = this.runsTotal()): number {
     if (totalCount <= 0) {
       return 0;
     }
 
     return Math.ceil(totalCount / this.runsPageSize);
+  }
+
+  public getConversationsPageCount(
+    totalCount = this.conversationsTotal(),
+  ): number {
+    if (totalCount <= 0) {
+      return 0;
+    }
+
+    return Math.ceil(totalCount / this.conversationsPageSize);
   }
 
   private syncRunInputsWithStartSnapshot(

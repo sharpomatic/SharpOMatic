@@ -23,11 +23,15 @@ import { TabComponent, TabItem } from '../../../components/tab/tab.component';
 import { CanLeaveWithUnsavedChanges } from '../../../helper/unsaved-changes.guard';
 import { RunStatus } from '../../../enumerations/run-status';
 import { RunSortField } from '../../../enumerations/run-sort-field';
+import { ConversationStatus } from '../../../enumerations/conversation-status';
+import { ConversationSortField } from '../../../enumerations/conversation-sort-field';
 import { SortDirection } from '../../../enumerations/sort-direction';
 import { RunProgressModel } from '../interfaces/run-progress-model';
 import { Observable } from 'rxjs';
 import { DialogService } from '../../../dialogs/services/dialog.service';
 import { RunViewerDialogComponent } from '../../../dialogs/run-viewer/run-viewer-dialog.component';
+import { ConversationViewerDialogComponent } from '../../../dialogs/conversation-viewer/conversation-viewer-dialog.component';
+import { ConversationSummaryModel } from '../interfaces/conversation-summary-model';
 
 @Component({
   selector: 'app-workflow',
@@ -69,10 +73,15 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
       .some((node) => node.nodeType() === NodeType.Start),
   );
   public readonly RunStatus = RunStatus;
+  public readonly ConversationStatus = ConversationStatus;
   public readonly RunSortField = RunSortField;
+  public readonly ConversationSortField = ConversationSortField;
   public readonly SortDirection = SortDirection;
   public readonly runsPageCount = computed(() =>
     this.workflowService.getRunsPageCount(),
+  );
+  public readonly conversationsPageCount = computed(() =>
+    this.workflowService.getConversationsPageCount(),
   );
   public readonly runsPageNumbers = computed(() => {
     const totalPages = this.runsPageCount();
@@ -93,14 +102,36 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
     return pages;
   });
+  public readonly conversationsPageNumbers = computed(() => {
+    const totalPages = this.conversationsPageCount();
+    if (totalPages <= 1) {
+      return [];
+    }
+
+    const currentPage = this.workflowService.conversationsPage();
+    const windowSize = 5;
+    let start = Math.max(1, currentPage - Math.floor(windowSize / 2));
+    let end = Math.min(totalPages, start + windowSize - 1);
+    start = Math.max(1, end - windowSize + 1);
+
+    const pages: number[] = [];
+    for (let page = start; page <= end; page += 1) {
+      pages.push(page);
+    }
+
+    return pages;
+  });
+
+  constructor() {
+    effect(() => {
+      const isConversationEnabled =
+        this.workflowService.workflow().isConversationEnabled();
+      this.updateTabs(isConversationEnabled);
+    });
+  }
 
   ngOnInit(): void {
-    this.tabs = [
-      { id: 'details', title: 'Details', content: this.detailsTab },
-      { id: 'design', title: 'Design', content: this.designTab },
-      { id: 'runs', title: 'Runs', content: this.runsTab },
-    ];
-
+    this.updateTabs(this.workflowService.workflow().isConversationEnabled());
     this.activeTabId = this.resolveTabId(
       this.route.snapshot.queryParamMap.get('tab'),
     );
@@ -149,6 +180,14 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
     this.dialogService.open(RunViewerDialogComponent, { run });
   }
 
+  onConversationRowDoubleClick(
+    conversation: ConversationSummaryModel,
+  ): void {
+    this.dialogService.open(ConversationViewerDialogComponent, {
+      conversation,
+    });
+  }
+
   onRunsPageChange(page: number): void {
     const totalPages = this.runsPageCount();
     if (page < 1 || (totalPages > 0 && page > totalPages)) {
@@ -164,6 +203,23 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
   onRunsSortChange(field: RunSortField): void {
     this.workflowService.updateRunsSort(field);
+  }
+
+  onConversationsPageChange(page: number): void {
+    const totalPages = this.conversationsPageCount();
+    if (page < 1 || (totalPages > 0 && page > totalPages)) {
+      return;
+    }
+
+    if (page === this.workflowService.conversationsPage()) {
+      return;
+    }
+
+    this.workflowService.loadConversationsPage(page);
+  }
+
+  onConversationsSortChange(field: ConversationSortField): void {
+    this.workflowService.updateConversationsSort(field);
   }
 
   onAddStartNode(event: Event): void {
@@ -220,6 +276,10 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${hundredths.toString().padStart(2, '0')}`;
   }
 
+  public getConversationStatusLabel(status: ConversationStatus): string {
+    return ConversationStatus[status] ?? status.toString();
+  }
+
   private resolveTabId(tabId: string | null): string {
     if (tabId && this.tabIds.has(tabId)) {
       return tabId;
@@ -250,7 +310,26 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
       return;
     }
 
+    if (this.workflowService.workflow().isConversationEnabled()) {
+      this.workflowService.loadConversationsPage(
+        this.workflowService.conversationsPage(),
+      );
+      return;
+    }
+
     this.workflowService.loadRunsPage(this.workflowService.runsPage());
+  }
+
+  private updateTabs(isConversationEnabled: boolean): void {
+    this.tabs = [
+      { id: 'details', title: 'Details', content: this.detailsTab },
+      { id: 'design', title: 'Design', content: this.designTab },
+      {
+        id: 'runs',
+        title: isConversationEnabled ? 'Conversations' : 'Runs',
+        content: this.runsTab,
+      },
+    ];
   }
 
   @HostListener('window:beforeunload', ['$event'])

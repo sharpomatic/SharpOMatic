@@ -245,6 +245,28 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return await dbContext.Conversations.AsNoTracking().FirstOrDefaultAsync(c => c.ConversationId == conversationId);
     }
 
+    public async Task<int> GetWorkflowConversationCount(Guid workflowId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        return await dbContext.Conversations.AsNoTracking().Where(c => c.WorkflowId == workflowId).CountAsync();
+    }
+
+    public async Task<List<Conversation>> GetWorkflowConversations(Guid workflowId, ConversationSortField sortBy, SortDirection sortDirection, int skip, int take)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var conversations = dbContext.Conversations.AsNoTracking().Where(c => c.WorkflowId == workflowId);
+        var sortedConversations = GetSortedConversations(conversations, sortBy, sortDirection);
+
+        if (skip > 0)
+            sortedConversations = sortedConversations.Skip(skip);
+
+        if (take > 0)
+            sortedConversations = sortedConversations.Take(take);
+
+        return await sortedConversations.ToListAsync();
+    }
+
     public async Task UpsertConversation(Conversation conversation)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
@@ -355,6 +377,22 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await DeleteAssetStorageForConversations(conversationsToDelete);
 
         await dbContext.Conversations.Where(c => conversationsToDelete.Contains(c.ConversationId)).ExecuteDeleteAsync();
+    }
+
+    private static IQueryable<Conversation> GetSortedConversations(IQueryable<Conversation> conversations, ConversationSortField sortBy, SortDirection sortDirection)
+    {
+        return sortBy switch
+        {
+            ConversationSortField.Created => sortDirection == SortDirection.Ascending
+                ? conversations.OrderBy(c => c.Created).ThenByDescending(c => c.Updated)
+                : conversations.OrderByDescending(c => c.Created).ThenByDescending(c => c.Updated),
+            ConversationSortField.Status => sortDirection == SortDirection.Ascending
+                ? conversations.OrderBy(c => c.Status).ThenByDescending(c => c.Updated)
+                : conversations.OrderByDescending(c => c.Status).ThenByDescending(c => c.Updated),
+            _ => sortDirection == SortDirection.Ascending
+                ? conversations.OrderBy(c => c.Updated).ThenByDescending(c => c.Created)
+                : conversations.OrderByDescending(c => c.Updated).ThenByDescending(c => c.Created),
+        };
     }
 
     // ------------------------------------------------

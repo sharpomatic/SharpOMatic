@@ -67,10 +67,12 @@
     </ng-template>
 
     <ng-template #inputTab>
+      <div class="bg-body-tertiary flex-grow-1 d-flex flex-column p-3 h-100">
         <app-context-viewer
           [contexts]="inputContexts"
           mode="simple"
         ></app-context-viewer>
+      </div>
     </ng-template>
 
     <ng-template #outputTab>
@@ -90,13 +92,6 @@
           <div class="fw-semibold">Assets ({{ runAssets.length }})</div>
         </div>
         @if (runAssets.length === 0) {
-          <div class="empty-state text-body-secondary">
-            <div class="empty-icon"><i class="bi bi-images"></i></div>
-            <div class="empty-title">No run assets</div>
-            <div class="empty-subtitle">
-              This run did not generate any assets.
-            </div>
-          </div>
         } @else {
           <div class="table-responsive run-assets-table">
             <table

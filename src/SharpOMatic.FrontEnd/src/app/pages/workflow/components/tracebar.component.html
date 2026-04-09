@@ -406,13 +406,6 @@
           </div>
         </div>
         @if (workflowService.runAssets().length === 0) {
-          <div class="empty-state text-body-secondary">
-            <div class="empty-icon"><i class="bi bi-images"></i></div>
-            <div class="empty-title">No run assets</div>
-            <div class="empty-subtitle">
-              This run did not generate any assets.
-            </div>
-          </div>
         } @else {
           <div class="table-responsive run-assets-table">
             <table class="table table-sm table-striped table-hover align-middle">
@@ -511,15 +504,7 @@
   <ng-template #streamTab>
     @if (workflowService.workflow().isConversationEnabled()) {
       <div class="bg-body-tertiary flex-grow-1 d-flex flex-column p-3 h-100">
-        @if (workflowService.conversationTurns().length === 0) {
-          <div class="empty-state text-body-secondary">
-            <div class="empty-icon"><i class="bi bi-chat-left-text"></i></div>
-            <div class="empty-title">No conversation stream</div>
-            <div class="empty-subtitle">
-              This conversation has not emitted any stream events yet.
-            </div>
-          </div>
-        } @else {
+        @if (workflowService.conversationTurns().length > 0) {
           <div class="history-sections">
             @for (
               turn of workflowService.conversationTurns();

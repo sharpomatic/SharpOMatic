@@ -18,6 +18,8 @@ public interface IRepositoryService
     // ------------------------------------------------
     Task<Conversation?> GetLatestConversationForWorkflow(Guid workflowId);
     Task<Conversation?> GetConversation(Guid conversationId);
+    Task<int> GetWorkflowConversationCount(Guid workflowId);
+    Task<List<Conversation>> GetWorkflowConversations(Guid workflowId, ConversationSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task UpsertConversation(Conversation conversation);
     Task<ConversationCheckpoint?> GetConversationCheckpoint(Guid conversationId);
     Task UpsertConversationCheckpoint(ConversationCheckpoint checkpoint);

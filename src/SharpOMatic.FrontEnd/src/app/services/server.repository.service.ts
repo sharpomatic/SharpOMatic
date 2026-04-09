@@ -59,6 +59,7 @@ import { AssetSortField } from '../enumerations/asset-sort-field';
 import { ConversationSummaryModel } from '../pages/workflow/interfaces/conversation-summary-model';
 import { ConversationHistoryModel } from '../pages/workflow/interfaces/conversation-history-model';
 import { ConversationStatus } from '../enumerations/conversation-status';
+import { ConversationSortField } from '../enumerations/conversation-sort-field';
 import { NodeStatus } from '../enumerations/node-status';
 import { NodeType } from '../entities/enumerations/node-type';
 import { RunStatus } from '../enumerations/run-status';
@@ -79,6 +80,7 @@ import { TransferExportRequest } from '../pages/transfer/interfaces/transfer-exp
 import { EvalRunSummarySnapshot } from '../eval/definitions/eval-run-summary';
 import { EvalRunDetailSnapshot } from '../eval/definitions/eval-run-detail';
 import { EvalRunRowDetailSnapshot } from '../eval/definitions/eval-run-row-detail';
+import { WorkflowConversationPageResult } from '../pages/workflow/interfaces/workflow-conversation-page-result';
 
 @Injectable({
   providedIn: 'root',
@@ -373,6 +375,40 @@ export class ServerRepositoryService {
       );
   }
 
+  public getWorkflowConversations(
+    workflowId: string,
+    page: number,
+    count: number,
+    sortBy: ConversationSortField,
+    sortDirection: SortDirection,
+  ): Observable<WorkflowConversationPageResult | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    const params = new HttpParams()
+      .set('sortBy', sortBy)
+      .set('sortDirection', sortDirection);
+    return this.http
+      .get<WorkflowConversationPageResult>(
+        `${apiUrl}/api/conversation/workflow/${workflowId}/${page}/${count}`,
+        { params },
+      )
+      .pipe(
+        map((result) =>
+          result
+            ? {
+                ...result,
+                conversations: (result.conversations ?? []).map((conversation) =>
+                  this.normalizeConversationSummary(conversation),
+                ),
+              }
+            : null,
+        ),
+        catchError((error) => {
+          this.notifyError('Loading workflow conversations', error);
+          return of(null);
+        }),
+      );
+  }
+
   public getConversationHistory(
     conversationId: string,
   ): Observable<ConversationHistoryModel | null> {
@@ -421,6 +457,15 @@ export class ServerRepositoryService {
         })),
         streamEvents: this.normalizeStreamEvents(turn.streamEvents ?? []),
       })),
+    };
+  }
+
+  private normalizeConversationSummary(
+    conversation: ConversationSummaryModel,
+  ): ConversationSummaryModel {
+    return {
+      ...conversation,
+      status: this.normalizeEnumValue(ConversationStatus, conversation.status),
     };
   }
 

@@ -119,9 +119,9 @@ export class RunViewerDialogComponent implements OnInit {
       { id: 'run', title: 'Run', content: this.runTab },
       { id: 'input', title: 'Input', content: this.inputTab },
       { id: 'output', title: 'Output', content: this.outputTab },
+      { id: 'assets', title: 'Assets', content: this.assetsTab },
       { id: 'trace', title: 'Trace', content: this.traceTab },
       { id: 'stream', title: 'Stream', content: this.streamTab },
-      { id: 'assets', title: 'Assets', content: this.assetsTab },
     ];
 
     this.runInputs = this.loadInputEntries();

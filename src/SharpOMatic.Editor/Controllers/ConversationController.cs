@@ -42,6 +42,25 @@ public class ConversationController : ControllerBase
         return await repositoryService.GetLatestConversationForWorkflow(workflowId);
     }
 
+    [HttpGet("workflow/{workflowId}/{page}/{count}")]
+    public async Task<ActionResult<WorkflowConversationPageResult>> GetConversationsForWorkflow(
+        IRepositoryService repositoryService,
+        Guid workflowId,
+        int page,
+        int count,
+        [FromQuery] ConversationSortField sortBy = ConversationSortField.Created,
+        [FromQuery] SortDirection sortDirection = SortDirection.Descending
+    )
+    {
+        var totalCount = await repositoryService.GetWorkflowConversationCount(workflowId);
+        if (count < 1 || page < 1 || totalCount == 0)
+            return new WorkflowConversationPageResult([], totalCount);
+
+        var skip = (page - 1) * count;
+        var conversations = await repositoryService.GetWorkflowConversations(workflowId, sortBy, sortDirection, skip, count);
+        return new WorkflowConversationPageResult(conversations, totalCount);
+    }
+
     [HttpGet("{conversationId}/runs")]
     public async Task<ActionResult<List<Run>>> GetConversationRuns(
         IRepositoryService repositoryService,

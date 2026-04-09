@@ -129,6 +129,12 @@
   max-width: 330px;
 }
 
+.col-run-id {
+  width: 330px;
+  min-width: 330px;
+  max-width: 330px;
+}
+
 .col-status {
   width: 110px;
   min-width: 110px;
@@ -139,6 +145,12 @@
   width: 110px;
   min-width: 110px;
   max-width: 110px;
+}
+
+.col-turns {
+  width: 90px;
+  min-width: 90px;
+  max-width: 90px;
 }
 
 .col-error {

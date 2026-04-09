@@ -4,11 +4,10 @@
 
 ### Output Stream
 
-- Allow model call checkbox for outputting stream events for text, thinking, tool calls
-- Add node for templated output of text or thinking stream events
-- Trace tab to show list of stream outputs
+- Convert the model call to streaming output
+- Allow model call checkbox for outputting stream events for text
+- Add node for templated output of text events
 - Engine notification to get the events
-- Extend the UI notification and signalR to send the evenst for live feedback
 
 ### Model Calls
 
