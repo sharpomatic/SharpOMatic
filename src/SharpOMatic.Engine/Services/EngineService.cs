@@ -780,7 +780,7 @@ public class EngineService(
                 if (!string.IsNullOrWhiteSpace(runResult.OutputContext))
                 {
                     var graderOutput = ContextObject.Deserialize(runResult.OutputContext, jsonConverterService);
-                    if (graderOutput.TryGet<double>("score", out var score))
+                    if (TryGetEvalScore(graderOutput, out var score))
                         evalRunRowGrader.Score = score;
                 }
 
@@ -797,6 +797,51 @@ public class EngineService(
             evalRunRowGrader.Finished = DateTime.Now;
             await repository.UpsertEvalRunRowGraders([evalRunRowGrader]);
         }
+    }
+
+    private static bool TryGetEvalScore(ContextObject graderOutput, out double score)
+    {
+        if (graderOutput.TryGet("score", out score))
+            return true;
+
+        if (graderOutput.TryGet<float>("score", out var floatScore))
+        {
+            score = floatScore;
+            return true;
+        }
+
+        if (graderOutput.TryGet<decimal>("score", out var decimalScore))
+        {
+            score = (double)decimalScore;
+            return true;
+        }
+
+        if (graderOutput.TryGet<int>("score", out var intScore))
+        {
+            score = intScore;
+            return true;
+        }
+
+        if (graderOutput.TryGet<string>("score", out var stringScore) && !string.IsNullOrWhiteSpace(stringScore))
+        {
+            if (double.TryParse(stringScore, out score))
+                return true;
+
+            if (
+                double.TryParse(
+                    stringScore,
+                    System.Globalization.NumberStyles.Float | System.Globalization.NumberStyles.AllowThousands,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out score
+                )
+            )
+            {
+                return true;
+            }
+        }
+
+        score = default;
+        return false;
     }
 
     private static bool IsMissingEvalRun(SharpOMaticException exception, Guid evalRunId)
