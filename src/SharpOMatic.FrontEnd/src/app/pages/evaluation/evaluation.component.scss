@@ -219,6 +219,12 @@
   width: 150px;
 }
 
+.grader-include {
+  min-width: 90px;
+  max-width: 100px;
+  width: 90px;
+}
+
 .runs-tab {
   min-height: 0;
   height: 100%;
@@ -277,7 +283,7 @@
   min-width: 0;
 }
 
-.run-average-pass-rate {
+.run-score {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   white-space: nowrap;

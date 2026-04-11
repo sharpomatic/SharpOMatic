@@ -6,6 +6,7 @@ export interface EvalGraderSnapshot {
   workflowId: string | null;
   label: string;
   passThreshold: number;
+  includeInScore?: boolean;
   order: number;
 }
 
@@ -14,12 +15,14 @@ export class EvalGrader {
   public workflowId: WritableSignal<string | null>;
   public label: WritableSignal<string>;
   public passThreshold: WritableSignal<number>;
+  public includeInScore: WritableSignal<boolean>;
 
   constructor(snapshot: EvalGraderSnapshot) {
     this.evalGraderId = snapshot.evalGraderId;
     this.workflowId = signal(snapshot.workflowId ?? null);
     this.label = signal(snapshot.label);
     this.passThreshold = signal(snapshot.passThreshold);
+    this.includeInScore = signal(snapshot.includeInScore ?? true);
   }
 
   public toSnapshot(order: number, evalConfigId: string): EvalGraderSnapshot {
@@ -29,6 +32,7 @@ export class EvalGrader {
       workflowId: this.workflowId() ?? null,
       label: this.label(),
       passThreshold: this.passThreshold(),
+      includeInScore: this.includeInScore(),
       order,
     };
   }
@@ -47,6 +51,7 @@ export class EvalGrader {
       workflowId: null,
       label: '',
       passThreshold: 0,
+      includeInScore: true,
       order,
     };
   }

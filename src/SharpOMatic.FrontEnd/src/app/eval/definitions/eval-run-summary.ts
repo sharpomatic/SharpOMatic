@@ -1,4 +1,5 @@
 import { EvalRunStatus } from '../enumerations/eval-run-status';
+import { EvalRunScoreMode } from '../enumerations/eval-run-score-mode';
 
 export interface EvalRunSummarySnapshot {
   evalRunId: string;
@@ -14,4 +15,6 @@ export interface EvalRunSummarySnapshot {
   completedRows: number;
   failedRows: number;
   averagePassRate: number | null;
+  runScoreMode: EvalRunScoreMode;
+  score: number | null;
 }

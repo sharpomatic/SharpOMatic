@@ -474,6 +474,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             Name = source.EvalConfig.Name,
             Description = source.EvalConfig.Description,
             MaxParallel = source.EvalConfig.MaxParallel,
+            RowScoreMode = source.EvalConfig.RowScoreMode,
+            RunScoreMode = source.EvalConfig.RunScoreMode,
         };
 
         var graders = source.Graders
@@ -485,6 +487,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                 Order = grader.Order,
                 Label = grader.Label,
                 PassThreshold = grader.PassThreshold,
+                IncludeInScore = grader.IncludeInScore,
             })
             .ToList();
 

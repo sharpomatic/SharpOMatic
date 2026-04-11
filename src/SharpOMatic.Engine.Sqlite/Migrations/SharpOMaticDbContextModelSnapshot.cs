@@ -255,6 +255,12 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<int>("MaxParallel")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("RowScoreMode")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("RunScoreMode")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -308,6 +314,9 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 
                     b.Property<Guid>("EvalConfigId")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IncludeInScore")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Label")
                         .IsRequired()
@@ -390,6 +399,12 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
+
+                    b.Property<int>("RunScoreMode")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("Score")
+                        .HasColumnType("REAL");
 
                     b.Property<int>("TotalRows")
                         .HasColumnType("INTEGER");
@@ -476,6 +491,9 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 
                     b.Property<string>("OutputContext")
                         .HasColumnType("TEXT");
+
+                    b.Property<double?>("Score")
+                        .HasColumnType("REAL");
 
                     b.Property<DateTime>("Started")
                         .HasColumnType("TEXT");

@@ -8,6 +8,7 @@ public class EvalRunRowDetail
     public required string Name { get; set; }
     public required int Order { get; set; }
     public required EvalRunStatus Status { get; set; }
+    public double? Score { get; set; }
     public required DateTime Started { get; set; }
     public DateTime? Finished { get; set; }
     public string? InputContext { get; set; }

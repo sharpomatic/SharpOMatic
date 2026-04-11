@@ -345,6 +345,8 @@ public class EngineService(
             CompletedRows = 0,
             FailedRows = 0,
             AveragePassRate = null,
+            RunScoreMode = evalConfigDetail.EvalConfig.RunScoreMode,
+            Score = null,
         };
 
         await RepositoryService.UpsertEvalRun(evalRun);
@@ -513,6 +515,7 @@ public class EngineService(
 
             await repository.UpsertEvalRunGraderSummaries(graderSummaries);
             evalRun.AveragePassRate = graderSummaries.Select(summary => summary.PassRate).Average();
+            evalRun.Score = CalculateEvalRunScore(evalRun.RunScoreMode, evalConfigDetail.Graders, graderSummaries);
 
             if (isCancelRequested)
             {
@@ -726,10 +729,12 @@ public class EngineService(
                 var resultContext = ContextObject.Deserialize(runResult.OutputContext, jsonConverterService);
                 ContextHelpers.OverwriteContexts(inputContext, resultContext);
                 var graderContext = inputContext.Serialize(jsonConverterService);
+                List<EvalRunRowGrader> graderResults = [];
 
                 foreach (var evalGrader in evalConfigDetail.Graders.OrderBy(g => g.Order))
-                    await PerformEvalGrader(repository, jsonConverterService, evalRunId, evalRunRow.EvalRunRowId, evalGrader, graderContext);
+                    graderResults.Add(await PerformEvalGrader(repository, jsonConverterService, evalRunId, evalRunRow.EvalRunRowId, evalGrader, graderContext));
 
+                evalRunRow.Score = CalculateEvalRunRowScore(evalConfigDetail.EvalConfig.RowScoreMode, graderResults);
                 evalRunRow.OutputContext = runResult.OutputContext;
                 evalRunRow.Status = EvalRunStatus.Completed;
             }
@@ -748,7 +753,7 @@ public class EngineService(
         return evalRunRow;
     }
 
-    private async Task PerformEvalGrader(IRepositoryService repository, IJsonConverterService jsonConverterService, Guid evalRunId, Guid evalRunRowId, EvalGrader evalGrader, string? jsonContext)
+    private async Task<EvalRunRowGrader> PerformEvalGrader(IRepositoryService repository, IJsonConverterService jsonConverterService, Guid evalRunId, Guid evalRunRowId, EvalGrader evalGrader, string? jsonContext)
     {
         var evalRunRowGrader = new EvalRunRowGrader
         {
@@ -797,6 +802,38 @@ public class EngineService(
             evalRunRowGrader.Finished = DateTime.Now;
             await repository.UpsertEvalRunRowGraders([evalRunRowGrader]);
         }
+
+        return evalRunRowGrader;
+    }
+
+    private static double? CalculateEvalRunScore(EvalRunScoreMode runScoreMode, IReadOnlyList<EvalGrader> graders, List<EvalRunGraderSummary> graderSummaries)
+    {
+        var selectedGraderIds = graders
+            .Where(grader => grader.IncludeInScore)
+            .Select(grader => grader.EvalGraderId)
+            .ToHashSet();
+
+        if (selectedGraderIds.Count == 0)
+            return null;
+
+        var metricValues = graderSummaries
+            .Where(summary => selectedGraderIds.Contains(summary.EvalGraderId))
+            .Select(summary => runScoreMode switch
+            {
+                EvalRunScoreMode.AverageScore => summary.AverageScore,
+                EvalRunScoreMode.MinimumScore => summary.MinScore,
+                EvalRunScoreMode.MaximumScore => summary.MaxScore,
+                EvalRunScoreMode.PassRate => summary.PassRate,
+                _ => summary.AverageScore,
+            })
+            .Where(value => value.HasValue)
+            .Select(value => value!.Value)
+            .ToList();
+
+        if (metricValues.Count == 0)
+            return null;
+
+        return metricValues.Average();
     }
 
     private static bool TryGetEvalScore(ContextObject graderOutput, out double score)
@@ -842,6 +879,27 @@ public class EngineService(
 
         score = default;
         return false;
+    }
+
+    private static double? CalculateEvalRunRowScore(EvalRunRowScoreMode rowScoreMode, List<EvalRunRowGrader> graderResults)
+    {
+        if (graderResults.Count == 0)
+            return null;
+
+        if (rowScoreMode == EvalRunRowScoreMode.FirstGrader)
+            return graderResults[0].Score;
+
+        var scoredValues = graderResults.Where(grader => grader.Score.HasValue).Select(grader => grader.Score!.Value).ToList();
+        if (scoredValues.Count == 0)
+            return null;
+
+        return rowScoreMode switch
+        {
+            EvalRunRowScoreMode.Average => scoredValues.Average(),
+            EvalRunRowScoreMode.Minimum => scoredValues.Min(),
+            EvalRunRowScoreMode.Maximum => scoredValues.Max(),
+            _ => graderResults[0].Score,
+        };
     }
 
     private static bool IsMissingEvalRun(SharpOMaticException exception, Guid evalRunId)

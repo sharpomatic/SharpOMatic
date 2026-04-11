@@ -9,4 +9,5 @@ public class EvalGrader
     public required int Order { get; set; }
     public required string Label { get; set; }
     public required double PassThreshold { get; set; }
+    public bool IncludeInScore { get; set; } = true;
 }

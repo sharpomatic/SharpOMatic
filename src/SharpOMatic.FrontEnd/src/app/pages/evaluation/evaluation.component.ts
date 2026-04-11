@@ -33,6 +33,8 @@ import { EvalStartRunDialogComponent } from '../../dialogs/eval-start-run/eval-s
 import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
 import { EvalRunStatus } from '../../eval/enumerations/eval-run-status';
 import { EvalRunSortField } from '../../eval/enumerations/eval-run-sort-field';
+import { EvalRunRowScoreMode } from '../../eval/enumerations/eval-run-row-score-mode';
+import { EvalRunScoreMode } from '../../eval/enumerations/eval-run-score-mode';
 import { MoveDirection } from '../../eval/enumerations/move-direction';
 import { TextInputDialogComponent } from '../../dialogs/text-input/text-input-dialog.component';
 import { EvalGraderResultComponent } from './components/eval-grader-result/eval-grader-result.component';
@@ -83,6 +85,18 @@ export class EvaluationComponent
     (key) =>
       isNaN(Number(key)) && this.isAllowedColumnType(this.getEnumValue(key)),
   );
+  public readonly rowScoreModeOptions = [
+    { value: EvalRunRowScoreMode.FirstGrader, label: 'First grader' },
+    { value: EvalRunRowScoreMode.Average, label: 'Average' },
+    { value: EvalRunRowScoreMode.Minimum, label: 'Minimum' },
+    { value: EvalRunRowScoreMode.Maximum, label: 'Maximum' },
+  ];
+  public readonly runScoreModeOptions = [
+    { value: EvalRunScoreMode.AverageScore, label: 'Average score' },
+    { value: EvalRunScoreMode.MinimumScore, label: 'Average min score' },
+    { value: EvalRunScoreMode.MaximumScore, label: 'Average max score' },
+    { value: EvalRunScoreMode.PassRate, label: 'Average pass rate' },
+  ];
   public readonly evalRunStatus = EvalRunStatus;
   private readonly tabIds = new Set([
     'details',
@@ -248,6 +262,26 @@ export class EvaluationComponent
     this.evalConfig.maxParallel.set(Math.max(1, Math.trunc(numeric)));
   }
 
+  onRowScoreModeChange(value: string | number): void {
+    const numeric = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(numeric)) {
+      this.evalConfig.rowScoreMode.set(EvalRunRowScoreMode.FirstGrader);
+      return;
+    }
+
+    this.evalConfig.rowScoreMode.set(numeric as EvalRunRowScoreMode);
+  }
+
+  onRunScoreModeChange(value: string | number): void {
+    const numeric = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(numeric)) {
+      this.evalConfig.runScoreMode.set(EvalRunScoreMode.AverageScore);
+      return;
+    }
+
+    this.evalConfig.runScoreMode.set(numeric as EvalRunScoreMode);
+  }
+
   onPassThresholdChange(grader: EvalGrader, value: string | number): void {
     const numeric = typeof value === 'number' ? value : Number(value);
     if (!Number.isFinite(numeric)) {
@@ -256,6 +290,10 @@ export class EvaluationComponent
     }
 
     grader.passThreshold.set(numeric);
+  }
+
+  onGraderIncludeInScoreChange(grader: EvalGrader, value: boolean): void {
+    grader.includeInScore.set(Boolean(value));
   }
 
   getEnumValue(key: string): ContextEntryType {
@@ -1195,12 +1233,29 @@ export class EvaluationComponent
     return new Date(value).toLocaleString();
   }
 
-  formatRunPassRate(value: number | null): string {
+  formatRunScore(value: number | null, runScoreMode: EvalRunScoreMode): string {
     if (value === null || value === undefined) {
       return '-';
     }
 
-    return `${(value * 100).toFixed(1)}%`;
+    if (runScoreMode === EvalRunScoreMode.PassRate) {
+      return `${(value * 100).toFixed(1)}%`;
+    }
+
+    return value.toFixed(3);
+  }
+
+  getRunScoreTitle(run: EvalRunSummarySnapshot): string {
+    switch (run.runScoreMode) {
+      case EvalRunScoreMode.MinimumScore:
+        return 'Average selected-grader minimum score';
+      case EvalRunScoreMode.MaximumScore:
+        return 'Average selected-grader maximum score';
+      case EvalRunScoreMode.PassRate:
+        return 'Average selected-grader pass rate';
+      default:
+        return 'Average selected-grader score';
+    }
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -1440,6 +1495,8 @@ export class EvaluationComponent
       completedRows: progress.completedRows,
       failedRows: progress.failedRows,
       averagePassRate: progress.averagePassRate,
+      runScoreMode: progress.runScoreMode,
+      score: progress.score,
     };
   }
 

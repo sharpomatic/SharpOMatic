@@ -38,18 +38,25 @@
               [attr.aria-current]="isRunRowSelected(row) ? 'true' : null"
               (click)="selectRunRow(row)"
             >
-              <div class="d-flex justify-content-between align-items-center">
+              <div class="run-row-item-header">
                 <span class="fw-semibold">{{ row.name || '(unnamed row)' }}</span>
-                @if (shouldShowRunListStatus(row.status)) {
-                  <span
-                    class="run-text"
-                    [class.running]="row.status === evalRunStatus.Running"
-                    [class.failed]="row.status === evalRunStatus.Failed"
-                    [class.canceled]="row.status === evalRunStatus.Canceled"
-                  >
-                    {{ getRunListStatusLabel(row.status) }}
-                  </span>
-                }
+                <span class="run-row-item-meta">
+                  @if (row.score !== null) {
+                    <span class="run-row-score">
+                      {{ formatScore(row.score) }}
+                    </span>
+                  }
+                  @if (shouldShowRunListStatus(row.status)) {
+                    <span
+                      class="run-text"
+                      [class.running]="row.status === evalRunStatus.Running"
+                      [class.failed]="row.status === evalRunStatus.Failed"
+                      [class.canceled]="row.status === evalRunStatus.Canceled"
+                    >
+                      {{ getRunListStatusLabel(row.status) }}
+                    </span>
+                  }
+                </span>
               </div>
             </button>
           }
@@ -118,7 +125,7 @@
 
           <div class="form-line">
             <label class="form-label field-label">Status</label>
-            <div class="control-column short status-value">
+            <div class="control-column long status-value">
               <span
                 class="run-text"
                 [class.running]="selectedRow.status === evalRunStatus.Running"
@@ -127,6 +134,12 @@
                 [class.canceled]="selectedRow.status === evalRunStatus.Canceled"
               >
                 {{ getRunStatusLabel(selectedRow.status) }}
+              </span>
+              <span class="row-score">
+                Score:
+                <span class="row-score-value">{{
+                  formatScore(selectedRow.score)
+                }}</span>
               </span>
             </div>
           </div>

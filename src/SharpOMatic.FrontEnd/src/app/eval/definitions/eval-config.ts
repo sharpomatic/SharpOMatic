@@ -5,6 +5,8 @@ import { EvalDataStore } from './eval-data-store';
 import { EvalGrader, EvalGraderSnapshot } from './eval-grader';
 import { EvalRow, EvalRowSnapshot } from './eval-row';
 import { ContextEntryType } from '../../entities/enumerations/context-entry-type';
+import { EvalRunRowScoreMode } from '../enumerations/eval-run-row-score-mode';
+import { EvalRunScoreMode } from '../enumerations/eval-run-score-mode';
 
 export interface EvalConfigSnapshot {
   evalConfigId: string;
@@ -12,6 +14,8 @@ export interface EvalConfigSnapshot {
   name: string;
   description: string;
   maxParallel: number;
+  rowScoreMode?: EvalRunRowScoreMode;
+  runScoreMode?: EvalRunScoreMode;
   graders?: EvalGraderSnapshot[];
   columns?: EvalColumnSnapshot[];
   rows?: EvalRowSnapshot[];
@@ -26,6 +30,8 @@ export class EvalConfig {
   public name: WritableSignal<string>;
   public description: WritableSignal<string>;
   public maxParallel: WritableSignal<number>;
+  public rowScoreMode: WritableSignal<EvalRunRowScoreMode>;
+  public runScoreMode: WritableSignal<EvalRunScoreMode>;
   public graders: WritableSignal<EvalGrader[]>;
   public columns: WritableSignal<EvalColumn[]>;
   public rows: WritableSignal<EvalRow[]>;
@@ -36,6 +42,8 @@ export class EvalConfig {
   private initialName: string;
   private initialDescription: string;
   private initialMaxParallel: number;
+  private initialRowScoreMode: EvalRunRowScoreMode;
+  private initialRunScoreMode: EvalRunScoreMode;
   private initialGraders: EvalGraderSnapshot[];
   private initialColumns: EvalColumnSnapshot[];
   private initialRows: EvalRowSnapshot[];
@@ -50,11 +58,21 @@ export class EvalConfig {
     this.initialName = snapshot.name;
     this.initialDescription = snapshot.description;
     this.initialMaxParallel = snapshot.maxParallel;
+    this.initialRowScoreMode =
+      snapshot.rowScoreMode ?? EvalRunRowScoreMode.FirstGrader;
+    this.initialRunScoreMode =
+      snapshot.runScoreMode ?? EvalRunScoreMode.AverageScore;
 
     this.workflowId = signal(snapshot.workflowId ?? null);
     this.name = signal(snapshot.name);
     this.description = signal(snapshot.description);
     this.maxParallel = signal(snapshot.maxParallel);
+    this.rowScoreMode = signal(
+      snapshot.rowScoreMode ?? EvalRunRowScoreMode.FirstGrader,
+    );
+    this.runScoreMode = signal(
+      snapshot.runScoreMode ?? EvalRunScoreMode.AverageScore,
+    );
     this.graders = signal(
       EvalConfig.gradersFromSnapshots(snapshot.graders ?? []),
     );
@@ -83,6 +101,8 @@ export class EvalConfig {
       const currentName = this.name();
       const currentDescription = this.description();
       const currentMaxParallel = this.maxParallel();
+      const currentRowScoreMode = this.rowScoreMode();
+      const currentRunScoreMode = this.runScoreMode();
       const currentGraders = this.graders();
       const currentColumns = this.columns();
       const currentRows = this.rows();
@@ -117,6 +137,8 @@ export class EvalConfig {
         currentName !== this.initialName ||
         currentDescription !== this.initialDescription ||
         currentMaxParallel !== this.initialMaxParallel ||
+        currentRowScoreMode !== this.initialRowScoreMode ||
+        currentRunScoreMode !== this.initialRunScoreMode ||
         gradersChanged ||
         columnsChanged ||
         rowsChanged ||
@@ -132,6 +154,8 @@ export class EvalConfig {
       name: this.name(),
       description: this.description(),
       maxParallel: this.maxParallel(),
+      rowScoreMode: this.rowScoreMode(),
+      runScoreMode: this.runScoreMode(),
       graders: EvalConfig.snapshotsFromGraders(
         this.graders(),
         this.evalConfigId,
@@ -149,6 +173,8 @@ export class EvalConfig {
     this.initialName = this.name();
     this.initialDescription = this.description();
     this.initialMaxParallel = this.maxParallel();
+    this.initialRowScoreMode = this.rowScoreMode();
+    this.initialRunScoreMode = this.runScoreMode();
     this.initialGraders = EvalConfig.snapshotsFromGraders(
       this.graders(),
       this.evalConfigId,
@@ -264,6 +290,8 @@ export class EvalConfig {
       name: '',
       description: '',
       maxParallel: EvalConfig.DEFAULT_MAX_PARALLEL,
+      rowScoreMode: EvalRunRowScoreMode.FirstGrader,
+      runScoreMode: EvalRunScoreMode.AverageScore,
       graders: [],
       columns: [nameColumn],
       rows: [],
@@ -391,6 +419,7 @@ export class EvalConfig {
         left.workflowId !== right.workflowId ||
         left.label !== right.label ||
         left.passThreshold !== right.passThreshold ||
+        (left.includeInScore ?? true) !== (right.includeInScore ?? true) ||
         left.order !== right.order
       ) {
         return false;

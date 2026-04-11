@@ -117,6 +117,40 @@
           />
         </div>
       </div>
+      <div class="mb-3 form-line">
+        <label for="eval-row-score-mode" class="form-label field-label"
+          >Row Score</label
+        >
+        <div class="flex-fill control-column long">
+          <select
+            id="eval-row-score-mode"
+            class="form-select w-100"
+            [ngModel]="evalConfig.rowScoreMode()"
+            (ngModelChange)="onRowScoreModeChange($event)"
+          >
+            @for (option of rowScoreModeOptions; track option.value) {
+              <option [ngValue]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+      <div class="mb-3 form-line">
+        <label for="eval-run-score-mode" class="form-label field-label"
+          >Run Score</label
+        >
+        <div class="flex-fill control-column long">
+          <select
+            id="eval-run-score-mode"
+            class="form-select w-100"
+            [ngModel]="evalConfig.runScoreMode()"
+            (ngModelChange)="onRunScoreModeChange($event)"
+          >
+            @for (option of runScoreModeOptions; track option.value) {
+              <option [ngValue]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
     </div>
   </ng-template>
 
@@ -345,6 +379,7 @@
           <label class="grader-name">Name</label>
           <label class="grader-workflow">Workflow</label>
           <label class="grader-threshold">Pass Threshold</label>
+          <label class="grader-include">Run Score</label>
         </div>
         @if (!evalConfig.graders().length) {
           <div class="text-muted fst-italic mb-2">(empty)</div>
@@ -378,6 +413,17 @@
               [ngModel]="grader.passThreshold()"
               (ngModelChange)="onPassThresholdChange(grader, $event)"
             />
+            <div
+              class="grader-include d-flex align-items-center justify-content-center"
+            >
+              <input
+                type="checkbox"
+                class="form-check-input mt-0"
+                [ngModel]="grader.includeInScore()"
+                (ngModelChange)="onGraderIncludeInScoreChange(grader, $event)"
+                [title]="'Include this grader in run score calculations'"
+              />
+            </div>
             <button
               class="btn btn-outline-primary"
               [disabled]="!canMoveGraderUp(grader)"
@@ -495,12 +541,9 @@
                 <div class="runs-master-item-header">
                   <span class="fw-semibold">{{ run.name || '(unnamed run)' }}</span>
                   <span class="runs-master-item-meta">
-                    @if (run.averagePassRate !== null) {
-                      <span
-                        class="run-average-pass-rate"
-                        title="Average grader pass rate"
-                      >
-                        {{ formatRunPassRate(run.averagePassRate) }}
+                    @if (run.score !== null) {
+                      <span class="run-score" [title]="getRunScoreTitle(run)">
+                        {{ formatRunScore(run.score, run.runScoreMode) }}
                       </span>
                     }
                     @if (shouldShowRunListStatus(run.status)) {

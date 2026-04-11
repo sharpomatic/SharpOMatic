@@ -22,6 +22,7 @@ export interface EvalRunRowDetailSnapshot {
   name: string;
   order: number;
   status: EvalRunStatus;
+  score: number | null;
   started: string;
   finished: string | null;
   inputContext: string | null;

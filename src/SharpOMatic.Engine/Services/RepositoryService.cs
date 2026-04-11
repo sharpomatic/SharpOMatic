@@ -1440,6 +1440,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 CompletedRows = run.CompletedRows,
                 FailedRows = run.FailedRows,
                 AveragePassRate = run.AveragePassRate,
+                RunScoreMode = run.RunScoreMode,
+                Score = run.Score,
             })
             .ToListAsync();
     }
@@ -1572,6 +1574,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             CompletedRows = evalRun.CompletedRows,
             FailedRows = evalRun.FailedRows,
             AveragePassRate = evalRun.AveragePassRate,
+            RunScoreMode = evalRun.RunScoreMode,
+            Score = evalRun.Score,
         };
 
         var graderSummaries = await (
@@ -1647,6 +1651,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 Name = row.Name,
                 Order = row.Order,
                 Status = row.Status,
+                Score = row.Score,
                 Started = row.Started,
                 Finished = row.Finished,
                 InputContext = row.InputContext,
@@ -1837,6 +1842,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                     : "",
                 Order = runRow.Order,
                 Status = runRow.Status,
+                Score = runRow.Score,
                 Started = runRow.Started,
                 Finished = runRow.Finished,
                 InputContext = runRow.InputContext,
@@ -1880,6 +1886,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         public required string Name { get; set; }
         public required int Order { get; set; }
         public required EvalRunStatus Status { get; set; }
+        public double? Score { get; set; }
         public required DateTime Started { get; set; }
         public DateTime? Finished { get; set; }
         public string? InputContext { get; set; }

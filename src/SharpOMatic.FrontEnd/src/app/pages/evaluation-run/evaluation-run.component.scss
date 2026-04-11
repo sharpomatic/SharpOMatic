@@ -51,6 +51,27 @@
   text-align: left;
 }
 
+.run-row-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.run-row-item-meta {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.run-row-score {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .run-text {
   padding: 2px 6px;
   border-radius: 4px;
@@ -148,6 +169,7 @@
   min-height: 38px;
   display: flex;
   align-items: center;
+  gap: 0.65rem;
 }
 
 .grader-control {
@@ -155,6 +177,16 @@
   align-items: center;
   gap: 0.65rem;
   min-height: 38px;
+}
+
+.row-score {
+  font-size: 0.9rem;
+  color: var(--bs-secondary-color);
+}
+
+.row-score-value {
+  color: white;
+  font-weight: 700;
 }
 
 .grader-score {
