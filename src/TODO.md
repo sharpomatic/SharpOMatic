@@ -2,9 +2,15 @@
 
 ## Major Features
 
+### Agent
+
+- Endpoint for AG-UI protocol to start or resume a conversation, ends on run finishing/suspending
+- Endpoint for returning history of messages for existing conversation
+
 ### Output Stream
 
 - Convert the model call to streaming output
+- Need to save and noify each trace event as it happens not as a batch at the end of the call
 - Allow model call checkbox for outputting stream events for text
 - Add node for templated output of text events
 - Engine notification to get the events
@@ -53,11 +59,6 @@ Microsoft.Extensions.AI.HostedWebSearchTool
 ### Editor
 
 - Cut, copy and paste of workflow nodes/connectors
-
-### ChatClient
-
-- Investigate exposing a workflow as AG-UI
-- Investigate using CopilotKit as example client to workflow
 
 ### Assets
 
