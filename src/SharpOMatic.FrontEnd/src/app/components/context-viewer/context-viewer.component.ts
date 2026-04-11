@@ -43,6 +43,12 @@ export class ContextViewerComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['contexts']) {
+      const previousContexts = (changes['contexts'].previousValue as string[]) ?? [];
+      const currentContexts = (changes['contexts'].currentValue as string[]) ?? [];
+      if (this.areContextsEqual(previousContexts, currentContexts)) {
+        return;
+      }
+
       this.resetSelection();
       this.refreshRows();
     }
@@ -255,5 +261,23 @@ export class ContextViewerComponent implements OnChanges {
       displayLength: formatByteSize(value.length),
       isTruncated,
     };
+  }
+
+  private areContextsEqual(previousContexts: string[], currentContexts: string[]): boolean {
+    if (previousContexts === currentContexts) {
+      return true;
+    }
+
+    if (previousContexts.length !== currentContexts.length) {
+      return false;
+    }
+
+    for (let index = 0; index < previousContexts.length; index += 1) {
+      if (previousContexts[index] !== currentContexts[index]) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }
