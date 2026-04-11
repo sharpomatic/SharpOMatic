@@ -9,11 +9,12 @@ public class StreamEvent
     public required Guid StreamEventId { get; set; }
     public required Guid RunId { get; set; }
     public required Guid WorkflowId { get; set; }
-    public Guid? ConversationId { get; set; }
+    [MaxLength(64)]
+    public string? ConversationId { get; set; }
     public required int SequenceNumber { get; set; }
     public required DateTime Created { get; set; }
     public required StreamEventKind EventKind { get; set; }
-    public Guid? MessageId { get; set; }
+    public string? MessageId { get; set; }
     public StreamMessageRole? MessageRole { get; set; }
     public string? TextDelta { get; set; }
     public string? Metadata { get; set; }

@@ -28,6 +28,7 @@ public class ProcessContext : ExecutionContext
     public NodeResumeInput? ConversationResumeInput { get; }
     public int? ConversationTurnNumber { get; }
     public string? ConversationLeaseOwner { get; }
+    public string? StreamConversationId { get; }
     public PendingConversationSuspend? PendingConversationSuspend { get; private set; }
     public TaskCompletionSource<Run>? CompletionSource { get; }
     public int ActiveThreadCount => _threadCount;
@@ -46,6 +47,7 @@ public class ProcessContext : ExecutionContext
         NodeResumeInput? conversationResumeInput = null,
         int? conversationTurnNumber = null,
         string? conversationLeaseOwner = null,
+        string? streamConversationId = null,
         IEnumerable<ConversationWorkflowSnapshot>? pinnedWorkflowSnapshots = null
     )
         : base(null)
@@ -57,6 +59,7 @@ public class ProcessContext : ExecutionContext
         ConversationResumeInput = conversationResumeInput;
         ConversationTurnNumber = conversationTurnNumber;
         ConversationLeaseOwner = conversationLeaseOwner;
+        StreamConversationId = NormalizeConversationId(streamConversationId);
         RepositoryService = serviceScope.ServiceProvider.GetRequiredService<IRepositoryService>();
         AssetStore = serviceScope.ServiceProvider.GetRequiredService<IAssetStore>();
         ProgressServices = serviceScope.ServiceProvider.GetRequiredService<IEnumerable<IProgressService>>();
@@ -180,7 +183,7 @@ public class ProcessContext : ExecutionContext
                     StreamEventId = Guid.NewGuid(),
                     RunId = Run.RunId,
                     WorkflowId = Run.WorkflowId,
-                    ConversationId = Run.ConversationId,
+                    ConversationId = StreamConversationId,
                     SequenceNumber = AllocateNextStreamSequence(),
                     Created = created,
                     EventKind = write.EventKind,
@@ -386,7 +389,7 @@ public class ProcessContext : ExecutionContext
         switch (write.EventKind)
         {
             case StreamEventKind.TextStart:
-                if (!write.MessageId.HasValue)
+                if (string.IsNullOrWhiteSpace(write.MessageId))
                     throw new SharpOMaticException("TextStart stream events require a MessageId.");
 
                 if (!write.MessageRole.HasValue)
@@ -396,14 +399,14 @@ public class ProcessContext : ExecutionContext
                     throw new SharpOMaticException("TextStart stream events cannot include TextDelta.");
                 break;
             case StreamEventKind.TextContent:
-                if (!write.MessageId.HasValue)
+                if (string.IsNullOrWhiteSpace(write.MessageId))
                     throw new SharpOMaticException("TextContent stream events require a MessageId.");
 
                 if (string.IsNullOrWhiteSpace(write.TextDelta))
                     throw new SharpOMaticException("TextContent stream events require a non-empty TextDelta.");
                 break;
             case StreamEventKind.TextEnd:
-                if (!write.MessageId.HasValue)
+                if (string.IsNullOrWhiteSpace(write.MessageId))
                     throw new SharpOMaticException("TextEnd stream events require a MessageId.");
 
                 if (!string.IsNullOrWhiteSpace(write.TextDelta))
@@ -412,5 +415,16 @@ public class ProcessContext : ExecutionContext
             default:
                 throw new SharpOMaticException($"Unsupported stream event kind '{write.EventKind}'.");
         }
+    }
+
+    private static string? NormalizeConversationId(string? conversationId)
+    {
+        if (string.IsNullOrWhiteSpace(conversationId))
+            return null;
+
+        if (conversationId.Length > 64)
+            throw new SharpOMaticException("Stream conversation id cannot be longer than 64 characters.");
+
+        return conversationId;
     }
 }

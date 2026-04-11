@@ -6,4 +6,5 @@ public sealed class ConversationTurnRequest
     public string? ResumeContextJson { get; set; }
     public ContextEntryListEntity? InputEntries { get; set; }
     public bool NeedsEditorEvents { get; set; }
+    public string? StreamConversationId { get; set; }
 }

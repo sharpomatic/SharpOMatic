@@ -15,7 +15,7 @@ public class ConversationController : ControllerBase
     )
     {
         var resumeInput = ResolveResumeInput(request);
-        return await engineService.StartOrResumeConversationAndWait(workflowId, conversationId, resumeInput, request.InputEntries, request.NeedsEditorEvents);
+        return await engineService.StartOrResumeConversationAndWait(workflowId, conversationId, resumeInput, request.InputEntries, request.NeedsEditorEvents, request.StreamConversationId);
     }
 
     [HttpPost("notify/{workflowId}/{conversationId}")]
@@ -27,7 +27,7 @@ public class ConversationController : ControllerBase
     )
     {
         var resumeInput = ResolveResumeInput(request);
-        return await engineService.StartOrResumeConversationAndNotify(workflowId, conversationId, resumeInput, request.InputEntries, request.NeedsEditorEvents);
+        return await engineService.StartOrResumeConversationAndNotify(workflowId, conversationId, resumeInput, request.InputEntries, request.NeedsEditorEvents, request.StreamConversationId);
     }
 
     [HttpGet("{conversationId}")]

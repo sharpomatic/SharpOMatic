@@ -9,12 +9,7 @@ public class StreamEventHelper
         _processContext = processContext ?? throw new ArgumentNullException(nameof(processContext));
     }
 
-    public Guid CreateMessageId()
-    {
-        return Guid.NewGuid();
-    }
-
-    public Task<List<StreamEvent>> AddTextStartAsync(StreamMessageRole role, Guid messageId, string? metadata = null)
+    public Task<List<StreamEvent>> AddTextStartAsync(StreamMessageRole role, string messageId, string? metadata = null)
     {
         return AddEventsAsync(
             new StreamEventWrite()
@@ -27,7 +22,7 @@ public class StreamEventHelper
         );
     }
 
-    public Task<List<StreamEvent>> AddTextContentAsync(Guid messageId, string delta, string? metadata = null)
+    public Task<List<StreamEvent>> AddTextContentAsync(string messageId, string delta, string? metadata = null)
     {
         if (string.IsNullOrWhiteSpace(delta))
             throw new SharpOMaticException("Text content delta cannot be empty or whitespace.");
@@ -43,7 +38,7 @@ public class StreamEventHelper
         );
     }
 
-    public Task<List<StreamEvent>> AddTextEndAsync(Guid messageId, string? metadata = null)
+    public Task<List<StreamEvent>> AddTextEndAsync(string messageId, string? metadata = null)
     {
         return AddEventsAsync(
             new StreamEventWrite()
@@ -55,12 +50,12 @@ public class StreamEventHelper
         );
     }
 
-    public async Task<Guid> AddTextMessageAsync(StreamMessageRole role, string text, string? metadata = null)
+    public async Task AddTextMessageAsync(StreamMessageRole role, string messageId, string text, string? metadata = null)
     {
         if (string.IsNullOrWhiteSpace(text))
             throw new SharpOMaticException("Text message cannot be empty or whitespace.");
 
-        var messageId = Guid.NewGuid();
+        messageId = RequireMessageId(messageId);
 
         await AddEventsAsync(
             new StreamEventWrite()
@@ -84,8 +79,6 @@ public class StreamEventHelper
                 Metadata = metadata,
             }
         );
-
-        return messageId;
     }
 
     private Task<List<StreamEvent>> AddEventsAsync(params StreamEventWrite[] events)
@@ -93,10 +86,10 @@ public class StreamEventHelper
         return _processContext.AppendStreamEvents(events);
     }
 
-    private static Guid RequireMessageId(Guid messageId)
+    private static string RequireMessageId(string messageId)
     {
-        if (messageId == Guid.Empty)
-            throw new SharpOMaticException("MessageId must be a non-empty GUID.");
+        if (string.IsNullOrWhiteSpace(messageId))
+            throw new SharpOMaticException("MessageId must be a non-empty string.");
 
         return messageId;
     }

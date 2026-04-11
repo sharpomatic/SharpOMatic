@@ -186,6 +186,7 @@ export class ServerRepositoryService {
         {
           inputEntries: entryList?.toSnapshot() ?? null,
           needsEditorEvents: true,
+          streamConversationId: conversationId,
         },
       )
       .pipe(
@@ -204,9 +205,11 @@ export class ServerRepositoryService {
     const apiUrl = this.settingsService.apiUrl();
     const requestBody: {
       needsEditorEvents: boolean;
+      streamConversationId: string;
       resumeContextJson?: string;
     } = {
       needsEditorEvents: true,
+      streamConversationId: conversationId,
     };
 
     if (resumeContextJson !== undefined) {

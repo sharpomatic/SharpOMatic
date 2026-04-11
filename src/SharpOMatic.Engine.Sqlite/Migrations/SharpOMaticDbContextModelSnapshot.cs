@@ -25,10 +25,10 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("Created")
+                    b.Property<Guid?>("ConversationId")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("ConversationId")
+                    b.Property<DateTime>("Created")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid?>("FolderId")
@@ -57,11 +57,11 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 
                     b.HasKey("AssetId");
 
+                    b.HasIndex("ConversationId");
+
                     b.HasIndex("FolderId");
 
                     b.HasIndex("Name");
-
-                    b.HasIndex("ConversationId");
 
                     b.HasIndex("RunId");
 
@@ -255,15 +255,15 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<int>("MaxParallel")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("RowScoreMode")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("RunScoreMode")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
 
                     b.Property<Guid?>("WorkflowId")
                         .HasColumnType("TEXT");
@@ -394,17 +394,17 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<int>("Order")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("Started")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
-
                     b.Property<int>("RunScoreMode")
                         .HasColumnType("INTEGER");
 
                     b.Property<double?>("Score")
                         .HasColumnType("REAL");
+
+                    b.Property<DateTime>("Started")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("TotalRows")
                         .HasColumnType("INTEGER");
@@ -587,54 +587,6 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.ToTable("Informations", "SharpOMatic");
                 });
 
-            modelBuilder.Entity("SharpOMatic.Engine.Repository.StreamEvent", b =>
-                {
-                    b.Property<Guid>("StreamEventId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("ConversationId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("Created")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("EventKind")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Metadata")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("MessageId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int?>("MessageRole")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("RunId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("SequenceNumber")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("TextDelta")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("WorkflowId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("StreamEventId");
-
-                    b.HasIndex("ConversationId", "SequenceNumber");
-
-                    b.HasIndex("RunId", "SequenceNumber")
-                        .IsUnique();
-
-                    b.HasIndex("WorkflowId", "Created");
-
-                    b.ToTable("StreamEvents", "SharpOMatic");
-                });
-
             modelBuilder.Entity("SharpOMatic.Engine.Repository.ModelConfigMetadata", b =>
                 {
                     b.Property<string>("ConfigId")
@@ -774,6 +726,55 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.ToTable("Settings", "SharpOMatic");
                 });
 
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.StreamEvent", b =>
+                {
+                    b.Property<Guid>("StreamEventId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("EventKind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("MessageId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("MessageRole")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Metadata")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TextDelta")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkflowId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("StreamEventId");
+
+                    b.HasIndex("ConversationId", "SequenceNumber");
+
+                    b.HasIndex("RunId", "SequenceNumber")
+                        .IsUnique();
+
+                    b.HasIndex("WorkflowId", "Created");
+
+                    b.ToTable("StreamEvents", "SharpOMatic");
+                });
+
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Trace", b =>
                 {
                     b.Property<Guid>("TraceId")
@@ -902,23 +903,6 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("SharpOMatic.Engine.Repository.Run", b =>
-                {
-                    b.HasOne("SharpOMatic.Engine.Repository.Conversation", null)
-                        .WithMany()
-                        .HasForeignKey("ConversationId")
-                        .OnDelete(DeleteBehavior.Cascade);
-                });
-
-            modelBuilder.Entity("SharpOMatic.Engine.Repository.StreamEvent", b =>
-                {
-                    b.HasOne("SharpOMatic.Engine.Repository.Run", null)
-                        .WithMany()
-                        .HasForeignKey("RunId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("SharpOMatic.Engine.Repository.EvalColumn", b =>
                 {
                     b.HasOne("SharpOMatic.Engine.Repository.EvalConfig", null)
@@ -1017,9 +1001,23 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Run", b =>
                 {
+                    b.HasOne("SharpOMatic.Engine.Repository.Conversation", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("SharpOMatic.Engine.Repository.Workflow", null)
                         .WithMany()
                         .HasForeignKey("WorkflowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.StreamEvent", b =>
+                {
+                    b.HasOne("SharpOMatic.Engine.Repository.Run", null)
+                        .WithMany()
+                        .HasForeignKey("RunId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

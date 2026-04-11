@@ -536,12 +536,12 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     // ------------------------------------------------
     // Stream Event Operations
     // ------------------------------------------------
-    public async Task<int> GetNextStreamSequence(Guid runId, Guid? conversationId)
+    public async Task<int> GetNextStreamSequence(Guid runId, string? conversationId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var maxSequence = conversationId.HasValue
-            ? await dbContext.StreamEvents.AsNoTracking().Where(e => e.ConversationId == conversationId.Value).MaxAsync(e => (int?)e.SequenceNumber)
+        var maxSequence = !string.IsNullOrWhiteSpace(conversationId)
+            ? await dbContext.StreamEvents.AsNoTracking().Where(e => e.ConversationId == conversationId).MaxAsync(e => (int?)e.SequenceNumber)
             : await dbContext.StreamEvents.AsNoTracking().Where(e => e.RunId == runId).MaxAsync(e => (int?)e.SequenceNumber);
 
         return (maxSequence ?? 0) + 1;
@@ -565,9 +565,12 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return await dbContext.StreamEvents.AsNoTracking().Where(e => e.RunId == runId).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToListAsync();
     }
 
-    public async Task<List<StreamEvent>> GetConversationStreamEvents(Guid conversationId)
+    public async Task<List<StreamEvent>> GetConversationStreamEvents(string conversationId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
+
+        if (string.IsNullOrWhiteSpace(conversationId))
+            throw new SharpOMaticException("Conversation stream id cannot be empty.");
 
         return await dbContext.StreamEvents.AsNoTracking().Where(e => e.ConversationId == conversationId).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToListAsync();
     }

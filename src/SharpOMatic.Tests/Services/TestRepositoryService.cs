@@ -281,10 +281,10 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.CompletedTask;
     }
 
-    public Task<int> GetNextStreamSequence(Guid runId, Guid? conversationId)
+    public Task<int> GetNextStreamSequence(Guid runId, string? conversationId)
     {
-        var maxSequence = conversationId.HasValue
-            ? _streamEvents.Values.Where(e => e.ConversationId == conversationId.Value).Select(e => (int?)e.SequenceNumber).DefaultIfEmpty(null).Max()
+        var maxSequence = !string.IsNullOrWhiteSpace(conversationId)
+            ? _streamEvents.Values.Where(e => e.ConversationId == conversationId).Select(e => (int?)e.SequenceNumber).DefaultIfEmpty(null).Max()
             : _streamEvents.Values.Where(e => e.RunId == runId).Select(e => (int?)e.SequenceNumber).DefaultIfEmpty(null).Max();
 
         return Task.FromResult((maxSequence ?? 0) + 1);
@@ -304,8 +304,11 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.FromResult(streamEvents);
     }
 
-    public Task<List<StreamEvent>> GetConversationStreamEvents(Guid conversationId)
+    public Task<List<StreamEvent>> GetConversationStreamEvents(string conversationId)
     {
+        if (string.IsNullOrWhiteSpace(conversationId))
+            throw new SharpOMaticException("Conversation stream id cannot be empty.");
+
         var streamEvents = _streamEvents.Values.Where(e => e.ConversationId == conversationId).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToList();
         return Task.FromResult(streamEvents);
     }

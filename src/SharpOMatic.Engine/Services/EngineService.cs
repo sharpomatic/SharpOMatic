@@ -89,22 +89,40 @@ public class EngineService(
         return await StartEvalRunInternal(evalConfigId, name, sampleCount);
     }
 
-    public Task<Run> StartOrResumeConversationAndWait(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false)
+    public Task<Run> StartOrResumeConversationAndWait(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false, string? streamConversationId = null)
     {
         var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
-        return StartOrResumeConversationInternal(workflowId, conversationId, resumeInput, inputEntries, needsEditorEvents, completionSource, waitForCompletion: true);
+        return StartOrResumeConversationInternal(
+            workflowId,
+            conversationId,
+            resumeInput,
+            inputEntries,
+            needsEditorEvents,
+            completionSource,
+            waitForCompletion: true,
+            streamConversationId: streamConversationId
+        );
     }
 
-    public async Task<Guid> StartOrResumeConversationAndNotify(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false)
+    public async Task<Guid> StartOrResumeConversationAndNotify(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false, string? streamConversationId = null)
     {
         var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var run = await StartOrResumeConversationInternal(workflowId, conversationId, resumeInput, inputEntries, needsEditorEvents, completionSource, waitForCompletion: false);
+        var run = await StartOrResumeConversationInternal(
+            workflowId,
+            conversationId,
+            resumeInput,
+            inputEntries,
+            needsEditorEvents,
+            completionSource,
+            waitForCompletion: false,
+            streamConversationId: streamConversationId
+        );
         return run.RunId;
     }
 
-    public Run StartOrResumeConversationSynchronously(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false)
+    public Run StartOrResumeConversationSynchronously(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false, string? streamConversationId = null)
     {
-        return StartOrResumeConversationAndWait(workflowId, conversationId, resumeInput, inputEntries, needsEditorEvents).GetAwaiter().GetResult();
+        return StartOrResumeConversationAndWait(workflowId, conversationId, resumeInput, inputEntries, needsEditorEvents, streamConversationId).GetAwaiter().GetResult();
     }
 
     private async Task<Run> StartOrResumeConversationInternal(
@@ -114,7 +132,8 @@ public class EngineService(
         ContextEntryListEntity? inputEntries,
         bool needsEditorEvents,
         TaskCompletionSource<Run> completionSource,
-        bool waitForCompletion
+        bool waitForCompletion,
+        string? streamConversationId
     )
     {
         var leaseOwner = Guid.NewGuid().ToString("N");
@@ -178,9 +197,10 @@ public class EngineService(
                 resumeInput,
                 turnNumber,
                 leaseOwner,
+                streamConversationId,
                 DeserializeWorkflowSnapshots(previousCheckpoint?.WorkflowSnapshotsJson)
             );
-            processContext.InitializeStreamSequence(await RepositoryService.GetNextStreamSequence(run.RunId, run.ConversationId));
+            processContext.InitializeStreamSequence(await RepositoryService.GetNextStreamSequence(run.RunId, processContext.StreamConversationId));
 
             NextNodeData nextNode;
             if (conversation.Status == ConversationStatus.Suspended)
@@ -293,7 +313,7 @@ public class EngineService(
             var nodeRunLimit = nodeRunLimitSetting?.ValueInteger ?? NodeExecutionService.DEFAULT_NODE_RUN_LIMIT;
 
             var processContext = new ProcessContext(serviceScope, run, nodeRunLimit, completionSource);
-            processContext.InitializeStreamSequence(await RepositoryService.GetNextStreamSequence(run.RunId, run.ConversationId));
+            processContext.InitializeStreamSequence(await RepositoryService.GetNextStreamSequence(run.RunId, processContext.StreamConversationId));
             var workflowContext = new WorkflowContext(processContext, workflow);
             var threadContext = processContext.CreateThread(nodeContext, workflowContext);
             await processContext.RunUpdated();

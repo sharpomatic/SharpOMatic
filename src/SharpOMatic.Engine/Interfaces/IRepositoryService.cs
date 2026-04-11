@@ -54,10 +54,10 @@ public interface IRepositoryService
     // ------------------------------------------------
     // Stream Event Operations
     // ------------------------------------------------
-    Task<int> GetNextStreamSequence(Guid runId, Guid? conversationId);
+    Task<int> GetNextStreamSequence(Guid runId, string? conversationId);
     Task AppendStreamEvents(List<StreamEvent> events);
     Task<List<StreamEvent>> GetRunStreamEvents(Guid runId);
-    Task<List<StreamEvent>> GetConversationStreamEvents(Guid conversationId);
+    Task<List<StreamEvent>> GetConversationStreamEvents(string conversationId);
 
     // ------------------------------------------------
     // ConnectorConfig Operations
