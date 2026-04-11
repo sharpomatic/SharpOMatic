@@ -64,7 +64,7 @@ public class EndNode(ThreadContext threadContext, EndNodeEntity node) : RunNode<
         }
 
         // Last run EndNode has its output used as the output of the workflow
-        ProcessContext.Run.OutputContext = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters);
+        ProcessContext.Run.OutputContext = ContextSerializationHelper.SerializeForPersistence(ThreadContext.NodeContext, ProcessContext.JsonConverters);
 
         return NodeExecutionResult.Continue(Trace.Message, []);
     }

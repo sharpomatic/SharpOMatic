@@ -29,7 +29,7 @@ public abstract class RunNode<T> : IRunNode
             NodeStatus = NodeStatus.Running,
             Title = node.Title,
             Message = "Running",
-            InputContext = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters),
+            InputContext = ContextSerializationHelper.SerializeForPersistence(ThreadContext.NodeContext, ProcessContext.JsonConverters),
         };
 
         Informations = [];
@@ -58,8 +58,13 @@ public abstract class RunNode<T> : IRunNode
         }
         catch (Exception ex)
         {
-            await NodeFailed(ex.Message);
-            throw;
+            var errorMessage = ContextSerializationHelper.IsSerializationFailure(ex)
+                ? ContextSerializationHelper.BuildSerializationErrorMessage(ex)
+                : ex.Message;
+            var includeOutputContext = !ContextSerializationHelper.IsSerializationFailure(ex);
+
+            await NodeFailed(errorMessage, includeOutputContext);
+            throw new SharpOMaticException(errorMessage);
         }
     }
 
@@ -100,18 +105,20 @@ public abstract class RunNode<T> : IRunNode
         return NodeUpdated(message);
     }
 
-    protected Task NodeFailed(string exception)
+    protected Task NodeFailed(string exception, bool includeOutputContext = true)
     {
         Trace.NodeStatus = NodeStatus.Failed;
         Trace.Error = exception;
-        return NodeUpdated("Failed");
+        return NodeUpdated("Failed", includeOutputContext);
     }
 
-    protected async Task NodeUpdated(string message)
+    protected async Task NodeUpdated(string message, bool includeOutputContext = true)
     {
         Trace.Finished = DateTime.Now;
         Trace.Message = message;
-        Trace.OutputContext = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters);
+        Trace.OutputContext = includeOutputContext
+            ? ContextSerializationHelper.SerializeForPersistence(ThreadContext.NodeContext, ProcessContext.JsonConverters)
+            : null;
         await ProcessContext.RepositoryService.UpsertTrace(Trace);
         await ProcessContext.RepositoryService.UpsertInformations(Informations);
         foreach (var progressService in ProcessContext.ProgressServices)

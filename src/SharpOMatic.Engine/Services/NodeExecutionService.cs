@@ -153,7 +153,21 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
 
         // If no EndNode was encountered then use the output of the last run node
         if (processContext.Run.OutputContext is null)
-            processContext.Run.OutputContext = threadContext.NodeContext.Serialize(processContext.JsonConverters);
+        {
+            try
+            {
+                processContext.Run.OutputContext = ContextSerializationHelper.SerializeForPersistence(threadContext.NodeContext, processContext.JsonConverters);
+            }
+            catch (SharpOMaticException ex)
+            {
+                processContext.Run.RunStatus = RunStatus.Failed;
+                processContext.Run.Message = "Failed";
+                processContext.Run.Error = ex.Message;
+                processContext.Run.OutputContext = null;
+                runStatus = RunStatus.Failed;
+                error = ex.Message;
+            }
+        }
 
         await UpdateConversationState(processContext, runStatus, error);
         await processContext.RunUpdated();
