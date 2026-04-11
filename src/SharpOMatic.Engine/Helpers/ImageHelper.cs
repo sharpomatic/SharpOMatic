@@ -102,13 +102,13 @@ public class ImageHelper
         return output.ToArray();
     }
 
-    public static Task<byte[]> AnnotatePolygons(byte[] imageBytes, IReadOnlyList<IReadOnlyList<PointF>> polygons, IReadOnlyList<string>? titles = null)
+    public static byte[] AnnotatePolygons(byte[] imageBytes, IReadOnlyList<IReadOnlyList<PointF>> polygons, IReadOnlyList<string>? titles = null)
     {
         if (imageBytes is null || imageBytes.Length == 0)
             throw new ArgumentException("Image bytes cannot be null or empty.", nameof(imageBytes));
 
         if (polygons is null || polygons.Count == 0)
-            return Task.FromResult(imageBytes);
+            return imageBytes;
 
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("Image annotation requires System.Drawing on Windows.");
@@ -121,7 +121,7 @@ public class ImageHelper
 
         using var output = new MemoryStream();
         bitmap.Save(output, ImageFormat.Png);
-        return Task.FromResult(output.ToArray());
+        return output.ToArray();
     }
 
     private static void DrawRectangles(Graphics graphics, int imageWidth, int imageHeight, IReadOnlyList<RectangleF> rectangles, IReadOnlyList<string>? titles = null)

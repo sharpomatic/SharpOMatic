@@ -1239,7 +1239,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task UpsertEvalRun(EvalRun evalRun)
+    public async Task<bool> UpsertEvalRun(EvalRun evalRun, bool allowInsert = true)
     {
         const int maxInsertAttempts = 2;
 
@@ -1252,6 +1252,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
             if (entity is null)
             {
+                if (!allowInsert)
+                    return false;
+
                 evalRun.Order = evalRun.Order > 0 ? evalRun.Order : await GetNextEvalRunOrder(dbContext, evalRun.EvalConfigId);
                 dbContext.EvalRuns.Add(evalRun);
             }
@@ -1266,7 +1269,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             {
                 await dbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
-                return;
+                return true;
             }
             catch (DbUpdateException ex) when (entity is null && attempt < maxInsertAttempts && IsUniqueEvalRunOrderViolation(ex))
             {
@@ -1277,48 +1280,84 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         throw new SharpOMaticException($"EvalRun '{evalRun.EvalRunId}' could not be saved because a unique run order could not be allocated.");
     }
 
-    public async Task UpsertEvalRunRows(List<EvalRunRow> runRows)
+    public async Task<bool> UpsertEvalRunRows(List<EvalRunRow> runRows, bool allowInsert = true)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
         if (runRows.Count == 0)
-            return;
+            return false;
 
         var ids = runRows.Select(row => row.EvalRunRowId).Distinct().ToList();
         var entities = await (from run in dbContext.EvalRunRows where ids.Contains(run.EvalRunRowId) select run).ToListAsync();
+        var missingRunIds = runRows.Where(row => entities.All(entity => entity.EvalRunRowId != row.EvalRunRowId)).Select(row => row.EvalRunId).Distinct().ToList();
+        var existingRunIds = allowInsert && missingRunIds.Count > 0
+            ? (await dbContext.EvalRuns.Where(run => missingRunIds.Contains(run.EvalRunId)).Select(run => run.EvalRunId).ToListAsync()).ToHashSet()
+            : [];
+        var hasChanges = false;
 
         foreach (var row in runRows)
         {
             var entity = entities.Where(e => e.EvalRunRowId == row.EvalRunRowId).FirstOrDefault();
             if (entity is null)
+            {
+                if (!allowInsert || !existingRunIds.Contains(row.EvalRunId))
+                    continue;
+
                 dbContext.EvalRunRows.Add(row);
+            }
             else
+            {
                 dbContext.Entry(entity).CurrentValues.SetValues(row);
+            }
+
+            hasChanges = true;
         }
 
+        if (!hasChanges)
+            return false;
+
         await dbContext.SaveChangesAsync();
+        return true;
     }
 
-    public async Task UpsertEvalRunRowGraders(List<EvalRunRowGrader> runRowGraders)
+    public async Task<bool> UpsertEvalRunRowGraders(List<EvalRunRowGrader> runRowGraders, bool allowInsert = true)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
         if (runRowGraders.Count == 0)
-            return;
+            return false;
 
         var ids = runRowGraders.Select(row => row.EvalRunRowGraderId).Distinct().ToList();
         var entities = await (from run in dbContext.EvalRunRowGraders where ids.Contains(run.EvalRunRowGraderId) select run).ToListAsync();
+        var missingRowIds = runRowGraders.Where(row => entities.All(entity => entity.EvalRunRowGraderId != row.EvalRunRowGraderId)).Select(row => row.EvalRunRowId).Distinct().ToList();
+        var existingRowIds = allowInsert && missingRowIds.Count > 0
+            ? (await dbContext.EvalRunRows.Where(row => missingRowIds.Contains(row.EvalRunRowId)).Select(row => row.EvalRunRowId).ToListAsync()).ToHashSet()
+            : [];
+        var hasChanges = false;
 
         foreach (var row in runRowGraders)
         {
             var entity = entities.Where(e => e.EvalRunRowGraderId == row.EvalRunRowGraderId).FirstOrDefault();
             if (entity is null)
+            {
+                if (!allowInsert || !existingRowIds.Contains(row.EvalRunRowId))
+                    continue;
+
                 dbContext.EvalRunRowGraders.Add(row);
+            }
             else
+            {
                 dbContext.Entry(entity).CurrentValues.SetValues(row);
+            }
+
+            hasChanges = true;
         }
 
+        if (!hasChanges)
+            return false;
+
         await dbContext.SaveChangesAsync();
+        return true;
     }
 
     public async Task UpsertEvalRunGraderSummaries(List<EvalRunGraderSummary> graderSummaries)
@@ -1505,9 +1544,6 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         var evalRun = await (from run in dbContext.EvalRuns where run.EvalRunId == evalRunId select run).FirstOrDefaultAsync();
         if (evalRun is null)
             throw new SharpOMaticException($"EvalRun '{evalRunId}' cannot be found.");
-
-        if (evalRun.Status == EvalRunStatus.Running)
-            throw new SharpOMaticException($"EvalRun '{evalRunId}' is currently running and cannot be deleted.");
 
         dbContext.Remove(evalRun);
         await dbContext.SaveChangesAsync();

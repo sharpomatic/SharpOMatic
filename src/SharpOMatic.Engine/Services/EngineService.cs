@@ -368,6 +368,7 @@ public class EngineService(
         var normalizedMaxParallel = Math.Max(1, Math.Min(selectedRows.Count, Math.Max(1, configuredMaxParallel)));
         using var progressUpdateGate = new SemaphoreSlim(1, 1);
         var cancelRequested = 0;
+        var runDeleted = 0;
 
         try
         {
@@ -376,10 +377,21 @@ public class EngineService(
                 new ParallelOptions { MaxDegreeOfParallelism = normalizedMaxParallel },
                 async (row, cancellationToken) =>
                 {
-                    if (Volatile.Read(ref cancelRequested) == 1)
+                    if (Volatile.Read(ref cancelRequested) == 1 || Volatile.Read(ref runDeleted) == 1)
                         return;
 
-                    var evalRunState = await repository.GetEvalRun(evalRun.EvalRunId);
+                    EvalRun evalRunState;
+                    try
+                    {
+                        evalRunState = await repository.GetEvalRun(evalRun.EvalRunId);
+                    }
+                    catch (SharpOMaticException ex) when (IsMissingEvalRun(ex, evalRun.EvalRunId))
+                    {
+                        Interlocked.Exchange(ref runDeleted, 1);
+                        Interlocked.Exchange(ref cancelRequested, 1);
+                        return;
+                    }
+
                     if (evalRunState.CancelRequested)
                     {
                         Interlocked.Exchange(ref cancelRequested, 1);
@@ -387,6 +399,12 @@ public class EngineService(
                     }
 
                     var evalRunRow = await PerformEvalRow(provider, repository, jsonConverterService, assetStore, scriptOptionsService, evalRun.EvalRunId, evalConfigDetail, row);
+                    if (evalRunRow is null)
+                    {
+                        Interlocked.Exchange(ref runDeleted, 1);
+                        Interlocked.Exchange(ref cancelRequested, 1);
+                        return;
+                    }
 
                     await progressUpdateGate.WaitAsync(cancellationToken);
                     try
@@ -396,7 +414,12 @@ public class EngineService(
                         else
                             evalRun.FailedRows++;
 
-                        await repository.UpsertEvalRun(evalRun);
+                        if (!await repository.UpsertEvalRun(evalRun, allowInsert: false))
+                        {
+                            Interlocked.Exchange(ref runDeleted, 1);
+                            Interlocked.Exchange(ref cancelRequested, 1);
+                            return;
+                        }
 
                         foreach (var progressService in progressServices)
                             await progressService.EvalRunProgress(evalRun);
@@ -408,10 +431,23 @@ public class EngineService(
                 }
             );
 
+            if (Volatile.Read(ref runDeleted) == 1)
+                return;
+
             var isCancelRequested = Volatile.Read(ref cancelRequested) == 1;
             if (!isCancelRequested)
             {
-                var latestRun = await repository.GetEvalRun(evalRun.EvalRunId);
+                EvalRun latestRun;
+                try
+                {
+                    latestRun = await repository.GetEvalRun(evalRun.EvalRunId);
+                }
+                catch (SharpOMaticException ex) when (IsMissingEvalRun(ex, evalRun.EvalRunId))
+                {
+                    Interlocked.Exchange(ref runDeleted, 1);
+                    return;
+                }
+
                 isCancelRequested = latestRun.CancelRequested;
             }
 
@@ -492,29 +528,41 @@ public class EngineService(
         }
         catch (Exception ex)
         {
+            if (!await EvalRunExists(repository, evalRun.EvalRunId))
+            {
+                Interlocked.Exchange(ref runDeleted, 1);
+                return;
+            }
+
             evalRun.Message = "Failed";
             evalRun.Error = ex.Message;
             evalRun.Status = EvalRunStatus.Failed;
         }
         finally
         {
-            evalRun.Finished = DateTime.Now;
-            await repository.UpsertEvalRun(evalRun);
-            foreach (var progressService in progressServices)
-                await progressService.EvalRunProgress(evalRun);
-
-            foreach (var notification in engineNotifications)
+            if (Volatile.Read(ref runDeleted) == 0)
             {
-                // Notify in separate task in case called instance performs a long running action
-                _ = Task.Run(async () =>
+                evalRun.Finished = DateTime.Now;
+                var saved = await repository.UpsertEvalRun(evalRun, allowInsert: false);
+                if (saved)
                 {
-                    await notification.EvalRunCompleted(evalRun.EvalRunId, evalRun.Status, evalRun.Error);
-                });
+                    foreach (var progressService in progressServices)
+                        await progressService.EvalRunProgress(evalRun);
+
+                    foreach (var notification in engineNotifications)
+                    {
+                        // Notify in separate task in case called instance performs a long running action
+                        _ = Task.Run(async () =>
+                        {
+                            await notification.EvalRunCompleted(evalRun.EvalRunId, evalRun.Status, evalRun.Error);
+                        });
+                    }
+                }
             }
         }
     }
 
-    private async Task<EvalRunRow> PerformEvalRow(
+    private async Task<EvalRunRow?> PerformEvalRow(
         IServiceProvider serviceProvider,
         IRepositoryService repository,
         IJsonConverterService jsonConverterService,
@@ -535,7 +583,8 @@ public class EngineService(
             Status = EvalRunStatus.Running,
         };
 
-        await repository.UpsertEvalRunRows([evalRunRow]);
+        if (!await repository.UpsertEvalRunRows([evalRunRow]))
+            return null;
 
         try
         {
@@ -693,7 +742,7 @@ public class EngineService(
         finally
         {
             evalRunRow.Finished = DateTime.Now;
-            await repository.UpsertEvalRunRows([evalRunRow]);
+            await repository.UpsertEvalRunRows([evalRunRow], allowInsert: false);
         }
 
         return evalRunRow;
@@ -747,6 +796,24 @@ public class EngineService(
         {
             evalRunRowGrader.Finished = DateTime.Now;
             await repository.UpsertEvalRunRowGraders([evalRunRowGrader]);
+        }
+    }
+
+    private static bool IsMissingEvalRun(SharpOMaticException exception, Guid evalRunId)
+    {
+        return exception.Message == $"EvalRun '{evalRunId}' cannot be found.";
+    }
+
+    private static async Task<bool> EvalRunExists(IRepositoryService repository, Guid evalRunId)
+    {
+        try
+        {
+            await repository.GetEvalRun(evalRunId);
+            return true;
+        }
+        catch (SharpOMaticException ex) when (IsMissingEvalRun(ex, evalRunId))
+        {
+            return false;
         }
     }
 

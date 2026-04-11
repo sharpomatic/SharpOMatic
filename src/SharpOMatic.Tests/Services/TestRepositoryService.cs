@@ -384,11 +384,11 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task DeleteEvalRun(Guid evalRunId) => throw new NotImplementedException();
 
-    public Task UpsertEvalRun(EvalRun evalRun) => throw new NotImplementedException();
+    public Task<bool> UpsertEvalRun(EvalRun evalRun, bool allowInsert = true) => throw new NotImplementedException();
 
-    public Task UpsertEvalRunRows(List<EvalRunRow> runRows) => throw new NotImplementedException();
+    public Task<bool> UpsertEvalRunRows(List<EvalRunRow> runRows, bool allowInsert = true) => throw new NotImplementedException();
 
-    public Task UpsertEvalRunRowGraders(List<EvalRunRowGrader> runRowGraders) => throw new NotImplementedException();
+    public Task<bool> UpsertEvalRunRowGraders(List<EvalRunRowGrader> runRowGraders, bool allowInsert = true) => throw new NotImplementedException();
 
     public Task UpsertEvalRunGraderSummaries( List<EvalRunGraderSummary> graderSummaries) => throw new NotImplementedException();
 

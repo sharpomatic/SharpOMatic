@@ -122,9 +122,9 @@ public interface IRepositoryService
     Task RenameEvalRun(Guid evalRunId, string name);
     Task MoveEvalRun(Guid evalRunId, MoveDirection direction);
     Task DeleteEvalRun(Guid evalRunId);
-    Task UpsertEvalRun(EvalRun evalRun);
-    Task UpsertEvalRunRows(List<EvalRunRow> runRows);
-    Task UpsertEvalRunRowGraders(List<EvalRunRowGrader> runRowGraders);
+    Task<bool> UpsertEvalRun(EvalRun evalRun, bool allowInsert = true);
+    Task<bool> UpsertEvalRunRows(List<EvalRunRow> runRows, bool allowInsert = true);
+    Task<bool> UpsertEvalRunRowGraders(List<EvalRunRowGrader> runRowGraders, bool allowInsert = true);
 
     // ------------------------------------------------
     // Setting Operations

@@ -936,7 +936,7 @@ export class EvaluationComponent
       return false;
     }
 
-    return selectedRun.status !== EvalRunStatus.Running;
+    return true;
   }
 
   canCancelSelectedRun(): boolean {
@@ -961,8 +961,7 @@ export class EvaluationComponent
       this.isDeletingRun ||
       this.isCancelingRun ||
       this.isMovingRun ||
-      this.isRenamingRun ||
-      selectedRun.status === EvalRunStatus.Running
+      this.isRenamingRun
     ) {
       return;
     }
