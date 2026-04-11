@@ -82,6 +82,8 @@ export class TraceViewerComponent implements OnChanges {
         return 'Tool Call';
       case InformationType.Reasoning:
         return 'Reasoning';
+      case InformationType.Debug:
+        return 'Debug';
       default:
         return 'Unknown';
     }

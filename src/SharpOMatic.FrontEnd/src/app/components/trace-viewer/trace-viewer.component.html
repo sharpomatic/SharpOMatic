@@ -66,6 +66,9 @@
               [class.reasoning]="
                 information.informationType === InformationType.Reasoning
               "
+              [class.debug]="
+                information.informationType === InformationType.Debug
+              "
             >
               {{ getInformationTypeLabel(information.informationType) }}
             </span>

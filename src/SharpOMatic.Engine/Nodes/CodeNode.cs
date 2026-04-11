@@ -13,7 +13,8 @@ public class CodeNode(ThreadContext threadContext, CodeNodeEntity node) : RunNod
                 Context = ThreadContext.NodeContext,
                 ServiceProvider = ProcessContext.ServiceScope.ServiceProvider,
                 Assets = new AssetHelper(ProcessContext.RepositoryService, ProcessContext.AssetStore, ProcessContext.Run.RunId, ProcessContext.Run.ConversationId),
-                StreamEvents = new StreamEventHelper(ProcessContext),
+                Debug = new DebugInformationHelper(Trace, Informations),
+                Events = new StreamEventHelper(ProcessContext),
             };
 
             try

@@ -66,6 +66,11 @@
     color: white;
     background-color: SlateBlue;
   }
+
+  &.debug {
+    color: white;
+    background-color: #495057;
+  }
 }
 
 .trace-information-preview {
