@@ -4,7 +4,8 @@ namespace SharpOMatic.Engine.Repository;
 public class Conversation
 {
     [Key]
-    public required Guid ConversationId { get; set; }
+    [MaxLength(256)]
+    public required string ConversationId { get; set; }
     public required Guid WorkflowId { get; set; }
     public required ConversationStatus Status { get; set; }
     public required DateTime Created { get; set; }

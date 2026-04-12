@@ -25,7 +25,8 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("ConversationId")
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("Created")
@@ -138,8 +139,8 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Conversation", b =>
                 {
-                    b.Property<Guid>("ConversationId")
-                        .ValueGeneratedOnAdd()
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("Created")
@@ -178,7 +179,8 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.ConversationCheckpoint", b =>
                 {
-                    b.Property<Guid>("ConversationId")
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CheckpointCreated")
@@ -636,7 +638,8 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("ConversationId")
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("Created")
@@ -733,7 +736,7 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ConversationId")
-                        .HasMaxLength(64)
+                        .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime>("Created")

@@ -10,7 +10,7 @@ public class ConversationController : ControllerBase
     public async Task<ActionResult<Run>> StartOrResumeConversation(
         IEngineService engineService,
         Guid workflowId,
-        Guid conversationId,
+        string conversationId,
         [FromBody] ConversationTurnRequest request
     )
     {
@@ -22,7 +22,7 @@ public class ConversationController : ControllerBase
     public async Task<ActionResult<Guid>> StartOrResumeConversationAndNotify(
         IEngineService engineService,
         Guid workflowId,
-        Guid conversationId,
+        string conversationId,
         [FromBody] ConversationTurnRequest request
     )
     {
@@ -31,7 +31,7 @@ public class ConversationController : ControllerBase
     }
 
     [HttpGet("{conversationId}")]
-    public async Task<ActionResult<Conversation?>> GetConversation(IRepositoryService repositoryService, Guid conversationId)
+    public async Task<ActionResult<Conversation?>> GetConversation(IRepositoryService repositoryService, string conversationId)
     {
         return await repositoryService.GetConversation(conversationId);
     }
@@ -64,7 +64,7 @@ public class ConversationController : ControllerBase
     [HttpGet("{conversationId}/runs")]
     public async Task<ActionResult<List<Run>>> GetConversationRuns(
         IRepositoryService repositoryService,
-        Guid conversationId,
+        string conversationId,
         [FromQuery] int skip = 0,
         [FromQuery] int take = 0
     )
@@ -73,7 +73,7 @@ public class ConversationController : ControllerBase
     }
 
     [HttpGet("{conversationId}/history")]
-    public async Task<ActionResult<ConversationHistoryResult>> GetConversationHistory(IRepositoryService repositoryService, Guid conversationId)
+    public async Task<ActionResult<ConversationHistoryResult>> GetConversationHistory(IRepositoryService repositoryService, string conversationId)
     {
         var conversation = await repositoryService.GetConversation(conversationId);
         if (conversation is null)

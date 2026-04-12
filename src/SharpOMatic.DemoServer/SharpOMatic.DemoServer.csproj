@@ -16,6 +16,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SharpOMatic.AGUI\SharpOMatic.AGUI.csproj" />
     <ProjectReference Include="..\SharpOMatic.Editor\SharpOMatic.Editor.csproj" />
     <ProjectReference Include="..\SharpOMatic.Engine\SharpOMatic.Engine.csproj" />
     <ProjectReference Include="..\SharpOMatic.Engine.Sqlite\SharpOMatic.Engine.Sqlite.csproj" />

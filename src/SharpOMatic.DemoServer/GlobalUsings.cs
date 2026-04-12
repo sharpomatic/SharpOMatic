@@ -3,6 +3,7 @@ global using System.Text.Json;
 global using System.Text.Json.Serialization;
 global using Microsoft.AspNetCore.Mvc;
 global using Microsoft.EntityFrameworkCore;
+global using SharpOMatic.AGUI;
 global using SharpOMatic.DemoServer;
 global using SharpOMatic.Editor;
 global using SharpOMatic.Engine.Contexts;

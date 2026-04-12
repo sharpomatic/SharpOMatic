@@ -89,7 +89,7 @@ public class EngineService(
         return await StartEvalRunInternal(evalConfigId, name, sampleCount);
     }
 
-    public Task<Run> StartOrResumeConversationAndWait(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false, string? streamConversationId = null)
+    public Task<Run> StartOrResumeConversationAndWait(Guid workflowId, string conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false, string? streamConversationId = null)
     {
         var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
         return StartOrResumeConversationInternal(
@@ -104,7 +104,7 @@ public class EngineService(
         );
     }
 
-    public async Task<Guid> StartOrResumeConversationAndNotify(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false, string? streamConversationId = null)
+    public async Task<Guid> StartOrResumeConversationAndNotify(Guid workflowId, string conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false, string? streamConversationId = null)
     {
         var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
         var run = await StartOrResumeConversationInternal(
@@ -120,14 +120,14 @@ public class EngineService(
         return run.RunId;
     }
 
-    public Run StartOrResumeConversationSynchronously(Guid workflowId, Guid conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false, string? streamConversationId = null)
+    public Run StartOrResumeConversationSynchronously(Guid workflowId, string conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false, string? streamConversationId = null)
     {
         return StartOrResumeConversationAndWait(workflowId, conversationId, resumeInput, inputEntries, needsEditorEvents, streamConversationId).GetAwaiter().GetResult();
     }
 
     private async Task<Run> StartOrResumeConversationInternal(
         Guid workflowId,
-        Guid conversationId,
+        string conversationId,
         NodeResumeInput? resumeInput,
         ContextEntryListEntity? inputEntries,
         bool needsEditorEvents,
@@ -138,6 +138,10 @@ public class EngineService(
     {
         var leaseOwner = Guid.NewGuid().ToString("N");
         resumeInput ??= new ContinueResumeInput();
+        if (string.IsNullOrWhiteSpace(conversationId))
+            throw new SharpOMaticException("Conversation id cannot be empty or whitespace.");
+
+        conversationId = conversationId.Trim();
         var conversation = await RepositoryService.GetConversation(conversationId);
         if (conversation is null)
         {

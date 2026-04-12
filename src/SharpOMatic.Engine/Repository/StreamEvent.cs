@@ -9,7 +9,7 @@ public class StreamEvent
     public required Guid StreamEventId { get; set; }
     public required Guid RunId { get; set; }
     public required Guid WorkflowId { get; set; }
-    [MaxLength(64)]
+    [MaxLength(256)]
     public string? ConversationId { get; set; }
     public required int SequenceNumber { get; set; }
     public required DateTime Created { get; set; }

@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpOMatic.Engine.Sqlite",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpOMatic.Engine.SqlServer", "SharpOMatic.Engine.SqlServer\SharpOMatic.Engine.SqlServer.csproj", "{24114473-2107-4DBF-91BD-1BB9EB733BF7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpOMatic.AGUI", "SharpOMatic.AGUI\SharpOMatic.AGUI.csproj", "{CBCE7EFE-11AB-4053-A39E-35CDCD4EA2A6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -103,6 +105,18 @@ Global
 		{24114473-2107-4DBF-91BD-1BB9EB733BF7}.Release|x64.Build.0 = Release|Any CPU
 		{24114473-2107-4DBF-91BD-1BB9EB733BF7}.Release|x86.ActiveCfg = Release|Any CPU
 		{24114473-2107-4DBF-91BD-1BB9EB733BF7}.Release|x86.Build.0 = Release|Any CPU
+		{CBCE7EFE-11AB-4053-A39E-35CDCD4EA2A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CBCE7EFE-11AB-4053-A39E-35CDCD4EA2A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CBCE7EFE-11AB-4053-A39E-35CDCD4EA2A6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{CBCE7EFE-11AB-4053-A39E-35CDCD4EA2A6}.Debug|x64.Build.0 = Debug|Any CPU
+		{CBCE7EFE-11AB-4053-A39E-35CDCD4EA2A6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{CBCE7EFE-11AB-4053-A39E-35CDCD4EA2A6}.Debug|x86.Build.0 = Debug|Any CPU
+		{CBCE7EFE-11AB-4053-A39E-35CDCD4EA2A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CBCE7EFE-11AB-4053-A39E-35CDCD4EA2A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CBCE7EFE-11AB-4053-A39E-35CDCD4EA2A6}.Release|x64.ActiveCfg = Release|Any CPU
+		{CBCE7EFE-11AB-4053-A39E-35CDCD4EA2A6}.Release|x64.Build.0 = Release|Any CPU
+		{CBCE7EFE-11AB-4053-A39E-35CDCD4EA2A6}.Release|x86.ActiveCfg = Release|Any CPU
+		{CBCE7EFE-11AB-4053-A39E-35CDCD4EA2A6}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

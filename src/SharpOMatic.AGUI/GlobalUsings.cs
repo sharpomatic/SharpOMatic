@@ -1,0 +1,17 @@
+global using Microsoft.AspNetCore.Http;
+global using Microsoft.AspNetCore.Mvc;
+global using Microsoft.AspNetCore.Mvc.ApplicationModels;
+global using Microsoft.AspNetCore.Mvc.ApplicationParts;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.DependencyInjection.Extensions;
+global using SharpOMatic.Engine.Contexts;
+global using SharpOMatic.Engine.DTO;
+global using SharpOMatic.Engine.Enumerations;
+global using SharpOMatic.Engine.Exceptions;
+global using SharpOMatic.Engine.Interfaces;
+global using SharpOMatic.Engine.Repository;
+global using System.Collections.Concurrent;
+global using System.Reflection;
+global using System.Runtime.CompilerServices;
+global using System.Text.Json;
+global using System.Threading.Channels;

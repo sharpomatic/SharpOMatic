@@ -23,7 +23,7 @@ public sealed class SuspendNodeUnitTests
         using var cts = new CancellationTokenSource();
         var executionService = provider.GetRequiredService<INodeExecutionService>();
         var queueTask = executionService.RunQueueAsync(cts.Token);
-        var conversationId = Guid.NewGuid();
+        var conversationId = NewConversationId();
 
         try
         {
@@ -73,7 +73,7 @@ public sealed class SuspendNodeUnitTests
         using var cts = new CancellationTokenSource();
         var executionService = provider.GetRequiredService<INodeExecutionService>();
         var queueTask = executionService.RunQueueAsync(cts.Token);
-        var conversationId = Guid.NewGuid();
+        var conversationId = NewConversationId();
 
         try
         {
@@ -125,7 +125,7 @@ public sealed class SuspendNodeUnitTests
                 WorkflowBuilder.CreateStringInput("input.value", entryValue: "from input entry")
             );
 
-            var run = await engineService.StartOrResumeConversationAndWait(workflow.Id, Guid.NewGuid(), inputEntries: inputEntries);
+            var run = await engineService.StartOrResumeConversationAndWait(workflow.Id, NewConversationId(), inputEntries: inputEntries);
             Assert.Equal(RunStatus.Success, run.RunStatus);
 
             var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
@@ -164,7 +164,7 @@ public sealed class SuspendNodeUnitTests
             using var scope = provider.CreateScope();
             var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
 
-            var run = engineService.StartOrResumeConversationSynchronously(workflow.Id, Guid.NewGuid());
+            var run = engineService.StartOrResumeConversationSynchronously(workflow.Id, NewConversationId());
             Assert.Equal(RunStatus.Success, run.RunStatus);
 
             var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
@@ -199,7 +199,7 @@ public sealed class SuspendNodeUnitTests
         using var cts = new CancellationTokenSource();
         var executionService = provider.GetRequiredService<INodeExecutionService>();
         var queueTask = executionService.RunQueueAsync(cts.Token);
-        var conversationId = Guid.NewGuid();
+        var conversationId = NewConversationId();
 
         try
         {
@@ -265,7 +265,7 @@ public sealed class SuspendNodeUnitTests
         using var cts = new CancellationTokenSource();
         var executionService = provider.GetRequiredService<INodeExecutionService>();
         var queueTask = executionService.RunQueueAsync(cts.Token);
-        var conversationId = Guid.NewGuid();
+        var conversationId = NewConversationId();
 
         try
         {
@@ -341,8 +341,8 @@ public sealed class SuspendNodeUnitTests
             await using var scope = provider.CreateAsyncScope();
             var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
 
-            var firstConversationId = Guid.NewGuid();
-            var secondConversationId = Guid.NewGuid();
+            var firstConversationId = NewConversationId();
+            var secondConversationId = NewConversationId();
 
             var firstConversationRun = await engineService.StartOrResumeConversationAndWait(workflow.Id, firstConversationId);
             var secondConversationRun = await engineService.StartOrResumeConversationAndWait(workflow.Id, secondConversationId);
@@ -397,7 +397,7 @@ public sealed class SuspendNodeUnitTests
 
         var firstConversation = new Conversation()
         {
-            ConversationId = Guid.NewGuid(),
+            ConversationId = NewConversationId(),
             WorkflowId = workflow.Id,
             Status = ConversationStatus.Completed,
             Created = DateTime.UtcNow.AddMinutes(-10),
@@ -406,7 +406,7 @@ public sealed class SuspendNodeUnitTests
         };
         var secondConversation = new Conversation()
         {
-            ConversationId = Guid.NewGuid(),
+            ConversationId = NewConversationId(),
             WorkflowId = workflow.Id,
             Status = ConversationStatus.Completed,
             Created = DateTime.UtcNow.AddMinutes(-9),
@@ -453,7 +453,7 @@ public sealed class SuspendNodeUnitTests
         using var cts = new CancellationTokenSource();
         var executionService = provider.GetRequiredService<INodeExecutionService>();
         var queueTask = executionService.RunQueueAsync(cts.Token);
-        var conversationId = Guid.NewGuid();
+        var conversationId = NewConversationId();
 
         try
         {
@@ -490,7 +490,7 @@ public sealed class SuspendNodeUnitTests
         var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
 
         var exception = await Assert.ThrowsAsync<SharpOMaticException>(() =>
-            engineService.StartOrResumeConversationAndWait(workflow.Id, Guid.NewGuid())
+            engineService.StartOrResumeConversationAndWait(workflow.Id, NewConversationId())
         );
         Assert.Equal("Workflow is not enabled for conversations.", exception.Message);
     }
@@ -554,7 +554,7 @@ public sealed class SuspendNodeUnitTests
     {
         var workflow1 = new WorkflowBuilder().EnableConversations().AddStart().AddEnd().Connect("start", "end").Build();
         var workflow2 = new WorkflowBuilder().EnableConversations().AddStart().AddEnd().Connect("start", "end").Build();
-        var conversationId = Guid.NewGuid();
+        var conversationId = NewConversationId();
 
         using var provider = WorkflowRunner.BuildProvider();
         var repositoryService = provider.GetRequiredService<IRepositoryService>();
@@ -585,7 +585,7 @@ public sealed class SuspendNodeUnitTests
     public async Task Conversation_running_lease_conflict_fails()
     {
         var workflow = new WorkflowBuilder().EnableConversations().AddStart().AddEnd().Connect("start", "end").Build();
-        var conversationId = Guid.NewGuid();
+        var conversationId = NewConversationId();
 
         using var provider = WorkflowRunner.BuildProvider();
         var repositoryService = provider.GetRequiredService<IRepositoryService>();
@@ -618,7 +618,7 @@ public sealed class SuspendNodeUnitTests
     public async Task Suspended_conversation_requires_checkpoint()
     {
         var workflow = new WorkflowBuilder().EnableConversations().AddStart().AddEnd().Connect("start", "end").Build();
-        var conversationId = Guid.NewGuid();
+        var conversationId = NewConversationId();
 
         using var provider = WorkflowRunner.BuildProvider();
         var repositoryService = provider.GetRequiredService<IRepositoryService>();
@@ -676,11 +676,11 @@ public sealed class SuspendNodeUnitTests
             await using var scope = provider.CreateAsyncScope();
             var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
 
-            var run = await engineService.StartOrResumeConversationAndWait(workflow.Id, Guid.NewGuid());
+            var run = await engineService.StartOrResumeConversationAndWait(workflow.Id, NewConversationId());
             Assert.Equal(RunStatus.Failed, run.RunStatus);
             Assert.Contains("Conversation suspension is only supported in the root workflow and gosub scopes.", run.Error);
 
-            var conversation = await repositoryService.GetConversation(run.ConversationId!.Value);
+            var conversation = await repositoryService.GetConversation(run.ConversationId!);
             Assert.NotNull(conversation);
             Assert.Equal(ConversationStatus.Created, conversation!.Status);
             Assert.Equal(run.Error, conversation.LastError);
@@ -705,7 +705,7 @@ public sealed class SuspendNodeUnitTests
         var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
 
         var exception = await Assert.ThrowsAsync<SharpOMaticException>(() =>
-            engineService.StartOrResumeConversationAndWait(workflow.Id, Guid.NewGuid(), new UnknownResumeInput())
+            engineService.StartOrResumeConversationAndWait(workflow.Id, NewConversationId(), new UnknownResumeInput())
         );
         Assert.Equal("Conversation start cannot handle resume input type 'UnknownResumeInput'.", exception.Message);
     }
@@ -729,7 +729,7 @@ public sealed class SuspendNodeUnitTests
         using var cts = new CancellationTokenSource();
         var executionService = provider.GetRequiredService<INodeExecutionService>();
         var queueTask = executionService.RunQueueAsync(cts.Token);
-        var conversationId = Guid.NewGuid();
+        var conversationId = NewConversationId();
 
         try
         {
@@ -764,7 +764,12 @@ public sealed class SuspendNodeUnitTests
         return new ContextMergeResumeInput() { Context = context };
     }
 
-    private static async Task<Run> WaitForConversationRun(IRepositoryService repositoryService, Guid conversationId, RunStatus expectedStatus)
+    private static string NewConversationId()
+    {
+        return Guid.NewGuid().ToString("N");
+    }
+
+    private static async Task<Run> WaitForConversationRun(IRepositoryService repositoryService, string conversationId, RunStatus expectedStatus)
     {
         for (var attempt = 0; attempt < 50; attempt++)
         {
@@ -781,3 +786,4 @@ public sealed class SuspendNodeUnitTests
 
     private sealed class UnknownResumeInput : NodeResumeInput { }
 }
+

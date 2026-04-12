@@ -93,7 +93,7 @@ public sealed class StreamEventUnitTests
         using var cts = new CancellationTokenSource();
         var executionService = provider.GetRequiredService<INodeExecutionService>();
         var queueTask = executionService.RunQueueAsync(cts.Token);
-        var conversationId = Guid.NewGuid();
+        var conversationId = NewConversationId();
         const string streamConversationId = "ag-ui-conversation-1";
 
         try
@@ -152,7 +152,7 @@ public sealed class StreamEventUnitTests
         {
             await using var scope = provider.CreateAsyncScope();
             var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
-            var run = await engineService.StartOrResumeConversationAndWait(workflow.Id, Guid.NewGuid());
+            var run = await engineService.StartOrResumeConversationAndWait(workflow.Id, NewConversationId());
 
             Assert.Equal(RunStatus.Success, run.RunStatus);
 
@@ -168,7 +168,7 @@ public sealed class StreamEventUnitTests
     }
 
     [Fact]
-    public async Task Conversation_stream_events_reject_ids_longer_than_64_characters()
+    public async Task Conversation_stream_events_reject_ids_longer_than_256_characters()
     {
         var workflow = new WorkflowBuilder().EnableConversations().AddStart().AddEnd().Connect("start", "end").Build();
 
@@ -184,13 +184,13 @@ public sealed class StreamEventUnitTests
         {
             await using var scope = provider.CreateAsyncScope();
             var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
-            var streamConversationId = new string('x', 65);
+            var streamConversationId = new string('x', 257);
 
             var exception = await Assert.ThrowsAsync<SharpOMaticException>(() =>
-                engineService.StartOrResumeConversationAndWait(workflow.Id, Guid.NewGuid(), streamConversationId: streamConversationId)
+                engineService.StartOrResumeConversationAndWait(workflow.Id, NewConversationId(), streamConversationId: streamConversationId)
             );
 
-            Assert.Equal("Stream conversation id cannot be longer than 64 characters.", exception.Message);
+            Assert.Equal("Stream conversation id cannot be longer than 256 characters.", exception.Message);
         }
         finally
         {
@@ -198,4 +198,10 @@ public sealed class StreamEventUnitTests
             await queueTask;
         }
     }
+
+    private static string NewConversationId()
+    {
+        return Guid.NewGuid().ToString("N");
+    }
 }
+

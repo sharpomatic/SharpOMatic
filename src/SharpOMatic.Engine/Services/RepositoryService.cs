@@ -239,7 +239,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return await dbContext.Conversations.AsNoTracking().Where(c => c.WorkflowId == workflowId).OrderByDescending(c => c.Updated).ThenByDescending(c => c.Created).FirstOrDefaultAsync();
     }
 
-    public async Task<Conversation?> GetConversation(Guid conversationId)
+    public async Task<Conversation?> GetConversation(string conversationId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
         return await dbContext.Conversations.AsNoTracking().FirstOrDefaultAsync(c => c.ConversationId == conversationId);
@@ -280,7 +280,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task<ConversationCheckpoint?> GetConversationCheckpoint(Guid conversationId)
+    public async Task<ConversationCheckpoint?> GetConversationCheckpoint(string conversationId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
         return await dbContext.ConversationCheckpoints.AsNoTracking().FirstOrDefaultAsync(c => c.ConversationId == conversationId);
@@ -299,7 +299,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task DeleteConversationCheckpoint(Guid conversationId)
+    public async Task DeleteConversationCheckpoint(string conversationId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
         var entity = await dbContext.ConversationCheckpoints.FirstOrDefaultAsync(c => c.ConversationId == conversationId);
@@ -310,7 +310,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task<List<Run>> GetConversationRuns(Guid conversationId, int skip = 0, int take = 0)
+    public async Task<List<Run>> GetConversationRuns(string conversationId, int skip = 0, int take = 0)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
         IQueryable<Run> query = dbContext.Runs.AsNoTracking().Where(r => r.ConversationId == conversationId).OrderBy(r => r.TurnNumber).ThenBy(r => r.Created);
@@ -322,7 +322,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return await query.ToListAsync();
     }
 
-    public async Task<bool> TryAcquireConversationLease(Guid conversationId, string leaseOwner, DateTime leaseExpiresUtc)
+    public async Task<bool> TryAcquireConversationLease(string conversationId, string leaseOwner, DateTime leaseExpiresUtc)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
         var entity = await dbContext.Conversations.FirstOrDefaultAsync(c => c.ConversationId == conversationId);
@@ -340,7 +340,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return true;
     }
 
-    public async Task ReleaseConversationLease(Guid conversationId, string leaseOwner)
+    public async Task ReleaseConversationLease(string conversationId, string leaseOwner)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
         var entity = await dbContext.Conversations.FirstOrDefaultAsync(c => c.ConversationId == conversationId);
@@ -1944,7 +1944,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return asset;
     }
 
-    public async Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null, Guid? conversationId = null, Guid? folderId = null, bool topLevelOnly = false)
+    public async Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null, string? conversationId = null, Guid? folderId = null, bool topLevelOnly = false)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
@@ -1959,10 +1959,10 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         }
         else if (scope == AssetScope.Conversation)
         {
-            if (!conversationId.HasValue)
+            if (string.IsNullOrWhiteSpace(conversationId))
                 throw new SharpOMaticException("Conversation asset queries require a conversationId.");
 
-            assets = assets.Where(a => a.ConversationId == conversationId.Value);
+            assets = assets.Where(a => a.ConversationId == conversationId);
         }
         else if (scope == AssetScope.Library)
         {
@@ -1990,7 +1990,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         int skip,
         int take,
         Guid? runId = null,
-        Guid? conversationId = null,
+        string? conversationId = null,
         Guid? folderId = null,
         bool topLevelOnly = false
     )
@@ -2008,10 +2008,10 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         }
         else if (scope == AssetScope.Conversation)
         {
-            if (!conversationId.HasValue)
+            if (string.IsNullOrWhiteSpace(conversationId))
                 throw new SharpOMaticException("Conversation asset queries require a conversationId.");
 
-            assets = assets.Where(a => a.ConversationId == conversationId.Value);
+            assets = assets.Where(a => a.ConversationId == conversationId);
         }
         else if (scope == AssetScope.Library)
         {
@@ -2079,7 +2079,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             .FirstOrDefaultAsync();
     }
 
-    public async Task<Asset?> GetConversationAssetByName(Guid conversationId, string name)
+    public async Task<Asset?> GetConversationAssetByName(string conversationId, string name)
     {
         if (string.IsNullOrWhiteSpace(name))
             return null;
@@ -2249,14 +2249,14 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             await assetStore.DeleteAsync(storageKey);
     }
 
-    private async Task DeleteAssetStorageForConversations(IReadOnlyCollection<Guid> conversationIds)
+    private async Task DeleteAssetStorageForConversations(IReadOnlyCollection<string> conversationIds)
     {
         if (assetStore is null || conversationIds.Count == 0)
             return;
 
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var storageKeys = await dbContext.Assets.AsNoTracking().Where(a => a.ConversationId.HasValue && conversationIds.Contains(a.ConversationId.Value)).Select(a => a.StorageKey).ToListAsync();
+        var storageKeys = await dbContext.Assets.AsNoTracking().Where(a => a.ConversationId != null && conversationIds.Contains(a.ConversationId)).Select(a => a.StorageKey).ToListAsync();
 
         foreach (var storageKey in storageKeys)
             await assetStore.DeleteAsync(storageKey);

@@ -17,16 +17,16 @@ public interface IRepositoryService
     // Conversation Operations
     // ------------------------------------------------
     Task<Conversation?> GetLatestConversationForWorkflow(Guid workflowId);
-    Task<Conversation?> GetConversation(Guid conversationId);
+    Task<Conversation?> GetConversation(string conversationId);
     Task<int> GetWorkflowConversationCount(Guid workflowId);
     Task<List<Conversation>> GetWorkflowConversations(Guid workflowId, ConversationSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task UpsertConversation(Conversation conversation);
-    Task<ConversationCheckpoint?> GetConversationCheckpoint(Guid conversationId);
+    Task<ConversationCheckpoint?> GetConversationCheckpoint(string conversationId);
     Task UpsertConversationCheckpoint(ConversationCheckpoint checkpoint);
-    Task DeleteConversationCheckpoint(Guid conversationId);
-    Task<List<Run>> GetConversationRuns(Guid conversationId, int skip = 0, int take = 0);
-    Task<bool> TryAcquireConversationLease(Guid conversationId, string leaseOwner, DateTime leaseExpiresUtc);
-    Task ReleaseConversationLease(Guid conversationId, string leaseOwner);
+    Task DeleteConversationCheckpoint(string conversationId);
+    Task<List<Run>> GetConversationRuns(string conversationId, int skip = 0, int take = 0);
+    Task<bool> TryAcquireConversationLease(string conversationId, string leaseOwner, DateTime leaseExpiresUtc);
+    Task ReleaseConversationLease(string conversationId, string leaseOwner);
     Task PruneWorkflowConversations(Guid workflowId, int keepLatest);
 
     // ------------------------------------------------
@@ -137,7 +137,7 @@ public interface IRepositoryService
     // Asset Operations
     // ------------------------------------------------
     Task<Asset> GetAsset(Guid assetId);
-    Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null, Guid? conversationId = null, Guid? folderId = null, bool topLevelOnly = false);
+    Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null, string? conversationId = null, Guid? folderId = null, bool topLevelOnly = false);
     Task<List<Asset>> GetAssetsByScope(
         AssetScope scope,
         string? search,
@@ -146,13 +146,13 @@ public interface IRepositoryService
         int skip,
         int take,
         Guid? runId = null,
-        Guid? conversationId = null,
+        string? conversationId = null,
         Guid? folderId = null,
         bool topLevelOnly = false
     );
     Task<List<Asset>> GetRunAssets(Guid runId);
     Task<Asset?> GetRunAssetByName(Guid runId, string name);
-    Task<Asset?> GetConversationAssetByName(Guid conversationId, string name);
+    Task<Asset?> GetConversationAssetByName(string conversationId, string name);
     Task<Asset?> GetLibraryAssetByFolderAndName(string folderName, string name);
     Task<Asset?> GetLibraryAssetByName(string name);
     Task UpsertAsset(Asset asset);

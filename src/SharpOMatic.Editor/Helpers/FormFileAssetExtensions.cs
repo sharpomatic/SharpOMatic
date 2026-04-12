@@ -7,7 +7,7 @@ public static class FormFileAssetExtensions
         IAssetService assetService,
         AssetScope scope,
         Guid? runId = null,
-        Guid? conversationId = null,
+        string? conversationId = null,
         Guid? folderId = null,
         string? name = null,
         string? mediaType = null

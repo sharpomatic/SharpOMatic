@@ -16,6 +16,12 @@ dotnet add package SharpOMatic.Editor
 
 For SQL Server, install `SharpOMatic.Engine.SqlServer` instead of `SharpOMatic.Engine.Sqlite`.
 
+If you also want to accept AG-UI clients, install the optional package:
+
+```powershell
+dotnet add package SharpOMatic.AGUI
+```
+
 ## Register services
 
 Update `Program.cs` to add the required services.
@@ -33,6 +39,7 @@ For example, if your username is JohnDoe, then the files will be at:<br />
 
   builder.Services.AddSharpOMaticEditor();
   builder.Services.AddSharpOMaticTransfer();
+  builder.Services.AddSharpOMaticAgUi("sharpomatic/api/agui");
   builder.Services.AddSharpOMaticEngine()
     .AddSqliteRepository(
       connectionString: $"Data Source={Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sharpomatic.db")}");
@@ -42,6 +49,7 @@ The first 3 lines are used to setup how assets are stored.
 It uses the file system implementation which is the easiest for getting started.
 We want to use the browser based editor and so need to call **AddSharpOMaticEditor**.
 To enable import and export we then add **AddSharpOMaticTransfer**.
+If you want AG-UI protocol clients, add **AddSharpOMaticAgUi** and choose the route you want to expose.
 Finally the **AddSharpOMaticEngine** call is used to setup the repository.
 For simplicity we use SQLite, it will create the database automatically on first start.
 
@@ -60,15 +68,18 @@ dotnet add package SharpOMatic.Engine.SqlServer
 ## Map the editor UI
 
 ```csharp
-  app.MapSharpOMaticEditor("/editor");
+  app.MapSharpOMaticEditor("/sharpomatic/editor");
 ```
 
 You only need a single mapping call which specifies the url path for exposing the editor.
 If you already use this path for other purposes then you can update this to something more appropriate.
+
+The editor and transfer controllers are automatically exposed under `/sharpomatic/api/...`.
+With the optional AG-UI package, `AddSharpOMaticAgUi("sharpomatic/api/agui")` adds a `POST` endpoint at `/sharpomatic/api/agui`.
 
 ## Open visual editor
 
 Check the generated port number for new project in the `launchSettings.json`.<br/>
 NOTE: Replace 9001 with your project specific port number
 
-Use your favorite browser to open http://localhost:9001/editor
+Use your favorite browser to open https://localhost:9001/sharpomatic/editor

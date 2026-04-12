@@ -4,8 +4,8 @@ public sealed class TestRepositoryService : IRepositoryService
 {
     private readonly ConcurrentDictionary<string, Setting> _settings = new();
     private readonly ConcurrentDictionary<Guid, WorkflowEntity> _workflows = new();
-    private readonly ConcurrentDictionary<Guid, Conversation> _conversations = new();
-    private readonly ConcurrentDictionary<Guid, ConversationCheckpoint> _conversationCheckpoints = new();
+    private readonly ConcurrentDictionary<string, Conversation> _conversations = new();
+    private readonly ConcurrentDictionary<string, ConversationCheckpoint> _conversationCheckpoints = new();
     private readonly ConcurrentDictionary<Guid, Run> _runs = new();
     private readonly ConcurrentDictionary<Guid, Trace> _traces = new();
     private readonly ConcurrentDictionary<Guid, Information> _informations = new();
@@ -42,7 +42,7 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.FromResult(_conversations.Values.Where(c => c.WorkflowId == workflowId).OrderByDescending(c => c.Updated).ThenByDescending(c => c.Created).FirstOrDefault());
     }
 
-    public Task<Conversation?> GetConversation(Guid conversationId)
+    public Task<Conversation?> GetConversation(string conversationId)
     {
         _conversations.TryGetValue(conversationId, out var conversation);
         return Task.FromResult(conversation);
@@ -85,7 +85,7 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.CompletedTask;
     }
 
-    public Task<ConversationCheckpoint?> GetConversationCheckpoint(Guid conversationId)
+    public Task<ConversationCheckpoint?> GetConversationCheckpoint(string conversationId)
     {
         _conversationCheckpoints.TryGetValue(conversationId, out var checkpoint);
         return Task.FromResult(checkpoint);
@@ -97,13 +97,13 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.CompletedTask;
     }
 
-    public Task DeleteConversationCheckpoint(Guid conversationId)
+    public Task DeleteConversationCheckpoint(string conversationId)
     {
         _conversationCheckpoints.TryRemove(conversationId, out _);
         return Task.CompletedTask;
     }
 
-    public Task<List<Run>> GetConversationRuns(Guid conversationId, int skip = 0, int take = 0)
+    public Task<List<Run>> GetConversationRuns(string conversationId, int skip = 0, int take = 0)
     {
         IEnumerable<Run> runs = _runs.Values.Where(r => r.ConversationId == conversationId).OrderBy(r => r.TurnNumber).ThenBy(r => r.Created);
         if (skip > 0)
@@ -114,7 +114,7 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.FromResult(runs.ToList());
     }
 
-    public Task<bool> TryAcquireConversationLease(Guid conversationId, string leaseOwner, DateTime leaseExpiresUtc)
+    public Task<bool> TryAcquireConversationLease(string conversationId, string leaseOwner, DateTime leaseExpiresUtc)
     {
         if (!_conversations.TryGetValue(conversationId, out var conversation))
             return Task.FromResult(false);
@@ -129,7 +129,7 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.FromResult(true);
     }
 
-    public Task ReleaseConversationLease(Guid conversationId, string leaseOwner)
+    public Task ReleaseConversationLease(string conversationId, string leaseOwner)
     {
         if (_conversations.TryGetValue(conversationId, out var conversation) && conversation.LeaseOwner == leaseOwner)
         {
@@ -433,7 +433,7 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.FromResult(asset);
     }
 
-    public Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null, Guid? conversationId = null, Guid? folderId = null, bool topLevelOnly = false)
+    public Task<int> GetAssetCount(AssetScope scope, string? search, Guid? runId = null, string? conversationId = null, Guid? folderId = null, bool topLevelOnly = false)
     {
         return Task.FromResult(FilterAssets(scope, search, runId, conversationId, folderId, topLevelOnly).Count());
     }
@@ -446,7 +446,7 @@ public sealed class TestRepositoryService : IRepositoryService
         int skip,
         int take,
         Guid? runId = null,
-        Guid? conversationId = null,
+        string? conversationId = null,
         Guid? folderId = null,
         bool topLevelOnly = false
     )
@@ -470,7 +470,7 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.FromResult(_assets.Values.Where(a => a.Scope == AssetScope.Run && a.RunId == runId && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).OrderByDescending(a => a.Created).FirstOrDefault());
     }
 
-    public Task<Asset?> GetConversationAssetByName(Guid conversationId, string name)
+    public Task<Asset?> GetConversationAssetByName(string conversationId, string name)
     {
         return Task.FromResult(_assets.Values.Where(a => a.Scope == AssetScope.Conversation && a.ConversationId == conversationId && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).OrderByDescending(a => a.Created).FirstOrDefault());
     }
@@ -547,12 +547,12 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.CompletedTask;
     }
 
-    private IEnumerable<Asset> FilterAssets(AssetScope scope, string? search, Guid? runId, Guid? conversationId, Guid? folderId, bool topLevelOnly)
+    private IEnumerable<Asset> FilterAssets(AssetScope scope, string? search, Guid? runId, string? conversationId, Guid? folderId, bool topLevelOnly)
     {
         IEnumerable<Asset> assets = _assets.Values.Where(a => a.Scope == scope);
         if (scope == AssetScope.Run && runId.HasValue)
             assets = assets.Where(a => a.RunId == runId);
-        else if (scope == AssetScope.Conversation && conversationId.HasValue)
+        else if (scope == AssetScope.Conversation && !string.IsNullOrWhiteSpace(conversationId))
             assets = assets.Where(a => a.ConversationId == conversationId);
         else if (scope == AssetScope.Library)
         {

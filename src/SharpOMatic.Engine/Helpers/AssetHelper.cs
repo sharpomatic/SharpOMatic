@@ -6,9 +6,9 @@ public class AssetHelper
     private readonly IRepositoryService _repositoryService;
     private readonly IAssetStore _assetStore;
     private readonly Guid? _runId;
-    private readonly Guid? _conversationId;
+    private readonly string? _conversationId;
 
-    public AssetHelper(IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId = null, Guid? conversationId = null)
+    public AssetHelper(IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId = null, string? conversationId = null)
     {
         _repositoryService = repositoryService ?? throw new ArgumentNullException(nameof(repositoryService));
         _assetStore = assetStore ?? throw new ArgumentNullException(nameof(assetStore));
@@ -311,7 +311,7 @@ public class AssetHelper
         if (scope == AssetScope.Run && !_runId.HasValue)
             throw new SharpOMaticException("Run assets require a runId.");
 
-        if (scope == AssetScope.Conversation && !_conversationId.HasValue)
+        if (scope == AssetScope.Conversation && string.IsNullOrWhiteSpace(_conversationId))
             throw new SharpOMaticException("Conversation assets require a conversationId.");
 
         var assetId = Guid.NewGuid();
@@ -356,9 +356,9 @@ public class AssetHelper
                 return runAsset;
         }
 
-        if (_conversationId.HasValue)
+        if (!string.IsNullOrWhiteSpace(_conversationId))
         {
-            var conversationAsset = await _repositoryService.GetConversationAssetByName(_conversationId.Value, normalizedName);
+            var conversationAsset = await _repositoryService.GetConversationAssetByName(_conversationId, normalizedName);
             if (conversationAsset is not null)
                 return conversationAsset;
         }

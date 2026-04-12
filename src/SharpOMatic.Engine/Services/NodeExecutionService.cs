@@ -366,7 +366,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
     {
         try
         {
-            if (processContext.Run.ConversationId.HasValue)
+            if (!string.IsNullOrWhiteSpace(processContext.Run.ConversationId))
             {
                 var conversationHistoryLimitSetting = await processContext.RepositoryService.GetSetting("ConversationHistoryLimit");
                 var conversationHistoryLimit = conversationHistoryLimitSetting?.ValueInteger ?? DEFAULT_RUN_HISTORY_LIMIT;

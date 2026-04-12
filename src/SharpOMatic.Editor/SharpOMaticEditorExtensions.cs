@@ -12,6 +12,7 @@ public static class SharpOMaticEditorExtensions
         SharpOMaticControllerFeatureSetup.EnsureApplicationPart(mvcBuilder, typeof(SharpOMaticEditorExtensions).Assembly);
 
         var toggle = SharpOMaticControllerFeatureSetup.GetOrAddToggle(services);
+        SharpOMaticControllerFeatureSetup.EnsureRouteConvention(mvcBuilder, toggle);
         toggle.EnableEditor = true;
         SharpOMaticControllerFeatureSetup.EnsureFeatureProvider(mvcBuilder, toggle);
 
@@ -27,25 +28,23 @@ public static class SharpOMaticEditorExtensions
         return services;
     }
 
-    public static WebApplication MapSharpOMaticEditor(this WebApplication app, string path = "/editor")
+    public static WebApplication MapSharpOMaticEditor(this WebApplication app, string path = "/sharpomatic/editor")
     {
         ArgumentNullException.ThrowIfNull(app);
 
         if (string.IsNullOrWhiteSpace(path))
-            throw new ArgumentException("Editor path must be a non-empty route like '/editor'.", nameof(path));
+            throw new ArgumentException("Editor path must be a non-empty route like '/sharpomatic/editor'.", nameof(path));
 
         var normalizedPath = NormalizePath(path);
         if (string.Equals(normalizedPath, "/", StringComparison.Ordinal))
-            throw new ArgumentException("Editor path must be a sub-path like '/editor'.", nameof(path));
+            throw new ArgumentException("Editor path must be a sub-path like '/sharpomatic/editor'.", nameof(path));
 
         var fileProvider = new ManifestEmbeddedFileProvider(typeof(SharpOMaticEditorExtensions).Assembly, "wwwroot");
         var indexHtml = LoadIndexHtml(fileProvider, normalizedPath);
 
         app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider, RequestPath = normalizedPath });
 
-        var editorGroup = app.MapGroup(normalizedPath);
-        editorGroup.MapControllers();
-        editorGroup.MapHub<NotificationHub>("/notifications");
+        app.MapHub<NotificationHub>("/sharpomatic/notifications");
 
         MapEditorFallback(app, normalizedPath, indexHtml);
 

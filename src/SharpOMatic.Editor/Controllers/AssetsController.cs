@@ -13,7 +13,7 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         [FromQuery] int skip = 0,
         [FromQuery] int take = 0,
         [FromQuery] Guid? runId = null,
-        [FromQuery] Guid? conversationId = null,
+        [FromQuery] string? conversationId = null,
         [FromQuery] Guid? folderId = null,
         [FromQuery] bool topLevelOnly = false
     )
@@ -62,7 +62,7 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         [FromQuery] AssetScope scope = AssetScope.Library,
         [FromQuery] string? search = null,
         [FromQuery] Guid? runId = null,
-        [FromQuery] Guid? conversationId = null,
+        [FromQuery] string? conversationId = null,
         [FromQuery] Guid? folderId = null,
         [FromQuery] bool topLevelOnly = false
     )

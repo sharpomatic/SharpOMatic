@@ -201,13 +201,13 @@ public static class ContextHelpers
         );
     }
 
-    public static async Task<string> SubstituteValuesAsync(string input, ContextObject context, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId, Guid? conversationId = null)
+    public static async Task<string> SubstituteValuesAsync(string input, ContextObject context, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId, string? conversationId = null)
     {
         var substituted = SubstituteValues(input, context);
         return await SubstituteAssetValuesAsync(substituted, repositoryService, assetStore, runId, conversationId);
     }
 
-    private static async Task<string> SubstituteAssetValuesAsync(string input, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId, Guid? conversationId)
+    private static async Task<string> SubstituteAssetValuesAsync(string input, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId, string? conversationId)
     {
         if (string.IsNullOrWhiteSpace(input))
             return input;
@@ -234,7 +234,7 @@ public static class ContextHelpers
         return sb.ToString();
     }
 
-    private static async Task<string> ResolveAssetTextAsync(string assetName, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId, Guid? conversationId)
+    private static async Task<string> ResolveAssetTextAsync(string assetName, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId, string? conversationId)
     {
         if (string.IsNullOrWhiteSpace(assetName))
             return string.Empty;
@@ -245,8 +245,8 @@ public static class ContextHelpers
         if (runId.HasValue)
             asset = await repositoryService.GetRunAssetByName(runId.Value, normalizedAssetName);
 
-        if (asset is null && conversationId.HasValue)
-            asset = await repositoryService.GetConversationAssetByName(conversationId.Value, normalizedAssetName);
+        if (asset is null && !string.IsNullOrWhiteSpace(conversationId))
+            asset = await repositoryService.GetConversationAssetByName(conversationId, normalizedAssetName);
 
         if (asset is null && AssetNameParser.TryParseFolderQualifiedName(normalizedAssetName, out var folderName, out var folderAssetName))
             asset = await repositoryService.GetLibraryAssetByFolderAndName(folderName, folderAssetName);

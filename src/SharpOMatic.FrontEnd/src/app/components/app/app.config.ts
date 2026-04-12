@@ -24,10 +24,16 @@ export function resolveApiUrl(): string {
   const baseUri = new URL(document.baseURI);
   const normalizedPath = baseUri.pathname.replace(/\/$/, '');
   if (normalizedPath.length > 0 && normalizedPath !== '/') {
+    const editorSuffix = '/editor';
+    if (normalizedPath.endsWith(editorSuffix)) {
+      const apiBasePath = normalizedPath.slice(0, -editorSuffix.length);
+      return `${baseUri.origin}${apiBasePath || '/sharpomatic'}`;
+    }
+
     return `${baseUri.origin}${normalizedPath}`;
   }
 
-  return 'http://localhost:9001';
+  return 'http://localhost:9001/sharpomatic';
 }
 
 export const appConfig: ApplicationConfig = {

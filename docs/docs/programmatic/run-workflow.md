@@ -112,7 +112,7 @@ If the conversation does not exist yet, SharpOMatic creates it and starts from t
 ```csharp
 var engine = serviceProvider.GetRequiredService<IEngineService>();
 var workflowId = await engine.GetWorkflowId("Support Chat");
-var conversationId = Guid.NewGuid();
+var conversationId = $"support-chat-{Guid.NewGuid():N}";
 
 var firstTurn = await engine.StartOrResumeConversationAndWait(
     workflowId,
@@ -177,7 +177,7 @@ public class EngineNotification(IServiceProvider serviceProvider) : IEngineNotif
     public Task RunCompleted(
         Guid runId,
         Guid workflowId,
-        Guid? conversationId,
+        string? conversationId,
         RunStatus runStatus,
         string? outputContext,
         string? error)
@@ -206,7 +206,7 @@ public class EngineNotification(IServiceProvider serviceProvider) : IEngineNotif
     public void ConnectionOverride(
         Guid runId,
         Guid workflowId,
-        Guid? conversationId,
+        string? conversationId,
         string connectorId,
         AuthenticationModeConfig authenticationModel,
         Dictionary<string, string?> parameters)
@@ -263,5 +263,7 @@ If you are hosting the embedded editor, live browser updates are normally only s
 - Use conversation methods only for conversation-enabled workflows.
 - Conversation-enabled workflows cannot be started through the standard workflow methods.
 - Suspended conversations cannot accept start input entries during resume.
+- `conversationId` is a string and can be any identifier your application controls.
 
 For more detail on state handling, see [Managing State](./managing-state.md).
+For protocol-based conversation clients, see [AG-UI](./ag-ui.md).

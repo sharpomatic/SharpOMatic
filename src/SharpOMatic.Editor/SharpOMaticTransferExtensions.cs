@@ -10,6 +10,7 @@ public static class SharpOMaticTransferExtensions
         SharpOMaticControllerFeatureSetup.EnsureApplicationPart(mvcBuilder, typeof(TransferController).Assembly);
 
         var toggle = SharpOMaticControllerFeatureSetup.GetOrAddToggle(services);
+        SharpOMaticControllerFeatureSetup.EnsureRouteConvention(mvcBuilder, toggle);
         toggle.EnableTransfer = true;
         SharpOMaticControllerFeatureSetup.EnsureFeatureProvider(mvcBuilder, toggle);
 

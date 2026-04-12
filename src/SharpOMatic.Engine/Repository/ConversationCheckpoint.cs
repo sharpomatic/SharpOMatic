@@ -3,7 +3,8 @@ namespace SharpOMatic.Engine.Repository;
 public class ConversationCheckpoint
 {
     [Key]
-    public required Guid ConversationId { get; set; }
+    [MaxLength(256)]
+    public required string ConversationId { get; set; }
     public required ConversationResumeMode ResumeMode { get; set; }
     public Guid? ResumeNodeId { get; set; }
     public string? ContextJson { get; set; }

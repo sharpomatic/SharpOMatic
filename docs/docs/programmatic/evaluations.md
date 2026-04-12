@@ -53,7 +53,7 @@ public class EngineNotification : IEngineNotification
     public Task RunCompleted(
         Guid runId,
         Guid workflowId,
-        Guid? conversationId,
+        string? conversationId,
         RunStatus runStatus,
         string? outputContext,
         string? error)
@@ -73,7 +73,7 @@ public class EngineNotification : IEngineNotification
     public void ConnectionOverride(
         Guid runId,
         Guid workflowId,
-        Guid? conversationId,
+        string? conversationId,
         string connectorId,
         AuthenticationModeConfig authenticationModel,
         Dictionary<string, string?> parameters)
@@ -117,4 +117,4 @@ public class ProgressService : IProgressService
 
 ## API-driven evaluation flows
 
-If you are building outside the editor UI, you can call the evaluation endpoints exposed under `/api/eval` by the editor host.
+If you are building outside the editor UI, you can call the evaluation endpoints exposed under `/sharpomatic/api/eval` by the editor host.

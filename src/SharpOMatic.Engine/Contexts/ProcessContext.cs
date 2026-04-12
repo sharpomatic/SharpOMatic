@@ -422,9 +422,9 @@ public class ProcessContext : ExecutionContext
         if (string.IsNullOrWhiteSpace(conversationId))
             return null;
 
-        if (conversationId.Length > 64)
-            throw new SharpOMaticException("Stream conversation id cannot be longer than 64 characters.");
+        if (conversationId.Length > 256)
+            throw new SharpOMaticException("Stream conversation id cannot be longer than 256 characters.");
 
-        return conversationId;
+        return conversationId.Trim();
     }
 }

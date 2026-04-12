@@ -33,4 +33,12 @@ dotnet run --project src/SharpOMatic.DemoServer
 Check the generated port number for new project in the `launchSettings.json`.<br/>
 NOTE: Replace 9001 with your project specific port number
 
-Use your favorite browser to open http://localhost:9001/editor
+Use your favorite browser to open http://localhost:9001/sharpomatic/editor
+
+## Default SharpOMatic paths
+
+The demo server namespaces the hosted SharpOMatic endpoints under `/sharpomatic` to reduce clashes with existing ASP.NET Core routes:
+
+- Editor UI: `https://localhost:9001/sharpomatic/editor`
+- Editor and transfer APIs: `https://localhost:9001/sharpomatic/api/...`
+- AG-UI endpoint: `https://localhost:9001/sharpomatic/api/agui`

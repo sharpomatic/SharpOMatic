@@ -2,7 +2,7 @@ namespace SharpOMatic.Engine.Services;
 
 public class AssetService(IRepositoryService repositoryService, IAssetStore assetStore) : IAssetService
 {
-    public async Task<AssetRef> CreateFromStreamAsync(Stream content, long sizeBytes, string name, string mediaType, AssetScope scope, Guid? runId = null, Guid? conversationId = null, Guid? folderId = null)
+    public async Task<AssetRef> CreateFromStreamAsync(Stream content, long sizeBytes, string name, string mediaType, AssetScope scope, Guid? runId = null, string? conversationId = null, Guid? folderId = null)
     {
         if (content is null)
             throw new SharpOMaticException("Asset content is required.");
@@ -22,7 +22,7 @@ public class AssetService(IRepositoryService repositoryService, IAssetStore asse
         if (scope == AssetScope.Run && folderId.HasValue)
             throw new SharpOMaticException("Run assets cannot be assigned to a folder.");
 
-        if (scope == AssetScope.Conversation && !conversationId.HasValue)
+        if (scope == AssetScope.Conversation && string.IsNullOrWhiteSpace(conversationId))
             throw new SharpOMaticException("Conversation assets require a conversationId.");
 
         if (scope == AssetScope.Conversation && folderId.HasValue)
@@ -55,7 +55,7 @@ public class AssetService(IRepositoryService repositoryService, IAssetStore asse
         return new AssetRef(asset);
     }
 
-    public async Task<AssetRef> CreateFromBytesAsync(byte[] data, string name, string mediaType, AssetScope scope, Guid? runId = null, Guid? conversationId = null, Guid? folderId = null)
+    public async Task<AssetRef> CreateFromBytesAsync(byte[] data, string name, string mediaType, AssetScope scope, Guid? runId = null, string? conversationId = null, Guid? folderId = null)
     {
         if (data is null)
             throw new SharpOMaticException("Asset data is required.");

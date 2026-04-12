@@ -4,6 +4,7 @@ internal class SharpOMaticControllerToggle
 {
     public bool EnableEditor { get; set; }
     public bool EnableTransfer { get; set; }
+    public bool RouteConventionConfigured { get; set; }
 }
 
 internal class SharpOMaticControllerFeatureProvider : IApplicationFeatureProvider<ControllerFeature>
@@ -43,6 +44,8 @@ internal class SharpOMaticControllerFeatureProvider : IApplicationFeatureProvide
 
 internal static class SharpOMaticControllerFeatureSetup
 {
+    private const string RoutePrefix = "sharpomatic";
+
     public static SharpOMaticControllerToggle GetOrAddToggle(IServiceCollection services)
     {
         var existing = services.FirstOrDefault(service => service.ServiceType == typeof(SharpOMaticControllerToggle));
@@ -65,6 +68,19 @@ internal static class SharpOMaticControllerFeatureSetup
         });
     }
 
+    public static void EnsureRouteConvention(IMvcBuilder builder, SharpOMaticControllerToggle toggle)
+    {
+        if (toggle.RouteConventionConfigured)
+            return;
+
+        builder.AddMvcOptions(options =>
+        {
+            options.Conventions.Add(new SharpOMaticControllerRouteConvention(RoutePrefix));
+        });
+
+        toggle.RouteConventionConfigured = true;
+    }
+
     public static void EnsureApplicationPart(IMvcBuilder builder, Assembly assembly)
     {
         builder.ConfigureApplicationPartManager(manager =>
@@ -74,5 +90,28 @@ internal static class SharpOMaticControllerFeatureSetup
 
             manager.ApplicationParts.Add(new AssemblyPart(assembly));
         });
+    }
+}
+
+internal sealed class SharpOMaticControllerRouteConvention(string routePrefix) : IControllerModelConvention
+{
+    public string RoutePrefix { get; } = routePrefix;
+
+    public void Apply(ControllerModel controller)
+    {
+        if (controller.ControllerType.Assembly != typeof(SharpOMaticEditorExtensions).Assembly)
+            return;
+
+        var prefixRoute = new AttributeRouteModel(new RouteAttribute(RoutePrefix));
+        foreach (var selector in controller.Selectors)
+        {
+            if (selector.AttributeRouteModel is null)
+            {
+                selector.AttributeRouteModel = prefixRoute;
+                continue;
+            }
+
+            selector.AttributeRouteModel = AttributeRouteModel.CombineAttributeRouteModel(prefixRoute, selector.AttributeRouteModel);
+        }
     }
 }

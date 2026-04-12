@@ -29,8 +29,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("ConversationId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime2");
@@ -142,9 +143,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Conversation", b =>
                 {
-                    b.Property<Guid>("ConversationId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime2");
@@ -182,8 +183,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.ConversationCheckpoint", b =>
                 {
-                    b.Property<Guid>("ConversationId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<DateTime>("CheckpointCreated")
                         .HasColumnType("datetime2");
@@ -640,8 +642,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid?>("ConversationId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime2");
@@ -737,8 +740,8 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ConversationId")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<DateTime>("Created")
                         .HasColumnType("datetime2");
