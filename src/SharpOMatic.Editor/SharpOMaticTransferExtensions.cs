@@ -2,7 +2,7 @@ namespace SharpOMatic.Editor;
 
 public static class SharpOMaticTransferExtensions
 {
-    public static IServiceCollection AddSharpOMaticTransfer(this IServiceCollection services)
+    public static IServiceCollection AddSharpOMaticTransfer(this IServiceCollection services, string basePath = SharpOMaticControllerFeatureSetup.DefaultBasePath)
     {
         ArgumentNullException.ThrowIfNull(services);
 
@@ -10,6 +10,7 @@ public static class SharpOMaticTransferExtensions
         SharpOMaticControllerFeatureSetup.EnsureApplicationPart(mvcBuilder, typeof(TransferController).Assembly);
 
         var toggle = SharpOMaticControllerFeatureSetup.GetOrAddToggle(services);
+        SharpOMaticControllerFeatureSetup.EnsureBasePath(toggle, basePath);
         SharpOMaticControllerFeatureSetup.EnsureRouteConvention(mvcBuilder, toggle);
         toggle.EnableTransfer = true;
         SharpOMaticControllerFeatureSetup.EnsureFeatureProvider(mvcBuilder, toggle);

@@ -39,7 +39,7 @@ For example, if your username is JohnDoe, then the files will be at:<br />
 
   builder.Services.AddSharpOMaticEditor();
   builder.Services.AddSharpOMaticTransfer();
-  builder.Services.AddSharpOMaticAgUi("sharpomatic/api/agui");
+  builder.Services.AddSharpOMaticAgUi();
   builder.Services.AddSharpOMaticEngine()
     .AddSqliteRepository(
       connectionString: $"Data Source={Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sharpomatic.db")}");
@@ -49,7 +49,7 @@ The first 3 lines are used to setup how assets are stored.
 It uses the file system implementation which is the easiest for getting started.
 We want to use the browser based editor and so need to call **AddSharpOMaticEditor**.
 To enable import and export we then add **AddSharpOMaticTransfer**.
-If you want AG-UI protocol clients, add **AddSharpOMaticAgUi** and choose the route you want to expose.
+If you want AG-UI protocol clients, add **AddSharpOMaticAgUi**.
 Finally the **AddSharpOMaticEngine** call is used to setup the repository.
 For simplicity we use SQLite, it will create the database automatically on first start.
 
@@ -68,18 +68,38 @@ dotnet add package SharpOMatic.Engine.SqlServer
 ## Map the editor UI
 
 ```csharp
-  app.MapSharpOMaticEditor("/sharpomatic/editor");
+  app.MapSharpOMaticEditor();
 ```
 
-You only need a single mapping call which specifies the url path for exposing the editor.
-If you already use this path for other purposes then you can update this to something more appropriate.
+By default SharpOMatic uses a base path of `/sharpomatic`.
+That gives you:
 
-The editor and transfer controllers are automatically exposed under `/sharpomatic/api/...`.
-With the optional AG-UI package, `AddSharpOMaticAgUi("sharpomatic/api/agui")` adds a `POST` endpoint at `/sharpomatic/api/agui`.
+- Editor UI: `/sharpomatic/editor`
+- Editor and transfer APIs: `/sharpomatic/api/...`
+- AG-UI: `/sharpomatic/api/agui`
+
+If you want a different base path, define one variable and use it consistently:
+
+```csharp
+  var sharpOMaticBasePath = "/banana";
+
+  builder.Services.AddSharpOMaticEditor(sharpOMaticBasePath);
+  builder.Services.AddSharpOMaticTransfer(sharpOMaticBasePath);
+  builder.Services.AddSharpOMaticAgUi(sharpOMaticBasePath);
+
+  app.MapSharpOMaticEditor(sharpOMaticBasePath);
+```
+
+`MapSharpOMaticEditor` automatically appends `/editor` to the base path.
+`AddSharpOMaticAgUi` defaults its child path to `/api/agui`, but you can override that too:
+
+```csharp
+  builder.Services.AddSharpOMaticAgUi("/banana", "/integrations/chat");
+```
 
 ## Open visual editor
 
 Check the generated port number for new project in the `launchSettings.json`.<br/>
-NOTE: Replace 9001 with your project specific port number
+NOTE: The demo server uses `https://localhost:9001` and `http://localhost:9000` by default. Replace those ports if your host uses different values.
 
 Use your favorite browser to open https://localhost:9001/sharpomatic/editor

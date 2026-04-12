@@ -5,6 +5,7 @@ internal class SharpOMaticControllerToggle
     public bool EnableEditor { get; set; }
     public bool EnableTransfer { get; set; }
     public bool RouteConventionConfigured { get; set; }
+    public string? BasePath { get; set; }
 }
 
 internal class SharpOMaticControllerFeatureProvider : IApplicationFeatureProvider<ControllerFeature>
@@ -44,7 +45,8 @@ internal class SharpOMaticControllerFeatureProvider : IApplicationFeatureProvide
 
 internal static class SharpOMaticControllerFeatureSetup
 {
-    private const string RoutePrefix = "sharpomatic";
+    public const string DefaultBasePath = "/sharpomatic";
+    private const string EditorChildPath = "/editor";
 
     public static SharpOMaticControllerToggle GetOrAddToggle(IServiceCollection services)
     {
@@ -68,14 +70,30 @@ internal static class SharpOMaticControllerFeatureSetup
         });
     }
 
+    public static void EnsureBasePath(SharpOMaticControllerToggle toggle, string basePath)
+    {
+        ArgumentNullException.ThrowIfNull(toggle);
+
+        if (string.IsNullOrWhiteSpace(toggle.BasePath))
+        {
+            toggle.BasePath = NormalizeBasePath(basePath);
+            return;
+        }
+
+        var normalizedBasePath = NormalizeBasePath(basePath);
+        if (!string.Equals(toggle.BasePath, normalizedBasePath, StringComparison.Ordinal))
+            throw new SharpOMaticException($"SharpOMatic editor and transfer services must use the same base path. Existing: '{toggle.BasePath}', new: '{normalizedBasePath}'.");
+    }
+
     public static void EnsureRouteConvention(IMvcBuilder builder, SharpOMaticControllerToggle toggle)
     {
         if (toggle.RouteConventionConfigured)
             return;
 
+        var normalizedBasePath = NormalizeBasePath(toggle.BasePath);
         builder.AddMvcOptions(options =>
         {
-            options.Conventions.Add(new SharpOMaticControllerRouteConvention(RoutePrefix));
+            options.Conventions.Add(new SharpOMaticControllerRouteConvention(normalizedBasePath.Trim('/')));
         });
 
         toggle.RouteConventionConfigured = true;
@@ -90,6 +108,41 @@ internal static class SharpOMaticControllerFeatureSetup
 
             manager.ApplicationParts.Add(new AssemblyPart(assembly));
         });
+    }
+
+    public static string NormalizeBasePath(string? basePath)
+    {
+        var trimmed = string.IsNullOrWhiteSpace(basePath) ? DefaultBasePath : basePath.Trim();
+        if (!trimmed.StartsWith("/", StringComparison.Ordinal))
+            trimmed = "/" + trimmed;
+
+        trimmed = trimmed.TrimEnd('/');
+        if (trimmed.EndsWith(EditorChildPath, StringComparison.OrdinalIgnoreCase))
+            trimmed = trimmed[..^EditorChildPath.Length];
+
+        if (string.IsNullOrWhiteSpace(trimmed) || string.Equals(trimmed, "/", StringComparison.Ordinal))
+            throw new SharpOMaticException("SharpOMatic base path must be a non-empty sub-path like '/sharpomatic'.");
+
+        return trimmed;
+    }
+
+    public static string CombineBasePath(string basePath, string childPath)
+    {
+        var normalizedBasePath = NormalizeBasePath(basePath);
+        var normalizedChildPath = NormalizeChildPath(childPath);
+        return normalizedBasePath + normalizedChildPath;
+    }
+
+    private static string NormalizeChildPath(string childPath)
+    {
+        if (string.IsNullOrWhiteSpace(childPath))
+            throw new SharpOMaticException("SharpOMatic child path cannot be empty.");
+
+        var trimmed = childPath.Trim();
+        if (!trimmed.StartsWith("/", StringComparison.Ordinal))
+            trimmed = "/" + trimmed;
+
+        return trimmed.TrimEnd('/');
     }
 }
 

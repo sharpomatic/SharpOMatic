@@ -4,16 +4,16 @@
 
 ### Agent
 
-- Endpoint for AG-UI protocol to start or resume a conversation, ends on run finishing/suspending
 - Endpoint for returning history of messages for existing conversation
+- Override mechanism so the incoming headers and payload and generated context can be accessed and the context modified
 
 ### Output Stream
 
-- Convert the model call to streaming output
 - Need to save and noify each trace event as it happens not as a batch at the end of the call
-- Allow model call checkbox for outputting stream events for text
+- Convert model call to streaming the results into information and stream events
+- Allow model call checkbox for outputting stream events for text, reasoning, tool calls
 - Add node for templated output of text events
-- Engine notification to get the events
+- Engine notification to get the event
 
 ### Model Calls
 
@@ -67,7 +67,9 @@ Microsoft.Extensions.AI.HostedWebSearchTool
 ### Examples
 
 - Chatbot where the workflow is started each time from the start node
-- Chatbot where the covnersation is restarted from the suspend point
+- (uses the full history from the input to have history)
+- Chatbot where the conversation is restarted from the suspend point
+- (uses the chat history array that is persisted to have history)
 
 ### Promotion
 

@@ -1,4 +1,5 @@
 var builder = WebApplication.CreateBuilder(args);
+const string sharpOMaticBasePath = "/sharpomatic";
 
 builder.Services.AddCors();
 builder.Services.AddControllers();
@@ -11,14 +12,14 @@ builder.Services.AddSingleton<IAssetStore, FileSystemAssetStore>();
 
 // Provide the controllers and signalr needed by the visual editor
 // This and the MapSharpOMaticEditor call go together, use both or neither
-builder.Services.AddSharpOMaticEditor();
+builder.Services.AddSharpOMaticEditor(sharpOMaticBasePath);
 
 // Provide the controller needed for data transfer (export/import)
 // You might want to be able to import even without the visual editor
-builder.Services.AddSharpOMaticTransfer();
+builder.Services.AddSharpOMaticTransfer(sharpOMaticBasePath);
 
 // Provide the AG-UI controller endpoint when you want protocol-based clients.
-builder.Services.AddSharpOMaticAgUi("sharpomatic/api/agui");
+builder.Services.AddSharpOMaticAgUi(sharpOMaticBasePath);
 
 // Setup the engine and its capabilties
 builder
@@ -45,7 +46,7 @@ app.MapControllers();
 // --------- SharpOMatic Specific Start ------------------------
 //
 // Provide the visual editor at the /sharpomatic/editor relative path
-app.MapSharpOMaticEditor("/sharpomatic/editor");
+app.MapSharpOMaticEditor(sharpOMaticBasePath);
 
 //
 // --------- SharpOMatic Specific End --------------------------

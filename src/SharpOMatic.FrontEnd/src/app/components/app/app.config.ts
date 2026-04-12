@@ -33,7 +33,7 @@ export function resolveApiUrl(): string {
     return `${baseUri.origin}${normalizedPath}`;
   }
 
-  return 'http://localhost:9001/sharpomatic';
+  return 'https://localhost:9001/sharpomatic';
 }
 
 export const appConfig: ApplicationConfig = {

@@ -3,8 +3,10 @@ namespace SharpOMatic.Editor;
 public static class SharpOMaticEditorExtensions
 {
     private const string DefaultBaseHref = "<base href=\"/\">";
+    private const string EditorChildPath = "/editor";
+    private const string NotificationsChildPath = "/notifications";
 
-    public static IServiceCollection AddSharpOMaticEditor(this IServiceCollection services)
+    public static IServiceCollection AddSharpOMaticEditor(this IServiceCollection services, string basePath = SharpOMaticControllerFeatureSetup.DefaultBasePath)
     {
         ArgumentNullException.ThrowIfNull(services);
 
@@ -12,6 +14,7 @@ public static class SharpOMaticEditorExtensions
         SharpOMaticControllerFeatureSetup.EnsureApplicationPart(mvcBuilder, typeof(SharpOMaticEditorExtensions).Assembly);
 
         var toggle = SharpOMaticControllerFeatureSetup.GetOrAddToggle(services);
+        SharpOMaticControllerFeatureSetup.EnsureBasePath(toggle, basePath);
         SharpOMaticControllerFeatureSetup.EnsureRouteConvention(mvcBuilder, toggle);
         toggle.EnableEditor = true;
         SharpOMaticControllerFeatureSetup.EnsureFeatureProvider(mvcBuilder, toggle);
@@ -28,25 +31,22 @@ public static class SharpOMaticEditorExtensions
         return services;
     }
 
-    public static WebApplication MapSharpOMaticEditor(this WebApplication app, string path = "/sharpomatic/editor")
+    public static WebApplication MapSharpOMaticEditor(this WebApplication app, string? basePath = null)
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        if (string.IsNullOrWhiteSpace(path))
-            throw new ArgumentException("Editor path must be a non-empty route like '/sharpomatic/editor'.", nameof(path));
-
-        var normalizedPath = NormalizePath(path);
-        if (string.Equals(normalizedPath, "/", StringComparison.Ordinal))
-            throw new ArgumentException("Editor path must be a sub-path like '/sharpomatic/editor'.", nameof(path));
+        var normalizedBasePath = ResolveBasePath(app, basePath);
+        var editorPath = SharpOMaticControllerFeatureSetup.CombineBasePath(normalizedBasePath, EditorChildPath);
+        var notificationPath = SharpOMaticControllerFeatureSetup.CombineBasePath(normalizedBasePath, NotificationsChildPath);
 
         var fileProvider = new ManifestEmbeddedFileProvider(typeof(SharpOMaticEditorExtensions).Assembly, "wwwroot");
-        var indexHtml = LoadIndexHtml(fileProvider, normalizedPath);
+        var indexHtml = LoadIndexHtml(fileProvider, editorPath);
 
-        app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider, RequestPath = normalizedPath });
+        app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider, RequestPath = editorPath });
 
-        app.MapHub<NotificationHub>("/sharpomatic/notifications");
+        app.MapHub<NotificationHub>(notificationPath);
 
-        MapEditorFallback(app, normalizedPath, indexHtml);
+        MapEditorFallback(app, editorPath, indexHtml);
 
         return app;
     }
@@ -88,12 +88,16 @@ public static class SharpOMaticEditorExtensions
         return html.Insert(index, baseTag);
     }
 
-    private static string NormalizePath(string path)
+    private static string ResolveBasePath(WebApplication app, string? basePath)
     {
-        var trimmed = path.Trim();
-        if (!trimmed.StartsWith("/", StringComparison.Ordinal))
-            trimmed = "/" + trimmed;
+        var toggle = app.Services.GetService<SharpOMaticControllerToggle>();
+        if (string.IsNullOrWhiteSpace(basePath))
+            return SharpOMaticControllerFeatureSetup.NormalizeBasePath(toggle?.BasePath);
 
-        return trimmed.TrimEnd('/');
+        var normalizedBasePath = SharpOMaticControllerFeatureSetup.NormalizeBasePath(basePath);
+        if (!string.IsNullOrWhiteSpace(toggle?.BasePath) && !string.Equals(toggle.BasePath, normalizedBasePath, StringComparison.Ordinal))
+            throw new SharpOMaticException($"MapSharpOMaticEditor base path '{normalizedBasePath}' does not match the registered SharpOMatic controller base path '{toggle.BasePath}'.");
+
+        return normalizedBasePath;
     }
 }

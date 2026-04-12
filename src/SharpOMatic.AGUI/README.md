@@ -7,16 +7,24 @@ Optional SharpOMatic extension that exposes an AG-UI compatible endpoint for sta
 Register the package in your ASP.NET Core host:
 
 ```csharp
-builder.Services.AddSharpOMaticAgUi("sharpomatic/api/agui");
+builder.Services.AddSharpOMaticAgUi();
 ```
 
-Choose any path that fits your host:
+That defaults to `/sharpomatic/api/agui`.
+
+Choose a different base path if needed:
 
 ```csharp
-builder.Services.AddSharpOMaticAgUi("integrations/chat/agui");
+builder.Services.AddSharpOMaticAgUi("/banana");
 ```
 
-The package adds `POST` on the exact path you provide.
+Or override both the base path and the AG-UI child path:
+
+```csharp
+builder.Services.AddSharpOMaticAgUi("/banana", "/integrations/chat");
+```
+
+The package adds `POST` on the combined path.
 
 ## Request requirements
 

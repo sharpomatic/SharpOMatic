@@ -16,11 +16,32 @@ dotnet add package SharpOMatic.AGUI
 Register the package in your ASP.NET Core host and choose the route you want to expose:
 
 ```csharp
-builder.Services.AddSharpOMaticAgUi("sharpomatic/api/agui");
+builder.Services.AddSharpOMaticAgUi();
 ```
 
-The string you provide is the exact `POST` route added to the host.
-It is separate from `MapSharpOMaticEditor("/sharpomatic/editor")`, which only exposes the editor UI.
+By default that adds:
+
+- AG-UI endpoint: `/sharpomatic/api/agui`
+
+If you want a different base path, share the same base path variable with the editor, transfer, and AG-UI registration:
+
+```csharp
+var sharpOMaticBasePath = "/banana";
+
+builder.Services.AddSharpOMaticEditor(sharpOMaticBasePath);
+builder.Services.AddSharpOMaticTransfer(sharpOMaticBasePath);
+builder.Services.AddSharpOMaticAgUi(sharpOMaticBasePath);
+
+app.MapSharpOMaticEditor(sharpOMaticBasePath);
+```
+
+`MapSharpOMaticEditor` automatically adds `/editor` to the base path.
+
+If you also want to override the AG-UI child path, pass a second argument:
+
+```csharp
+builder.Services.AddSharpOMaticAgUi("/banana", "/integrations/chat");
+```
 
 ## Request contract
 

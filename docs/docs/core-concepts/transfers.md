@@ -66,13 +66,14 @@ builder.Services.AddSharpOMaticTransfer();
 ```
 
 When the package is registered, the transfer endpoints are exposed under `/sharpomatic/api/transfer/...`.
+If you override the SharpOMatic base path, pass the same base path into `AddSharpOMaticTransfer(...)` that you use for the editor and AG-UI registration.
 
 ## Controller
 
 ### Import
 
 You can use a utility such as **POSTMAN** to invoke the import endpoint. <br/>
-The demo server has a url of **http://localhost:9001/sharpomatic/api/transfer/import**, you will need to update this for your own domain.
+The demo server has a url of **https://localhost:9001/sharpomatic/api/transfer/import** and also exposes HTTP on **http://localhost:9000/sharpomatic/api/transfer/import**.
 
 <img src="/img/transfer_import_postman.png" alt="POSTMAN import" width="700" style={{ maxWidth: '100%', height: 'auto' }} />
 
@@ -80,6 +81,6 @@ The demo server has a url of **http://localhost:9001/sharpomatic/api/transfer/im
 
 You can use a utility such as **POSTMAN** to invoke the export endpoint. <br/>
 The body needs to be JSON that specifies the identifiers of the instances wanted, or set the **all** property to true.
-The demo server export endpoint is **http://localhost:9001/sharpomatic/api/transfer/export**.
+The demo server export endpoint is **https://localhost:9001/sharpomatic/api/transfer/export** and also **http://localhost:9000/sharpomatic/api/transfer/export**.
 
 <img src="/img/transfer_export_postman.png" alt="POSTMAN export" width="700" style={{ maxWidth: '100%', height: 'auto' }} />
