@@ -56,6 +56,20 @@ Some model providers can make multiple tool call requests in a single model repl
 This is called parallel tool calling and is more efficient than round-tripping for each individual tool call.
 Models offering this capability allow you to use this checkbox to turn it on or off.
 
+## Runtime stream events
+
+When a model call performs tool calling, SharpOMatic now emits tool-call stream events as part of the live run output.
+These appear in the stream tab and are also translated to AG-UI protocol events when using the AG-UI endpoint.
+
+The tool-call stream lifecycle is:
+
+- `ToolCallStart`
+- `ToolCallArgs`
+- `ToolCallEnd`
+- `ToolCallResult`
+
+The trace viewer still records tool calls as information entries as well, so you keep both the protocol-friendly stream events and the trace summary.
+
 ## Tool choice
 
 There are only two options for this dropdown.

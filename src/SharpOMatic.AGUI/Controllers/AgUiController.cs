@@ -135,12 +135,11 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
 
     private async Task WriteStreamEventAsync(StreamEvent streamEvent)
     {
-        if (string.IsNullOrWhiteSpace(streamEvent.MessageId))
-            return;
+        var toolCallId = string.IsNullOrWhiteSpace(streamEvent.ToolCallId) ? streamEvent.MessageId : streamEvent.ToolCallId;
 
         switch (streamEvent.EventKind)
         {
-            case StreamEventKind.TextStart:
+            case StreamEventKind.TextStart when !string.IsNullOrWhiteSpace(streamEvent.MessageId):
                 await WriteEventAsync(new
                 {
                     type = "TEXT_MESSAGE_START",
@@ -148,7 +147,7 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
                     role = MapRole(streamEvent.MessageRole)
                 });
                 break;
-            case StreamEventKind.TextContent:
+            case StreamEventKind.TextContent when !string.IsNullOrWhiteSpace(streamEvent.MessageId):
                 await WriteEventAsync(new
                 {
                     type = "TEXT_MESSAGE_CONTENT",
@@ -156,11 +155,82 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
                     delta = streamEvent.TextDelta ?? string.Empty
                 });
                 break;
-            case StreamEventKind.TextEnd:
+            case StreamEventKind.TextEnd when !string.IsNullOrWhiteSpace(streamEvent.MessageId):
                 await WriteEventAsync(new
                 {
                     type = "TEXT_MESSAGE_END",
                     messageId = streamEvent.MessageId
+                });
+                break;
+            case StreamEventKind.ReasoningStart when !string.IsNullOrWhiteSpace(streamEvent.MessageId):
+                await WriteEventAsync(new
+                {
+                    type = "REASONING_START",
+                    messageId = streamEvent.MessageId
+                });
+                break;
+            case StreamEventKind.ReasoningMessageStart when !string.IsNullOrWhiteSpace(streamEvent.MessageId):
+                await WriteEventAsync(new
+                {
+                    type = "REASONING_MESSAGE_START",
+                    messageId = streamEvent.MessageId,
+                    role = MapRole(streamEvent.MessageRole)
+                });
+                break;
+            case StreamEventKind.ReasoningMessageContent when !string.IsNullOrWhiteSpace(streamEvent.MessageId):
+                await WriteEventAsync(new
+                {
+                    type = "REASONING_MESSAGE_CONTENT",
+                    messageId = streamEvent.MessageId,
+                    delta = streamEvent.TextDelta ?? string.Empty
+                });
+                break;
+            case StreamEventKind.ReasoningMessageEnd when !string.IsNullOrWhiteSpace(streamEvent.MessageId):
+                await WriteEventAsync(new
+                {
+                    type = "REASONING_MESSAGE_END",
+                    messageId = streamEvent.MessageId
+                });
+                break;
+            case StreamEventKind.ReasoningEnd when !string.IsNullOrWhiteSpace(streamEvent.MessageId):
+                await WriteEventAsync(new
+                {
+                    type = "REASONING_END",
+                    messageId = streamEvent.MessageId
+                });
+                break;
+            case StreamEventKind.ToolCallStart when !string.IsNullOrWhiteSpace(toolCallId):
+                await WriteEventAsync(new
+                {
+                    type = "TOOL_CALL_START",
+                    toolCallId,
+                    toolCallName = streamEvent.TextDelta ?? string.Empty,
+                    parentMessageId = streamEvent.ParentMessageId
+                });
+                break;
+            case StreamEventKind.ToolCallArgs when !string.IsNullOrWhiteSpace(toolCallId):
+                await WriteEventAsync(new
+                {
+                    type = "TOOL_CALL_ARGS",
+                    toolCallId,
+                    delta = streamEvent.TextDelta ?? string.Empty
+                });
+                break;
+            case StreamEventKind.ToolCallEnd when !string.IsNullOrWhiteSpace(toolCallId):
+                await WriteEventAsync(new
+                {
+                    type = "TOOL_CALL_END",
+                    toolCallId
+                });
+                break;
+            case StreamEventKind.ToolCallResult when !string.IsNullOrWhiteSpace(streamEvent.MessageId) && !string.IsNullOrWhiteSpace(toolCallId):
+                await WriteEventAsync(new
+                {
+                    type = "TOOL_CALL_RESULT",
+                    messageId = streamEvent.MessageId,
+                    toolCallId,
+                    content = streamEvent.TextDelta ?? string.Empty,
+                    role = "tool"
                 });
                 break;
         }
@@ -220,6 +290,7 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         {
             StreamMessageRole.User => "user",
             StreamMessageRole.System => "system",
+            StreamMessageRole.Reasoning => "reasoning",
             _ => "assistant",
         };
     }

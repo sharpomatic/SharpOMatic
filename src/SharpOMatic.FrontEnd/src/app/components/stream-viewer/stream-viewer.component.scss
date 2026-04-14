@@ -21,9 +21,9 @@
 }
 
 .stream-sequence {
-  width: 56px;
-  min-width: 56px;
-  max-width: 56px;
+  width: 40px;
+  min-width: 40px;
+  max-width: 40px;
   padding-top: 2px;
   text-align: right;
   color: white;
@@ -31,9 +31,9 @@
 }
 
 .stream-message-id {
-  width: 280px;
-  min-width: 280px;
-  max-width: 280px;
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
   padding-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -52,9 +52,9 @@
 }
 
 .stream-kind {
-  width: 120px;
-  min-width: 120px;
-  max-width: 120px;
+  width: 190px;
+  min-width: 190px;
+  max-width: 190px;
   display: flex;
   align-items: flex-start;
 }
@@ -94,6 +94,11 @@
     color: white;
     background-color: #6c757d;
   }
+
+  &.reasoning {
+    color: white;
+    background-color: SlateBlue;
+  }
 }
 
 .kind-badge {
@@ -104,12 +109,57 @@
 
   &.text-content {
     color: white;
-    background-color: #0d6efd;
+    background-color: #198754;
   }
 
   &.text-end {
     color: white;
-    background-color: #6f42c1;
+    background-color: #198754;
+  }
+
+  &.reasoning-start {
+    color: white;
+    background-color: SlateBlue;
+  }
+
+  &.reasoning-message-start {
+    color: white;
+    background-color: SlateBlue;
+  }
+
+  &.reasoning-message-content {
+    color: white;
+    background-color: SlateBlue;
+  }
+
+  &.reasoning-message-end {
+    color: white;
+    background-color: SlateBlue;
+  }
+
+  &.reasoning-end {
+    color: white;
+    background-color: SlateBlue;
+  }
+
+  &.tool-call-start {
+    color: white;
+    background-color: DodgerBlue;
+  }
+
+  &.tool-call-args {
+    color: white;
+    background-color: DodgerBlue;
+  }
+
+  &.tool-call-end {
+    color: white;
+    background-color: DodgerBlue;
+  }
+
+  &.tool-call-result {
+    color: white;
+    background-color: DodgerBlue;
   }
 }
 

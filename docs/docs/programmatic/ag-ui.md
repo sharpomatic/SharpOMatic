@@ -22,6 +22,7 @@ builder.Services.AddSharpOMaticAgUi();
 By default that adds:
 
 - AG-UI endpoint: `/sharpomatic/api/agui`
+- DemoServer endpoint: `https://localhost:9001/sharpomatic/api/agui`
 
 If you want a different base path, share the same base path variable with the editor, transfer, and AG-UI registration:
 
@@ -75,7 +76,7 @@ The recommended selector shape is `forwardedProps.sharpomatic`:
   "context": [],
   "forwardedProps": {
     "sharpomatic": {
-      "workflowId": "384382a6-afd0-4627-af6d-df7c0f2853ec"
+      "workflowId": "11230021-5144-471a-8ec7-9b460354b745"
     }
   }
 }
@@ -124,7 +125,12 @@ For example, `agent.state` remains an object or array tree inside SharpOMatic co
 
 The endpoint streams AG-UI SSE events from SharpOMatic workflow stream events:
 
-- text stream events become `TEXT_MESSAGE_*`
+- `RUN_STARTED` is emitted after the workflow turn starts
+- text stream events become `TEXT_MESSAGE_START`, `TEXT_MESSAGE_CONTENT`, and `TEXT_MESSAGE_END`
+- visible reasoning stream events become `REASONING_START`, `REASONING_MESSAGE_START`, `REASONING_MESSAGE_CONTENT`, `REASONING_MESSAGE_END`, and `REASONING_END`
+- tool-call stream events become `TOOL_CALL_START`, `TOOL_CALL_ARGS`, `TOOL_CALL_END`, and `TOOL_CALL_RESULT`
+- `TOOL_CALL_RESULT` preserves both the tool result `messageId` and the linked `toolCallId`
+- `TOOL_CALL_START` includes the tool name and can include `parentMessageId` when the underlying model output supplies it
 - successful runs emit `RUN_FINISHED`
 - suspended runs also emit `RUN_FINISHED`
 - failed runs emit `RUN_ERROR`

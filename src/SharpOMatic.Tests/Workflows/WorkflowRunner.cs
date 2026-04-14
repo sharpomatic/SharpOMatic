@@ -67,7 +67,7 @@ public class WorkflowRunner
         }
     }
 
-    public static ServiceProvider BuildProvider()
+    public static ServiceProvider BuildProvider(Action<IServiceCollection>? configureServices = null)
     {
         var services = new ServiceCollection();
         services.AddSharpOMaticEngine().AddScriptOptions([typeof(WorkflowRunner).Assembly], ["SharpOMatic.Tests.Workflows"]).AddJsonConverters(typeof(ClassExampleConverter));
@@ -105,6 +105,7 @@ public class WorkflowRunner
                 return Task.CompletedTask;
             });
         services.AddSingleton(assetStoreMock.Object);
+        configureServices?.Invoke(services);
 
         return services.BuildServiceProvider();
     }

@@ -9,6 +9,7 @@ public interface IModelCaller
         ConnectorConfig connectorConfig,
         ProcessContext processContext,
         ThreadContext threadContext,
-        ModelCallNodeEntity node
+        ModelCallNodeEntity node,
+        IModelCallProgressSink progressSink
     );
 }

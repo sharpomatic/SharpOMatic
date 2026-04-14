@@ -11,6 +11,10 @@ You can leave this field blank to ignore the output. Text output is still genera
 - **Instructions** (Optional) system-level instructions for the call.
 - **Prompt** (Mandatory) user-level prompt for the call.
 
+When you use an OpenAI, Azure OpenAI, or Google model, runtime output is now incremental.
+Assistant text is streamed during execution, visible reasoning is emitted as reasoning stream events, and tool calls are emitted as tool-call stream events.
+Reasoning and tool-call trace entries are also updated while the node is still running.
+
 <img src="/img/modelcall-text.png" alt="Text Settings" width="800" style={{ maxWidth: '100%', height: 'auto' }} />
 
 ## Context substitution **\{\{\$path\}\}**

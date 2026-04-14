@@ -9,11 +9,8 @@
 
 ### Output Stream
 
-- Need to save and noify each trace event as it happens not as a batch at the end of the call
-- Convert model call to streaming the results into information and stream events
 - Allow model call checkbox for outputting stream events for text, reasoning, tool calls
 - Add node for templated output of text events
-- Engine notification to get the event
 
 ### Model Calls
 

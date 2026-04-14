@@ -12,5 +12,7 @@ export interface StreamEventModel {
   messageId?: string | null;
   messageRole?: StreamMessageRole | null;
   textDelta?: string | null;
+  toolCallId?: string | null;
+  parentMessageId?: string | null;
   metadata?: string | null;
 }

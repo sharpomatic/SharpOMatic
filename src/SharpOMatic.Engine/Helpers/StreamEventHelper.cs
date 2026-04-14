@@ -81,6 +81,114 @@ public class StreamEventHelper
         );
     }
 
+    public Task<List<StreamEvent>> AddReasoningStartAsync(string messageId, string? metadata = null)
+    {
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ReasoningStart,
+                MessageId = RequireMessageId(messageId),
+                Metadata = metadata,
+            }
+        );
+    }
+
+    public Task<List<StreamEvent>> AddReasoningMessageStartAsync(string messageId, string? metadata = null)
+    {
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ReasoningMessageStart,
+                MessageId = RequireMessageId(messageId),
+                MessageRole = StreamMessageRole.Reasoning,
+                Metadata = metadata,
+            }
+        );
+    }
+
+    public Task<List<StreamEvent>> AddReasoningMessageContentAsync(string messageId, string delta, string? metadata = null)
+    {
+        if (string.IsNullOrWhiteSpace(delta))
+            throw new SharpOMaticException("Reasoning message delta cannot be empty or whitespace.");
+
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ReasoningMessageContent,
+                MessageId = RequireMessageId(messageId),
+                TextDelta = delta,
+                Metadata = metadata,
+            }
+        );
+    }
+
+    public Task<List<StreamEvent>> AddReasoningMessageEndAsync(string messageId, string? metadata = null)
+    {
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ReasoningMessageEnd,
+                MessageId = RequireMessageId(messageId),
+                Metadata = metadata,
+            }
+        );
+    }
+
+    public Task<List<StreamEvent>> AddReasoningEndAsync(string messageId, string? metadata = null)
+    {
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ReasoningEnd,
+                MessageId = RequireMessageId(messageId),
+                Metadata = metadata,
+            }
+        );
+    }
+
+    public async Task AddReasoningMessageAsync(string messageId, string text, string? metadata = null)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            throw new SharpOMaticException("Reasoning message cannot be empty or whitespace.");
+
+        messageId = RequireMessageId(messageId);
+
+        await AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ReasoningStart,
+                MessageId = messageId,
+                Metadata = metadata,
+            },
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ReasoningMessageStart,
+                MessageId = messageId,
+                MessageRole = StreamMessageRole.Reasoning,
+                Metadata = metadata,
+            },
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ReasoningMessageContent,
+                MessageId = messageId,
+                TextDelta = text,
+                Metadata = metadata,
+            },
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ReasoningMessageEnd,
+                MessageId = messageId,
+                Metadata = metadata,
+            },
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ReasoningEnd,
+                MessageId = messageId,
+                Metadata = metadata,
+            }
+        );
+    }
+
     private Task<List<StreamEvent>> AddEventsAsync(params StreamEventWrite[] events)
     {
         return _processContext.AppendStreamEvents(events);

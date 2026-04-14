@@ -165,6 +165,8 @@ public sealed class AgUiRunEventBroker : IAgUiRunEventBroker
             MessageId = streamEvent.MessageId,
             MessageRole = streamEvent.MessageRole,
             TextDelta = streamEvent.TextDelta,
+            ToolCallId = streamEvent.ToolCallId,
+            ParentMessageId = streamEvent.ParentMessageId,
             Metadata = streamEvent.Metadata,
         };
     }

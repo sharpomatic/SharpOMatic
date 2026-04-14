@@ -22,6 +22,9 @@
                   streamEvent.messageRole === StreamMessageRole.Assistant
                 "
                 [class.system]="streamEvent.messageRole === StreamMessageRole.System"
+                [class.reasoning]="
+                  streamEvent.messageRole === StreamMessageRole.Reasoning
+                "
               >
                 {{ getRoleLabel(streamEvent.messageRole) }}
               </span>
@@ -35,12 +38,48 @@
                 streamEvent.eventKind === StreamEventKind.TextContent
               "
               [class.text-end]="streamEvent.eventKind === StreamEventKind.TextEnd"
+              [class.reasoning-start]="
+                streamEvent.eventKind === StreamEventKind.ReasoningStart
+              "
+              [class.reasoning-message-start]="
+                streamEvent.eventKind === StreamEventKind.ReasoningMessageStart
+              "
+              [class.reasoning-message-content]="
+                streamEvent.eventKind === StreamEventKind.ReasoningMessageContent
+              "
+              [class.reasoning-message-end]="
+                streamEvent.eventKind === StreamEventKind.ReasoningMessageEnd
+              "
+              [class.reasoning-end]="
+                streamEvent.eventKind === StreamEventKind.ReasoningEnd
+              "
+              [class.tool-call-start]="
+                streamEvent.eventKind === StreamEventKind.ToolCallStart
+              "
+              [class.tool-call-args]="
+                streamEvent.eventKind === StreamEventKind.ToolCallArgs
+              "
+              [class.tool-call-end]="
+                streamEvent.eventKind === StreamEventKind.ToolCallEnd
+              "
+              [class.tool-call-result]="
+                streamEvent.eventKind === StreamEventKind.ToolCallResult
+              "
             >
               {{ getEventKindLabel(streamEvent.eventKind) }}
             </span>
           </span>
           <div class="stream-payload">
-            @if (streamEvent.textDelta) {
+            @if (
+              streamEvent.textDelta &&
+              streamEvent.eventKind !== StreamEventKind.ToolCallStart
+            ) {
+              <span class="payload-value">{{ streamEvent.textDelta }}</span>
+            }
+            @if (
+              streamEvent.textDelta &&
+              streamEvent.eventKind === StreamEventKind.ToolCallStart
+            ) {
               <span class="payload-value">{{ streamEvent.textDelta }}</span>
             }
             @if (streamEvent.metadata) {

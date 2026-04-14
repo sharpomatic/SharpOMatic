@@ -17,5 +17,7 @@ public class StreamEvent
     public string? MessageId { get; set; }
     public StreamMessageRole? MessageRole { get; set; }
     public string? TextDelta { get; set; }
+    public string? ToolCallId { get; set; }
+    public string? ParentMessageId { get; set; }
     public string? Metadata { get; set; }
 }

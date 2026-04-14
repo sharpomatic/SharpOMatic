@@ -56,6 +56,57 @@ public sealed class StreamEventUnitTests
     }
 
     [Fact]
+    public async Task Code_node_reasoning_events_persist_full_visible_reasoning_sequence()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", """await Events.AddReasoningMessageAsync("reason-1", "Thinking about it");""")
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.Equal(5, streamEvents.Count);
+            Assert.Equal(
+                [
+                    StreamEventKind.ReasoningStart,
+                    StreamEventKind.ReasoningMessageStart,
+                    StreamEventKind.ReasoningMessageContent,
+                    StreamEventKind.ReasoningMessageEnd,
+                    StreamEventKind.ReasoningEnd,
+                ],
+                streamEvents.Select(e => e.EventKind).ToArray()
+            );
+            Assert.Equal(["reason-1", "reason-1", "reason-1", "reason-1", "reason-1"], streamEvents.Select(e => e.MessageId ?? string.Empty).ToArray());
+            Assert.Equal([1, 2, 3, 4, 5], streamEvents.Select(e => e.SequenceNumber).ToArray());
+            Assert.Equal(StreamMessageRole.Reasoning, streamEvents[1].MessageRole);
+            Assert.Equal("Thinking about it", streamEvents[2].TextDelta);
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
     public async Task Code_node_stream_events_require_non_empty_message_ids()
     {
         var workflow = new WorkflowBuilder()
@@ -68,6 +119,21 @@ public sealed class StreamEventUnitTests
 
         Assert.Equal(RunStatus.Failed, run.RunStatus);
         Assert.Contains("MessageId must be a non-empty string.", run.Error);
+    }
+
+    [Fact]
+    public async Task Code_node_reasoning_events_require_non_empty_content()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", """await Events.AddReasoningMessageContentAsync("reason-1", "   ");""")
+            .Connect("start", "code")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Contains("Reasoning message delta cannot be empty or whitespace.", run.Error);
     }
 
     [Fact]
@@ -204,4 +270,3 @@ public sealed class StreamEventUnitTests
         return Guid.NewGuid().ToString("N");
     }
 }
-

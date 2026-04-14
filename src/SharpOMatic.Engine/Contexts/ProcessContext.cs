@@ -190,6 +190,8 @@ public class ProcessContext : ExecutionContext
                     MessageId = write.MessageId,
                     MessageRole = write.MessageRole,
                     TextDelta = write.TextDelta,
+                    ToolCallId = write.ToolCallId,
+                    ParentMessageId = write.ParentMessageId,
                     Metadata = write.Metadata,
                 }
             );
@@ -395,6 +397,9 @@ public class ProcessContext : ExecutionContext
                 if (!write.MessageRole.HasValue)
                     throw new SharpOMaticException("TextStart stream events require a MessageRole.");
 
+                if (write.MessageRole == StreamMessageRole.Reasoning)
+                    throw new SharpOMaticException("TextStart stream events cannot use the Reasoning role.");
+
                 if (!string.IsNullOrWhiteSpace(write.TextDelta))
                     throw new SharpOMaticException("TextStart stream events cannot include TextDelta.");
                 break;
@@ -411,6 +416,108 @@ public class ProcessContext : ExecutionContext
 
                 if (!string.IsNullOrWhiteSpace(write.TextDelta))
                     throw new SharpOMaticException("TextEnd stream events cannot include TextDelta.");
+                break;
+            case StreamEventKind.ReasoningStart:
+                if (string.IsNullOrWhiteSpace(write.MessageId))
+                    throw new SharpOMaticException("ReasoningStart stream events require a MessageId.");
+
+                if (write.MessageRole.HasValue)
+                    throw new SharpOMaticException("ReasoningStart stream events cannot include a MessageRole.");
+
+                if (!string.IsNullOrWhiteSpace(write.TextDelta))
+                    throw new SharpOMaticException("ReasoningStart stream events cannot include TextDelta.");
+                break;
+            case StreamEventKind.ReasoningMessageStart:
+                if (string.IsNullOrWhiteSpace(write.MessageId))
+                    throw new SharpOMaticException("ReasoningMessageStart stream events require a MessageId.");
+
+                if (write.MessageRole != StreamMessageRole.Reasoning)
+                    throw new SharpOMaticException("ReasoningMessageStart stream events require the Reasoning role.");
+
+                if (!string.IsNullOrWhiteSpace(write.TextDelta))
+                    throw new SharpOMaticException("ReasoningMessageStart stream events cannot include TextDelta.");
+                break;
+            case StreamEventKind.ReasoningMessageContent:
+                if (string.IsNullOrWhiteSpace(write.MessageId))
+                    throw new SharpOMaticException("ReasoningMessageContent stream events require a MessageId.");
+
+                if (string.IsNullOrWhiteSpace(write.TextDelta))
+                    throw new SharpOMaticException("ReasoningMessageContent stream events require a non-empty TextDelta.");
+                break;
+            case StreamEventKind.ReasoningMessageEnd:
+                if (string.IsNullOrWhiteSpace(write.MessageId))
+                    throw new SharpOMaticException("ReasoningMessageEnd stream events require a MessageId.");
+
+                if (!string.IsNullOrWhiteSpace(write.TextDelta))
+                    throw new SharpOMaticException("ReasoningMessageEnd stream events cannot include TextDelta.");
+                break;
+            case StreamEventKind.ReasoningEnd:
+                if (string.IsNullOrWhiteSpace(write.MessageId))
+                    throw new SharpOMaticException("ReasoningEnd stream events require a MessageId.");
+
+                if (!string.IsNullOrWhiteSpace(write.TextDelta))
+                    throw new SharpOMaticException("ReasoningEnd stream events cannot include TextDelta.");
+                break;
+            case StreamEventKind.ToolCallStart:
+                if (string.IsNullOrWhiteSpace(write.MessageId))
+                    throw new SharpOMaticException("ToolCallStart stream events require a MessageId.");
+
+                if (string.IsNullOrWhiteSpace(write.ToolCallId))
+                    throw new SharpOMaticException("ToolCallStart stream events require a ToolCallId.");
+
+                if (write.MessageRole.HasValue)
+                    throw new SharpOMaticException("ToolCallStart stream events cannot include a MessageRole.");
+
+                if (string.IsNullOrWhiteSpace(write.TextDelta))
+                    throw new SharpOMaticException("ToolCallStart stream events require a non-empty TextDelta for the tool name.");
+                break;
+            case StreamEventKind.ToolCallArgs:
+                if (string.IsNullOrWhiteSpace(write.MessageId))
+                    throw new SharpOMaticException("ToolCallArgs stream events require a MessageId.");
+
+                if (string.IsNullOrWhiteSpace(write.ToolCallId))
+                    throw new SharpOMaticException("ToolCallArgs stream events require a ToolCallId.");
+
+                if (string.IsNullOrWhiteSpace(write.TextDelta))
+                    throw new SharpOMaticException("ToolCallArgs stream events require a non-empty TextDelta.");
+
+                if (write.MessageRole.HasValue)
+                    throw new SharpOMaticException("ToolCallArgs stream events cannot include a MessageRole.");
+
+                if (!string.IsNullOrWhiteSpace(write.ParentMessageId))
+                    throw new SharpOMaticException("ToolCallArgs stream events cannot include ParentMessageId.");
+                break;
+            case StreamEventKind.ToolCallEnd:
+                if (string.IsNullOrWhiteSpace(write.MessageId))
+                    throw new SharpOMaticException("ToolCallEnd stream events require a MessageId.");
+
+                if (string.IsNullOrWhiteSpace(write.ToolCallId))
+                    throw new SharpOMaticException("ToolCallEnd stream events require a ToolCallId.");
+
+                if (write.MessageRole.HasValue)
+                    throw new SharpOMaticException("ToolCallEnd stream events cannot include a MessageRole.");
+
+                if (!string.IsNullOrWhiteSpace(write.TextDelta))
+                    throw new SharpOMaticException("ToolCallEnd stream events cannot include TextDelta.");
+
+                if (!string.IsNullOrWhiteSpace(write.ParentMessageId))
+                    throw new SharpOMaticException("ToolCallEnd stream events cannot include ParentMessageId.");
+                break;
+            case StreamEventKind.ToolCallResult:
+                if (string.IsNullOrWhiteSpace(write.MessageId))
+                    throw new SharpOMaticException("ToolCallResult stream events require a MessageId.");
+
+                if (string.IsNullOrWhiteSpace(write.ToolCallId))
+                    throw new SharpOMaticException("ToolCallResult stream events require a ToolCallId.");
+
+                if (write.MessageRole.HasValue)
+                    throw new SharpOMaticException("ToolCallResult stream events cannot include a MessageRole.");
+
+                if (!string.IsNullOrWhiteSpace(write.ParentMessageId))
+                    throw new SharpOMaticException("ToolCallResult stream events cannot include ParentMessageId.");
+
+                if (write.TextDelta is null)
+                    throw new SharpOMaticException("ToolCallResult stream events require TextDelta.");
                 break;
             default:
                 throw new SharpOMaticException($"Unsupported stream event kind '{write.EventKind}'.");

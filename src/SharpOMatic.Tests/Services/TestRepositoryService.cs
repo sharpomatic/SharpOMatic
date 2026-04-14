@@ -12,6 +12,10 @@ public sealed class TestRepositoryService : IRepositoryService
     private readonly ConcurrentDictionary<Guid, StreamEvent> _streamEvents = new();
     private readonly ConcurrentDictionary<Guid, Asset> _assets = new();
     private readonly ConcurrentDictionary<Guid, AssetFolder> _assetFolders = new();
+    private readonly ConcurrentDictionary<string, ConnectorConfig> _connectorConfigs = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<Guid, Connector> _connectors = new();
+    private readonly ConcurrentDictionary<string, ModelConfig> _modelConfigs = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<Guid, Model> _models = new();
 
     public Task<List<WorkflowSummary>> GetWorkflowSummaries() => throw new NotImplementedException();
 
@@ -313,11 +317,19 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.FromResult(streamEvents);
     }
 
-    public Task<List<ConnectorConfig>> GetConnectorConfigs() => throw new NotImplementedException();
+    public Task<List<ConnectorConfig>> GetConnectorConfigs() => Task.FromResult(_connectorConfigs.Values.OrderBy(c => c.DisplayName).ToList());
 
-    public Task<ConnectorConfig?> GetConnectorConfig(string configId) => throw new NotImplementedException();
+    public Task<ConnectorConfig?> GetConnectorConfig(string configId)
+    {
+        _connectorConfigs.TryGetValue(configId, out var config);
+        return Task.FromResult(config);
+    }
 
-    public Task UpsertConnectorConfig(ConnectorConfig config) => throw new NotImplementedException();
+    public Task UpsertConnectorConfig(ConnectorConfig config)
+    {
+        _connectorConfigs[config.ConfigId] = config;
+        return Task.CompletedTask;
+    }
 
     public Task<List<ConnectorSummary>> GetConnectorSummaries() => throw new NotImplementedException();
 
@@ -325,17 +337,35 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task<List<ConnectorSummary>> GetConnectorSummaries(string? search, ConnectorSortField sortBy, SortDirection sortDirection, int skip, int take) => throw new NotImplementedException();
 
-    public Task<Connector> GetConnector(Guid connectionId, bool hideSecrets = true) => throw new NotImplementedException();
+    public Task<Connector> GetConnector(Guid connectionId, bool hideSecrets = true)
+    {
+        if (!_connectors.TryGetValue(connectionId, out var connector))
+            throw new SharpOMaticException($"Connector '{connectionId}' cannot be found.");
 
-    public Task UpsertConnector(Connector connection, bool hideSecrets = true) => throw new NotImplementedException();
+        return Task.FromResult(connector);
+    }
+
+    public Task UpsertConnector(Connector connection, bool hideSecrets = true)
+    {
+        _connectors[connection.ConnectorId] = connection;
+        return Task.CompletedTask;
+    }
 
     public Task DeleteConnector(Guid connectionId) => throw new NotImplementedException();
 
-    public Task<List<ModelConfig>> GetModelConfigs() => throw new NotImplementedException();
+    public Task<List<ModelConfig>> GetModelConfigs() => Task.FromResult(_modelConfigs.Values.OrderBy(c => c.DisplayName).ToList());
 
-    public Task<ModelConfig?> GetModelConfig(string configId) => throw new NotImplementedException();
+    public Task<ModelConfig?> GetModelConfig(string configId)
+    {
+        _modelConfigs.TryGetValue(configId, out var config);
+        return Task.FromResult(config);
+    }
 
-    public Task UpsertModelConfig(ModelConfig config) => throw new NotImplementedException();
+    public Task UpsertModelConfig(ModelConfig config)
+    {
+        _modelConfigs[config.ConfigId] = config;
+        return Task.CompletedTask;
+    }
 
     public Task<List<ModelSummary>> GetModelSummaries() => throw new NotImplementedException();
 
@@ -343,9 +373,19 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task<List<ModelSummary>> GetModelSummaries(string? search, ModelSortField sortBy, SortDirection sortDirection, int skip, int take) => throw new NotImplementedException();
 
-    public Task<Model> GetModel(Guid modelId, bool hideSecrets = true) => throw new NotImplementedException();
+    public Task<Model> GetModel(Guid modelId, bool hideSecrets = true)
+    {
+        if (!_models.TryGetValue(modelId, out var model))
+            throw new SharpOMaticException($"Model '{modelId}' cannot be found.");
 
-    public Task UpsertModel(Model model) => throw new NotImplementedException();
+        return Task.FromResult(model);
+    }
+
+    public Task UpsertModel(Model model)
+    {
+        _models[model.ModelId] = model;
+        return Task.CompletedTask;
+    }
 
     public Task DeleteModel(Guid modelId) => throw new NotImplementedException();
 

@@ -5,4 +5,5 @@ public enum StreamMessageRole
     User = 0,
     Assistant = 1,
     System = 2,
+    Reasoning = 3,
 }

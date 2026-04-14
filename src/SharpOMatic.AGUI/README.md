@@ -12,6 +12,8 @@ builder.Services.AddSharpOMaticAgUi();
 
 That defaults to `/sharpomatic/api/agui`.
 
+In the DemoServer that is exposed as `https://localhost:9001/sharpomatic/api/agui`.
+
 Choose a different base path if needed:
 
 ```csharp
@@ -34,6 +36,18 @@ The package adds `POST` on the combined path.
 
 The endpoint starts or resumes the matching SharpOMatic conversation workflow and streams SSE events translated from workflow stream events until the run completes, suspends, or fails.
 
+## SSE event mapping
+
+SharpOMatic translates workflow stream events into AG-UI SSE events:
+
+- `TEXT_MESSAGE_START`, `TEXT_MESSAGE_CONTENT`, `TEXT_MESSAGE_END`
+- `REASONING_START`, `REASONING_MESSAGE_START`, `REASONING_MESSAGE_CONTENT`, `REASONING_MESSAGE_END`, `REASONING_END`
+- `TOOL_CALL_START`, `TOOL_CALL_ARGS`, `TOOL_CALL_END`, `TOOL_CALL_RESULT`
+- `RUN_STARTED`, `RUN_FINISHED`, `RUN_ERROR`
+
+`TOOL_CALL_RESULT` preserves both the result `messageId` and the linked `toolCallId`.
+`TOOL_CALL_START` includes the tool name and can include `parentMessageId` when the model output supplies it.
+
 ## Workflow selection
 
 The recommended request shape is:
@@ -46,7 +60,7 @@ The recommended request shape is:
   "context": [],
   "forwardedProps": {
     "sharpomatic": {
-      "workflowId": "384382a6-afd0-4627-af6d-df7c0f2853ec"
+      "workflowId": "11230021-5144-471a-8ec7-9b460354b745"
     }
   }
 }

@@ -6,5 +6,7 @@ public sealed class StreamEventWrite
     public string? MessageId { get; init; }
     public StreamMessageRole? MessageRole { get; init; }
     public string? TextDelta { get; init; }
+    public string? ToolCallId { get; init; }
+    public string? ParentMessageId { get; init; }
     public string? Metadata { get; init; }
 }

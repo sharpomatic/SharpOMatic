@@ -9,7 +9,8 @@ public class GoogleGenAIModelCaller : BaseModelCaller
         ConnectorConfig connectorConfig,
         ProcessContext processContext,
         ThreadContext threadContext,
-        ModelCallNodeEntity node
+        ModelCallNodeEntity node,
+        IModelCallProgressSink progressSink
     )
     {
         // Get authentication method specific fields, allows for optional customization by user override mechanism
@@ -35,7 +36,7 @@ public class GoogleGenAIModelCaller : BaseModelCaller
 
         // Use the Microsoft Agent Framework by creating a chat client based agent
         var agent = new ChatClientAgent(chatClient, instructions: instructions, services: agentServiceProvider);
-        return await CallAgent(agent, chat, chatOptions, jsonOutput, node);
+        return await CallStreamingAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
     }
 
     protected virtual (AuthenticationModeConfig, Dictionary<string, string?>) GetAuthenticationFields(Connector connector, ConnectorConfig connectorConfig, ProcessContext processContext)

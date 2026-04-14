@@ -739,6 +739,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("ArgsDelta")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ConversationId")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -758,6 +761,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<string>("Metadata")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ParentMessageId")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<Guid>("RunId")
                         .HasColumnType("uniqueidentifier");
 
@@ -765,6 +771,15 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("TextDelta")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ToolCallId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ToolCallName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ToolResultContent")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("WorkflowId")

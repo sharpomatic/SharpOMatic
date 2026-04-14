@@ -10,7 +10,8 @@ public abstract class BaseModelCaller : IModelCaller
         ConnectorConfig connectorConfig,
         ProcessContext processContext,
         ThreadContext threadContext,
-        ModelCallNodeEntity node
+        ModelCallNodeEntity node,
+        IModelCallProgressSink progressSink
     );
 
     protected virtual async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> CallAgent(
@@ -31,17 +32,201 @@ public abstract class BaseModelCaller : IModelCaller
         List<ChatMessage> chat,
         ChatOptions? chatOptions,
         bool jsonOutput,
-        ModelCallNodeEntity node
+        ModelCallNodeEntity node,
+        IModelCallProgressSink progressSink
     )
     {
-        // Accumulate the streamed responses, but ignore messages that are empty
-        List<ChatMessage> responses = [];
-        await foreach (var message in agent.RunStreamingAsync(chat, options: new ChatClientAgentRunOptions(chatOptions)))
-            if ((message.Contents is not null) && (message.Contents.Count > 0))
-                responses.Add(new ChatMessage(message.Role ?? ChatRole.Assistant, message.Contents));
+        List<AgentRunResponseUpdate> updates = [];
+        string syntheticMessageId = $"assistant-{Guid.NewGuid():N}";
+        string? currentAssistantMessageId = null;
 
-        var tempContext = ResponseToContextObject(jsonOutput, new AgentRunResponse(responses), node);
-        return (chat, responses, tempContext);
+        try
+        {
+            await foreach (var update in agent.RunStreamingAsync(chat, options: new ChatClientAgentRunOptions(chatOptions)))
+            {
+                updates.Add(update);
+                var messageId = ResolveMessageId(update, syntheticMessageId);
+
+                if ((update.Role is not null) && (update.Role != ChatRole.Assistant) && (currentAssistantMessageId is not null))
+                {
+                    await progressSink.OnTextEndAsync(currentAssistantMessageId);
+                    currentAssistantMessageId = null;
+                }
+
+                if ((update.Role is null || update.Role == ChatRole.Assistant) && !string.Equals(currentAssistantMessageId, messageId, StringComparison.Ordinal))
+                {
+                    if (currentAssistantMessageId is not null)
+                        await progressSink.OnTextEndAsync(currentAssistantMessageId);
+
+                    currentAssistantMessageId = null;
+                }
+
+                bool handledTextContent = false;
+                if ((update.Contents is not null) && (update.Contents.Count > 0))
+                {
+                    foreach (var content in update.Contents)
+                    {
+                        switch (content)
+                        {
+                            case TextContent textContent when (update.Role is null || update.Role == ChatRole.Assistant) && !string.IsNullOrWhiteSpace(textContent.Text):
+                                if (currentAssistantMessageId is null)
+                                {
+                                    await progressSink.OnTextStartAsync(messageId);
+                                    currentAssistantMessageId = messageId;
+                                }
+
+                                await progressSink.OnTextDeltaAsync(messageId, textContent.Text);
+                                handledTextContent = true;
+                                break;
+
+                            case TextReasoningContent reasoningContent when update.Role is null || update.Role == ChatRole.Assistant:
+                                await progressSink.OnReasoningAsync(BuildReasoningId(messageId), reasoningContent.Text ?? string.Empty);
+                                break;
+
+                            case FunctionCallContent functionCallContent:
+                                await progressSink.OnToolCallAsync(
+                                    BuildToolCallId(messageId, functionCallContent),
+                                    functionCallContent.Name,
+                                    SerializeToolArguments(functionCallContent),
+                                    messageId,
+                                    SerializeToolCall(functionCallContent)
+                                );
+                                break;
+
+                            case FunctionResultContent functionResultContent:
+                                var toolResultMessageId = ResolveToolResultMessageId(update, functionResultContent, syntheticMessageId);
+                                await progressSink.OnToolCallResultAsync(
+                                    toolResultMessageId,
+                                    ResolveToolResultCallId(functionResultContent, toolResultMessageId),
+                                    SerializeToolResult(functionResultContent)
+                                );
+                                break;
+                        }
+                    }
+                }
+
+                if ((update.Role is null || update.Role == ChatRole.Assistant) && !handledTextContent && !string.IsNullOrWhiteSpace(update.Text))
+                {
+                    if (currentAssistantMessageId is null)
+                    {
+                        await progressSink.OnTextStartAsync(messageId);
+                        currentAssistantMessageId = messageId;
+                    }
+
+                    await progressSink.OnTextDeltaAsync(messageId, update.Text);
+                }
+            }
+        }
+        finally
+        {
+            if (currentAssistantMessageId is not null)
+                await progressSink.OnTextEndAsync(currentAssistantMessageId);
+
+            await progressSink.CompleteAsync();
+        }
+
+        var response = updates.ToAgentRunResponse();
+        var tempContext = ResponseToContextObject(jsonOutput, response, node);
+        return (chat, response.Messages, tempContext);
+    }
+
+    protected virtual string ResolveMessageId(AgentRunResponseUpdate update, string syntheticMessageId)
+    {
+        if (!string.IsNullOrWhiteSpace(update.MessageId))
+            return update.MessageId.Trim();
+
+        if (!string.IsNullOrWhiteSpace(update.ResponseId))
+            return update.ResponseId.Trim();
+
+        return syntheticMessageId;
+    }
+
+    protected virtual string BuildReasoningId(string messageId)
+    {
+        return messageId;
+    }
+
+    protected virtual string BuildToolCallId(string messageId, FunctionCallContent functionCallContent)
+    {
+        if (!string.IsNullOrWhiteSpace(functionCallContent.CallId))
+            return functionCallContent.CallId.Trim();
+
+        return $"tool:{messageId}:{functionCallContent.Name}";
+    }
+
+    protected virtual string ResolveToolResultCallId(FunctionResultContent functionResultContent, string fallbackMessageId)
+    {
+        if (!string.IsNullOrWhiteSpace(functionResultContent.CallId))
+            return functionResultContent.CallId.Trim();
+
+        return $"tool-result:{fallbackMessageId}";
+    }
+
+    protected virtual string ResolveToolResultMessageId(
+        AgentRunResponseUpdate update,
+        FunctionResultContent functionResultContent,
+        string syntheticMessageId
+    )
+    {
+        if (!string.IsNullOrWhiteSpace(update.MessageId))
+            return update.MessageId.Trim();
+
+        if (!string.IsNullOrWhiteSpace(update.ResponseId))
+            return update.ResponseId.Trim();
+
+        return $"tool-result:{syntheticMessageId}";
+    }
+
+    protected virtual string? SerializeToolArguments(FunctionCallContent functionCallContent)
+    {
+        if (functionCallContent.Arguments is null)
+            return null;
+
+        try
+        {
+            return JsonSerializer.Serialize(functionCallContent.Arguments);
+        }
+        catch
+        {
+            return functionCallContent.Arguments.ToString();
+        }
+    }
+
+    protected virtual string? SerializeToolCall(FunctionCallContent functionCallContent)
+    {
+        try
+        {
+            return JsonSerializer.Serialize(
+                new
+                {
+                    functionCallContent.CallId,
+                    functionCallContent.Name,
+                    functionCallContent.Arguments,
+                }
+            );
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    protected virtual string SerializeToolResult(FunctionResultContent functionResultContent)
+    {
+        if (functionResultContent.Result is null)
+            return string.Empty;
+
+        if (functionResultContent.Result is string resultText)
+            return resultText;
+
+        try
+        {
+            return JsonSerializer.Serialize(functionResultContent.Result);
+        }
+        catch
+        {
+            return functionResultContent.Result.ToString() ?? string.Empty;
+        }
     }
 
     protected virtual ChatOptions SetupBasicCapabilities(

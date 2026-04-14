@@ -25,6 +25,24 @@ export class StreamViewerComponent {
         return 'Text Content';
       case StreamEventKind.TextEnd:
         return 'Text End';
+      case StreamEventKind.ReasoningStart:
+        return 'Reasoning Start';
+      case StreamEventKind.ReasoningMessageStart:
+        return 'Reasoning Msg Start';
+      case StreamEventKind.ReasoningMessageContent:
+        return 'Reasoning Msg Content';
+      case StreamEventKind.ReasoningMessageEnd:
+        return 'Reasoning Msg End';
+      case StreamEventKind.ReasoningEnd:
+        return 'Reasoning End';
+      case StreamEventKind.ToolCallStart:
+        return 'Tool Call Start';
+      case StreamEventKind.ToolCallArgs:
+        return 'Tool Call Args';
+      case StreamEventKind.ToolCallEnd:
+        return 'Tool Call End';
+      case StreamEventKind.ToolCallResult:
+        return 'Tool Call Result';
       default:
         return 'Unknown';
     }
@@ -42,6 +60,8 @@ export class StreamViewerComponent {
         return 'Assistant';
       case StreamMessageRole.System:
         return 'System';
+      case StreamMessageRole.Reasoning:
+        return 'Reasoning';
       default:
         return 'Unknown';
     }

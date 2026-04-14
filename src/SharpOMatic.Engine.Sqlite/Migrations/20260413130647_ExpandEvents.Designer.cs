@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SharpOMatic.Engine.Repository;
 
@@ -10,9 +11,11 @@ using SharpOMatic.Engine.Repository;
 namespace SharpOMatic.Engine.Sqlite.Migrations
 {
     [DbContext(typeof(SharpOMaticDbContext))]
-    partial class SharpOMaticDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260413130647_ExpandEvents")]
+    partial class ExpandEvents
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -735,6 +738,9 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ArgsDelta")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ConversationId")
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
@@ -767,6 +773,12 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ToolCallId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ToolCallName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ToolResultContent")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("WorkflowId")
