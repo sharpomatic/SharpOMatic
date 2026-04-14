@@ -5,6 +5,7 @@ import { NodeType } from '../enumerations/node-type';
 
 export interface ModelCallNodeSnapshot extends NodeSnapshot {
   modelId: string | null;
+  batchOutput?: boolean;
   instructions: string;
   prompt: string;
   chatInputPath: string;
@@ -17,6 +18,7 @@ export interface ModelCallNodeSnapshot extends NodeSnapshot {
 
 export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
   public modelId: WritableSignal<string | null>;
+  public batchOutput: WritableSignal<boolean>;
   public instructions: WritableSignal<string>;
   public prompt: WritableSignal<string>;
   public chatInputPath: WritableSignal<string>;
@@ -30,6 +32,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
     super(snapshot);
 
     this.modelId = signal(snapshot.modelId);
+    this.batchOutput = signal(snapshot.batchOutput ?? false);
     this.instructions = signal(snapshot.instructions ?? '');
     this.prompt = signal(snapshot.prompt ?? '');
     this.chatInputPath = signal(snapshot.chatInputPath ?? '');
@@ -46,6 +49,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       // Must touch all property signals
       const currentIsDirty = baseIsDirty();
       const currentModelId = this.modelId();
+      const currentBatchOutput = this.batchOutput();
       const currentInstructions = this.instructions();
       const currentPrompt = this.prompt();
       const currentChatInputPath = this.chatInputPath();
@@ -58,6 +62,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       return (
         currentIsDirty ||
         currentModelId !== snapshot.modelId ||
+        currentBatchOutput !== (snapshot.batchOutput ?? false) ||
         currentInstructions !== snapshot.instructions ||
         currentPrompt !== snapshot.prompt ||
         currentChatInputPath !== (snapshot.chatInputPath ?? '') ||
@@ -77,6 +82,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
     return {
       ...super.toNodeSnapshot(),
       modelId: this.modelId(),
+      batchOutput: this.batchOutput(),
       instructions: this.instructions(),
       prompt: this.prompt(),
       chatInputPath: this.chatInputPath(),
@@ -102,6 +108,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       inputs: [ConnectorEntity.defaultSnapshot()],
       outputs: [ConnectorEntity.defaultSnapshot()],
       modelId: null,
+      batchOutput: false,
       instructions: '',
       prompt: '',
       chatInputPath: '',

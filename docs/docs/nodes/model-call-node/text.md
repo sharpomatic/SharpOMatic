@@ -5,6 +5,8 @@ sidebar_position: 2
 
 If the model supports text input or text output, this tab is available.
 
+On the **Details** tab, **Use Batch Output** appears after the model-specific custom fields, so the output mode option sits at the end of the general model configuration section.
+
 - **Text Output Path** defaults to **output.text** and is the context path that receives text output from a successful model call.
 You can leave this field blank to ignore the output. Text output is still generated but discarded.
 

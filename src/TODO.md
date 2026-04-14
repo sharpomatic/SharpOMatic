@@ -14,6 +14,7 @@
 
 ### Model Calls
 
+- Ensure that parameter substituion recurses into the text that is replaced
 - Separate table to record each model call, time, tokens, error
 - Reference to owning workflow name, connector name, model name because...
 - Needs to be valid even when the connector/model has been deleted

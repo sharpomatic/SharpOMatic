@@ -36,7 +36,7 @@ public class GoogleGenAIModelCaller : BaseModelCaller
 
         // Use the Microsoft Agent Framework by creating a chat client based agent
         var agent = new ChatClientAgent(chatClient, instructions: instructions, services: agentServiceProvider);
-        return await CallStreamingAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
+        return await CallConfiguredAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
     }
 
     protected virtual (AuthenticationModeConfig, Dictionary<string, string?>) GetAuthenticationFields(Connector connector, ConnectorConfig connectorConfig, ProcessContext processContext)

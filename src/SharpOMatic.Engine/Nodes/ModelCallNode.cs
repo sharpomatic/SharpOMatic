@@ -237,9 +237,11 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
         public async Task ApplyBatchResponseFallbackAsync(IList<ChatMessage> responses)
         {
+            var batchSeed = processContext.PeekNextStreamSequence();
+
             if (!_hasTextUpdates && !_hasReasoningUpdates && !_hasToolCallUpdates && !_hasToolCallResultUpdates)
             {
-                await ReplayBatchResponsesAsync(responses);
+                await ReplayBatchResponsesAsync(responses, batchSeed);
                 return;
             }
 
@@ -251,14 +253,12 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                     if (response.Role != ChatRole.Assistant)
                         continue;
 
-                    var reasoningIndex = 0;
                     foreach (var content in response.Contents)
                     {
                         if (content is not TextReasoningContent reasoningContent)
                             continue;
 
-                        await OnReasoningCoreAsync($"assistant:batch:{assistantIndex}", reasoningContent.Text, isStreamingUpdate: false);
-                        reasoningIndex += 1;
+                        await OnReasoningCoreAsync(BuildBatchAssistantMessageId(batchSeed, assistantIndex), reasoningContent.Text, isStreamingUpdate: false);
                     }
 
                     assistantIndex += 1;
@@ -280,13 +280,13 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                             continue;
 
                         await OnToolCallCoreAsync(
-                            functionCallContent.CallId?.Trim() ?? $"tool:batch:{assistantIndex}:{toolCallIndex}",
+                            functionCallContent.CallId?.Trim() ?? BuildBatchToolCallId(batchSeed, assistantIndex, toolCallIndex),
                             functionCallContent.Name,
                             SerializeToolArguments(functionCallContent),
-                            $"assistant:batch:{assistantIndex}",
+                            BuildBatchAssistantMessageId(batchSeed, assistantIndex),
                             SerializeToolCall(functionCallContent)
                         );
-                        await CloseToolCallAsync(functionCallContent.CallId?.Trim() ?? $"tool:batch:{assistantIndex}:{toolCallIndex}");
+                        await CloseToolCallAsync(functionCallContent.CallId?.Trim() ?? BuildBatchToolCallId(batchSeed, assistantIndex, toolCallIndex));
                         toolCallIndex += 1;
                     }
 
@@ -306,8 +306,8 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                             continue;
 
                         await OnToolCallResultAsync(
-                            $"tool-result:batch:{responseIndex}:{resultIndex}",
-                            functionResultContent.CallId?.Trim() ?? $"tool-call:batch:{responseIndex}:{resultIndex}",
+                            BuildBatchToolResultMessageId(batchSeed, responseIndex, resultIndex),
+                            functionResultContent.CallId?.Trim() ?? BuildBatchToolResultCallId(batchSeed, responseIndex, resultIndex),
                             SerializeToolResult(functionResultContent)
                         );
                         resultIndex += 1;
@@ -398,14 +398,16 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             );
         }
 
-        private async Task ReplayBatchResponsesAsync(IList<ChatMessage> responses)
+        private async Task ReplayBatchResponsesAsync(IList<ChatMessage> responses, int batchSeed)
         {
             var assistantIndex = 0;
             var responseIndex = 0;
             foreach (var response in responses)
             {
-                var messageId = response.Role == ChatRole.Assistant ? $"assistant:batch:{assistantIndex}" : null;
-                var reasoningIndex = 0;
+                var assistantBaseMessageId = response.Role == ChatRole.Assistant ? BuildBatchAssistantMessageId(batchSeed, assistantIndex) : null;
+                var currentAssistantMessageId = assistantBaseMessageId;
+                var lastAssistantMessageId = assistantBaseMessageId;
+                var assistantTextSegmentIndex = 0;
                 var toolCallIndex = 0;
                 var toolResultIndex = 0;
 
@@ -414,21 +416,29 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                     switch (content)
                     {
                         case TextContent textContent when (response.Role == ChatRole.Assistant) && !string.IsNullOrWhiteSpace(textContent.Text):
-                            await OnTextDeltaAsync(messageId!, textContent.Text);
+                            if ((currentAssistantMessageId is null) || !_openMessageIds.Contains(currentAssistantMessageId))
+                            {
+                                currentAssistantMessageId = assistantTextSegmentIndex == 0
+                                    ? assistantBaseMessageId
+                                    : BuildBatchAssistantTextSegmentId(batchSeed, assistantIndex, assistantTextSegmentIndex);
+                                assistantTextSegmentIndex += 1;
+                            }
+
+                            lastAssistantMessageId = currentAssistantMessageId;
+                            await OnTextDeltaAsync(currentAssistantMessageId!, textContent.Text);
                             break;
 
                         case TextReasoningContent reasoningContent when response.Role == ChatRole.Assistant:
-                            await OnReasoningCoreAsync(messageId!, reasoningContent.Text, isStreamingUpdate: false);
-                            reasoningIndex += 1;
+                            await OnReasoningCoreAsync(lastAssistantMessageId ?? assistantBaseMessageId!, reasoningContent.Text, isStreamingUpdate: false);
                             break;
 
                         case FunctionCallContent functionCallContent:
-                            var toolCallId = functionCallContent.CallId?.Trim() ?? $"tool:batch:{assistantIndex}:{toolCallIndex}";
+                            var toolCallId = functionCallContent.CallId?.Trim() ?? BuildBatchToolCallId(batchSeed, assistantIndex, toolCallIndex);
                             await OnToolCallCoreAsync(
                                 toolCallId,
                                 functionCallContent.Name,
                                 SerializeToolArguments(functionCallContent),
-                                messageId,
+                                lastAssistantMessageId,
                                 SerializeToolCall(functionCallContent)
                             );
                             await CloseToolCallAsync(toolCallId);
@@ -437,8 +447,8 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
                         case FunctionResultContent functionResultContent:
                             await OnToolCallResultAsync(
-                                $"tool-result:batch:{responseIndex}:{toolResultIndex}",
-                                functionResultContent.CallId?.Trim() ?? $"tool-call:batch:{responseIndex}:{toolResultIndex}",
+                                BuildBatchToolResultMessageId(batchSeed, responseIndex, toolResultIndex),
+                                functionResultContent.CallId?.Trim() ?? BuildBatchToolResultCallId(batchSeed, responseIndex, toolResultIndex),
                                 SerializeToolResult(functionResultContent)
                             );
                             toolResultIndex += 1;
@@ -455,6 +465,31 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
                 responseIndex += 1;
             }
+        }
+
+        private static string BuildBatchAssistantMessageId(int batchSeed, int assistantIndex)
+        {
+            return $"assistant:batch:{batchSeed}:{assistantIndex}";
+        }
+
+        private static string BuildBatchAssistantTextSegmentId(int batchSeed, int assistantIndex, int assistantTextSegmentIndex)
+        {
+            return $"{BuildBatchAssistantMessageId(batchSeed, assistantIndex)}:text:{assistantTextSegmentIndex}";
+        }
+
+        private static string BuildBatchToolCallId(int batchSeed, int assistantIndex, int toolCallIndex)
+        {
+            return $"tool:batch:{batchSeed}:{assistantIndex}:{toolCallIndex}";
+        }
+
+        private static string BuildBatchToolResultMessageId(int batchSeed, int responseIndex, int toolResultIndex)
+        {
+            return $"tool-result:batch:{batchSeed}:{responseIndex}:{toolResultIndex}";
+        }
+
+        private static string BuildBatchToolResultCallId(int batchSeed, int responseIndex, int toolResultIndex)
+        {
+            return $"tool-call:batch:{batchSeed}:{responseIndex}:{toolResultIndex}";
         }
 
         private async Task OpenReasoningAsync(string reasoningId)

@@ -81,6 +81,23 @@
           (valuesChange)="onParameterValuesChange($event)"
         >
         </app-dynamic-fields>
+
+        <div class="mb-3 form-line">
+          <label for="model-call-batch-output" class="form-label field-label"
+            >Use Batch Output</label
+          >
+          <div class="flex-fill control-column long">
+            <div class="form-check mb-0">
+              <input
+                id="model-call-batch-output"
+                class="form-check-input"
+                type="checkbox"
+                [checked]="node.batchOutput()"
+                (change)="node.batchOutput.set($any($event.target).checked)"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </ng-template>
     <ng-template #chatTab>

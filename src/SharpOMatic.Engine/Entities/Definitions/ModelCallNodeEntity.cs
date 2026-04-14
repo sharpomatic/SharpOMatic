@@ -4,6 +4,7 @@ namespace SharpOMatic.Engine.Entities.Definitions;
 public class ModelCallNodeEntity : NodeEntity
 {
     public required Guid? ModelId { get; set; }
+    public bool BatchOutput { get; set; }
     public required string Instructions { get; set; }
     public required string Prompt { get; set; }
     public required string ChatInputPath { get; set; }

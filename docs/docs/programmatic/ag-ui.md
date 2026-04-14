@@ -27,7 +27,7 @@ By default that adds:
 If you want a different base path, share the same base path variable with the editor, transfer, and AG-UI registration:
 
 ```csharp
-var sharpOMaticBasePath = "/banana";
+var sharpOMaticBasePath = "/example/path";
 
 builder.Services.AddSharpOMaticEditor(sharpOMaticBasePath);
 builder.Services.AddSharpOMaticTransfer(sharpOMaticBasePath);
@@ -41,7 +41,7 @@ app.MapSharpOMaticEditor(sharpOMaticBasePath);
 If you also want to override the AG-UI child path, pass a second argument:
 
 ```csharp
-builder.Services.AddSharpOMaticAgUi("/banana", "/integrations/chat");
+builder.Services.AddSharpOMaticAgUi(sharpOMaticBasePath, "/myChatBot");
 ```
 
 ## Request contract
@@ -131,6 +131,7 @@ The endpoint streams AG-UI SSE events from SharpOMatic workflow stream events:
 - tool-call stream events become `TOOL_CALL_START`, `TOOL_CALL_ARGS`, `TOOL_CALL_END`, and `TOOL_CALL_RESULT`
 - `TOOL_CALL_RESULT` preserves both the tool result `messageId` and the linked `toolCallId`
 - `TOOL_CALL_START` includes the tool name and can include `parentMessageId` when the underlying model output supplies it
+- when a model call runs in batch mode and the provider does not supply message ids, SharpOMatic synthesizes distinct assistant `messageId` values for each separate assistant text lifecycle, seeded from the stream sequence so they remain unique across conversation turns
 - successful runs emit `RUN_FINISHED`
 - suspended runs also emit `RUN_FINISHED`
 - failed runs emit `RUN_ERROR`

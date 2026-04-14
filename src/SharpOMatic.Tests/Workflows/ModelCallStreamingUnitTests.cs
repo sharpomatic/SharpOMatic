@@ -231,6 +231,76 @@ public sealed class ModelCallStreamingUnitTests
     }
 
     [Fact]
+    public async Task Conversation_batch_model_call_synthesizes_unique_text_message_ids_across_turns()
+    {
+        var workflow = new WorkflowBuilder()
+            .EnableConversations()
+            .AddStart()
+            .AddModelCall("first")
+            .AddSuspend("pause")
+            .AddModelCall("second")
+            .AddEnd()
+            .Connect("start", "first")
+            .Connect("first", "pause")
+            .Connect("pause", "second")
+            .Connect("second", "end")
+            .Build();
+
+        var model = CreateModel("batch");
+        ConfigureModelNode(workflow, "first", model.ModelId, batchOutput: true);
+        ConfigureModelNode(workflow, "second", model.ModelId, batchOutput: true);
+
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddKeyedScoped<IModelCaller, BatchFallbackTestModelCaller>("batch"));
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "batch", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+        var conversationId = Guid.NewGuid().ToString("N");
+        const string streamConversationId = "stream-conversation-model-call-batch";
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+
+            var firstTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId, streamConversationId: streamConversationId);
+            Assert.Equal(RunStatus.Suspended, firstTurn.RunStatus);
+            await Task.Delay(100);
+
+            var secondTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId, streamConversationId: streamConversationId);
+            Assert.Equal(RunStatus.Success, secondTurn.RunStatus);
+
+            var streamEvents = await repositoryService.GetConversationStreamEvents(streamConversationId);
+            Assert.Equal(30, streamEvents.Count);
+            Assert.Equal(Enumerable.Range(1, 30).ToArray(), streamEvents.Select(e => e.SequenceNumber).ToArray());
+
+            var textStartIds = streamEvents
+                .Where(e => e.EventKind == StreamEventKind.TextStart)
+                .Select(e => e.MessageId ?? string.Empty)
+                .ToArray();
+
+            Assert.Equal(
+                [
+                    "assistant:batch:1:0",
+                    "assistant:batch:1:0:text:1",
+                    "assistant:batch:16:0",
+                    "assistant:batch:16:0:text:1",
+                ],
+                textStartIds
+            );
+            Assert.Equal(textStartIds.Length, textStartIds.Distinct(StringComparer.Ordinal).Count());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
     public async Task Google_model_call_streams_reasoning_events_and_informations()
     {
         var workflow = new WorkflowBuilder()
@@ -338,7 +408,7 @@ public sealed class ModelCallStreamingUnitTests
             .Build();
 
         var model = CreateModel("batch");
-        ConfigureModelNode(workflow, "model", model.ModelId);
+        ConfigureModelNode(workflow, "model", model.ModelId, batchOutput: true);
         var progress = new CapturingProgressService();
 
         using var provider = WorkflowRunner.BuildProvider(services =>
@@ -384,17 +454,37 @@ public sealed class ModelCallStreamingUnitTests
                 ],
                 streamEvents.Select(e => e.EventKind).ToArray()
             );
+            Assert.Equal(
+                [
+                    "assistant:batch:1:0",
+                    "assistant:batch:1:0",
+                    "assistant:batch:1:0",
+                    "assistant:batch:1:0",
+                    "assistant:batch:1:0",
+                    "assistant:batch:1:0",
+                    "assistant:batch:1:0",
+                    "assistant:batch:1:0",
+                    "assistant:batch:1:0:text:1",
+                    "assistant:batch:1:0:text:1",
+                    "assistant:batch:1:0:text:1",
+                    "batch-call-1",
+                    "batch-call-1",
+                    "batch-call-1",
+                    "tool-result:batch:1:0:0",
+                ],
+                streamEvents.Select(e => e.MessageId ?? string.Empty).ToArray()
+            );
             Assert.Equal(["Batch", " reply"], streamEvents.Where(e => e.EventKind == StreamEventKind.TextContent).Select(e => e.TextDelta ?? string.Empty).ToArray());
             Assert.Equal(["Batch reasoning"], streamEvents.Where(e => e.EventKind == StreamEventKind.ReasoningMessageContent).Select(e => e.TextDelta ?? string.Empty).ToArray());
             var batchToolCallStart = streamEvents.Single(e => e.EventKind == StreamEventKind.ToolCallStart);
             Assert.Equal("batch-call-1", batchToolCallStart.MessageId);
             Assert.Equal("batch-call-1", batchToolCallStart.ToolCallId);
-            Assert.Equal("assistant:batch:0", batchToolCallStart.ParentMessageId);
+            Assert.Equal("assistant:batch:1:0:text:1", batchToolCallStart.ParentMessageId);
             var batchToolCallArgs = streamEvents.Single(e => e.EventKind == StreamEventKind.ToolCallArgs);
             Assert.Equal("batch-call-1", batchToolCallArgs.ToolCallId);
             Assert.Equal("{\"city\":\"Melbourne\"}", batchToolCallArgs.TextDelta);
             var batchToolCallResult = streamEvents.Single(e => e.EventKind == StreamEventKind.ToolCallResult);
-            Assert.Equal("tool-result:batch:0:0", batchToolCallResult.MessageId);
+            Assert.Equal("tool-result:batch:1:0:0", batchToolCallResult.MessageId);
             Assert.Equal("batch-call-1", batchToolCallResult.ToolCallId);
             Assert.Equal("Batch tool result", batchToolCallResult.TextDelta);
 
@@ -554,10 +644,18 @@ public sealed class ModelCallStreamingUnitTests
         }
     }
 
-    private static void ConfigureModelNode(WorkflowEntity workflow, string title, Guid modelId, string chatInputPath = "", string chatOutputPath = "")
+    private static void ConfigureModelNode(
+        WorkflowEntity workflow,
+        string title,
+        Guid modelId,
+        string chatInputPath = "",
+        string chatOutputPath = "",
+        bool batchOutput = false
+    )
     {
         var node = Assert.IsType<ModelCallNodeEntity>(workflow.Nodes.Single(n => n.Title == title));
         node.ModelId = modelId;
+        node.BatchOutput = batchOutput;
         node.TextOutputPath = "output.text";
         node.ChatInputPath = chatInputPath;
         node.ChatOutputPath = chatOutputPath;

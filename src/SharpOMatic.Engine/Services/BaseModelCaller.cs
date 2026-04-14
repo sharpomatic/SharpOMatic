@@ -130,6 +130,20 @@ public abstract class BaseModelCaller : IModelCaller
         return (chat, response.Messages, tempContext);
     }
 
+    protected virtual Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> CallConfiguredAgent(
+        AIAgent agent,
+        List<ChatMessage> chat,
+        ChatOptions? chatOptions,
+        bool jsonOutput,
+        ModelCallNodeEntity node,
+        IModelCallProgressSink progressSink
+    )
+    {
+        return node.BatchOutput
+            ? CallAgent(agent, chat, chatOptions, jsonOutput, node)
+            : CallStreamingAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
+    }
+
     protected virtual string ResolveMessageId(AgentRunResponseUpdate update, string syntheticMessageId)
     {
         if (!string.IsNullOrWhiteSpace(update.MessageId))

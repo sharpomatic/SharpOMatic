@@ -132,6 +132,11 @@ The 'docs' directory defines the static website and uses docusaurus.
 - Angular/TypeScript: 2-space indentation and single quotes for `.ts` per `SharpOMatic.FrontEnd/.editorconfig`; HTML is formatted via Prettier.
 - File naming: Angular uses kebab-case (`my-widget.component.ts`); there are no front end tests; C# tests end with `*UnitTest(s).cs`.
 
+## Documentation Sync
+- Any code change that affects behavior, configuration, APIs, UI, workflow semantics, or user-visible functionality must include corresponding documentation updates in the same change.
+- Keep `docs/` and package-level usage docs such as README files in sync with the implementation so the documentation remains current by default.
+- When adding a new feature, changing an existing flow, or altering defaults, review the relevant docs and update them as part of the task rather than leaving documentation as follow-up work.
+
 ## Commit & Pull Request Guidelines
 - Commits are short, descriptive, and prefix-free; keep messages to a single line (e.g., "OpenAI parameters").
 - PRs should describe intent and scope, link any related issues/TODOs, include screenshots/GIFs for editor UI changes, and state tests run.

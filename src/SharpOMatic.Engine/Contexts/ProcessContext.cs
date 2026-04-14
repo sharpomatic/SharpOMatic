@@ -162,6 +162,14 @@ public class ProcessContext : ExecutionContext
         return Interlocked.Increment(ref _nextStreamSequence);
     }
 
+    public int PeekNextStreamSequence()
+    {
+        if (Volatile.Read(ref _streamSequenceInitialized) == 0)
+            throw new SharpOMaticException("Stream event sequence has not been initialized.");
+
+        return Volatile.Read(ref _nextStreamSequence) + 1;
+    }
+
     public async Task<List<StreamEvent>> AppendStreamEvents(IEnumerable<StreamEventWrite> events)
     {
         ArgumentNullException.ThrowIfNull(events);

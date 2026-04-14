@@ -220,6 +220,7 @@ public sealed class WorkflowBuilder
             Inputs = [CreateConnector()],
             Outputs = [CreateConnector()],
             ModelId = null,
+            BatchOutput = false,
             Instructions = string.Empty,
             Prompt = string.Empty,
             ChatInputPath = string.Empty,
