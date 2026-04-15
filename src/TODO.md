@@ -5,11 +5,11 @@
 ### Agent
 
 - Endpoint for returning history of messages for existing conversation
+- Do we need to add the incoming prompt into the stream as a user message, not for streaming back but needed for history
 - Override mechanism so the incoming headers and payload and generated context can be accessed and the context modified
 
 ### Output Stream
 
-- Allow model call checkbox for outputting stream events for text, reasoning, tool calls
 - Add node for templated output of text events
 
 ### Model Calls

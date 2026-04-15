@@ -5,6 +5,9 @@ public class ModelCallNodeEntity : NodeEntity
 {
     public required Guid? ModelId { get; set; }
     public bool BatchOutput { get; set; }
+    public bool DisableStreamTool { get; set; }
+    public bool DisableStreamReasoning { get; set; }
+    public bool DisableStreamAssistantText { get; set; }
     public required string Instructions { get; set; }
     public required string Prompt { get; set; }
     public required string ChatInputPath { get; set; }

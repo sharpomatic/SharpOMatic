@@ -8,7 +8,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
     {
         // Validate and load the model and connector instances
         (var model, var modelConfig, var connector, var connectorConfig) = await LoadModelAndConnector();
-        var progressSink = new ModelCallNodeProgressSink(ProcessContext, Trace, Informations);
+        var progressSink = new ModelCallNodeProgressSink(ProcessContext, Trace, Informations, Node);
 
         // Get the implementation for the specific connector config
         var caller = ProcessContext.ServiceScope.ServiceProvider.GetKeyedService<IModelCaller>(connectorConfig.ConfigId);
@@ -119,7 +119,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         }
     }
 
-    private sealed class ModelCallNodeProgressSink(ProcessContext processContext, Trace trace, List<Information> informations) : IModelCallProgressSink
+    private sealed class ModelCallNodeProgressSink(ProcessContext processContext, Trace trace, List<Information> informations, ModelCallNodeEntity node) : IModelCallProgressSink
     {
         private readonly Dictionary<string, Information> _informationByKey = new(StringComparer.Ordinal);
         private readonly HashSet<string> _openMessageIds = new(StringComparer.Ordinal);
@@ -140,6 +140,9 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
             await CloseAllOpenToolCallsAsync();
             await CloseAllOpenReasoningAsync();
+
+            if (node.DisableStreamAssistantText)
+                return;
 
             if (!_openMessageIds.Add(messageId))
                 return;
@@ -162,6 +165,10 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
             _hasTextUpdates = true;
             await OnTextStartAsync(messageId);
+
+            if (node.DisableStreamAssistantText)
+                return;
+
             await AddStreamEventAsync(
                 new StreamEventWrite()
                 {
@@ -175,6 +182,9 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         public async Task OnTextEndAsync(string messageId)
         {
             if (!_openMessageIds.Remove(messageId))
+                return;
+
+            if (node.DisableStreamAssistantText)
                 return;
 
             await AddStreamEventAsync(
@@ -204,6 +214,9 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             await CloseAllOpenTextAsync();
             await CloseAllOpenReasoningAsync();
             await CloseToolCallAsync(toolCallId);
+
+            if (node.DisableStreamTool)
+                return;
 
             await AddStreamEventAsync(
                 new StreamEventWrite()
@@ -328,6 +341,9 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             if (!string.IsNullOrWhiteSpace(reasoningText))
                 await UpsertInformationAsync(reasoningId, InformationType.Reasoning, reasoningText, data: null);
 
+            if (node.DisableStreamReasoning)
+                return;
+
             await OpenReasoningAsync(reasoningId);
 
             _reasoningTextById.TryGetValue(reasoningId, out var currentText);
@@ -360,6 +376,9 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
             var title = string.IsNullOrWhiteSpace(toolName) ? "Tool call" : toolName;
             await UpsertInformationAsync(toolCallId, InformationType.ToolCall, title, data);
+
+            if (node.DisableStreamTool)
+                return;
 
             if (_openToolCallIds.Add(toolCallId))
             {
@@ -494,6 +513,9 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
         private async Task OpenReasoningAsync(string reasoningId)
         {
+            if (node.DisableStreamReasoning)
+                return;
+
             if (!_openReasoningIds.Add(reasoningId))
                 return;
 
@@ -537,6 +559,9 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             if (!_openReasoningIds.Remove(reasoningId))
                 return;
 
+            if (node.DisableStreamReasoning)
+                return;
+
             await AddStreamEventAsync(
                 new StreamEventWrite()
                 {
@@ -556,6 +581,9 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         private async Task CloseToolCallAsync(string toolCallId)
         {
             if (!_openToolCallIds.Remove(toolCallId))
+                return;
+
+            if (node.DisableStreamTool)
                 return;
 
             await AddStreamEventAsync(

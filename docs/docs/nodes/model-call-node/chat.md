@@ -74,6 +74,9 @@ If defined, the **Chat Output Path** specifies the context location to output th
 This includes all original entries sent to the model along with all the replies from the model.
 For example, the output from the above example is six message entries.
 
+When a later turn reuses this chat history as input, SharpOMatic automatically rebuilds a portable version of the stored messages before sending them to the model.
+This replay keeps normal text, tool calls, tool results, and provider-neutral content such as data/image parts, but strips reasoning and any provider-private message state.
+
 The first three are the ones we sent to the model.
 
 <img src="/img/modelcall-chat-request.png" alt="Request Messages" width="900" style={{ maxWidth: '100%', height: 'auto' }} />

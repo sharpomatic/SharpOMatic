@@ -55,6 +55,7 @@ import { forkJoin } from 'rxjs';
 export class ModelCallNodeDialogComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
   @ViewChild('detailsTab', { static: true }) detailsTab!: TemplateRef<unknown>;
+  @ViewChild('streamTab', { static: true }) streamTab!: TemplateRef<unknown>;
   @ViewChild('chatTab', { static: true }) chatTab!: TemplateRef<unknown>;
   @ViewChild('inputsTab', { static: true }) inputsTab!: TemplateRef<unknown>;
   @ViewChild('outputsTab', { static: true }) outputsTab!: TemplateRef<unknown>;
@@ -526,9 +527,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
   }
 
   private refreshTabs(): void {
-    const newTabs: TabItem[] = [
-      { id: 'details', title: 'Details', content: this.detailsTab },
-    ];
+    const newTabs: TabItem[] = [{ id: 'details', title: 'Details', content: this.detailsTab }];
 
     if (this.supportsTextIn || this.supportsTextOut) {
       newTabs.push({ id: 'text', title: 'Text', content: this.textTab });
@@ -537,8 +536,6 @@ export class ModelCallNodeDialogComponent implements OnInit {
     if (this.supportsImageIn || this.supportsImageOut) {
       newTabs.push({ id: 'image', title: 'Image', content: this.imageTab });
     }
-
-    newTabs.push({ id: 'chat', title: 'Chat', content: this.chatTab });
 
     if (this.supportsToolCalling) {
       this.ensureToolDisplayNamesLoaded();
@@ -556,6 +553,11 @@ export class ModelCallNodeDialogComponent implements OnInit {
         content: this.structuredTab,
       });
     }
+
+    newTabs.push(
+      { id: 'chat', title: 'Chat', content: this.chatTab },
+      { id: 'stream', title: 'Stream', content: this.streamTab },
+    );
 
     newTabs.push(
       { id: 'inputs', title: 'Inputs', content: this.inputsTab },

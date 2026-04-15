@@ -136,6 +136,8 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
     private async Task WriteStreamEventAsync(StreamEvent streamEvent)
     {
         var toolCallId = string.IsNullOrWhiteSpace(streamEvent.ToolCallId) ? streamEvent.MessageId : streamEvent.ToolCallId;
+        var reasoningMessageId = GetProtocolReasoningMessageId(streamEvent.MessageId);
+        var toolMessageId = GetProtocolToolMessageId(streamEvent.MessageId);
 
         switch (streamEvent.EventKind)
         {
@@ -162,41 +164,41 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
                     messageId = streamEvent.MessageId
                 });
                 break;
-            case StreamEventKind.ReasoningStart when !string.IsNullOrWhiteSpace(streamEvent.MessageId):
+            case StreamEventKind.ReasoningStart when reasoningMessageId is not null:
                 await WriteEventAsync(new
                 {
                     type = "REASONING_START",
-                    messageId = streamEvent.MessageId
+                    messageId = reasoningMessageId
                 });
                 break;
-            case StreamEventKind.ReasoningMessageStart when !string.IsNullOrWhiteSpace(streamEvent.MessageId):
+            case StreamEventKind.ReasoningMessageStart when reasoningMessageId is not null:
                 await WriteEventAsync(new
                 {
                     type = "REASONING_MESSAGE_START",
-                    messageId = streamEvent.MessageId,
+                    messageId = reasoningMessageId,
                     role = MapRole(streamEvent.MessageRole)
                 });
                 break;
-            case StreamEventKind.ReasoningMessageContent when !string.IsNullOrWhiteSpace(streamEvent.MessageId):
+            case StreamEventKind.ReasoningMessageContent when reasoningMessageId is not null:
                 await WriteEventAsync(new
                 {
                     type = "REASONING_MESSAGE_CONTENT",
-                    messageId = streamEvent.MessageId,
+                    messageId = reasoningMessageId,
                     delta = streamEvent.TextDelta ?? string.Empty
                 });
                 break;
-            case StreamEventKind.ReasoningMessageEnd when !string.IsNullOrWhiteSpace(streamEvent.MessageId):
+            case StreamEventKind.ReasoningMessageEnd when reasoningMessageId is not null:
                 await WriteEventAsync(new
                 {
                     type = "REASONING_MESSAGE_END",
-                    messageId = streamEvent.MessageId
+                    messageId = reasoningMessageId
                 });
                 break;
-            case StreamEventKind.ReasoningEnd when !string.IsNullOrWhiteSpace(streamEvent.MessageId):
+            case StreamEventKind.ReasoningEnd when reasoningMessageId is not null:
                 await WriteEventAsync(new
                 {
                     type = "REASONING_END",
-                    messageId = streamEvent.MessageId
+                    messageId = reasoningMessageId
                 });
                 break;
             case StreamEventKind.ToolCallStart when !string.IsNullOrWhiteSpace(toolCallId):
@@ -223,17 +225,33 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
                     toolCallId
                 });
                 break;
-            case StreamEventKind.ToolCallResult when !string.IsNullOrWhiteSpace(streamEvent.MessageId) && !string.IsNullOrWhiteSpace(toolCallId):
+            case StreamEventKind.ToolCallResult when toolMessageId is not null && !string.IsNullOrWhiteSpace(toolCallId):
                 await WriteEventAsync(new
                 {
                     type = "TOOL_CALL_RESULT",
-                    messageId = streamEvent.MessageId,
+                    messageId = toolMessageId,
                     toolCallId,
                     content = streamEvent.TextDelta ?? string.Empty,
                     role = "tool"
                 });
                 break;
         }
+    }
+
+    private static string? GetProtocolReasoningMessageId(string? messageId)
+    {
+        if (string.IsNullOrWhiteSpace(messageId))
+            return null;
+
+        return $"reason:{messageId.Trim()}";
+    }
+
+    private static string? GetProtocolToolMessageId(string? messageId)
+    {
+        if (string.IsNullOrWhiteSpace(messageId))
+            return null;
+
+        return $"tool:{messageId.Trim()}";
     }
 
     private static void AddJsonProperty(IDictionary<string, object?> payload, string propertyName, string? value)

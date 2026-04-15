@@ -131,7 +131,10 @@ The endpoint streams AG-UI SSE events from SharpOMatic workflow stream events:
 - tool-call stream events become `TOOL_CALL_START`, `TOOL_CALL_ARGS`, `TOOL_CALL_END`, and `TOOL_CALL_RESULT`
 - `TOOL_CALL_RESULT` preserves both the tool result `messageId` and the linked `toolCallId`
 - `TOOL_CALL_START` includes the tool name and can include `parentMessageId` when the underlying model output supplies it
+- reasoning events use AG-UI-specific `messageId` values prefixed with `reason:` so they cannot collide with assistant text messages when a provider reuses one underlying response id for both
+- tool result messages use AG-UI-specific `messageId` values prefixed with `tool:` so tool messages also stay distinct from assistant and reasoning messages, while the linked `toolCallId` remains unchanged
 - when a model call runs in batch mode and the provider does not supply message ids, SharpOMatic synthesizes distinct assistant `messageId` values for each separate assistant text lifecycle, seeded from the stream sequence so they remain unique across conversation turns
+- model-call nodes can suppress assistant text, reasoning, or tool-call stream categories, in which case the AG-UI endpoint simply emits fewer events for that run
 - successful runs emit `RUN_FINISHED`
 - suspended runs also emit `RUN_FINISHED`
 - failed runs emit `RUN_ERROR`

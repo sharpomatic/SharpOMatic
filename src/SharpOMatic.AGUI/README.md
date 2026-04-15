@@ -47,6 +47,8 @@ SharpOMatic translates workflow stream events into AG-UI SSE events:
 
 `TOOL_CALL_RESULT` preserves both the result `messageId` and the linked `toolCallId`.
 `TOOL_CALL_START` includes the tool name and can include `parentMessageId` when the model output supplies it.
+Reasoning events use AG-UI-specific `messageId` values prefixed with `reason:` so they do not collide with assistant text messages when a model/provider reuses one response id for both.
+Tool result messages use AG-UI-specific `messageId` values prefixed with `tool:` so tool messages stay distinct too, while the linked `toolCallId` remains unchanged.
 When batch-mode model calls are replayed without provider message ids, SharpOMatic synthesizes separate assistant `messageId` values for each distinct assistant text lifecycle and seeds them from the stream sequence so they remain unique across conversation turns.
 
 ## Workflow selection

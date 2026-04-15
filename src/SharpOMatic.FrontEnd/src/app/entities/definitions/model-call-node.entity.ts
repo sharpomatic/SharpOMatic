@@ -6,6 +6,9 @@ import { NodeType } from '../enumerations/node-type';
 export interface ModelCallNodeSnapshot extends NodeSnapshot {
   modelId: string | null;
   batchOutput?: boolean;
+  disableStreamTool?: boolean;
+  disableStreamReasoning?: boolean;
+  disableStreamAssistantText?: boolean;
   instructions: string;
   prompt: string;
   chatInputPath: string;
@@ -19,6 +22,9 @@ export interface ModelCallNodeSnapshot extends NodeSnapshot {
 export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
   public modelId: WritableSignal<string | null>;
   public batchOutput: WritableSignal<boolean>;
+  public disableStreamTool: WritableSignal<boolean>;
+  public disableStreamReasoning: WritableSignal<boolean>;
+  public disableStreamAssistantText: WritableSignal<boolean>;
   public instructions: WritableSignal<string>;
   public prompt: WritableSignal<string>;
   public chatInputPath: WritableSignal<string>;
@@ -33,6 +39,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
 
     this.modelId = signal(snapshot.modelId);
     this.batchOutput = signal(snapshot.batchOutput ?? false);
+    this.disableStreamTool = signal(snapshot.disableStreamTool ?? false);
+    this.disableStreamReasoning = signal(snapshot.disableStreamReasoning ?? false);
+    this.disableStreamAssistantText = signal(snapshot.disableStreamAssistantText ?? false);
     this.instructions = signal(snapshot.instructions ?? '');
     this.prompt = signal(snapshot.prompt ?? '');
     this.chatInputPath = signal(snapshot.chatInputPath ?? '');
@@ -50,6 +59,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       const currentIsDirty = baseIsDirty();
       const currentModelId = this.modelId();
       const currentBatchOutput = this.batchOutput();
+      const currentDisableStreamTool = this.disableStreamTool();
+      const currentDisableStreamReasoning = this.disableStreamReasoning();
+      const currentDisableStreamAssistantText = this.disableStreamAssistantText();
       const currentInstructions = this.instructions();
       const currentPrompt = this.prompt();
       const currentChatInputPath = this.chatInputPath();
@@ -63,6 +75,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
         currentIsDirty ||
         currentModelId !== snapshot.modelId ||
         currentBatchOutput !== (snapshot.batchOutput ?? false) ||
+        currentDisableStreamTool !== (snapshot.disableStreamTool ?? false) ||
+        currentDisableStreamReasoning !== (snapshot.disableStreamReasoning ?? false) ||
+        currentDisableStreamAssistantText !== (snapshot.disableStreamAssistantText ?? false) ||
         currentInstructions !== snapshot.instructions ||
         currentPrompt !== snapshot.prompt ||
         currentChatInputPath !== (snapshot.chatInputPath ?? '') ||
@@ -83,6 +98,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       ...super.toNodeSnapshot(),
       modelId: this.modelId(),
       batchOutput: this.batchOutput(),
+      disableStreamTool: this.disableStreamTool(),
+      disableStreamReasoning: this.disableStreamReasoning(),
+      disableStreamAssistantText: this.disableStreamAssistantText(),
       instructions: this.instructions(),
       prompt: this.prompt(),
       chatInputPath: this.chatInputPath(),
@@ -109,6 +127,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       outputs: [ConnectorEntity.defaultSnapshot()],
       modelId: null,
       batchOutput: false,
+      disableStreamTool: false,
+      disableStreamReasoning: false,
+      disableStreamAssistantText: false,
       instructions: '',
       prompt: '',
       chatInputPath: '',

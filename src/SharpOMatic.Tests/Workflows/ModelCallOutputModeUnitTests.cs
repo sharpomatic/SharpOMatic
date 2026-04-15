@@ -22,6 +22,9 @@ public sealed class ModelCallOutputModeUnitTests
         var deserialized = SharpOMatic.Engine.Helpers.WorkflowSnapshotSerializer.DeserializeWorkflow(json);
         var modelNode = Assert.IsType<ModelCallNodeEntity>(deserialized.Nodes.Single(n => n.Title == "model"));
         Assert.False(modelNode.BatchOutput);
+        Assert.False(modelNode.DisableStreamTool);
+        Assert.False(modelNode.DisableStreamReasoning);
+        Assert.False(modelNode.DisableStreamAssistantText);
     }
 
     [Fact]
@@ -42,6 +45,9 @@ public sealed class ModelCallOutputModeUnitTests
             Outputs = [],
             ModelId = null,
             BatchOutput = false,
+            DisableStreamTool = false,
+            DisableStreamReasoning = false,
+            DisableStreamAssistantText = false,
             Instructions = string.Empty,
             Prompt = string.Empty,
             ChatInputPath = string.Empty,
@@ -76,6 +82,9 @@ public sealed class ModelCallOutputModeUnitTests
             Outputs = [],
             ModelId = null,
             BatchOutput = true,
+            DisableStreamTool = false,
+            DisableStreamReasoning = false,
+            DisableStreamAssistantText = false,
             Instructions = string.Empty,
             Prompt = string.Empty,
             ChatInputPath = string.Empty,

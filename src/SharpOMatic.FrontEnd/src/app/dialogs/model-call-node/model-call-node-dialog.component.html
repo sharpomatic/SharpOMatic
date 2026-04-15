@@ -100,6 +100,66 @@
         </div>
       </div>
     </ng-template>
+    <ng-template #streamTab>
+      <div class="bg-body-tertiary p-3 stream-settings">
+        <div class="mb-3 form-line">
+          <label
+            for="model-call-disable-stream-tool"
+            class="form-label field-label stream-field-label"
+            >Disable Tool Events</label
+          >
+          <div class="flex-fill control-column long">
+            <div class="form-check mb-0">
+              <input
+                id="model-call-disable-stream-tool"
+                class="form-check-input"
+                type="checkbox"
+                [checked]="node.disableStreamTool()"
+                (change)="node.disableStreamTool.set($any($event.target).checked)"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3 form-line">
+          <label
+            for="model-call-disable-stream-reasoning"
+            class="form-label field-label stream-field-label"
+            >Disable Reasoning Events</label
+          >
+          <div class="flex-fill control-column long">
+            <div class="form-check mb-0">
+              <input
+                id="model-call-disable-stream-reasoning"
+                class="form-check-input"
+                type="checkbox"
+                [checked]="node.disableStreamReasoning()"
+                (change)="node.disableStreamReasoning.set($any($event.target).checked)"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3 form-line">
+          <label
+            for="model-call-disable-stream-assistant-text"
+            class="form-label field-label stream-field-label"
+            >Disable Assistant Text Events</label
+          >
+          <div class="flex-fill control-column long">
+            <div class="form-check mb-0">
+              <input
+                id="model-call-disable-stream-assistant-text"
+                class="form-check-input"
+                type="checkbox"
+                [checked]="node.disableStreamAssistantText()"
+                (change)="node.disableStreamAssistantText.set($any($event.target).checked)"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-template>
     <ng-template #chatTab>
       <div class="bg-body-tertiary p-3">
         <div class="mb-3 form-line">

@@ -116,8 +116,152 @@ public sealed class AgUiControllerUnitTests
         Assert.Contains("REASONING_MESSAGE_CONTENT", payload);
         Assert.Contains("REASONING_MESSAGE_END", payload);
         Assert.Contains("REASONING_END", payload);
+        Assert.Contains("\"messageId\":\"reason:reasoning-1\"", payload);
         Assert.Contains("\"role\":\"reasoning\"", payload);
         Assert.Contains("RUN_FINISHED", payload);
+    }
+
+    [Fact]
+    public async Task AgUi_controller_namespaces_reasoning_message_ids_so_assistant_text_does_not_collide()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        var streamEvents = new List<StreamEvent>()
+        {
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 1,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.ReasoningStart,
+                MessageId = "assistant-1",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 2,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.ReasoningMessageStart,
+                MessageId = "assistant-1",
+                MessageRole = StreamMessageRole.Reasoning,
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 3,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.ReasoningMessageContent,
+                MessageId = "assistant-1",
+                TextDelta = "Thinking",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 4,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.ReasoningMessageEnd,
+                MessageId = "assistant-1",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 5,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.ReasoningEnd,
+                MessageId = "assistant-1",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 6,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextStart,
+                MessageId = "assistant-1",
+                MessageRole = StreamMessageRole.Assistant,
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 7,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextContent,
+                MessageId = "assistant-1",
+                TextDelta = "Hello",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 8,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextEnd,
+                MessageId = "assistant-1",
+            },
+        };
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                streamEvents,
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        httpContext.Response.Body.Position = 0;
+        var payload = Encoding.UTF8.GetString(((MemoryStream)httpContext.Response.Body).ToArray());
+
+        Assert.Contains("\"type\":\"REASONING_MESSAGE_START\",\"messageId\":\"reason:assistant-1\"", payload);
+        Assert.Contains("\"type\":\"TEXT_MESSAGE_START\",\"messageId\":\"assistant-1\",\"role\":\"assistant\"", payload);
+        Assert.DoesNotContain("\"type\":\"REASONING_MESSAGE_START\",\"messageId\":\"assistant-1\"", payload);
     }
 
     [Fact]
@@ -229,10 +373,149 @@ public sealed class AgUiControllerUnitTests
         Assert.Contains("\"toolCallId\":\"call-1\"", payload);
         Assert.Contains("\"toolCallName\":\"lookup_weather\"", payload);
         Assert.Contains("\"parentMessageId\":\"assistant-1\"", payload);
-        Assert.Contains("\"messageId\":\"tool-result-1\"", payload);
+        Assert.Contains("\"messageId\":\"tool:tool-result-1\"", payload);
         Assert.Contains("\"content\":\"Sunny\"", payload);
         Assert.Contains("\"role\":\"tool\"", payload);
         Assert.Contains("RUN_FINISHED", payload);
+    }
+
+    [Fact]
+    public async Task AgUi_controller_namespaces_tool_result_message_ids_so_tool_messages_do_not_collide()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        var streamEvents = new List<StreamEvent>()
+        {
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 1,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextStart,
+                MessageId = "assistant-1",
+                MessageRole = StreamMessageRole.Assistant,
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 2,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextContent,
+                MessageId = "assistant-1",
+                TextDelta = "Hello",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 3,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextEnd,
+                MessageId = "assistant-1",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 4,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.ToolCallStart,
+                MessageId = "call-1",
+                ToolCallId = "call-1",
+                TextDelta = "lookup_weather",
+                ParentMessageId = "assistant-1",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 5,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.ToolCallArgs,
+                MessageId = "call-1",
+                ToolCallId = "call-1",
+                TextDelta = "{\"city\":\"Sydney\"}",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 6,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.ToolCallEnd,
+                MessageId = "call-1",
+                ToolCallId = "call-1",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 7,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.ToolCallResult,
+                MessageId = "assistant-1",
+                ToolCallId = "call-1",
+                TextDelta = "Sunny",
+            },
+        };
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                streamEvents,
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        httpContext.Response.Body.Position = 0;
+        var payload = Encoding.UTF8.GetString(((MemoryStream)httpContext.Response.Body).ToArray());
+
+        Assert.Contains("\"type\":\"TEXT_MESSAGE_START\",\"messageId\":\"assistant-1\",\"role\":\"assistant\"", payload);
+        Assert.Contains("\"type\":\"TOOL_CALL_RESULT\",\"messageId\":\"tool:assistant-1\",\"toolCallId\":\"call-1\",\"content\":\"Sunny\",\"role\":\"tool\"", payload);
+        Assert.DoesNotContain("\"type\":\"TOOL_CALL_RESULT\",\"messageId\":\"assistant-1\"", payload);
     }
 
     private static async IAsyncEnumerable<AgUiRunUpdate> CreateUpdates(List<StreamEvent> streamEvents, Run run)

@@ -386,16 +386,7 @@ public abstract class BaseModelCaller : IModelCaller
     protected virtual void AddChatInputPathMessages(List<ChatMessage> chat, ThreadContext threadContext, ModelCallNodeEntity node)
     {
         if (!string.IsNullOrWhiteSpace(node.ChatInputPath))
-        {
-            if (threadContext.NodeContext.TryGet<ChatMessage>(node.ChatInputPath, out var chatMessage) && (chatMessage is not null))
-                chat.Add(chatMessage);
-            else if (threadContext.NodeContext.TryGet<ContextList>(node.ChatInputPath, out var chatList) && (chatList is not null))
-            {
-                foreach (var listEntry in chatList)
-                    if ((listEntry is not null) && (listEntry is ChatMessage))
-                        chat.Add((ChatMessage)listEntry);
-            }
-        }
+            ChatHistoryReplayHelper.AddPreparedInputMessages(chat, threadContext.NodeContext, node.ChatInputPath);
     }
 
     protected virtual async Task AddImageMessages(List<ChatMessage> chat, Model model, ModelConfig modelConfig, ProcessContext processContext, ThreadContext threadContext, ModelCallNodeEntity node)
