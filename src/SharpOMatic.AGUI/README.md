@@ -50,6 +50,7 @@ SharpOMatic translates workflow stream events into AG-UI SSE events:
 Reasoning events use AG-UI-specific `messageId` values prefixed with `reason:` so they do not collide with assistant text messages when a model/provider reuses one response id for both.
 Tool result messages use AG-UI-specific `messageId` values prefixed with `tool:` so tool messages stay distinct too, while the linked `toolCallId` remains unchanged.
 When batch-mode model calls are replayed without provider message ids, SharpOMatic synthesizes separate assistant `messageId` values for each distinct assistant text lifecycle and seeds them from the stream sequence so they remain unique across conversation turns.
+Code-node stream-event helpers can mark events as `silent`, which keeps them in SharpOMatic stream history while suppressing their live AG-UI SSE emission.
 
 ## Workflow selection
 
@@ -100,3 +101,16 @@ The controller maps selected request data into workflow context under `agent`:
 - `agent.context`: the incoming AG-UI `context` value
 
 These values are passed through as structured JSON-compatible data, not as a single raw JSON string.
+
+If a workflow wants to add the incoming AG-UI user message into SharpOMatic stream history without sending it back to the AG-UI caller, use a code node and the transient `silent` flag:
+
+```csharp
+var latestUserMessage = Context.Get<ContextObject>("agent.latestUserMessage");
+var messageId = latestUserMessage.Get<string>("id");
+var text = latestUserMessage.Get<string>("content");
+
+await Events.AddTextMessageAsync(StreamMessageRole.User, messageId, text, silent: true);
+```
+
+The `silent` flag only affects the current live AG-UI SSE stream.
+The underlying stream event is still persisted in SharpOMatic history, and the flag itself is not stored in the database.

@@ -1,5 +1,3 @@
-using SharpOMatic.AGUI.DTO;
-using SharpOMatic.AGUI.Services;
 
 namespace SharpOMatic.AGUI.Controllers;
 
@@ -133,8 +131,12 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         return new ContextMergeResumeInput() { Context = root };
     }
 
-    private async Task WriteStreamEventAsync(StreamEvent streamEvent)
+    private async Task WriteStreamEventAsync(StreamEventProgressItem streamEventUpdate)
     {
+        if (streamEventUpdate.Silent)
+            return;
+
+        var streamEvent = streamEventUpdate.Event;
         var toolCallId = string.IsNullOrWhiteSpace(streamEvent.ToolCallId) ? streamEvent.MessageId : streamEvent.ToolCallId;
         var reasoningMessageId = GetProtocolReasoningMessageId(streamEvent.MessageId);
         var toolMessageId = GetProtocolToolMessageId(streamEvent.MessageId);

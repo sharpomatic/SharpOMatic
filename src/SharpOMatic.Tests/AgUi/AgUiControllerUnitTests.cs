@@ -1,4 +1,3 @@
-using Moq;
 
 namespace SharpOMatic.Tests.AgUi;
 
@@ -265,6 +264,134 @@ public sealed class AgUiControllerUnitTests
     }
 
     [Fact]
+    public async Task AgUi_controller_skips_silent_stream_events_but_keeps_non_silent_events()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        var streamEvents = new List<StreamEvent>()
+        {
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 1,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextStart,
+                MessageId = "user-1",
+                MessageRole = StreamMessageRole.User,
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 2,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextContent,
+                MessageId = "user-1",
+                TextDelta = "Hello",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 3,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextEnd,
+                MessageId = "user-1",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 4,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextStart,
+                MessageId = "assistant-1",
+                MessageRole = StreamMessageRole.Assistant,
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 5,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextContent,
+                MessageId = "assistant-1",
+                TextDelta = "Hi there",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 6,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextEnd,
+                MessageId = "assistant-1",
+            },
+        };
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                streamEvents,
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                },
+                streamEvent => string.Equals(streamEvent.MessageId, "user-1", StringComparison.Ordinal)
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        httpContext.Response.Body.Position = 0;
+        var payload = Encoding.UTF8.GetString(((MemoryStream)httpContext.Response.Body).ToArray());
+
+        Assert.DoesNotContain("\"type\":\"TEXT_MESSAGE_START\",\"messageId\":\"user-1\",\"role\":\"user\"", payload);
+        Assert.DoesNotContain("\"type\":\"TEXT_MESSAGE_CONTENT\",\"messageId\":\"user-1\",\"delta\":\"Hello\"", payload);
+        Assert.DoesNotContain("\"type\":\"TEXT_MESSAGE_END\",\"messageId\":\"user-1\"", payload);
+        Assert.Contains("\"type\":\"TEXT_MESSAGE_START\",\"messageId\":\"assistant-1\",\"role\":\"assistant\"", payload);
+        Assert.Contains("\"type\":\"TEXT_MESSAGE_CONTENT\",\"messageId\":\"assistant-1\",\"delta\":\"Hi there\"", payload);
+        Assert.Contains("\"type\":\"TEXT_MESSAGE_END\",\"messageId\":\"assistant-1\"", payload);
+        Assert.Contains("RUN_FINISHED", payload);
+    }
+
+    [Fact]
     public async Task AgUi_controller_maps_tool_call_stream_events_to_protocol_events()
     {
         var engineRunId = Guid.NewGuid();
@@ -518,11 +645,22 @@ public sealed class AgUiControllerUnitTests
         Assert.DoesNotContain("\"type\":\"TOOL_CALL_RESULT\",\"messageId\":\"assistant-1\"", payload);
     }
 
-    private static async IAsyncEnumerable<AgUiRunUpdate> CreateUpdates(List<StreamEvent> streamEvents, Run run)
+    private static async IAsyncEnumerable<AgUiRunUpdate> CreateUpdates(List<StreamEvent> streamEvents, Run run, Func<StreamEvent, bool>? isSilent = null)
     {
-        yield return AgUiRunUpdate.ForStreamEvents(streamEvents);
+        yield return AgUiRunUpdate.ForStreamEvents(ToProgressItems(streamEvents, isSilent));
         await Task.Yield();
         yield return AgUiRunUpdate.ForRun(run);
+    }
+
+    private static List<StreamEventProgressItem> ToProgressItems(IEnumerable<StreamEvent> streamEvents, Func<StreamEvent, bool>? isSilent = null)
+    {
+        return streamEvents
+            .Select(streamEvent => new StreamEventProgressItem()
+            {
+                Event = streamEvent,
+                Silent = isSilent?.Invoke(streamEvent) ?? false,
+            })
+            .ToList();
     }
 
     private static JsonElement ParseJson(string json)

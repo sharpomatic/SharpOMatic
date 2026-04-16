@@ -4,10 +4,10 @@ public interface IAgUiRunEventBroker
 {
     IAsyncEnumerable<AgUiRunUpdate> Subscribe(Guid runId, CancellationToken cancellationToken);
     void PublishRun(Run run);
-    void PublishStreamEvents(Guid runId, IEnumerable<StreamEvent> events);
+    void PublishStreamEvents(Guid runId, IEnumerable<StreamEventProgressItem> events);
 }
 
-public sealed record AgUiRunUpdate(Run? Run, IReadOnlyList<StreamEvent>? StreamEvents)
+public sealed record AgUiRunUpdate(Run? Run, IReadOnlyList<StreamEventProgressItem>? StreamEvents)
 {
     public bool IsTerminal => Run?.RunStatus is RunStatus.Success or RunStatus.Suspended or RunStatus.Failed;
 
@@ -16,7 +16,7 @@ public sealed record AgUiRunUpdate(Run? Run, IReadOnlyList<StreamEvent>? StreamE
         return new AgUiRunUpdate(run, null);
     }
 
-    public static AgUiRunUpdate ForStreamEvents(IReadOnlyList<StreamEvent> events)
+    public static AgUiRunUpdate ForStreamEvents(IReadOnlyList<StreamEventProgressItem> events)
     {
         return new AgUiRunUpdate(null, events);
     }
@@ -102,7 +102,7 @@ public sealed class AgUiRunEventBroker : IAgUiRunEventBroker
         _buffers.GetOrAdd(run.RunId, _ => new AgUiRunEventBuffer()).Publish(AgUiRunUpdate.ForRun(CloneRun(run)));
     }
 
-    public void PublishStreamEvents(Guid runId, IEnumerable<StreamEvent> events)
+    public void PublishStreamEvents(Guid runId, IEnumerable<StreamEventProgressItem> events)
     {
         ArgumentNullException.ThrowIfNull(events);
 
@@ -151,7 +151,16 @@ public sealed class AgUiRunEventBroker : IAgUiRunEventBroker
         };
     }
 
-    private static StreamEvent CloneStreamEvent(StreamEvent streamEvent)
+    private static StreamEventProgressItem CloneStreamEvent(StreamEventProgressItem streamEvent)
+    {
+        return new StreamEventProgressItem()
+        {
+            Event = ClonePersistedStreamEvent(streamEvent.Event),
+            Silent = streamEvent.Silent,
+        };
+    }
+
+    private static StreamEvent ClonePersistedStreamEvent(StreamEvent streamEvent)
     {
         return new StreamEvent()
         {

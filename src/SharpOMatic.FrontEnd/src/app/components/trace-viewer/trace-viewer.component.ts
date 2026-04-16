@@ -78,6 +78,8 @@ export class TraceViewerComponent implements OnChanges {
 
   getInformationTypeLabel(type: InformationType): string {
     switch (type) {
+      case InformationType.Assistant:
+        return 'Assistant';
       case InformationType.ToolCall:
         return 'Tool Call';
       case InformationType.Reasoning:

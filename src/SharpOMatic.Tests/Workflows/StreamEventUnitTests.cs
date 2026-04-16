@@ -107,6 +107,110 @@ public sealed class StreamEventUnitTests
     }
 
     [Fact]
+    public async Task Silent_text_stream_events_remain_persisted_but_are_marked_silent_in_live_progress()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", """await Events.AddTextMessageAsync(StreamMessageRole.User, "message-1", "Hello", silent: true);""")
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        var progress = new CapturingProgressService();
+
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddSingleton<IProgressService>(progress));
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.Equal(
+                [StreamEventKind.TextStart, StreamEventKind.TextContent, StreamEventKind.TextEnd],
+                streamEvents.Select(e => e.EventKind).ToArray()
+            );
+            Assert.Equal([1, 2, 3], streamEvents.Select(e => e.SequenceNumber).ToArray());
+            Assert.All(streamEvents, streamEvent => Assert.Equal("message-1", streamEvent.MessageId));
+
+            Assert.Equal(3, progress.StreamEventKinds.Count);
+            Assert.All(progress.SilentFlags, Assert.True);
+            Assert.Equal(
+                [StreamEventKind.TextStart, StreamEventKind.TextContent, StreamEventKind.TextEnd],
+                progress.StreamEventKinds.ToArray()
+            );
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Silent_reasoning_stream_events_apply_to_each_generated_live_progress_event()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", """await Events.AddReasoningMessageAsync("reason-1", "Thinking about it", silent: true);""")
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        var progress = new CapturingProgressService();
+
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddSingleton<IProgressService>(progress));
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.Equal(5, streamEvents.Count);
+            Assert.All(streamEvents, streamEvent => Assert.Equal("reason-1", streamEvent.MessageId));
+
+            Assert.Equal(5, progress.StreamEventKinds.Count);
+            Assert.All(progress.SilentFlags, Assert.True);
+            Assert.Equal(
+                [
+                    StreamEventKind.ReasoningStart,
+                    StreamEventKind.ReasoningMessageStart,
+                    StreamEventKind.ReasoningMessageContent,
+                    StreamEventKind.ReasoningMessageEnd,
+                    StreamEventKind.ReasoningEnd,
+                ],
+                progress.StreamEventKinds.ToArray()
+            );
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
     public async Task Code_node_stream_events_require_non_empty_message_ids()
     {
         var workflow = new WorkflowBuilder()
@@ -268,5 +372,38 @@ public sealed class StreamEventUnitTests
     private static string NewConversationId()
     {
         return Guid.NewGuid().ToString("N");
+    }
+
+    private sealed class CapturingProgressService : IProgressService
+    {
+        public List<StreamEventKind> StreamEventKinds { get; } = [];
+        public List<bool> SilentFlags { get; } = [];
+
+        public Task RunProgress(Run run)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task TraceProgress(Run run, Trace trace)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task InformationsProgress(Run run, List<Information> informations)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task StreamEventProgress(Run run, List<StreamEventProgressItem> events)
+        {
+            StreamEventKinds.AddRange(events.Select(e => e.Event.EventKind));
+            SilentFlags.AddRange(events.Select(e => e.Silent));
+            return Task.CompletedTask;
+        }
+
+        public Task EvalRunProgress(EvalRun evalRun)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

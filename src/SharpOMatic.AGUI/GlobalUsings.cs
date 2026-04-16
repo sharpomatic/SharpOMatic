@@ -4,6 +4,8 @@ global using Microsoft.AspNetCore.Mvc.ApplicationModels;
 global using Microsoft.AspNetCore.Mvc.ApplicationParts;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.DependencyInjection.Extensions;
+global using SharpOMatic.AGUI.DTO;
+global using SharpOMatic.AGUI.Services;
 global using SharpOMatic.Engine.Contexts;
 global using SharpOMatic.Engine.DTO;
 global using SharpOMatic.Engine.Enumerations;

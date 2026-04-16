@@ -1,12 +1,3 @@
-﻿using System;
-using System.Net.Http.Headers;
-using Google.GenAI.Types;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.Extensions.DependencyInjection;
-using SharpOMatic.Engine.DTO;
-using SharpOMatic.Engine.Entities.Definitions;
-using SharpOMatic.Engine.Interfaces;
-using SharpOMatic.Engine.Repository;
 
 namespace SharpOMatic.Engine.Services;
 

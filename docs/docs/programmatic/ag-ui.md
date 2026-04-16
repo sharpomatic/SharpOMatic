@@ -135,8 +135,25 @@ The endpoint streams AG-UI SSE events from SharpOMatic workflow stream events:
 - tool result messages use AG-UI-specific `messageId` values prefixed with `tool:` so tool messages also stay distinct from assistant and reasoning messages, while the linked `toolCallId` remains unchanged
 - when a model call runs in batch mode and the provider does not supply message ids, SharpOMatic synthesizes distinct assistant `messageId` values for each separate assistant text lifecycle, seeded from the stream sequence so they remain unique across conversation turns
 - model-call nodes can suppress assistant text, reasoning, or tool-call stream categories, in which case the AG-UI endpoint simply emits fewer events for that run
+- code-node stream-event helpers can mark events as `silent`, in which case SharpOMatic still stores them in stream history but skips the live AG-UI SSE translation for that event
 - successful runs emit `RUN_FINISHED`
 - suspended runs also emit `RUN_FINISHED`
 - failed runs emit `RUN_ERROR`
 
 The SSE request ends when the underlying workflow run finishes, suspends, or fails.
+
+## Silent replay for incoming user messages
+
+AG-UI clients already know about the incoming user message they just submitted.
+If your workflow also wants that message recorded in SharpOMatic stream history, add it through a code node with `silent: true` so the chat client does not render the same user message twice.
+
+```csharp
+var latestUserMessage = Context.Get<ContextObject>("agent.latestUserMessage");
+var messageId = latestUserMessage.Get<string>("id");
+var text = latestUserMessage.Get<string>("content");
+
+await Events.AddTextMessageAsync(StreamMessageRole.User, messageId, text, silent: true);
+```
+
+The `silent` flag only affects the live AG-UI SSE output for the current run.
+The stored run or conversation stream history still contains the event, and no persisted stream-event field is added for the flag.

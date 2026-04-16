@@ -38,6 +38,9 @@
                 streamEvent.eventKind === StreamEventKind.TextContent
               "
               [class.text-end]="streamEvent.eventKind === StreamEventKind.TextEnd"
+              [class.assistant-text]="isAssistantTextEvent(streamEvent)"
+              [class.user-text]="isUserTextEvent(streamEvent)"
+              [class.system-text]="isSystemTextEvent(streamEvent)"
               [class.reasoning-start]="
                 streamEvent.eventKind === StreamEventKind.ReasoningStart
               "

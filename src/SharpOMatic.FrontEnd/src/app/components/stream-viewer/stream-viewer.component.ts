@@ -12,10 +12,30 @@ import { StreamEventModel } from '../../pages/workflow/interfaces/stream-event-m
   styleUrls: ['./stream-viewer.component.scss'],
 })
 export class StreamViewerComponent {
-  @Input() streamEvents: StreamEventModel[] = [];
+  private textRoleByMessageId = new Map<string, StreamMessageRole>();
+
+  @Input()
+  set streamEvents(value: StreamEventModel[]) {
+    this._streamEvents = value ?? [];
+    this.textRoleByMessageId = this.buildTextRoleLookup(this._streamEvents);
+  }
+
+  get streamEvents(): StreamEventModel[] {
+    return this._streamEvents;
+  }
+
+  private _streamEvents: StreamEventModel[] = [];
 
   public readonly StreamEventKind = StreamEventKind;
   public readonly StreamMessageRole = StreamMessageRole;
+
+  public getTextEventRole(streamEvent: StreamEventModel): StreamMessageRole | null {
+    if (!this.isTextEvent(streamEvent) || !streamEvent.messageId) {
+      return null;
+    }
+
+    return this.textRoleByMessageId.get(streamEvent.messageId) ?? null;
+  }
 
   public getEventKindLabel(kind: StreamEventKind): string {
     switch (kind) {
@@ -48,6 +68,18 @@ export class StreamViewerComponent {
     }
   }
 
+  public isAssistantTextEvent(streamEvent: StreamEventModel): boolean {
+    return this.getTextEventRole(streamEvent) === StreamMessageRole.Assistant;
+  }
+
+  public isUserTextEvent(streamEvent: StreamEventModel): boolean {
+    return this.getTextEventRole(streamEvent) === StreamMessageRole.User;
+  }
+
+  public isSystemTextEvent(streamEvent: StreamEventModel): boolean {
+    return this.getTextEventRole(streamEvent) === StreamMessageRole.System;
+  }
+
   public getRoleLabel(role?: StreamMessageRole | null): string {
     if (role === null || role === undefined) {
       return '';
@@ -65,5 +97,32 @@ export class StreamViewerComponent {
       default:
         return 'Unknown';
     }
+  }
+
+  private isTextEvent(streamEvent: StreamEventModel): boolean {
+    return (
+      streamEvent.eventKind === StreamEventKind.TextStart ||
+      streamEvent.eventKind === StreamEventKind.TextContent ||
+      streamEvent.eventKind === StreamEventKind.TextEnd
+    );
+  }
+
+  private buildTextRoleLookup(events: StreamEventModel[]): Map<string, StreamMessageRole> {
+    const roleByMessageId = new Map<string, StreamMessageRole>();
+
+    for (const streamEvent of events) {
+      if (
+        streamEvent.eventKind !== StreamEventKind.TextStart ||
+        !streamEvent.messageId ||
+        streamEvent.messageRole === null ||
+        streamEvent.messageRole === undefined
+      ) {
+        continue;
+      }
+
+      roleByMessageId.set(streamEvent.messageId, streamEvent.messageRole);
+    }
+
+    return roleByMessageId;
   }
 }

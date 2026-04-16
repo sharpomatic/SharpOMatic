@@ -18,7 +18,7 @@ public sealed class AgUiProgressService(IAgUiRunEventBroker broker) : IProgressS
         return Task.CompletedTask;
     }
 
-    public Task StreamEventProgress(Run run, List<StreamEvent> events)
+    public Task StreamEventProgress(Run run, List<StreamEventProgressItem> events)
     {
         broker.PublishStreamEvents(run.RunId, events);
         return Task.CompletedTask;

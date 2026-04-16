@@ -60,6 +60,9 @@
             </span>
             <span
               class="trace-information-type flex-shrink-0"
+              [class.assistant]="
+                information.informationType === InformationType.Assistant
+              "
               [class.tool-call]="
                 information.informationType === InformationType.ToolCall
               "

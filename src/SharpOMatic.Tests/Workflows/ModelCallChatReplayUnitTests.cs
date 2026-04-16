@@ -1,4 +1,3 @@
-using Microsoft.Extensions.AI;
 
 namespace SharpOMatic.Tests.Workflows;
 

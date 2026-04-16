@@ -127,6 +127,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         private readonly HashSet<string> _openReasoningIds = new(StringComparer.Ordinal);
         private readonly Dictionary<string, string> _toolCallArgsById = new(StringComparer.Ordinal);
         private readonly HashSet<string> _openToolCallIds = new(StringComparer.Ordinal);
+        private readonly StringBuilder _pendingAssistantText = new();
         private readonly List<StreamEvent> _streamEvents = [];
         private bool _hasTextUpdates;
         private bool _hasReasoningUpdates;
@@ -165,6 +166,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
             _hasTextUpdates = true;
             await OnTextStartAsync(messageId);
+            _pendingAssistantText.Append(textDelta);
 
             if (node.DisableStreamAssistantText)
                 return;
@@ -233,6 +235,8 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         {
             foreach (var messageId in _openMessageIds.ToArray())
                 await OnTextEndAsync(messageId);
+
+            await FlushPendingAssistantInformationAsync();
 
             foreach (var reasoningId in _openReasoningIds.ToArray())
                 await CloseReasoningAsync(reasoningId);
@@ -336,12 +340,18 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             _hasReasoningUpdates = true;
             await CloseAllOpenToolCallsAsync();
             await CloseAllOpenTextAsync();
+            await FlushPendingAssistantInformationAsync();
 
             var reasoningText = text;
             if (!string.IsNullOrWhiteSpace(reasoningText))
                 await UpsertInformationAsync(reasoningId, InformationType.Reasoning, reasoningText, data: null);
+            else if (!_informationByKey.ContainsKey(reasoningId))
+                await UpsertInformationAsync(reasoningId, InformationType.Reasoning, string.Empty, data: null);
 
             if (node.DisableStreamReasoning)
+                return;
+
+            if (string.IsNullOrWhiteSpace(reasoningText))
                 return;
 
             await OpenReasoningAsync(reasoningId);
@@ -373,6 +383,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         {
             await CloseAllOpenTextAsync();
             await CloseAllOpenReasoningAsync();
+            await FlushPendingAssistantInformationAsync();
 
             var title = string.IsNullOrWhiteSpace(toolName) ? "Tool call" : toolName;
             await UpsertInformationAsync(toolCallId, InformationType.ToolCall, title, data);
@@ -623,7 +634,34 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                 information.Data = data;
             }
 
-            List<Information> changes = [information];
+            await PublishInformationChangesAsync([information]);
+        }
+
+        private async Task FlushPendingAssistantInformationAsync()
+        {
+            var assistantText = _pendingAssistantText.ToString();
+            _pendingAssistantText.Clear();
+
+            if (string.IsNullOrWhiteSpace(assistantText))
+                return;
+
+            var information = new Information()
+            {
+                InformationId = Guid.NewGuid(),
+                RunId = trace.RunId,
+                TraceId = trace.TraceId,
+                Created = DateTime.Now,
+                InformationType = InformationType.Assistant,
+                Text = assistantText,
+                Data = null,
+            };
+
+            informations.Add(information);
+            await PublishInformationChangesAsync([information]);
+        }
+
+        private async Task PublishInformationChangesAsync(List<Information> changes)
+        {
             foreach (var progressService in processContext.ProgressServices)
                 await progressService.InformationsProgress(processContext.Run, changes);
         }
@@ -649,7 +687,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
             _streamEvents.Add(streamEvent);
 
-            List<StreamEvent> updates = [streamEvent];
+            List<StreamEventProgressItem> updates = [new StreamEventProgressItem() { Event = streamEvent, Silent = false }];
             foreach (var progressService in processContext.ProgressServices)
                 await progressService.StreamEventProgress(processContext.Run, updates);
         }

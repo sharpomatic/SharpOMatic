@@ -11,7 +11,7 @@ Using this ability gives you greater flexibility and control over the exact cont
 
 For OpenAI, Azure OpenAI, and Google connectors, runtime progress is now incremental.
 Assistant text, visible reasoning, tool-call lifecycle events, and tool-call results are all published through stream events while the node is still running.
-Reasoning and tool-call summary entries are also published through information updates for the trace viewer.
+Assistant, reasoning, and tool-call summary entries are also published through information updates for the trace viewer.
 
 ## ChatMessage
 

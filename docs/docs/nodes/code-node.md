@@ -26,6 +26,28 @@ For example, file and network calls are typically quite slow and benefit from th
 
 <img src="/img/code_async.png" alt="Mandatory paths" width="800" style={{ maxWidth: '100%', height: 'auto' }} />
 
+## Stream Events
+
+Code nodes also expose an **Events** helper for publishing workflow stream events.
+These events are persisted to run or conversation stream history and can be consumed by live clients such as the editor or AG-UI.
+
+```csharp
+await Events.AddTextMessageAsync(StreamMessageRole.Assistant, "message-1", "Hello from the workflow");
+```
+
+All `Events.Add*` helpers now accept an optional `silent` flag.
+Set `silent: true` when the event should still be recorded in SharpOMatic stream history but should be suppressed from AG-UI live SSE output.
+This flag is transient and is not stored in the database.
+
+```csharp
+await Events.AddTextMessageAsync(
+    StreamMessageRole.User,
+    "user-1",
+    "What is the order status?",
+    silent: true
+);
+```
+
 ## Implicit Assemblies
 
 The following using statements are implicitly already applied:

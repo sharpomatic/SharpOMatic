@@ -180,35 +180,37 @@ public class ProcessContext : ExecutionContext
 
         var created = DateTime.UtcNow;
         var streamEvents = new List<StreamEvent>(writes.Count);
+        var progressEvents = new List<StreamEventProgressItem>(writes.Count);
 
         foreach (var write in writes)
         {
             ValidateStreamEventWrite(write);
 
-            streamEvents.Add(
-                new StreamEvent()
-                {
-                    StreamEventId = Guid.NewGuid(),
-                    RunId = Run.RunId,
-                    WorkflowId = Run.WorkflowId,
-                    ConversationId = StreamConversationId,
-                    SequenceNumber = AllocateNextStreamSequence(),
-                    Created = created,
-                    EventKind = write.EventKind,
-                    MessageId = write.MessageId,
-                    MessageRole = write.MessageRole,
-                    TextDelta = write.TextDelta,
-                    ToolCallId = write.ToolCallId,
-                    ParentMessageId = write.ParentMessageId,
-                    Metadata = write.Metadata,
-                }
-            );
+            var streamEvent = new StreamEvent()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = Run.RunId,
+                WorkflowId = Run.WorkflowId,
+                ConversationId = StreamConversationId,
+                SequenceNumber = AllocateNextStreamSequence(),
+                Created = created,
+                EventKind = write.EventKind,
+                MessageId = write.MessageId,
+                MessageRole = write.MessageRole,
+                TextDelta = write.TextDelta,
+                ToolCallId = write.ToolCallId,
+                ParentMessageId = write.ParentMessageId,
+                Metadata = write.Metadata,
+            };
+
+            streamEvents.Add(streamEvent);
+            progressEvents.Add(new StreamEventProgressItem() { Event = streamEvent, Silent = write.Silent });
         }
 
         await RepositoryService.AppendStreamEvents(streamEvents);
 
         foreach (var progressService in ProgressServices)
-            await progressService.StreamEventProgress(Run, streamEvents);
+            await progressService.StreamEventProgress(Run, progressEvents);
 
         return streamEvents;
     }

@@ -9,4 +9,5 @@ public sealed class StreamEventWrite
     public string? ToolCallId { get; init; }
     public string? ParentMessageId { get; init; }
     public string? Metadata { get; init; }
+    public bool Silent { get; init; }
 }

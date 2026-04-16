@@ -1,4 +1,3 @@
-using Microsoft.Extensions.AI;
 
 namespace SharpOMatic.Tests.Workflows;
 
@@ -108,20 +107,11 @@ public sealed class ModelCallStreamingUnitTests
             Assert.Equal("call-1", toolCallEnd.ToolCallId);
 
             var informations = await repositoryService.GetRunInformations(run.RunId);
-            Assert.Equal(2, informations.Count);
-            Assert.Collection(
-                informations.OrderBy(i => i.InformationType).ThenBy(i => i.Created),
-                information =>
-                {
-                    Assert.Equal(InformationType.ToolCall, information.InformationType);
-                    Assert.Equal("lookup_weather", information.Text);
-                },
-                information =>
-                {
-                    Assert.Equal(InformationType.Reasoning, information.InformationType);
-                    Assert.Equal("Thinking", information.Text);
-                }
-            );
+            Assert.Equal(4, informations.Count);
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Assistant) && (i.Text == "Hello"));
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Assistant) && (i.Text == " world"));
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Reasoning) && (i.Text == "Thinking"));
+            Assert.Contains(informations, i => (i.InformationType == InformationType.ToolCall) && (i.Text == "lookup_weather"));
 
             Assert.NotEmpty(progress.StreamEventStatuses);
             Assert.NotEmpty(progress.InformationStatuses);
@@ -133,6 +123,11 @@ public sealed class ModelCallStreamingUnitTests
             Assert.Contains(StreamEventKind.ToolCallStart, progress.StreamEventKinds);
             Assert.Contains(StreamEventKind.ToolCallArgs, progress.StreamEventKinds);
             Assert.Contains(StreamEventKind.ToolCallEnd, progress.StreamEventKinds);
+            Assert.All(progress.StreamEventSilentFlags, Assert.False);
+            Assert.Equal(
+                ["Assistant:Hello", "Reasoning:Thinking", "Assistant: world", "ToolCall:lookup_weather"],
+                progress.InformationLog.Take(4)
+            );
 
             var output = ContextObject.Deserialize(run.OutputContext);
             Assert.Equal("Hello world", output.Get<string>("output.text"));
@@ -203,6 +198,9 @@ public sealed class ModelCallStreamingUnitTests
             Assert.DoesNotContain(streamEvents, e => e.EventKind is StreamEventKind.TextStart or StreamEventKind.TextContent or StreamEventKind.TextEnd);
 
             var informations = await repositoryService.GetRunInformations(run.RunId);
+            Assert.Equal(4, informations.Count);
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Assistant) && (i.Text == "Hello"));
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Assistant) && (i.Text == " world"));
             Assert.Contains(informations, i => (i.InformationType == InformationType.Reasoning) && (i.Text == "Thinking"));
             Assert.Contains(informations, i => (i.InformationType == InformationType.ToolCall) && (i.Text == "lookup_weather"));
 
@@ -272,6 +270,9 @@ public sealed class ModelCallStreamingUnitTests
             Assert.DoesNotContain(streamEvents, e => e.EventKind is StreamEventKind.ReasoningStart or StreamEventKind.ReasoningMessageStart or StreamEventKind.ReasoningMessageContent or StreamEventKind.ReasoningMessageEnd or StreamEventKind.ReasoningEnd);
 
             var informations = await repositoryService.GetRunInformations(run.RunId);
+            Assert.Equal(4, informations.Count);
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Assistant) && (i.Text == "Hello"));
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Assistant) && (i.Text == " world"));
             Assert.Contains(informations, i => (i.InformationType == InformationType.Reasoning) && (i.Text == "Thinking"));
             Assert.Contains(informations, i => (i.InformationType == InformationType.ToolCall) && (i.Text == "lookup_weather"));
 
@@ -343,6 +344,9 @@ public sealed class ModelCallStreamingUnitTests
             Assert.DoesNotContain(streamEvents, e => e.EventKind is StreamEventKind.ToolCallStart or StreamEventKind.ToolCallArgs or StreamEventKind.ToolCallEnd or StreamEventKind.ToolCallResult);
 
             var informations = await repositoryService.GetRunInformations(run.RunId);
+            Assert.Equal(4, informations.Count);
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Assistant) && (i.Text == "Hello"));
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Assistant) && (i.Text == " world"));
             Assert.Contains(informations, i => (i.InformationType == InformationType.Reasoning) && (i.Text == "Thinking"));
             Assert.Contains(informations, i => (i.InformationType == InformationType.ToolCall) && (i.Text == "lookup_weather"));
 
@@ -587,7 +591,9 @@ public sealed class ModelCallStreamingUnitTests
             Assert.Equal("Sunny", googleToolCallResult.TextDelta);
 
             var informations = await repositoryService.GetRunInformations(run.RunId);
-            Assert.Equal(2, informations.Count);
+            Assert.Equal(4, informations.Count);
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Assistant) && (i.Text == "Google"));
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Assistant) && (i.Text == " reply"));
             Assert.Contains(informations, i => (i.InformationType == InformationType.Reasoning) && (i.Text == "Google reasoning final"));
             Assert.Contains(informations, i => (i.InformationType == InformationType.ToolCall) && (i.Text == "google_lookup"));
 
@@ -697,7 +703,9 @@ public sealed class ModelCallStreamingUnitTests
             Assert.Equal("Batch tool result", batchToolCallResult.TextDelta);
 
             var informations = await repositoryService.GetRunInformations(run.RunId);
-            Assert.Equal(2, informations.Count);
+            Assert.Equal(4, informations.Count);
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Assistant) && (i.Text == "Batch"));
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Assistant) && (i.Text == " reply"));
             Assert.Contains(informations, i => (i.InformationType == InformationType.Reasoning) && (i.Text == "Batch reasoning"));
             Assert.Contains(informations, i => (i.InformationType == InformationType.ToolCall) && (i.Text == "batch_lookup"));
 
@@ -764,6 +772,9 @@ public sealed class ModelCallStreamingUnitTests
             Assert.Empty(progress.StreamEventKinds);
 
             var informations = await repositoryService.GetRunInformations(run.RunId);
+            Assert.Equal(4, informations.Count);
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Assistant) && (i.Text == "Batch"));
+            Assert.Contains(informations, i => (i.InformationType == InformationType.Assistant) && (i.Text == " reply"));
             Assert.Contains(informations, i => (i.InformationType == InformationType.Reasoning) && (i.Text == "Batch reasoning"));
             Assert.Contains(informations, i => (i.InformationType == InformationType.ToolCall) && (i.Text == "batch_lookup"));
 
@@ -817,6 +828,7 @@ public sealed class ModelCallStreamingUnitTests
             Assert.True(infoIndex > 0);
             Assert.Contains("stream:ReasoningMessageEnd", progress.ProgressLog.Take(infoIndex));
             Assert.Contains("stream:ReasoningEnd", progress.ProgressLog.Take(infoIndex));
+            Assert.Equal(["Reasoning:Thinking", "ToolCall:lookup_weather"], progress.InformationLog.Take(2));
         }
         finally
         {
@@ -859,6 +871,156 @@ public sealed class ModelCallStreamingUnitTests
             var informations = await repositoryService.GetRunInformations(run.RunId);
             var reasoning = Assert.Single(informations, i => i.InformationType == InformationType.Reasoning);
             Assert.Equal("Thinking", reasoning.Text);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.Equal(
+                [
+                    StreamEventKind.ReasoningStart,
+                    StreamEventKind.ReasoningMessageStart,
+                    StreamEventKind.ReasoningMessageContent,
+                    StreamEventKind.ReasoningMessageEnd,
+                    StreamEventKind.ReasoningEnd,
+                    StreamEventKind.ToolCallStart,
+                    StreamEventKind.ToolCallArgs,
+                    StreamEventKind.ToolCallEnd,
+                ],
+                streamEvents.Select(e => e.EventKind).ToArray()
+            );
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Empty_reasoning_without_text_creates_information_but_no_stream_events()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddModelCall("model")
+            .AddEnd()
+            .Connect("start", "model")
+            .Connect("model", "end")
+            .Build();
+
+        var model = CreateModel("openai");
+        ConfigureModelNode(workflow, "model", model.ModelId);
+
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddKeyedScoped<IModelCaller, EmptyReasoningOnlyTestModelCaller>("openai"));
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "openai", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var informations = await repositoryService.GetRunInformations(run.RunId);
+            var reasoning = Assert.Single(informations, i => i.InformationType == InformationType.Reasoning);
+            Assert.Equal(string.Empty, reasoning.Text);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.DoesNotContain(
+                streamEvents,
+                e => e.EventKind is StreamEventKind.ReasoningStart
+                    or StreamEventKind.ReasoningMessageStart
+                    or StreamEventKind.ReasoningMessageContent
+                    or StreamEventKind.ReasoningMessageEnd
+                    or StreamEventKind.ReasoningEnd
+            );
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Assistant_text_without_reasoning_or_tool_call_creates_single_information_record_at_completion()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddModelCall("model")
+            .AddEnd()
+            .Connect("start", "model")
+            .Connect("model", "end")
+            .Build();
+
+        var model = CreateModel("openai");
+        ConfigureModelNode(workflow, "model", model.ModelId);
+
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddKeyedScoped<IModelCaller, AssistantTextOnlyTestModelCaller>("openai"));
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "openai", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var informations = await repositoryService.GetRunInformations(run.RunId);
+            var assistant = Assert.Single(informations, i => i.InformationType == InformationType.Assistant);
+            Assert.Equal("Hello world", assistant.Text);
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Whitespace_assistant_text_does_not_create_information_record()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddModelCall("model")
+            .AddEnd()
+            .Connect("start", "model")
+            .Connect("model", "end")
+            .Build();
+
+        var model = CreateModel("openai");
+        ConfigureModelNode(workflow, "model", model.ModelId);
+
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddKeyedScoped<IModelCaller, WhitespaceAssistantTextTestModelCaller>("openai"));
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "openai", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var informations = await repositoryService.GetRunInformations(run.RunId);
+            Assert.DoesNotContain(informations, i => i.InformationType == InformationType.Assistant);
         }
         finally
         {
@@ -906,6 +1068,8 @@ public sealed class ModelCallStreamingUnitTests
             var infoIndex = progress.ProgressLog.IndexOf("info:ToolCall");
             Assert.True(infoIndex > 0);
             Assert.Contains("stream:TextEnd", progress.ProgressLog.Take(infoIndex));
+            Assert.Contains("info:Assistant", progress.ProgressLog.Take(infoIndex));
+            Assert.Equal(["Assistant:Hello", "ToolCall:lookup_weather"], progress.InformationLog.Take(2));
         }
         finally
         {
@@ -1210,6 +1374,52 @@ public sealed class ModelCallStreamingUnitTests
         }
     }
 
+    private sealed class AssistantTextOnlyTestModelCaller : IModelCaller
+    {
+        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+            Model model,
+            ModelConfig modelConfig,
+            Connector connector,
+            ConnectorConfig connectorConfig,
+            ProcessContext processContext,
+            ThreadContext threadContext,
+            ModelCallNodeEntity node,
+            IModelCallProgressSink progressSink
+        )
+        {
+            await progressSink.OnTextStartAsync("assistant-1");
+            await progressSink.OnTextDeltaAsync("assistant-1", "Hello");
+            await progressSink.OnTextDeltaAsync("assistant-1", " world");
+            await progressSink.CompleteAsync();
+
+            var tempContext = new ContextObject();
+            tempContext.Set(node.TextOutputPath, "Hello world");
+            return ([], [], tempContext);
+        }
+    }
+
+    private sealed class WhitespaceAssistantTextTestModelCaller : IModelCaller
+    {
+        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+            Model model,
+            ModelConfig modelConfig,
+            Connector connector,
+            ConnectorConfig connectorConfig,
+            ProcessContext processContext,
+            ThreadContext threadContext,
+            ModelCallNodeEntity node,
+            IModelCallProgressSink progressSink
+        )
+        {
+            await progressSink.OnTextDeltaAsync("assistant-1", "   ");
+            await progressSink.CompleteAsync();
+
+            var tempContext = new ContextObject();
+            tempContext.Set(node.TextOutputPath, string.Empty);
+            return ([], [], tempContext);
+        }
+    }
+
     private sealed class EmptyReasoningAfterToolCallTestModelCaller : IModelCaller
     {
         public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
@@ -1234,11 +1444,35 @@ public sealed class ModelCallStreamingUnitTests
         }
     }
 
+    private sealed class EmptyReasoningOnlyTestModelCaller : IModelCaller
+    {
+        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+            Model model,
+            ModelConfig modelConfig,
+            Connector connector,
+            ConnectorConfig connectorConfig,
+            ProcessContext processContext,
+            ThreadContext threadContext,
+            ModelCallNodeEntity node,
+            IModelCallProgressSink progressSink
+        )
+        {
+            await progressSink.OnReasoningAsync("assistant-1", string.Empty);
+            await progressSink.CompleteAsync();
+
+            var tempContext = new ContextObject();
+            tempContext.Set(node.TextOutputPath, string.Empty);
+            return ([], [], tempContext);
+        }
+    }
+
     private sealed class CapturingProgressService : IProgressService
     {
         public List<RunStatus> InformationStatuses { get; } = [];
         public List<RunStatus> StreamEventStatuses { get; } = [];
         public List<StreamEventKind> StreamEventKinds { get; } = [];
+        public List<bool> StreamEventSilentFlags { get; } = [];
+        public List<string> InformationLog { get; } = [];
         public List<string> ProgressLog { get; } = [];
 
         public Task RunProgress(Run run)
@@ -1256,19 +1490,21 @@ public sealed class ModelCallStreamingUnitTests
             if (informations.Count > 0)
             {
                 InformationStatuses.Add(run.RunStatus);
+                InformationLog.AddRange(informations.Select(i => $"{i.InformationType}:{i.Text}"));
                 ProgressLog.AddRange(informations.Select(i => $"info:{i.InformationType}"));
             }
 
             return Task.CompletedTask;
         }
 
-        public Task StreamEventProgress(Run run, List<StreamEvent> events)
+        public Task StreamEventProgress(Run run, List<StreamEventProgressItem> events)
         {
             if (events.Count > 0)
             {
                 StreamEventStatuses.Add(run.RunStatus);
-                StreamEventKinds.AddRange(events.Select(e => e.EventKind));
-                ProgressLog.AddRange(events.Select(e => $"stream:{e.EventKind}"));
+                StreamEventKinds.AddRange(events.Select(e => e.Event.EventKind));
+                StreamEventSilentFlags.AddRange(events.Select(e => e.Silent));
+                ProgressLog.AddRange(events.Select(e => $"stream:{e.Event.EventKind}"));
             }
 
             return Task.CompletedTask;

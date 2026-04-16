@@ -225,7 +225,7 @@ public class EngineNotification(IServiceProvider serviceProvider) : IEngineNotif
 If you need run-state updates while execution is in progress, implement `IProgressService`.
 `RunProgress` is also raised for conversation turns, including the final persisted `RunStatus.Suspended` state when a turn pauses for resume.
 For OpenAI, Azure OpenAI, and Google model calls, `StreamEventProgress` and `InformationsProgress` are also raised while the node is still running.
-That means partial assistant text, visible reasoning, tool-call lifecycle events, tool-call results, and reasoning/tool-call trace entries can all be forwarded immediately.
+That means partial assistant text, visible reasoning, tool-call lifecycle events, tool-call results, and assistant/reasoning/tool-call trace entries can all be forwarded immediately.
 If you want live model-call output, use `IProgressService` rather than polling the repository during the call.
 The engine buffers these model-call stream events and persists them when the call completes successfully.
 
@@ -251,9 +251,11 @@ public class ProgressService : IProgressService
         return Task.CompletedTask;
     }
 
-    public Task StreamEventProgress(Run run, List<StreamEvent> events)
+    public Task StreamEventProgress(Run run, List<StreamEventProgressItem> events)
     {
         Console.WriteLine($"Workflow {run.WorkflowId} published {events.Count} stream events");
+        foreach (var item in events)
+            Console.WriteLine($"  {item.Event.EventKind} silent={item.Silent}");
         return Task.CompletedTask;
     }
 
@@ -273,7 +275,10 @@ For model calls, `StreamEventProgress` can now include:
 - visible reasoning lifecycle events
 - tool-call start, args, end, and result events
 
-`InformationsProgress` can include the corresponding reasoning and tool-call trace entries that appear in the trace viewer.
+For code-node stream helpers, `StreamEventProgress` also carries a transient `Silent` flag.
+That flag is only for live progress consumers such as AG-UI SSE translation and is not stored in the persisted `StreamEvent` rows.
+
+`InformationsProgress` can include the corresponding assistant, reasoning, and tool-call trace entries that appear in the trace viewer.
 
 ## Notes
 

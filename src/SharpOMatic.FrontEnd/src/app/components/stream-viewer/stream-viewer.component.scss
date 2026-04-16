@@ -117,6 +117,21 @@
     background-color: #198754;
   }
 
+  &.assistant-text {
+    color: white;
+    background-color: #198754;
+  }
+
+  &.user-text {
+    color: white;
+    background-color: #0d6efd;
+  }
+
+  &.system-text {
+    color: white;
+    background-color: #6c757d;
+  }
+
   &.reasoning-start {
     color: white;
     background-color: SlateBlue;
