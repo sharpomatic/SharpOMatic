@@ -115,20 +115,19 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         return await engineService.GetWorkflowId(workflowName!);
     }
 
-    private static ContextMergeResumeInput BuildResumeInput(AgUiRunRequest request, string threadId, string protocolRunId)
+    private static AgUiAgentResumeInput BuildResumeInput(AgUiRunRequest request, string threadId, string protocolRunId)
     {
         var agentPayload = new Dictionary<string, object?>();
         AddJsonProperty(agentPayload, "latestUserMessage", FindLatestUserMessage(request.Messages));
-        AddJsonProperty(agentPayload, "allMessages", request.Messages);
+        AddJsonProperty(agentPayload, "latestToolResult", FindLatestToolResult(request.Messages));
+        AddJsonProperty(agentPayload, "messages", request.Messages);
         AddJsonProperty(agentPayload, "state", request.State);
         AddJsonProperty(agentPayload, "context", request.Context);
 
         var agentRoot = ContextHelpers.FastDeserializeString(JsonSerializer.Serialize(agentPayload)) as ContextObject
             ?? throw new SharpOMaticException("AG-UI request payload could not be converted into workflow context.");
 
-        ContextObject root = [];
-        root.Set("agent", agentRoot);
-        return new ContextMergeResumeInput() { Context = root };
+        return new AgUiAgentResumeInput() { Agent = agentRoot };
     }
 
     private async Task WriteStreamEventAsync(StreamEventProgressItem streamEventUpdate)
@@ -270,23 +269,90 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         payload[propertyName] = value.Value;
     }
 
+    private static void AddJsonProperty(IDictionary<string, object?> payload, string propertyName, object? value)
+    {
+        if (value is null)
+            return;
+
+        payload[propertyName] = value;
+    }
+
     private static JsonElement? FindLatestUserMessage(JsonElement? messages)
+    {
+        var latestMessage = GetLatestMessage(messages);
+        if (!latestMessage.HasValue)
+            return null;
+
+        var message = latestMessage.Value;
+        if (!HasRole(message, "user"))
+            return null;
+
+        if (!message.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.String)
+            return null;
+
+        return message;
+    }
+
+    private static object? FindLatestToolResult(JsonElement? messages)
+    {
+        var latestMessage = GetLatestMessage(messages);
+        if (!latestMessage.HasValue)
+            return null;
+
+        if (!HasRole(latestMessage.Value, "tool"))
+            return null;
+
+        return ConvertLatestToolResult(latestMessage.Value);
+    }
+
+    private static Dictionary<string, object?> ConvertLatestToolResult(JsonElement message)
+    {
+        Dictionary<string, object?> payload = [];
+
+        foreach (var property in message.EnumerateObject())
+        {
+            payload[property.Name] = property.Value;
+        }
+
+        if (message.TryGetProperty("content", out var content))
+            AddLatestToolResultValue(payload, content);
+
+        return payload;
+    }
+
+    private static void AddLatestToolResultValue(IDictionary<string, object?> payload, JsonElement content)
+    {
+        if (content.ValueKind != JsonValueKind.String)
+            return;
+
+        var rawContent = content.GetString();
+        if (string.IsNullOrWhiteSpace(rawContent))
+            return;
+
+        payload["value"] = ContextHelpers.FastDeserializeString(rawContent);
+    }
+
+    private static JsonElement? GetLatestMessage(JsonElement? messages)
     {
         if (!messages.HasValue || messages.Value.ValueKind != JsonValueKind.Array)
             return null;
 
-        var items = messages.Value.EnumerateArray().ToList();
-        for (var index = items.Count - 1; index >= 0; index -= 1)
-        {
-            var message = items[index];
-            if (!message.TryGetProperty("role", out var role) || role.ValueKind != JsonValueKind.String)
-                continue;
+        JsonElement? latestMessage = null;
+        foreach (var message in messages.Value.EnumerateArray())
+            latestMessage = message;
 
-            if (string.Equals(role.GetString(), "user", StringComparison.OrdinalIgnoreCase))
-                return message;
-        }
+        if (!latestMessage.HasValue || latestMessage.Value.ValueKind != JsonValueKind.Object)
+            return null;
 
-        return null;
+        return latestMessage;
+    }
+
+    private static bool HasRole(JsonElement message, string expectedRole)
+    {
+        if (!message.TryGetProperty("role", out var role) || role.ValueKind != JsonValueKind.String)
+            return false;
+
+        return string.Equals(role.GetString(), expectedRole, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string NormalizeProtocolRunId(string? runId)

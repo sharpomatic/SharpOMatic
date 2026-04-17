@@ -95,12 +95,15 @@ If no conversation exists yet, SharpOMatic creates a new conversation with that 
 
 The controller maps selected request data into workflow context under `agent`:
 
-- `agent.latestUserMessage`: the last message in `messages` whose `role` is `user`
-- `agent.allMessages`: the full incoming AG-UI `messages` array
+- `agent.latestUserMessage`: the final item in `messages`, but only when that item is a user text message
+- `agent.latestToolResult`: the final item in `messages`, but only when that item is a tool result message. Its `content` stays as the original string, and if that string is non-empty JSON then SharpOMatic also stores the parsed payload in `agent.latestToolResult.value`.
+- `agent.messages`: the full incoming AG-UI `messages` array
 - `agent.state`: the incoming AG-UI `state` value
 - `agent.context`: the incoming AG-UI `context` value
 
 These values are passed through as structured JSON-compatible data, not as a single raw JSON string.
+On each AG-UI start or resume, SharpOMatic only updates the `agent` object.
+If the workflow context already contains `agent`, the incoming AG-UI `agent` object replaces it entirely.
 
 If a workflow wants to add the incoming AG-UI user message into SharpOMatic stream history without sending it back to the AG-UI caller, use a code node and the transient `silent` flag:
 

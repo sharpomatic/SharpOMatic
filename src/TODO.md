@@ -5,12 +5,13 @@
 ### Agent
 
 - Endpoint for returning history of messages for existing conversation
-- Do we need to add the incoming prompt into the stream as a user message, not for streaming back but needed for history
-- Override mechanism so the incoming headers and payload and generated context can be accessed and the context modified
+- Implement full state messages and then delta change messages
+- Investigate the custom message
 
 ### Output Stream
 
-- Add node for templated output of text events
+- Add node for templated output of text/reasoning events with templated text
+- Add node for templated output of tool event for fe/be with template name and template args
 
 ### Model Calls
 

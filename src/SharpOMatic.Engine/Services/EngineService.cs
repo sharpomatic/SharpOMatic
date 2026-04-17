@@ -1084,6 +1084,9 @@ public class EngineService(
         {
             case ContinueResumeInput:
                 return;
+            case AgUiAgentResumeInput agUiAgent:
+                nodeContext["agent"] = agUiAgent.Agent;
+                return;
             case ContextMergeResumeInput contextMerge:
                 ContextHelpers.OverwriteContexts(nodeContext, contextMerge.Context);
                 return;

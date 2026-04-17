@@ -4,6 +4,243 @@ namespace SharpOMatic.Tests.AgUi;
 public sealed class AgUiControllerUnitTests
 {
     [Fact]
+    public async Task AgUi_controller_uses_agui_agent_resume_input()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+        NodeResumeInput? capturedResumeInput = null;
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .Callback<Guid, string, NodeResumeInput?, ContextEntryListEntity?, bool, string?>((_, _, resumeInput, _, _, _) => capturedResumeInput = resumeInput)
+            .ReturnsAsync(engineRunId);
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                [],
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            State = ParseJson("""{ "mode": "assistant" }"""),
+            Context = ParseJson("""[{ "id": "ctx-1" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        var resumeInput = Assert.IsType<AgUiAgentResumeInput>(capturedResumeInput);
+        Assert.Equal("Hello", resumeInput.Agent.Get<string>("latestUserMessage.content"));
+        Assert.Equal("Hello", resumeInput.Agent.Get<string>("messages[0].content"));
+        Assert.False(resumeInput.Agent.TryGet<ContextObject>("latestToolResult", out _));
+        Assert.Equal("assistant", resumeInput.Agent.Get<string>("state.mode"));
+        Assert.Equal("ctx-1", resumeInput.Agent.Get<string>("context[0].id"));
+    }
+
+    [Fact]
+    public async Task AgUi_controller_only_sets_latest_user_message_when_latest_message_is_user_text()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+        NodeResumeInput? capturedResumeInput = null;
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .Callback<Guid, string, NodeResumeInput?, ContextEntryListEntity?, bool, string?>((_, _, resumeInput, _, _, _) => capturedResumeInput = resumeInput)
+            .ReturnsAsync(engineRunId);
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                [],
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            Messages = ParseJson("""
+                [
+                  { "id": "user-1", "role": "user", "content": "Hello" },
+                  { "id": "assistant-1", "role": "assistant", "content": "Hi" }
+                ]
+                """),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        var resumeInput = Assert.IsType<AgUiAgentResumeInput>(capturedResumeInput);
+        Assert.Equal("Hi", resumeInput.Agent.Get<string>("messages[1].content"));
+        Assert.False(resumeInput.Agent.TryGet<ContextObject>("latestUserMessage", out _));
+        Assert.False(resumeInput.Agent.TryGet<ContextObject>("latestToolResult", out _));
+    }
+
+    [Fact]
+    public async Task AgUi_controller_sets_latest_tool_result_only_when_latest_message_is_tool_result()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+        NodeResumeInput? capturedResumeInput = null;
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .Callback<Guid, string, NodeResumeInput?, ContextEntryListEntity?, bool, string?>((_, _, resumeInput, _, _, _) => capturedResumeInput = resumeInput)
+            .ReturnsAsync(engineRunId);
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                [],
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            Messages = ParseJson("""
+                [
+                  { "id": "user-1", "role": "user", "content": "Hello" },
+                  { "id": "tool-1", "role": "tool", "toolCallId": "call-1", "content": "{\"status\":\"Sunny\",\"temperatureC\":24}" }
+                ]
+                """),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        var resumeInput = Assert.IsType<AgUiAgentResumeInput>(capturedResumeInput);
+        Assert.Equal("{\"status\":\"Sunny\",\"temperatureC\":24}", resumeInput.Agent.Get<string>("latestToolResult.content"));
+        Assert.Equal("Sunny", resumeInput.Agent.Get<string>("latestToolResult.value.status"));
+        Assert.Equal(24, resumeInput.Agent.Get<int>("latestToolResult.value.temperatureC"));
+        Assert.Equal("call-1", resumeInput.Agent.Get<string>("latestToolResult.toolCallId"));
+        Assert.Equal("{\"status\":\"Sunny\",\"temperatureC\":24}", resumeInput.Agent.Get<string>("messages[1].content"));
+        Assert.False(resumeInput.Agent.TryGet<ContextObject>("latestUserMessage", out _));
+    }
+
+    [Fact]
+    public async Task AgUi_controller_keeps_empty_latest_tool_result_content_as_string()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+        NodeResumeInput? capturedResumeInput = null;
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .Callback<Guid, string, NodeResumeInput?, ContextEntryListEntity?, bool, string?>((_, _, resumeInput, _, _, _) => capturedResumeInput = resumeInput)
+            .ReturnsAsync(engineRunId);
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                [],
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            Messages = ParseJson("""
+                [
+                  { "id": "tool-1", "role": "tool", "toolCallId": "call-1", "content": "" }
+                ]
+                """),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        var resumeInput = Assert.IsType<AgUiAgentResumeInput>(capturedResumeInput);
+        Assert.Equal(string.Empty, resumeInput.Agent.Get<string>("latestToolResult.content"));
+        Assert.False(resumeInput.Agent.TryGet<ContextObject>("latestToolResult.value", out _));
+        Assert.Equal(string.Empty, resumeInput.Agent.Get<string>("messages[0].content"));
+    }
+
+    [Fact]
     public async Task AgUi_controller_maps_reasoning_stream_events_to_protocol_events()
     {
         var engineRunId = Guid.NewGuid();

@@ -48,6 +48,49 @@ await Events.AddTextMessageAsync(
 );
 ```
 
+The same helper surface also supports reasoning and tool-call lifecycles.
+For example, this emits a complete visible reasoning message:
+
+```csharp
+await Events.AddReasoningMessageAsync("reason-1", "Thinking about the next step");
+```
+
+If you need the full reasoning lifecycle yourself, use the lower-level helpers:
+
+```csharp
+await Events.AddReasoningStartAsync("reason-1");
+await Events.AddReasoningMessageStartAsync("reason-1");
+await Events.AddReasoningMessageContentAsync("reason-1", "Thinking about the next step");
+await Events.AddReasoningMessageEndAsync("reason-1");
+await Events.AddReasoningEndAsync("reason-1");
+```
+
+Tool calls are also supported.
+For example, this emits a tool call for the frontend to handle and return later:
+
+```csharp
+await Events.AddToolCallAsync(
+    "call-1",
+    "lookup_weather",
+    "{\"city\":\"Sydney\"}",
+    "assistant-1"
+);
+```
+
+If your workflow already has the tool result, emit the full lifecycle in one call:
+
+```csharp
+await Events.AddToolCallWithResultAsync(
+    "call-1",
+    "lookup_weather",
+    "{\"city\":\"Sydney\"}",
+    "tool-result-1",
+    "Sunny",
+    "assistant-1",
+    silent: true
+);
+```
+
 ## Implicit Assemblies
 
 The following using statements are implicitly already applied:

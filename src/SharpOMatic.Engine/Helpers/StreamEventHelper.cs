@@ -205,6 +205,158 @@ public class StreamEventHelper
         );
     }
 
+    public Task<List<StreamEvent>> AddToolCallStartAsync(string toolCallId, string toolName, string? parentMessageId = null, string? metadata = null, bool silent = false)
+    {
+        toolCallId = RequireToolCallId(toolCallId);
+
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ToolCallStart,
+                MessageId = toolCallId,
+                ToolCallId = toolCallId,
+                TextDelta = RequireNonEmpty(toolName, "Tool call name cannot be empty or whitespace."),
+                ParentMessageId = NormalizeOptionalId(parentMessageId),
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
+    public Task<List<StreamEvent>> AddToolCallArgsAsync(string toolCallId, string args, string? metadata = null, bool silent = false)
+    {
+        toolCallId = RequireToolCallId(toolCallId);
+
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ToolCallArgs,
+                MessageId = toolCallId,
+                ToolCallId = toolCallId,
+                TextDelta = RequireNonEmpty(args, "Tool call args cannot be empty or whitespace."),
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
+    public Task<List<StreamEvent>> AddToolCallEndAsync(string toolCallId, string? metadata = null, bool silent = false)
+    {
+        toolCallId = RequireToolCallId(toolCallId);
+
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ToolCallEnd,
+                MessageId = toolCallId,
+                ToolCallId = toolCallId,
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
+    public Task<List<StreamEvent>> AddToolCallResultAsync(string resultMessageId, string toolCallId, string result, string? metadata = null, bool silent = false)
+    {
+        if (result is null)
+            throw new SharpOMaticException("Tool call result cannot be null.");
+
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ToolCallResult,
+                MessageId = RequireToolResultMessageId(resultMessageId),
+                ToolCallId = RequireToolCallId(toolCallId),
+                TextDelta = result,
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
+    public async Task AddToolCallAsync(string toolCallId, string toolName, string args, string? parentMessageId = null, string? metadata = null, bool silent = false)
+    {
+        toolCallId = RequireToolCallId(toolCallId);
+
+        await AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ToolCallStart,
+                MessageId = toolCallId,
+                ToolCallId = toolCallId,
+                TextDelta = RequireNonEmpty(toolName, "Tool call name cannot be empty or whitespace."),
+                ParentMessageId = NormalizeOptionalId(parentMessageId),
+                Metadata = metadata,
+                Silent = silent,
+            },
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ToolCallArgs,
+                MessageId = toolCallId,
+                ToolCallId = toolCallId,
+                TextDelta = RequireNonEmpty(args, "Tool call args cannot be empty or whitespace."),
+                Metadata = metadata,
+                Silent = silent,
+            },
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ToolCallEnd,
+                MessageId = toolCallId,
+                ToolCallId = toolCallId,
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
+    public async Task AddToolCallWithResultAsync(string toolCallId, string toolName, string args, string resultMessageId, string result, string? parentMessageId = null, string? metadata = null, bool silent = false)
+    {
+        if (result is null)
+            throw new SharpOMaticException("Tool call result cannot be null.");
+
+        toolCallId = RequireToolCallId(toolCallId);
+        resultMessageId = RequireToolResultMessageId(resultMessageId);
+
+        await AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ToolCallStart,
+                MessageId = toolCallId,
+                ToolCallId = toolCallId,
+                TextDelta = RequireNonEmpty(toolName, "Tool call name cannot be empty or whitespace."),
+                ParentMessageId = NormalizeOptionalId(parentMessageId),
+                Metadata = metadata,
+                Silent = silent,
+            },
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ToolCallArgs,
+                MessageId = toolCallId,
+                ToolCallId = toolCallId,
+                TextDelta = RequireNonEmpty(args, "Tool call args cannot be empty or whitespace."),
+                Metadata = metadata,
+                Silent = silent,
+            },
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ToolCallEnd,
+                MessageId = toolCallId,
+                ToolCallId = toolCallId,
+                Metadata = metadata,
+                Silent = silent,
+            },
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ToolCallResult,
+                MessageId = resultMessageId,
+                ToolCallId = toolCallId,
+                TextDelta = result,
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
     private Task<List<StreamEvent>> AddEventsAsync(params StreamEventWrite[] events)
     {
         return _processContext.AppendStreamEvents(events);
@@ -216,5 +368,34 @@ public class StreamEventHelper
             throw new SharpOMaticException("MessageId must be a non-empty string.");
 
         return messageId;
+    }
+
+    private static string RequireToolCallId(string toolCallId)
+    {
+        if (string.IsNullOrWhiteSpace(toolCallId))
+            throw new SharpOMaticException("ToolCallId must be a non-empty string.");
+
+        return toolCallId;
+    }
+
+    private static string RequireToolResultMessageId(string resultMessageId)
+    {
+        if (string.IsNullOrWhiteSpace(resultMessageId))
+            throw new SharpOMaticException("Tool call result message id must be a non-empty string.");
+
+        return resultMessageId;
+    }
+
+    private static string RequireNonEmpty(string value, string message)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            throw new SharpOMaticException(message);
+
+        return value;
+    }
+
+    private static string? NormalizeOptionalId(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 }

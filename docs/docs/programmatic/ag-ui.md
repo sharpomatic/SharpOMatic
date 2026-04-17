@@ -113,13 +113,16 @@ Because conversation identifiers are strings, your AG-UI client can use any stab
 The AG-UI controller does not dump the entire request into workflow context.
 Instead it maps a focused subset into `agent`:
 
-- `agent.latestUserMessage`: the last message in `messages` whose `role` is `user`
-- `agent.allMessages`: the full incoming `messages` array
+- `agent.latestUserMessage`: the final item in `messages`, but only when that item is a user text message
+- `agent.latestToolResult`: the final item in `messages`, but only when that item is a tool result message. Its `content` stays as the original string, and if that string is non-empty JSON then SharpOMatic also stores the parsed payload in `agent.latestToolResult.value`.
+- `agent.messages`: the full incoming `messages` array
 - `agent.state`: the incoming AG-UI `state`
 - `agent.context`: the incoming AG-UI `context`
 
 These values are preserved as structured JSON-compatible data.
 For example, `agent.state` remains an object or array tree inside SharpOMatic context rather than becoming one large JSON string.
+On each AG-UI start or resume, SharpOMatic only updates `agent`.
+If `agent` already exists in workflow context, the incoming AG-UI `agent` object replaces it entirely.
 
 ## SSE behavior
 
@@ -157,3 +160,30 @@ await Events.AddTextMessageAsync(StreamMessageRole.User, messageId, text, silent
 
 The `silent` flag only affects the live AG-UI SSE output for the current run.
 The stored run or conversation stream history still contains the event, and no persisted stream-event field is added for the flag.
+
+## Emitting tool calls from code nodes
+
+Code nodes can also publish tool-call stream events directly.
+Use `AddToolCallAsync` when the frontend should execute the tool and return the result later:
+
+```csharp
+await Events.AddToolCallAsync(
+    "call-1",
+    "lookup_weather",
+    "{\"city\":\"Sydney\"}",
+    "assistant-1"
+);
+```
+
+Use `AddToolCallWithResultAsync` when the workflow already knows the result and should emit the full lifecycle immediately:
+
+```csharp
+await Events.AddToolCallWithResultAsync(
+    "call-1",
+    "lookup_weather",
+    "{\"city\":\"Sydney\"}",
+    "tool-result-1",
+    "Sunny",
+    "assistant-1"
+);
+```

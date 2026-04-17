@@ -140,6 +140,55 @@ public sealed class SuspendNodeUnitTests
     }
 
     [Fact]
+    public async Task Conversation_start_can_apply_agui_agent_resume_input()
+    {
+        var workflow = new WorkflowBuilder()
+            .EnableConversations()
+            .AddStart()
+            .AddCode("code", """
+                Context.Set<string>("output.userMessage", Context.Get<string>("agent.latestUserMessage.content"));
+                Context.Set<string>("output.mode", Context.Get<string>("agent.state.mode"));
+                Context.Set<string>("output.contextId", Context.Get<string>("agent.context[0].id"));
+                """)
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+
+            var run = await engineService.StartOrResumeConversationAndWait(workflow.Id, NewConversationId(), CreateAgUiAgentResumeInput(
+                ("latestUserMessage.content", "hello"),
+                ("state.mode", "assistant"),
+                ("context[0].id", "ctx-1")
+            ));
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
+            var output = ContextObject.Deserialize(run.OutputContext, jsonConverters.GetConverters());
+            Assert.Equal("hello", output.Get<string>("output.userMessage"));
+            Assert.Equal("assistant", output.Get<string>("output.mode"));
+            Assert.Equal("ctx-1", output.Get<string>("output.contextId"));
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
     public async Task Conversation_can_start_synchronously()
     {
         var workflow = new WorkflowBuilder()
@@ -478,6 +527,71 @@ public sealed class SuspendNodeUnitTests
     }
 
     [Fact]
+    public async Task Suspend_resume_with_agui_agent_input_overwrites_existing_agent_context()
+    {
+        var workflow = new WorkflowBuilder()
+            .EnableConversations()
+            .AddStart()
+            .AddCode("setup", """
+                Context.Set<string>("agent.latestUserMessage.id", "user-1");
+                Context.Set<string>("agent.latestUserMessage.content", "before");
+                Context.Set<string>("agent.state.keep", "existing");
+                Context.Set<string>("agent.context.old", "value");
+                """)
+            .AddSuspend("ask")
+            .AddCode("after", """
+                Context.Set<string>("output.messageContent", Context.Get<string>("agent.latestUserMessage.content"));
+                Context.Set<string>("output.newValue", Context.Get<string>("agent.state.newValue"));
+                Context.Set<bool>("output.hasMessageId", Context.TryGet<string>("agent.latestUserMessage.id", out _));
+                Context.Set<bool>("output.hasKeep", Context.TryGet<string>("agent.state.keep", out _));
+                Context.Set<bool>("output.hasOldContext", Context.TryGet<string>("agent.context.old", out _));
+                """)
+            .AddEnd()
+            .Connect("start", "setup")
+            .Connect("setup", "ask")
+            .Connect("ask", "after")
+            .Connect("after", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+        var conversationId = NewConversationId();
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+
+            var firstTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId);
+            Assert.Equal(RunStatus.Suspended, firstTurn.RunStatus);
+
+            var secondTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId, CreateAgUiAgentResumeInput(
+                ("latestUserMessage.content", "after"),
+                ("state.newValue", "fresh")
+            ));
+            Assert.Equal(RunStatus.Success, secondTurn.RunStatus);
+
+            var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
+            var output = ContextObject.Deserialize(secondTurn.OutputContext, jsonConverters.GetConverters());
+            Assert.Equal("after", output.Get<string>("output.messageContent"));
+            Assert.Equal("fresh", output.Get<string>("output.newValue"));
+            Assert.False(output.Get<bool>("output.hasMessageId"));
+            Assert.False(output.Get<bool>("output.hasKeep"));
+            Assert.False(output.Get<bool>("output.hasOldContext"));
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
     public async Task Conversation_requires_enabled_workflow()
     {
         var workflow = new WorkflowBuilder().AddStart().AddEnd().Connect("start", "end").Build();
@@ -762,6 +876,18 @@ public sealed class SuspendNodeUnitTests
             throw new InvalidOperationException($"Could not set '{path}' into test resume context.");
 
         return new ContextMergeResumeInput() { Context = context };
+    }
+
+    private static AgUiAgentResumeInput CreateAgUiAgentResumeInput(params (string Path, object? Value)[] values)
+    {
+        ContextObject agent = [];
+        foreach (var (path, value) in values)
+        {
+            if (!agent.TrySet(path, value))
+                throw new InvalidOperationException($"Could not set '{path}' into test AG-UI agent resume context.");
+        }
+
+        return new AgUiAgentResumeInput() { Agent = agent };
     }
 
     private static string NewConversationId()
