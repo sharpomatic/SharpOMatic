@@ -4,9 +4,10 @@
 
 ### Agent
 
-- Endpoint for returning history of messages for existing conversation
 - Implement full state messages and then delta change messages
-- Investigate the custom message
+- Special handling of state, use the existing agent.state and either overwrite for a full state set or path it a delta given
+
+- Endpoint for returning history of messages for existing conversation- Investigate the custom message
 
 ### Output Stream
 
