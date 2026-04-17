@@ -35,6 +35,9 @@ These events are persisted to run or conversation stream history and can be cons
 await Events.AddTextMessageAsync(StreamMessageRole.Assistant, "message-1", "Hello from the workflow");
 ```
 
+Text stream helpers support `StreamMessageRole.User`, `Assistant`, `Developer`, `System`, and `Tool`.
+Visible reasoning uses the dedicated reasoning helpers rather than `AddTextMessageAsync`.
+
 All `Events.Add*` helpers now accept an optional `silent` flag.
 Set `silent: true` when the event should still be recorded in SharpOMatic stream history but should be suppressed from AG-UI live SSE output.
 This flag is transient and is not stored in the database.

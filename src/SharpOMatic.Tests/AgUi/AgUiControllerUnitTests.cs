@@ -358,6 +358,129 @@ public sealed class AgUiControllerUnitTests
     }
 
     [Fact]
+    public async Task AgUi_controller_maps_developer_and_tool_text_roles_to_protocol_events()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        var streamEvents = new List<StreamEvent>()
+        {
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 1,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextStart,
+                MessageId = "developer-1",
+                MessageRole = StreamMessageRole.Developer,
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 2,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextContent,
+                MessageId = "developer-1",
+                TextDelta = "Developer note",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 3,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextEnd,
+                MessageId = "developer-1",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 4,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextStart,
+                MessageId = "tool-1",
+                MessageRole = StreamMessageRole.Tool,
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 5,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextContent,
+                MessageId = "tool-1",
+                TextDelta = "Tool text",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 6,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextEnd,
+                MessageId = "tool-1",
+            },
+        };
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                streamEvents,
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        httpContext.Response.Body.Position = 0;
+        var payload = Encoding.UTF8.GetString(((MemoryStream)httpContext.Response.Body).ToArray());
+
+        Assert.Contains("\"type\":\"TEXT_MESSAGE_START\",\"messageId\":\"developer-1\",\"role\":\"developer\"", payload);
+        Assert.Contains("\"type\":\"TEXT_MESSAGE_START\",\"messageId\":\"tool-1\",\"role\":\"tool\"", payload);
+        Assert.Contains("RUN_FINISHED", payload);
+    }
+
+    [Fact]
     public async Task AgUi_controller_namespaces_reasoning_message_ids_so_assistant_text_does_not_collide()
     {
         var engineRunId = Guid.NewGuid();

@@ -3,6 +3,13 @@
   height: 100%;
 }
 
+$stream-role-user: #0d6efd;
+$stream-role-assistant: #198754;
+$stream-role-developer: #6f42c1;
+$stream-role-system: #6c757d;
+$stream-role-tool: #0dcaf0;
+$stream-role-reasoning: SlateBlue;
+
 .stream-viewer {
   min-height: 0;
 }
@@ -82,22 +89,32 @@
 .role-badge {
   &.user {
     color: white;
-    background-color: #0d6efd;
+    background-color: $stream-role-user;
   }
 
   &.assistant {
     color: white;
-    background-color: #198754;
+    background-color: $stream-role-assistant;
+  }
+
+  &.developer {
+    color: white;
+    background-color: $stream-role-developer;
   }
 
   &.system {
     color: white;
-    background-color: #6c757d;
+    background-color: $stream-role-system;
+  }
+
+  &.tool {
+    color: #052c38;
+    background-color: $stream-role-tool;
   }
 
   &.reasoning {
     color: white;
-    background-color: SlateBlue;
+    background-color: $stream-role-reasoning;
   }
 }
 
@@ -119,42 +136,52 @@
 
   &.assistant-text {
     color: white;
-    background-color: #198754;
+    background-color: $stream-role-assistant;
   }
 
   &.user-text {
     color: white;
-    background-color: #0d6efd;
+    background-color: $stream-role-user;
+  }
+
+  &.developer-text {
+    color: white;
+    background-color: $stream-role-developer;
   }
 
   &.system-text {
     color: white;
-    background-color: #6c757d;
+    background-color: $stream-role-system;
+  }
+
+  &.tool-text {
+    color: #052c38;
+    background-color: $stream-role-tool;
   }
 
   &.reasoning-start {
     color: white;
-    background-color: SlateBlue;
+    background-color: $stream-role-reasoning;
   }
 
   &.reasoning-message-start {
     color: white;
-    background-color: SlateBlue;
+    background-color: $stream-role-reasoning;
   }
 
   &.reasoning-message-content {
     color: white;
-    background-color: SlateBlue;
+    background-color: $stream-role-reasoning;
   }
 
   &.reasoning-message-end {
     color: white;
-    background-color: SlateBlue;
+    background-color: $stream-role-reasoning;
   }
 
   &.reasoning-end {
     color: white;
-    background-color: SlateBlue;
+    background-color: $stream-role-reasoning;
   }
 
   &.tool-call-start {

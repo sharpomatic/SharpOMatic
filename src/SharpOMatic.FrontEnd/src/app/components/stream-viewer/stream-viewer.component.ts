@@ -80,6 +80,14 @@ export class StreamViewerComponent {
     return this.getTextEventRole(streamEvent) === StreamMessageRole.System;
   }
 
+  public isDeveloperTextEvent(streamEvent: StreamEventModel): boolean {
+    return this.getTextEventRole(streamEvent) === StreamMessageRole.Developer;
+  }
+
+  public isToolTextEvent(streamEvent: StreamEventModel): boolean {
+    return this.getTextEventRole(streamEvent) === StreamMessageRole.Tool;
+  }
+
   public getRoleLabel(role?: StreamMessageRole | null): string {
     if (role === null || role === undefined) {
       return '';
@@ -94,6 +102,10 @@ export class StreamViewerComponent {
         return 'System';
       case StreamMessageRole.Reasoning:
         return 'Reasoning';
+      case StreamMessageRole.Developer:
+        return 'Developer';
+      case StreamMessageRole.Tool:
+        return 'Tool';
       default:
         return 'Unknown';
     }

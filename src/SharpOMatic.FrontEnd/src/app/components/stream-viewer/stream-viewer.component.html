@@ -21,7 +21,11 @@
                 [class.assistant]="
                   streamEvent.messageRole === StreamMessageRole.Assistant
                 "
+                [class.developer]="
+                  streamEvent.messageRole === StreamMessageRole.Developer
+                "
                 [class.system]="streamEvent.messageRole === StreamMessageRole.System"
+                [class.tool]="streamEvent.messageRole === StreamMessageRole.Tool"
                 [class.reasoning]="
                   streamEvent.messageRole === StreamMessageRole.Reasoning
                 "
@@ -40,7 +44,9 @@
               [class.text-end]="streamEvent.eventKind === StreamEventKind.TextEnd"
               [class.assistant-text]="isAssistantTextEvent(streamEvent)"
               [class.user-text]="isUserTextEvent(streamEvent)"
+              [class.developer-text]="isDeveloperTextEvent(streamEvent)"
               [class.system-text]="isSystemTextEvent(streamEvent)"
+              [class.tool-text]="isToolTextEvent(streamEvent)"
               [class.reasoning-start]="
                 streamEvent.eventKind === StreamEventKind.ReasoningStart
               "

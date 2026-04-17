@@ -375,7 +375,9 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         return role switch
         {
             StreamMessageRole.User => "user",
+            StreamMessageRole.Developer => "developer",
             StreamMessageRole.System => "system",
+            StreamMessageRole.Tool => "tool",
             StreamMessageRole.Reasoning => "reasoning",
             _ => "assistant",
         };
