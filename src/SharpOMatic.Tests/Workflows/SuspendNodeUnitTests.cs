@@ -880,14 +880,139 @@ public sealed class SuspendNodeUnitTests
 
     private static AgUiAgentResumeInput CreateAgUiAgentResumeInput(params (string Path, object? Value)[] values)
     {
-        ContextObject agent = [];
+        var agentJson = new System.Text.Json.Nodes.JsonObject();
         foreach (var (path, value) in values)
         {
-            if (!agent.TrySet(path, value))
-                throw new InvalidOperationException($"Could not set '{path}' into test AG-UI agent resume context.");
+            SetJsonPath(agentJson, path, value);
         }
 
+        var agent = ContextHelpers.FastDeserializeString(agentJson.ToJsonString()) as ContextObject
+            ?? throw new InvalidOperationException("Could not convert test AG-UI payload into a ContextObject.");
+
         return new AgUiAgentResumeInput() { Agent = agent };
+    }
+
+    private static void SetJsonPath(System.Text.Json.Nodes.JsonObject root, string path, object? value)
+    {
+        var segments = ParsePath(path);
+        System.Text.Json.Nodes.JsonNode current = root;
+
+        for (var i = 0; i < segments.Count - 1; i++)
+        {
+            var segment = segments[i];
+            var next = segments[i + 1];
+
+            if (segment.PropertyName is not null)
+            {
+                var obj = current as System.Text.Json.Nodes.JsonObject
+                    ?? throw new InvalidOperationException($"Path '{path}' expected an object segment.");
+
+                if (!obj.TryGetPropertyValue(segment.PropertyName, out var child) || child is null)
+                {
+                    child = next.PropertyName is null
+                        ? new System.Text.Json.Nodes.JsonArray()
+                        : new System.Text.Json.Nodes.JsonObject();
+                    obj[segment.PropertyName] = child;
+                }
+
+                current = child;
+                continue;
+            }
+
+            var array = current as System.Text.Json.Nodes.JsonArray
+                ?? throw new InvalidOperationException($"Path '{path}' expected an array segment.");
+
+            while (array.Count <= segment.Index)
+                array.Add(null);
+
+            var arrayChild = array[segment.Index];
+            if (arrayChild is null)
+            {
+                arrayChild = next.PropertyName is null
+                    ? new System.Text.Json.Nodes.JsonArray()
+                    : new System.Text.Json.Nodes.JsonObject();
+                array[segment.Index] = arrayChild;
+            }
+
+            current = arrayChild;
+        }
+
+        var last = segments[^1];
+        var valueNode = System.Text.Json.JsonSerializer.SerializeToNode(value);
+        if (last.PropertyName is not null)
+        {
+            var obj = current as System.Text.Json.Nodes.JsonObject
+                ?? throw new InvalidOperationException($"Path '{path}' expected an object value target.");
+            obj[last.PropertyName] = valueNode;
+            return;
+        }
+
+        var targetArray = current as System.Text.Json.Nodes.JsonArray
+            ?? throw new InvalidOperationException($"Path '{path}' expected an array value target.");
+
+        while (targetArray.Count <= last.Index)
+            targetArray.Add(null);
+
+        targetArray[last.Index] = valueNode;
+    }
+
+    private static List<(string? PropertyName, int Index)> ParsePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new InvalidOperationException("AG-UI test path cannot be empty.");
+
+        List<(string? PropertyName, int Index)> segments = [];
+        var buffer = new System.Text.StringBuilder();
+
+        for (var i = 0; i < path.Length; i++)
+        {
+            var c = path[i];
+            if (c == '.')
+            {
+                if (buffer.Length == 0)
+                {
+                    if (i > 0 && path[i - 1] == ']')
+                        continue;
+
+                    throw new InvalidOperationException($"AG-UI test path '{path}' is invalid.");
+                }
+
+                segments.Add((buffer.ToString(), -1));
+                buffer.Clear();
+                continue;
+            }
+
+            if (c == '[')
+            {
+                if (buffer.Length > 0)
+                {
+                    segments.Add((buffer.ToString(), -1));
+                    buffer.Clear();
+                }
+
+                var endBracket = path.IndexOf(']', i + 1);
+                if (endBracket < 0)
+                    throw new InvalidOperationException($"AG-UI test path '{path}' is invalid.");
+
+                var indexText = path[(i + 1)..endBracket];
+                if (!int.TryParse(indexText, out var index))
+                    throw new InvalidOperationException($"AG-UI test path '{path}' has an invalid index.");
+
+                segments.Add((null, index));
+                i = endBracket;
+                continue;
+            }
+
+            buffer.Append(c);
+        }
+
+        if (buffer.Length > 0)
+            segments.Add((buffer.ToString(), -1));
+
+        if (segments.Count == 0)
+            throw new InvalidOperationException($"AG-UI test path '{path}' is invalid.");
+
+        return segments;
     }
 
     private static string NewConversationId()
