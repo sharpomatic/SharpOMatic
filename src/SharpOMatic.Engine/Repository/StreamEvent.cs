@@ -16,6 +16,8 @@ public class StreamEvent
     public required StreamEventKind EventKind { get; set; }
     public string? MessageId { get; set; }
     public StreamMessageRole? MessageRole { get; set; }
+    public string? ActivityType { get; set; }
+    public bool? Replace { get; set; }
     public string? TextDelta { get; set; }
     public string? ToolCallId { get; set; }
     public string? ParentMessageId { get; set; }

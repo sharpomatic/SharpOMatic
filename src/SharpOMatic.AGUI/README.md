@@ -41,14 +41,17 @@ The endpoint starts or resumes the matching SharpOMatic conversation workflow an
 SharpOMatic translates workflow stream events into AG-UI SSE events:
 
 - `TEXT_MESSAGE_START`, `TEXT_MESSAGE_CONTENT`, `TEXT_MESSAGE_END`
+- `STEP_STARTED`, `STEP_FINISHED`
 - `REASONING_START`, `REASONING_MESSAGE_START`, `REASONING_MESSAGE_CONTENT`, `REASONING_MESSAGE_END`, `REASONING_END`
 - `TOOL_CALL_START`, `TOOL_CALL_ARGS`, `TOOL_CALL_END`, `TOOL_CALL_RESULT`
+- `ACTIVITY_SNAPSHOT`, `ACTIVITY_DELTA`
 - `RUN_STARTED`, `RUN_FINISHED`, `RUN_ERROR`
 
 `TOOL_CALL_RESULT` preserves both the result `messageId` and the linked `toolCallId`.
 `TOOL_CALL_START` includes the tool name and can include `parentMessageId` when the model output supplies it.
 Reasoning events use AG-UI-specific `messageId` values prefixed with `reason:` so they do not collide with assistant text messages when a model/provider reuses one response id for both.
 Tool result messages use AG-UI-specific `messageId` values prefixed with `tool:` so tool messages stay distinct too, while the linked `toolCallId` remains unchanged.
+Activity messages use AG-UI-specific `messageId` values prefixed with `activity:` so activity updates stay distinct from assistant, reasoning, and tool messages.
 When batch-mode model calls are replayed without provider message ids, SharpOMatic synthesizes separate assistant `messageId` values for each distinct assistant text lifecycle and seeds them from the stream sequence so they remain unique across conversation turns.
 Code-node stream-event helpers can mark events as `silent`, which keeps them in SharpOMatic stream history while suppressing their live AG-UI SSE emission.
 
@@ -117,3 +120,27 @@ await Events.AddTextMessageAsync(StreamMessageRole.User, messageId, text, silent
 
 The `silent` flag only affects the current live AG-UI SSE stream.
 The underlying stream event is still persisted in SharpOMatic history, and the flag itself is not stored in the database.
+
+Code nodes can also emit AG-UI activity messages directly:
+
+```csharp
+await Events.AddActivitySnapshotAsync(
+    "plan-1",
+    "PLAN",
+    new { steps = new[] { new { title = "Search", status = "in_progress" } } },
+    replace: false
+);
+
+await Events.AddActivityDeltaAsync(
+    "plan-1",
+    "PLAN",
+    new object[] { new { op = "replace", path = "/steps/0/status", value = "done" } }
+);
+```
+
+They can also emit AG-UI step lifecycle events directly. The `stepName` is persisted in SharpOMatic stream history using `TextDelta` and replayed as AG-UI step events:
+
+```csharp
+await Events.AddStepStartAsync("Search");
+await Events.AddStepEndAsync("Search");
+```

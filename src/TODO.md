@@ -4,13 +4,9 @@
 
 ### Agent
 
-- Endpoint for returning history of messages for existing conversation
-
 - Implement full state messages and then delta change messages
+- Endpoint for returning history of messages for existing conversation
 - Special handling of state, use the existing agent state and either overwrite for a full state set or path it a delta given
-
-- Implement activity updates
-- Implement step start end messages
 - Investigate the compacting down to a message snapshot.
 
 ### Output Stream

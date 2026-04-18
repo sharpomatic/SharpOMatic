@@ -11,4 +11,8 @@ export enum StreamEventKind {
   ToolCallArgs = 9,
   ToolCallEnd = 10,
   ToolCallResult = 11,
+  ActivitySnapshot = 12,
+  ActivityDelta = 13,
+  StepStart = 14,
+  StepEnd = 15,
 }

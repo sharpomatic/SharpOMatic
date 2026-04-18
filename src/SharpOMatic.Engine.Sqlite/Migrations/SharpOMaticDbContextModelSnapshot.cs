@@ -740,6 +740,9 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<int>("EventKind")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ActivityType")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("MessageId")
                         .HasColumnType("TEXT");
 
@@ -754,6 +757,9 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 
                     b.Property<Guid>("RunId")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool?>("Replace")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("SequenceNumber")
                         .HasColumnType("INTEGER");

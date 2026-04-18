@@ -3,10 +3,12 @@ namespace SharpOMatic.Engine.Helpers;
 public class StreamEventHelper
 {
     private readonly ProcessContext _processContext;
+    private readonly JsonSerializerOptions _jsonOptions;
 
     public StreamEventHelper(ProcessContext processContext)
     {
         _processContext = processContext ?? throw new ArgumentNullException(nameof(processContext));
+        _jsonOptions = new JsonSerializerOptions().BuildOptions(_processContext.JsonConverters);
     }
 
     public Task<List<StreamEvent>> AddTextStartAsync(StreamMessageRole role, string messageId, string? metadata = null, bool silent = false)
@@ -357,6 +359,67 @@ public class StreamEventHelper
         );
     }
 
+    public Task<List<StreamEvent>> AddActivitySnapshotAsync(string messageId, string activityType, object content, bool? replace = null, string? metadata = null, bool silent = false)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ActivitySnapshot,
+                MessageId = RequireMessageId(messageId),
+                ActivityType = RequireActivityType(activityType),
+                Replace = replace,
+                TextDelta = SerializeJsonPayload(content, "Activity snapshot content must be JSON serializable."),
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
+    public Task<List<StreamEvent>> AddActivityDeltaAsync(string messageId, string activityType, object patch, string? metadata = null, bool silent = false)
+    {
+        ArgumentNullException.ThrowIfNull(patch);
+
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ActivityDelta,
+                MessageId = RequireMessageId(messageId),
+                ActivityType = RequireActivityType(activityType),
+                TextDelta = SerializeJsonPayload(patch, "Activity delta patch must be JSON serializable."),
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
+    public Task<List<StreamEvent>> AddStepStartAsync(string stepName, string? metadata = null, bool silent = false)
+    {
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.StepStart,
+                TextDelta = RequireStepName(stepName),
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
+    public Task<List<StreamEvent>> AddStepEndAsync(string stepName, string? metadata = null, bool silent = false)
+    {
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.StepEnd,
+                TextDelta = RequireStepName(stepName),
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
     private Task<List<StreamEvent>> AddEventsAsync(params StreamEventWrite[] events)
     {
         return _processContext.AppendStreamEvents(events);
@@ -386,6 +449,22 @@ public class StreamEventHelper
         return resultMessageId;
     }
 
+    private static string RequireActivityType(string activityType)
+    {
+        if (string.IsNullOrWhiteSpace(activityType))
+            throw new SharpOMaticException("ActivityType must be a non-empty string.");
+
+        return activityType;
+    }
+
+    private static string RequireStepName(string stepName)
+    {
+        if (string.IsNullOrWhiteSpace(stepName))
+            throw new SharpOMaticException("Step name must be a non-empty string.");
+
+        return stepName;
+    }
+
     private static string RequireNonEmpty(string value, string message)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -397,5 +476,17 @@ public class StreamEventHelper
     private static string? NormalizeOptionalId(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private string SerializeJsonPayload(object payload, string errorMessage)
+    {
+        try
+        {
+            return JsonSerializer.Serialize(payload, _jsonOptions);
+        }
+        catch
+        {
+            throw new SharpOMaticException(errorMessage);
+        }
     }
 }

@@ -94,6 +94,35 @@ await Events.AddToolCallWithResultAsync(
 );
 ```
 
+Activity messages are also supported for AG-UI-compatible frontends.
+Use a snapshot to publish the current activity payload:
+
+```csharp
+await Events.AddActivitySnapshotAsync(
+    "plan-1",
+    "PLAN",
+    new { steps = new[] { new { title = "Search", status = "in_progress" } } },
+    replace: false
+);
+```
+
+Use a delta to apply RFC 6902 JSON Patch updates to an existing activity:
+
+```csharp
+await Events.AddActivityDeltaAsync(
+    "plan-1",
+    "PLAN",
+    new object[] { new { op = "replace", path = "/steps/0/status", value = "done" } }
+);
+```
+
+If the frontend only needs a simple progress phase marker, emit AG-UI-compatible step lifecycle events:
+
+```csharp
+await Events.AddStepStartAsync("Search");
+await Events.AddStepEndAsync("Search");
+```
+
 ## Implicit Assemblies
 
 The following using statements are implicitly already applied:

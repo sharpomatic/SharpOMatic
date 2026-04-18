@@ -63,9 +63,32 @@ export class StreamViewerComponent {
         return 'Tool Call End';
       case StreamEventKind.ToolCallResult:
         return 'Tool Call Result';
+      case StreamEventKind.ActivitySnapshot:
+        return 'Activity Snapshot';
+      case StreamEventKind.ActivityDelta:
+        return 'Activity Delta';
+      case StreamEventKind.StepStart:
+        return 'Step Start';
+      case StreamEventKind.StepEnd:
+        return 'Step End';
       default:
         return 'Unknown';
     }
+  }
+
+  public isStepEvent(streamEvent: StreamEventModel): boolean {
+    return (
+      streamEvent.eventKind === StreamEventKind.StepStart ||
+      streamEvent.eventKind === StreamEventKind.StepEnd
+    );
+  }
+
+  public isActivitySnapshotEvent(streamEvent: StreamEventModel): boolean {
+    return streamEvent.eventKind === StreamEventKind.ActivitySnapshot;
+  }
+
+  public isActivityDeltaEvent(streamEvent: StreamEventModel): boolean {
+    return streamEvent.eventKind === StreamEventKind.ActivityDelta;
   }
 
   public isAssistantTextEvent(streamEvent: StreamEventModel): boolean {

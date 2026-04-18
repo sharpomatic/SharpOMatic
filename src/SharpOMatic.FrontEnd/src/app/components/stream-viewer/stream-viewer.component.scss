@@ -9,6 +9,8 @@ $stream-role-developer: #c16f42;
 $stream-role-system: #6c757d;
 $stream-role-tool: #0dcaf0;
 $stream-role-reasoning: SlateBlue;
+$stream-role-activity: #c2185b;
+$stream-role-step: #00897b;
 
 .stream-viewer {
   min-height: 0;
@@ -203,6 +205,35 @@ $stream-role-reasoning: SlateBlue;
     color: white;
     background-color: DodgerBlue;
   }
+
+  &.activity-snapshot {
+    color: white;
+    background-color: $stream-role-activity;
+  }
+
+  &.activity-delta {
+    color: white;
+    background-color: $stream-role-activity;
+  }
+
+  &.step-start {
+    color: white;
+    background-color: $stream-role-step;
+  }
+
+  &.step-end {
+    color: white;
+    background-color: $stream-role-step;
+  }
+}
+
+.payload-row + .payload-row {
+  margin-top: 4px;
+}
+
+.payload-label {
+  margin-right: 6px;
+  font-weight: 600;
 }
 
 .payload-value + .payload-value {

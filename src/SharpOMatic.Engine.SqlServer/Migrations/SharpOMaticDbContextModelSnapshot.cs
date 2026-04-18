@@ -746,6 +746,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<int>("EventKind")
                         .HasColumnType("int");
 
+                    b.Property<string>("ActivityType")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("MessageId")
                         .HasColumnType("nvarchar(max)");
 
@@ -760,6 +763,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
                     b.Property<Guid>("RunId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool?>("Replace")
+                        .HasColumnType("bit");
 
                     b.Property<int>("SequenceNumber")
                         .HasColumnType("int");

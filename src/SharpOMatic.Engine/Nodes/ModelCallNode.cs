@@ -679,6 +679,8 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                 EventKind = write.EventKind,
                 MessageId = write.MessageId,
                 MessageRole = write.MessageRole,
+                ActivityType = write.ActivityType,
+                Replace = write.Replace,
                 TextDelta = write.TextDelta,
                 ToolCallId = write.ToolCallId,
                 ParentMessageId = write.ParentMessageId,

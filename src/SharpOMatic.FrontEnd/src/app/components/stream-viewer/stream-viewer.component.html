@@ -74,11 +74,47 @@
               [class.tool-call-result]="
                 streamEvent.eventKind === StreamEventKind.ToolCallResult
               "
+              [class.activity-snapshot]="
+                streamEvent.eventKind === StreamEventKind.ActivitySnapshot
+              "
+              [class.activity-delta]="
+                streamEvent.eventKind === StreamEventKind.ActivityDelta
+              "
+              [class.step-start]="streamEvent.eventKind === StreamEventKind.StepStart"
+              [class.step-end]="streamEvent.eventKind === StreamEventKind.StepEnd"
             >
               {{ getEventKindLabel(streamEvent.eventKind) }}
             </span>
           </span>
           <div class="stream-payload">
+            @if (isStepEvent(streamEvent)) {
+              <div class="payload-row">
+                <span class="payload-value">{{ streamEvent.textDelta || '' }}</span>
+              </div>
+            } @else if (isActivitySnapshotEvent(streamEvent) || isActivityDeltaEvent(streamEvent)) {
+              <div class="payload-row">
+                <span class="payload-label">Activity Type:</span>
+                <span class="payload-value">{{ streamEvent.activityType || '' }}</span>
+                @if (
+                  isActivitySnapshotEvent(streamEvent) &&
+                  streamEvent.replace !== null &&
+                  streamEvent.replace !== undefined
+                ) {
+                  <span class="payload-label">, Replace:</span>
+                  <span class="payload-value">{{ streamEvent.replace }}</span>
+                }
+              </div>
+              @if (isActivitySnapshotEvent(streamEvent) && streamEvent.textDelta) {
+                <div class="payload-row">
+                  <span class="payload-value">{{ streamEvent.textDelta }}</span>
+                </div>
+              }
+              @if (isActivityDeltaEvent(streamEvent) && streamEvent.textDelta) {
+                <div class="payload-row">
+                  <span class="payload-value">{{ streamEvent.textDelta }}</span>
+                </div>
+              }
+            } @else {
             @if (
               streamEvent.textDelta &&
               streamEvent.eventKind !== StreamEventKind.ToolCallStart
@@ -95,6 +131,7 @@
               <span class="payload-value metadata-value">{{
                 streamEvent.metadata
               }}</span>
+            }
             }
           </div>
         </div>

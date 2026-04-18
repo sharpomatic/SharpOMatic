@@ -197,6 +197,8 @@ public class ProcessContext : ExecutionContext
                 EventKind = write.EventKind,
                 MessageId = write.MessageId,
                 MessageRole = write.MessageRole,
+                ActivityType = write.ActivityType,
+                Replace = write.Replace,
                 TextDelta = write.TextDelta,
                 ToolCallId = write.ToolCallId,
                 ParentMessageId = write.ParentMessageId,
@@ -529,9 +531,165 @@ public class ProcessContext : ExecutionContext
                 if (write.TextDelta is null)
                     throw new SharpOMaticException("ToolCallResult stream events require TextDelta.");
                 break;
+            case StreamEventKind.ActivitySnapshot:
+                if (string.IsNullOrWhiteSpace(write.MessageId))
+                    throw new SharpOMaticException("ActivitySnapshot stream events require a MessageId.");
+
+                if (string.IsNullOrWhiteSpace(write.ActivityType))
+                    throw new SharpOMaticException("ActivitySnapshot stream events require an ActivityType.");
+
+                if (write.MessageRole.HasValue)
+                    throw new SharpOMaticException("ActivitySnapshot stream events cannot include a MessageRole.");
+
+                if (!string.IsNullOrWhiteSpace(write.ToolCallId))
+                    throw new SharpOMaticException("ActivitySnapshot stream events cannot include ToolCallId.");
+
+                if (!string.IsNullOrWhiteSpace(write.ParentMessageId))
+                    throw new SharpOMaticException("ActivitySnapshot stream events cannot include ParentMessageId.");
+
+                ValidateActivitySnapshotContent(write.TextDelta);
+                break;
+            case StreamEventKind.ActivityDelta:
+                if (string.IsNullOrWhiteSpace(write.MessageId))
+                    throw new SharpOMaticException("ActivityDelta stream events require a MessageId.");
+
+                if (string.IsNullOrWhiteSpace(write.ActivityType))
+                    throw new SharpOMaticException("ActivityDelta stream events require an ActivityType.");
+
+                if (write.Replace.HasValue)
+                    throw new SharpOMaticException("ActivityDelta stream events cannot include Replace.");
+
+                if (write.MessageRole.HasValue)
+                    throw new SharpOMaticException("ActivityDelta stream events cannot include a MessageRole.");
+
+                if (!string.IsNullOrWhiteSpace(write.ToolCallId))
+                    throw new SharpOMaticException("ActivityDelta stream events cannot include ToolCallId.");
+
+                if (!string.IsNullOrWhiteSpace(write.ParentMessageId))
+                    throw new SharpOMaticException("ActivityDelta stream events cannot include ParentMessageId.");
+
+                ValidateActivityDeltaPatch(write.TextDelta);
+                break;
+            case StreamEventKind.StepStart:
+                ValidateStepEventWrite(write, "StepStart");
+                break;
+            case StreamEventKind.StepEnd:
+                ValidateStepEventWrite(write, "StepEnd");
+                break;
             default:
                 throw new SharpOMaticException($"Unsupported stream event kind '{write.EventKind}'.");
         }
+    }
+
+    private static void ValidateStepEventWrite(StreamEventWrite write, string eventKindName)
+    {
+        if (!string.IsNullOrWhiteSpace(write.MessageId))
+            throw new SharpOMaticException($"{eventKindName} stream events cannot include a MessageId.");
+
+        if (write.MessageRole.HasValue)
+            throw new SharpOMaticException($"{eventKindName} stream events cannot include a MessageRole.");
+
+        if (!string.IsNullOrWhiteSpace(write.ActivityType))
+            throw new SharpOMaticException($"{eventKindName} stream events cannot include ActivityType.");
+
+        if (write.Replace.HasValue)
+            throw new SharpOMaticException($"{eventKindName} stream events cannot include Replace.");
+
+        if (!string.IsNullOrWhiteSpace(write.ToolCallId))
+            throw new SharpOMaticException($"{eventKindName} stream events cannot include ToolCallId.");
+
+        if (!string.IsNullOrWhiteSpace(write.ParentMessageId))
+            throw new SharpOMaticException($"{eventKindName} stream events cannot include ParentMessageId.");
+
+        if (string.IsNullOrWhiteSpace(write.TextDelta))
+            throw new SharpOMaticException($"{eventKindName} stream events require TextDelta to contain the step name.");
+    }
+
+    private static void ValidateActivitySnapshotContent(string? contentJson)
+    {
+        if (string.IsNullOrWhiteSpace(contentJson))
+            throw new SharpOMaticException("ActivitySnapshot stream events require TextDelta.");
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(contentJson);
+        }
+        catch (JsonException)
+        {
+            throw new SharpOMaticException("ActivitySnapshot stream events require TextDelta to contain valid JSON.");
+        }
+
+        using (document)
+        {
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+                throw new SharpOMaticException("ActivitySnapshot stream events require TextDelta to contain a JSON object.");
+        }
+    }
+
+    private static void ValidateActivityDeltaPatch(string? patchJson)
+    {
+        if (string.IsNullOrWhiteSpace(patchJson))
+            throw new SharpOMaticException("ActivityDelta stream events require TextDelta.");
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(patchJson);
+        }
+        catch (JsonException)
+        {
+            throw new SharpOMaticException("ActivityDelta stream events require TextDelta to contain valid JSON.");
+        }
+
+        using (document)
+        {
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+                throw new SharpOMaticException("ActivityDelta stream events require TextDelta to contain a JSON array.");
+
+            var operations = document.RootElement.EnumerateArray().ToList();
+            if (operations.Count == 0)
+                throw new SharpOMaticException("ActivityDelta stream events require TextDelta to contain at least one JSON Patch operation.");
+
+            for (var i = 0; i < operations.Count; i += 1)
+                ValidateJsonPatchOperation(operations[i], i);
+        }
+    }
+
+    private static void ValidateJsonPatchOperation(JsonElement operation, int index)
+    {
+        if (operation.ValueKind != JsonValueKind.Object)
+            throw new SharpOMaticException($"ActivityDelta JSON Patch operation at index {index} must be an object.");
+
+        if (!TryGetRequiredStringProperty(operation, "op", out var op))
+            throw new SharpOMaticException($"ActivityDelta JSON Patch operation at index {index} must include a non-empty 'op' property.");
+
+        if (!TryGetRequiredStringProperty(operation, "path", out _))
+            throw new SharpOMaticException($"ActivityDelta JSON Patch operation at index {index} must include a non-empty 'path' property.");
+
+        if (!IsSupportedPatchOperation(op))
+            throw new SharpOMaticException($"ActivityDelta JSON Patch operation at index {index} has unsupported op '{op}'.");
+
+        if ((op == "move" || op == "copy") && !TryGetRequiredStringProperty(operation, "from", out _))
+            throw new SharpOMaticException($"ActivityDelta JSON Patch operation '{op}' at index {index} must include a non-empty 'from' property.");
+
+        if ((op == "add" || op == "replace" || op == "test") && !operation.TryGetProperty("value", out _))
+            throw new SharpOMaticException($"ActivityDelta JSON Patch operation '{op}' at index {index} must include a 'value' property.");
+    }
+
+    private static bool TryGetRequiredStringProperty(JsonElement element, string propertyName, [NotNullWhen(true)] out string? value)
+    {
+        value = null;
+        if (!element.TryGetProperty(propertyName, out var propertyValue) || propertyValue.ValueKind != JsonValueKind.String)
+            return false;
+
+        value = propertyValue.GetString()?.Trim();
+        return !string.IsNullOrWhiteSpace(value);
+    }
+
+    private static bool IsSupportedPatchOperation(string op)
+    {
+        return op is "add" or "remove" or "replace" or "move" or "copy" or "test";
     }
 
     private static string? NormalizeConversationId(string? conversationId)

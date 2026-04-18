@@ -130,12 +130,15 @@ The endpoint streams AG-UI SSE events from SharpOMatic workflow stream events:
 
 - `RUN_STARTED` is emitted after the workflow turn starts
 - text stream events become `TEXT_MESSAGE_START`, `TEXT_MESSAGE_CONTENT`, and `TEXT_MESSAGE_END`
+- step stream events become `STEP_STARTED` and `STEP_FINISHED`
 - visible reasoning stream events become `REASONING_START`, `REASONING_MESSAGE_START`, `REASONING_MESSAGE_CONTENT`, `REASONING_MESSAGE_END`, and `REASONING_END`
 - tool-call stream events become `TOOL_CALL_START`, `TOOL_CALL_ARGS`, `TOOL_CALL_END`, and `TOOL_CALL_RESULT`
+- activity stream events become `ACTIVITY_SNAPSHOT` and `ACTIVITY_DELTA`
 - `TOOL_CALL_RESULT` preserves both the tool result `messageId` and the linked `toolCallId`
 - `TOOL_CALL_START` includes the tool name and can include `parentMessageId` when the underlying model output supplies it
 - reasoning events use AG-UI-specific `messageId` values prefixed with `reason:` so they cannot collide with assistant text messages when a provider reuses one underlying response id for both
 - tool result messages use AG-UI-specific `messageId` values prefixed with `tool:` so tool messages also stay distinct from assistant and reasoning messages, while the linked `toolCallId` remains unchanged
+- activity messages use AG-UI-specific `messageId` values prefixed with `activity:` so activity updates stay distinct from assistant, reasoning, and tool messages
 - when a model call runs in batch mode and the provider does not supply message ids, SharpOMatic synthesizes distinct assistant `messageId` values for each separate assistant text lifecycle, seeded from the stream sequence so they remain unique across conversation turns
 - model-call nodes can suppress assistant text, reasoning, or tool-call stream categories, in which case the AG-UI endpoint simply emits fewer events for that run
 - code-node stream-event helpers can mark events as `silent`, in which case SharpOMatic still stores them in stream history but skips the live AG-UI SSE translation for that event
@@ -186,4 +189,28 @@ await Events.AddToolCallWithResultAsync(
     "Sunny",
     "assistant-1"
 );
+```
+
+Use `AddActivitySnapshotAsync` and `AddActivityDeltaAsync` when the frontend should render structured activity updates:
+
+```csharp
+await Events.AddActivitySnapshotAsync(
+    "plan-1",
+    "PLAN",
+    new { steps = new[] { new { title = "Search", status = "in_progress" } } },
+    replace: false
+);
+
+await Events.AddActivityDeltaAsync(
+    "plan-1",
+    "PLAN",
+    new object[] { new { op = "replace", path = "/steps/0/status", value = "done" } }
+);
+```
+
+Use `AddStepStartAsync` and `AddStepEndAsync` when the frontend should render simple AG-UI step lifecycle markers:
+
+```csharp
+await Events.AddStepStartAsync("Search");
+await Events.AddStepEndAsync("Search");
 ```

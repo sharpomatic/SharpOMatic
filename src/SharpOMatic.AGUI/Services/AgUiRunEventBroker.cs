@@ -173,6 +173,8 @@ public sealed class AgUiRunEventBroker : IAgUiRunEventBroker
             EventKind = streamEvent.EventKind,
             MessageId = streamEvent.MessageId,
             MessageRole = streamEvent.MessageRole,
+            ActivityType = streamEvent.ActivityType,
+            Replace = streamEvent.Replace,
             TextDelta = streamEvent.TextDelta,
             ToolCallId = streamEvent.ToolCallId,
             ParentMessageId = streamEvent.ParentMessageId,

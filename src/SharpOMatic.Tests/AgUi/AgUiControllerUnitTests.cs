@@ -4,6 +4,138 @@ namespace SharpOMatic.Tests.AgUi;
 public sealed class AgUiControllerUnitTests
 {
     [Fact]
+    public async Task AgUi_controller_emits_run_started_and_run_finished_events_with_expected_payload()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                [],
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        var events = ReadSseEvents((MemoryStream)httpContext.Response.Body);
+
+        Assert.Collection(
+            events,
+            startedEvent =>
+            {
+                Assert.Equal("RUN_STARTED", startedEvent.GetProperty("type").GetString());
+                Assert.Equal("thread-1", startedEvent.GetProperty("threadId").GetString());
+                Assert.Equal("protocol-run-1", startedEvent.GetProperty("runId").GetString());
+            },
+            finishedEvent =>
+            {
+                Assert.Equal("RUN_FINISHED", finishedEvent.GetProperty("type").GetString());
+                Assert.Equal("thread-1", finishedEvent.GetProperty("threadId").GetString());
+                Assert.Equal("protocol-run-1", finishedEvent.GetProperty("runId").GetString());
+            }
+        );
+    }
+
+    [Fact]
+    public async Task AgUi_controller_emits_run_started_and_run_error_events_with_expected_payload_for_failed_run()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                [],
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Failed,
+                    Error = "Boom",
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        var events = ReadSseEvents((MemoryStream)httpContext.Response.Body);
+
+        Assert.Collection(
+            events,
+            startedEvent =>
+            {
+                Assert.Equal("RUN_STARTED", startedEvent.GetProperty("type").GetString());
+                Assert.Equal("thread-1", startedEvent.GetProperty("threadId").GetString());
+                Assert.Equal("protocol-run-1", startedEvent.GetProperty("runId").GetString());
+            },
+            errorEvent =>
+            {
+                Assert.Equal("RUN_ERROR", errorEvent.GetProperty("type").GetString());
+                Assert.Equal("thread-1", errorEvent.GetProperty("threadId").GetString());
+                Assert.Equal("protocol-run-1", errorEvent.GetProperty("runId").GetString());
+                Assert.Equal("Boom", errorEvent.GetProperty("message").GetString());
+            }
+        );
+    }
+
+    [Fact]
     public async Task AgUi_controller_uses_agui_agent_resume_input()
     {
         var engineRunId = Guid.NewGuid();
@@ -1005,6 +1137,474 @@ public sealed class AgUiControllerUnitTests
         Assert.DoesNotContain("\"type\":\"TOOL_CALL_RESULT\",\"messageId\":\"assistant-1\"", payload);
     }
 
+    [Fact]
+    public async Task AgUi_controller_maps_step_stream_events_to_protocol_events()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        var streamEvents = new List<StreamEvent>()
+        {
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 1,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.StepStart,
+                TextDelta = "Search",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 2,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.StepEnd,
+                TextDelta = "Search",
+            },
+        };
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                streamEvents,
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        httpContext.Response.Body.Position = 0;
+        var payload = Encoding.UTF8.GetString(((MemoryStream)httpContext.Response.Body).ToArray());
+
+        Assert.Contains("\"type\":\"STEP_STARTED\",\"stepName\":\"Search\"", payload);
+        Assert.Contains("\"type\":\"STEP_FINISHED\",\"stepName\":\"Search\"", payload);
+    }
+
+    [Fact]
+    public async Task AgUi_controller_skips_silent_step_stream_events()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        var streamEvents = new List<StreamEvent>()
+        {
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 1,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.StepStart,
+                TextDelta = "Search",
+            },
+        };
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                streamEvents,
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                },
+                streamEvent => streamEvent.EventKind == StreamEventKind.StepStart
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        httpContext.Response.Body.Position = 0;
+        var payload = Encoding.UTF8.GetString(((MemoryStream)httpContext.Response.Body).ToArray());
+
+        Assert.DoesNotContain("STEP_STARTED", payload);
+        Assert.Contains("RUN_FINISHED", payload);
+    }
+
+    [Fact]
+    public async Task AgUi_controller_maps_activity_snapshot_stream_events_to_protocol_events()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        var streamEvents = new List<StreamEvent>()
+        {
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 1,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.ActivitySnapshot,
+                MessageId = "activity-1",
+                ActivityType = "PLAN",
+                Replace = false,
+                TextDelta = """{"steps":[{"title":"Search","status":"in_progress"}]}""",
+            },
+        };
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                streamEvents,
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        httpContext.Response.Body.Position = 0;
+        var payload = Encoding.UTF8.GetString(((MemoryStream)httpContext.Response.Body).ToArray());
+
+        Assert.Contains("ACTIVITY_SNAPSHOT", payload);
+        Assert.Contains("\"messageId\":\"activity:activity-1\"", payload);
+        Assert.Contains("\"activityType\":\"PLAN\"", payload);
+        Assert.Contains("\"replace\":false", payload);
+        Assert.Contains("\"title\":\"Search\"", payload);
+        Assert.Contains("\"status\":\"in_progress\"", payload);
+    }
+
+    [Fact]
+    public async Task AgUi_controller_maps_activity_delta_stream_events_to_protocol_events()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        var streamEvents = new List<StreamEvent>()
+        {
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 1,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.ActivityDelta,
+                MessageId = "activity-1",
+                ActivityType = "PLAN",
+                TextDelta = """[{"op":"replace","path":"/steps/0/status","value":"done"}]""",
+            },
+        };
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                streamEvents,
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        httpContext.Response.Body.Position = 0;
+        var payload = Encoding.UTF8.GetString(((MemoryStream)httpContext.Response.Body).ToArray());
+
+        Assert.Contains("ACTIVITY_DELTA", payload);
+        Assert.Contains("\"messageId\":\"activity:activity-1\"", payload);
+        Assert.Contains("\"activityType\":\"PLAN\"", payload);
+        Assert.Contains("\"patch\":[{\"op\":\"replace\",\"path\":\"/steps/0/status\",\"value\":\"done\"}]", payload);
+    }
+
+    [Fact]
+    public async Task AgUi_controller_skips_silent_activity_stream_events()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        var streamEvents = new List<StreamEvent>()
+        {
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 1,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.ActivitySnapshot,
+                MessageId = "activity-1",
+                ActivityType = "PLAN",
+                TextDelta = """{"steps":[{"title":"Search","status":"in_progress"}]}""",
+            },
+        };
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                streamEvents,
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                },
+                streamEvent => string.Equals(streamEvent.MessageId, "activity-1", StringComparison.Ordinal)
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        httpContext.Response.Body.Position = 0;
+        var payload = Encoding.UTF8.GetString(((MemoryStream)httpContext.Response.Body).ToArray());
+
+        Assert.DoesNotContain("ACTIVITY_SNAPSHOT", payload);
+        Assert.Contains("RUN_FINISHED", payload);
+    }
+
+    [Fact]
+    public async Task AgUi_controller_namespaces_activity_message_ids_so_activity_messages_do_not_collide()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        var streamEvents = new List<StreamEvent>()
+        {
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 1,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextStart,
+                MessageId = "assistant-1",
+                MessageRole = StreamMessageRole.Assistant,
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 2,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextContent,
+                MessageId = "assistant-1",
+                TextDelta = "Hello",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 3,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.TextEnd,
+                MessageId = "assistant-1",
+            },
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 4,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.ActivitySnapshot,
+                MessageId = "assistant-1",
+                ActivityType = "PLAN",
+                TextDelta = """{"steps":[{"title":"Search","status":"in_progress"}]}""",
+            },
+        };
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                streamEvents,
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        httpContext.Response.Body.Position = 0;
+        var payload = Encoding.UTF8.GetString(((MemoryStream)httpContext.Response.Body).ToArray());
+
+        Assert.Contains("\"type\":\"TEXT_MESSAGE_START\",\"messageId\":\"assistant-1\",\"role\":\"assistant\"", payload);
+        Assert.Contains("\"type\":\"ACTIVITY_SNAPSHOT\",\"messageId\":\"activity:assistant-1\",\"activityType\":\"PLAN\"", payload);
+        Assert.DoesNotContain("\"type\":\"ACTIVITY_SNAPSHOT\",\"messageId\":\"assistant-1\"", payload);
+    }
+
     private static async IAsyncEnumerable<AgUiRunUpdate> CreateUpdates(List<StreamEvent> streamEvents, Run run, Func<StreamEvent, bool>? isSilent = null)
     {
         yield return AgUiRunUpdate.ForStreamEvents(ToProgressItems(streamEvents, isSilent));
@@ -1027,5 +1627,21 @@ public sealed class AgUiControllerUnitTests
     {
         using var document = JsonDocument.Parse(json);
         return document.RootElement.Clone();
+    }
+
+    private static List<JsonElement> ReadSseEvents(MemoryStream responseBody)
+    {
+        responseBody.Position = 0;
+
+        return Encoding.UTF8
+            .GetString(responseBody.ToArray())
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => line.StartsWith("data: ", StringComparison.Ordinal))
+            .Select(line =>
+            {
+                using var document = JsonDocument.Parse(line["data: ".Length..]);
+                return document.RootElement.Clone();
+            })
+            .ToList();
     }
 }

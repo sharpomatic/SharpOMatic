@@ -139,6 +139,7 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         var toolCallId = string.IsNullOrWhiteSpace(streamEvent.ToolCallId) ? streamEvent.MessageId : streamEvent.ToolCallId;
         var reasoningMessageId = GetProtocolReasoningMessageId(streamEvent.MessageId);
         var toolMessageId = GetProtocolToolMessageId(streamEvent.MessageId);
+        var activityMessageId = GetProtocolActivityMessageId(streamEvent.MessageId);
 
         switch (streamEvent.EventKind)
         {
@@ -236,6 +237,26 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
                     role = "tool"
                 });
                 break;
+            case StreamEventKind.ActivitySnapshot when activityMessageId is not null && !string.IsNullOrWhiteSpace(streamEvent.ActivityType):
+                await WriteActivitySnapshotEventAsync(activityMessageId, streamEvent);
+                break;
+            case StreamEventKind.ActivityDelta when activityMessageId is not null && !string.IsNullOrWhiteSpace(streamEvent.ActivityType):
+                await WriteActivityDeltaEventAsync(activityMessageId, streamEvent);
+                break;
+            case StreamEventKind.StepStart when !string.IsNullOrWhiteSpace(streamEvent.TextDelta):
+                await WriteEventAsync(new
+                {
+                    type = "STEP_STARTED",
+                    stepName = streamEvent.TextDelta
+                });
+                break;
+            case StreamEventKind.StepEnd when !string.IsNullOrWhiteSpace(streamEvent.TextDelta):
+                await WriteEventAsync(new
+                {
+                    type = "STEP_FINISHED",
+                    stepName = streamEvent.TextDelta
+                });
+                break;
         }
     }
 
@@ -253,6 +274,14 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
             return null;
 
         return $"tool:{messageId.Trim()}";
+    }
+
+    private static string? GetProtocolActivityMessageId(string? messageId)
+    {
+        if (string.IsNullOrWhiteSpace(messageId))
+            return null;
+
+        return $"activity:{messageId.Trim()}";
     }
 
     private static void AddJsonProperty(IDictionary<string, object?> payload, string propertyName, string? value)
@@ -368,6 +397,63 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
             return null;
 
         return propertyValue.GetString()?.Trim();
+    }
+
+    private async Task WriteActivitySnapshotEventAsync(string activityMessageId, StreamEvent streamEvent)
+    {
+        var content = ParseJsonPayload(streamEvent.TextDelta, "ActivitySnapshot");
+        if (content.ValueKind != JsonValueKind.Object)
+            throw new SharpOMaticException("ActivitySnapshot stream event payload must be a JSON object.");
+
+        await WriteEventAsync(
+            streamEvent.Replace.HasValue
+                ? new
+                {
+                    type = "ACTIVITY_SNAPSHOT",
+                    messageId = activityMessageId,
+                    activityType = streamEvent.ActivityType!,
+                    content,
+                    replace = streamEvent.Replace.Value
+                }
+                : new
+                {
+                    type = "ACTIVITY_SNAPSHOT",
+                    messageId = activityMessageId,
+                    activityType = streamEvent.ActivityType!,
+                    content
+                }
+        );
+    }
+
+    private async Task WriteActivityDeltaEventAsync(string activityMessageId, StreamEvent streamEvent)
+    {
+        var patch = ParseJsonPayload(streamEvent.TextDelta, "ActivityDelta");
+        if (patch.ValueKind != JsonValueKind.Array)
+            throw new SharpOMaticException("ActivityDelta stream event payload must be a JSON array.");
+
+        await WriteEventAsync(new
+        {
+            type = "ACTIVITY_DELTA",
+            messageId = activityMessageId,
+            activityType = streamEvent.ActivityType!,
+            patch
+        });
+    }
+
+    private static JsonElement ParseJsonPayload(string? payload, string eventName)
+    {
+        if (string.IsNullOrWhiteSpace(payload))
+            throw new SharpOMaticException($"{eventName} stream event payload cannot be empty.");
+
+        try
+        {
+            using var document = JsonDocument.Parse(payload);
+            return document.RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            throw new SharpOMaticException($"{eventName} stream event payload must contain valid JSON.");
+        }
     }
 
     private static string MapRole(StreamMessageRole? role)

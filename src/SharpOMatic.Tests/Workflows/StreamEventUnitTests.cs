@@ -471,6 +471,348 @@ public sealed class StreamEventUnitTests
     }
 
     [Fact]
+    public async Task Code_node_step_start_events_persist_step_name_in_text_delta()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", """await Events.AddStepStartAsync("Search");""")
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            var stepEvent = Assert.Single(streamEvents);
+            Assert.Equal(StreamEventKind.StepStart, stepEvent.EventKind);
+            Assert.Equal("Search", stepEvent.TextDelta);
+            Assert.Null(stepEvent.MessageId);
+            Assert.Null(stepEvent.ActivityType);
+            Assert.Null(stepEvent.ToolCallId);
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Code_node_step_end_events_persist_step_name_in_text_delta()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", """await Events.AddStepEndAsync("Search");""")
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            var stepEvent = Assert.Single(streamEvents);
+            Assert.Equal(StreamEventKind.StepEnd, stepEvent.EventKind);
+            Assert.Equal("Search", stepEvent.TextDelta);
+            Assert.Null(stepEvent.MessageId);
+            Assert.Null(stepEvent.ActivityType);
+            Assert.Null(stepEvent.ToolCallId);
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Silent_step_stream_events_apply_to_each_generated_live_progress_event()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode(
+                "code",
+                """
+                await Events.AddStepStartAsync("Search", silent: true);
+                await Events.AddStepEndAsync("Search", silent: true);
+                """
+            )
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        var progress = new CapturingProgressService();
+
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddSingleton<IProgressService>(progress));
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.Equal([StreamEventKind.StepStart, StreamEventKind.StepEnd], streamEvents.Select(e => e.EventKind).ToArray());
+            Assert.Equal(["Search", "Search"], streamEvents.Select(e => e.TextDelta ?? string.Empty).ToArray());
+
+            Assert.Equal(2, progress.StreamEventKinds.Count);
+            Assert.All(progress.SilentFlags, Assert.True);
+            Assert.Equal([StreamEventKind.StepStart, StreamEventKind.StepEnd], progress.StreamEventKinds.ToArray());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Code_node_step_events_require_non_empty_step_name()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", """await Events.AddStepStartAsync("   ");""")
+            .Connect("start", "code")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Contains("Step name must be a non-empty string.", run.Error);
+    }
+
+    [Fact]
+    public async Task Code_node_activity_snapshot_events_persist_snapshot_details()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode(
+                "code",
+                """await Events.AddActivitySnapshotAsync("activity-1", "PLAN", new { steps = new[] { new { title = "Search", status = "in_progress" } } }, replace: false);"""
+            )
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            var activityEvent = Assert.Single(streamEvents);
+            Assert.Equal(StreamEventKind.ActivitySnapshot, activityEvent.EventKind);
+            Assert.Equal("activity-1", activityEvent.MessageId);
+            Assert.Equal("PLAN", activityEvent.ActivityType);
+            Assert.False(activityEvent.Replace);
+
+            using var payload = JsonDocument.Parse(activityEvent.TextDelta!);
+            Assert.Equal(JsonValueKind.Object, payload.RootElement.ValueKind);
+            Assert.Equal("Search", payload.RootElement.GetProperty("steps")[0].GetProperty("title").GetString());
+            Assert.Equal("in_progress", payload.RootElement.GetProperty("steps")[0].GetProperty("status").GetString());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Code_node_activity_delta_events_persist_patch_details()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode(
+                "code",
+                """await Events.AddActivityDeltaAsync("activity-1", "PLAN", new object[] { new { op = "replace", path = "/steps/0/status", value = "done" } });"""
+            )
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            var activityEvent = Assert.Single(streamEvents);
+            Assert.Equal(StreamEventKind.ActivityDelta, activityEvent.EventKind);
+            Assert.Equal("activity-1", activityEvent.MessageId);
+            Assert.Equal("PLAN", activityEvent.ActivityType);
+            Assert.Null(activityEvent.Replace);
+
+            using var payload = JsonDocument.Parse(activityEvent.TextDelta!);
+            Assert.Equal(JsonValueKind.Array, payload.RootElement.ValueKind);
+            Assert.Equal("replace", payload.RootElement[0].GetProperty("op").GetString());
+            Assert.Equal("/steps/0/status", payload.RootElement[0].GetProperty("path").GetString());
+            Assert.Equal("done", payload.RootElement[0].GetProperty("value").GetString());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Silent_activity_stream_events_apply_to_each_generated_live_progress_event()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode(
+                "code",
+                """
+                await Events.AddActivitySnapshotAsync("activity-1", "PLAN", new { steps = new[] { new { title = "Search", status = "in_progress" } } }, replace: false, silent: true);
+                await Events.AddActivityDeltaAsync("activity-1", "PLAN", new object[] { new { op = "replace", path = "/steps/0/status", value = "done" } }, silent: true);
+                """
+            )
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        var progress = new CapturingProgressService();
+
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddSingleton<IProgressService>(progress));
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.Equal([StreamEventKind.ActivitySnapshot, StreamEventKind.ActivityDelta], streamEvents.Select(e => e.EventKind).ToArray());
+
+            Assert.Equal(2, progress.StreamEventKinds.Count);
+            Assert.All(progress.SilentFlags, Assert.True);
+            Assert.Equal([StreamEventKind.ActivitySnapshot, StreamEventKind.ActivityDelta], progress.StreamEventKinds.ToArray());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Code_node_activity_snapshot_events_require_non_empty_activity_type()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", """await Events.AddActivitySnapshotAsync("activity-1", "   ", new { steps = new[] { new { title = "Search" } } });""")
+            .Connect("start", "code")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Contains("ActivityType must be a non-empty string.", run.Error);
+    }
+
+    [Fact]
+    public async Task Code_node_activity_snapshot_events_require_json_object_content()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", """await Events.AddActivitySnapshotAsync("activity-1", "PLAN", new[] { "bad" });""")
+            .Connect("start", "code")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Contains("ActivitySnapshot stream events require TextDelta to contain a JSON object.", run.Error);
+    }
+
+    [Fact]
+    public async Task Code_node_activity_delta_events_require_valid_json_patch_shape()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", """await Events.AddActivityDeltaAsync("activity-1", "PLAN", new object[] { new { op = "replace", value = "done" } });""")
+            .Connect("start", "code")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Contains("must include a non-empty 'path' property", run.Error);
+    }
+
+    [Fact]
     public async Task Conversation_stream_events_use_request_stream_conversation_id_and_continue_sequence()
     {
         var workflow = new WorkflowBuilder()
@@ -507,6 +849,8 @@ public sealed class StreamEventUnitTests
                 streamConversationId: streamConversationId
             );
             Assert.Equal(RunStatus.Suspended, firstTurn.RunStatus);
+            await WaitForConversationStatusAsync(repositoryService, conversationId, ConversationStatus.Suspended);
+            await Task.Delay(100);
 
             var secondTurn = await engineService.StartOrResumeConversationAndWait(
                 workflow.Id,
@@ -520,6 +864,153 @@ public sealed class StreamEventUnitTests
             Assert.All(streamEvents, streamEvent => Assert.Equal(streamConversationId, streamEvent.ConversationId));
             Assert.Equal([1, 2, 3, 4, 5, 6], streamEvents.Select(e => e.SequenceNumber).ToArray());
             Assert.Equal(new string?[] { "message-1", "message-1", "message-1", "message-2", "message-2", "message-2" }, streamEvents.Select(e => e.MessageId).ToArray());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Conversation_activity_stream_events_use_request_stream_conversation_id_and_continue_sequence()
+    {
+        var workflow = new WorkflowBuilder()
+            .EnableConversations()
+            .AddStart()
+            .AddCode(
+                "code",
+                """
+                var turn = Context.TryGet<int>("state.turn", out var currentTurn) ? currentTurn + 1 : 1;
+                Context.Set<int>("state.turn", turn);
+
+                if (turn == 1)
+                {
+                    await Events.AddActivitySnapshotAsync(
+                        "activity-1",
+                        "PLAN",
+                        new { steps = new[] { new { title = "Search", status = "in_progress" } } },
+                        replace: false
+                    );
+                }
+                else
+                {
+                    await Events.AddActivityDeltaAsync(
+                        "activity-1",
+                        "PLAN",
+                        new object[] { new { op = "replace", path = "/steps/0/status", value = "done" } }
+                    );
+                }
+                """
+            )
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+        var conversationId = NewConversationId();
+        const string streamConversationId = "activity-conversation-1";
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+
+            var firstTurn = await engineService.StartOrResumeConversationAndWait(
+                workflow.Id,
+                conversationId,
+                streamConversationId: streamConversationId
+            );
+            Assert.Equal(RunStatus.Success, firstTurn.RunStatus);
+            await WaitForConversationStatusAsync(repositoryService, conversationId, ConversationStatus.Completed);
+
+            var secondTurn = await engineService.StartOrResumeConversationAndWait(
+                workflow.Id,
+                conversationId,
+                streamConversationId: streamConversationId
+            );
+            Assert.Equal(RunStatus.Success, secondTurn.RunStatus);
+
+            var streamEvents = await repositoryService.GetConversationStreamEvents(streamConversationId);
+            Assert.Equal(2, streamEvents.Count);
+            Assert.All(streamEvents, streamEvent => Assert.Equal(streamConversationId, streamEvent.ConversationId));
+            Assert.Equal([1, 2], streamEvents.Select(e => e.SequenceNumber).ToArray());
+            Assert.Equal([StreamEventKind.ActivitySnapshot, StreamEventKind.ActivityDelta], streamEvents.Select(e => e.EventKind).ToArray());
+            Assert.Equal(["activity-1", "activity-1"], streamEvents.Select(e => e.MessageId ?? string.Empty).ToArray());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Conversation_step_stream_events_use_request_stream_conversation_id_and_continue_sequence()
+    {
+        var workflow = new WorkflowBuilder()
+            .EnableConversations()
+            .AddStart()
+            .AddCode(
+                "code",
+                """
+                var turn = Context.TryGet<int>("state.turn", out var currentTurn) ? currentTurn + 1 : 1;
+                Context.Set<int>("state.turn", turn);
+
+                if (turn == 1)
+                    await Events.AddStepStartAsync("Search");
+                else
+                    await Events.AddStepEndAsync("Search");
+                """
+            )
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+        var conversationId = NewConversationId();
+        const string streamConversationId = "step-conversation-1";
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+
+            var firstTurn = await engineService.StartOrResumeConversationAndWait(
+                workflow.Id,
+                conversationId,
+                streamConversationId: streamConversationId
+            );
+            Assert.Equal(RunStatus.Success, firstTurn.RunStatus);
+            await WaitForConversationStatusAsync(repositoryService, conversationId, ConversationStatus.Completed);
+
+            var secondTurn = await engineService.StartOrResumeConversationAndWait(
+                workflow.Id,
+                conversationId,
+                streamConversationId: streamConversationId
+            );
+            Assert.Equal(RunStatus.Success, secondTurn.RunStatus);
+
+            var streamEvents = await repositoryService.GetConversationStreamEvents(streamConversationId);
+            Assert.Equal(2, streamEvents.Count);
+            Assert.All(streamEvents, streamEvent => Assert.Equal(streamConversationId, streamEvent.ConversationId));
+            Assert.Equal([1, 2], streamEvents.Select(e => e.SequenceNumber).ToArray());
+            Assert.Equal([StreamEventKind.StepStart, StreamEventKind.StepEnd], streamEvents.Select(e => e.EventKind).ToArray());
+            Assert.Equal(["Search", "Search"], streamEvents.Select(e => e.TextDelta ?? string.Empty).ToArray());
         }
         finally
         {
@@ -675,6 +1166,22 @@ public sealed class StreamEventUnitTests
     private static string NewConversationId()
     {
         return Guid.NewGuid().ToString("N");
+    }
+
+    private static async Task WaitForConversationStatusAsync(IRepositoryService repositoryService, string conversationId, ConversationStatus expectedStatus)
+    {
+        for (var attempt = 0; attempt < 20; attempt += 1)
+        {
+            var conversation = await repositoryService.GetConversation(conversationId);
+            if (conversation?.Status == expectedStatus && string.IsNullOrWhiteSpace(conversation.LeaseOwner))
+                return;
+
+            await Task.Delay(25);
+        }
+
+        var currentConversation = await repositoryService.GetConversation(conversationId);
+        Assert.Equal(expectedStatus, currentConversation?.Status);
+        Assert.True(string.IsNullOrWhiteSpace(currentConversation?.LeaseOwner));
     }
 
     private sealed class CapturingProgressService : IProgressService

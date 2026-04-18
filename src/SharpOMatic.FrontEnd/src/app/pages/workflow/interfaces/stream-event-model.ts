@@ -11,6 +11,8 @@ export interface StreamEventModel {
   eventKind: StreamEventKind;
   messageId?: string | null;
   messageRole?: StreamMessageRole | null;
+  activityType?: string | null;
+  replace?: boolean | null;
   textDelta?: string | null;
   toolCallId?: string | null;
   parentMessageId?: string | null;
