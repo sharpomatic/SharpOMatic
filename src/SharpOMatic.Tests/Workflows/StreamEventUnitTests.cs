@@ -719,6 +719,399 @@ public sealed class StreamEventUnitTests
     }
 
     [Fact]
+    public async Task Code_node_activity_snapshot_from_context_emits_snapshot_and_persists_hidden_state()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode(
+                "code",
+                """
+                var step = new ContextObject();
+                step.Add("title", "Search");
+                step.Add("status", "in_progress");
+                var steps = new ContextList();
+                steps.Add(step);
+                var activity = new ContextObject();
+                activity.Add("steps", steps);
+                Context.Set("activity", activity);
+
+                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity", replace: false);
+                """
+            )
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var jsonConverters = scope.ServiceProvider.GetRequiredService<IJsonConverterService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            var activityEvent = Assert.Single(streamEvents);
+            Assert.Equal(StreamEventKind.ActivitySnapshot, activityEvent.EventKind);
+            Assert.Equal("activity-1", activityEvent.MessageId);
+            Assert.Equal("PLAN", activityEvent.ActivityType);
+
+            var output = ContextObject.Deserialize(run.OutputContext, jsonConverters.GetConverters());
+            Assert.Equal("activity-1", output.Get<string>("_activityState.instances[0].instanceName"));
+            Assert.Equal("PLAN", output.Get<string>("_activityState.instances[0].activityType"));
+            Assert.Equal("Search", output.Get<string>("_activityState.instances[0].content.steps[0].title"));
+            Assert.Equal("in_progress", output.Get<string>("_activityState.instances[0].content.steps[0].status"));
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Code_node_activity_snapshot_from_context_stores_detached_copy()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode(
+                "code",
+                """
+                var step = new ContextObject();
+                step.Add("title", "Search");
+                step.Add("status", "in_progress");
+                var steps = new ContextList();
+                steps.Add(step);
+                var activity = new ContextObject();
+                activity.Add("steps", steps);
+                Context.Set("activity", activity);
+
+                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+
+                Context.Set("activity.steps[0].status", "done");
+                """
+            )
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        var (run, provider) = await WorkflowRunner.RunWorkflowDebug([], workflow);
+        Assert.Equal(RunStatus.Success, run.RunStatus);
+
+        var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
+        var output = ContextObject.Deserialize(run.OutputContext, jsonConverters.GetConverters());
+        Assert.Equal("done", output.Get<string>("activity.steps[0].status"));
+        Assert.Equal("in_progress", output.Get<string>("_activityState.instances[0].content.steps[0].status"));
+    }
+
+    [Fact]
+    public async Task Code_node_activity_delta_from_context_emits_patch_and_reuses_stored_activity_type()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode(
+                "code",
+                """
+                var activity = new ContextObject();
+                activity.Add("status", "in_progress");
+                Context.Set("activity", activity);
+
+                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+                Context.Set("activity.status", "done");
+                await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
+                """
+            )
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.Equal([StreamEventKind.ActivitySnapshot, StreamEventKind.ActivityDelta], streamEvents.Select(e => e.EventKind).ToArray());
+            Assert.Equal(["PLAN", "PLAN"], streamEvents.Select(e => e.ActivityType ?? string.Empty).ToArray());
+
+            using var patch = JsonDocument.Parse(streamEvents[1].TextDelta!);
+            Assert.Equal("replace", patch.RootElement[0].GetProperty("op").GetString());
+            Assert.Equal("/status", patch.RootElement[0].GetProperty("path").GetString());
+            Assert.Equal("done", patch.RootElement[0].GetProperty("value").GetString());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Code_node_activity_delta_from_context_recurses_nested_objects()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode(
+                "code",
+                """
+                var details = new ContextObject();
+                details.Add("status", "in_progress");
+                var activity = new ContextObject();
+                activity.Add("details", details);
+                Context.Set("activity", activity);
+
+                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+                Context.Set("activity.details.status", "done");
+                await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
+                """
+            )
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            using var patch = JsonDocument.Parse(streamEvents[1].TextDelta!);
+            Assert.Equal("/details/status", patch.RootElement[0].GetProperty("path").GetString());
+            Assert.Equal("done", patch.RootElement[0].GetProperty("value").GetString());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Code_node_activity_delta_from_context_replaces_changed_arrays()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode(
+                "code",
+                """
+                var items = new ContextList();
+                items.Add("one");
+                items.Add("two");
+                var activity = new ContextObject();
+                activity.Add("items", items);
+                Context.Set("activity", activity);
+
+                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+                var updatedItems = new ContextList();
+                updatedItems.Add("one");
+                updatedItems.Add("two");
+                updatedItems.Add("three");
+                Context.Set("activity.items", updatedItems);
+                await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
+                """
+            )
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            using var patch = JsonDocument.Parse(streamEvents[1].TextDelta!);
+            Assert.Equal("replace", patch.RootElement[0].GetProperty("op").GetString());
+            Assert.Equal("/items", patch.RootElement[0].GetProperty("path").GetString());
+            Assert.Equal(JsonValueKind.Array, patch.RootElement[0].GetProperty("value").ValueKind);
+            Assert.Equal(3, patch.RootElement[0].GetProperty("value").GetArrayLength());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Code_node_activity_delta_from_context_no_op_emits_no_event_and_refreshes_stored_copy()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode(
+                "code",
+                """
+                var firstStep = new ContextObject();
+                firstStep.Add("title", "Search");
+                firstStep.Add("status", "in_progress");
+                var firstSteps = new ContextList();
+                firstSteps.Add(firstStep);
+                var firstActivity = new ContextObject();
+                firstActivity.Add("steps", firstSteps);
+                Context.Set("activity", firstActivity);
+
+                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+
+                var previousStored = Context.Get<ContextObject>("_activityState.instances[0].content");
+
+                var secondStep = new ContextObject();
+                secondStep.Add("title", "Search");
+                secondStep.Add("status", "in_progress");
+                var secondSteps = new ContextList();
+                secondSteps.Add(secondStep);
+                var secondActivity = new ContextObject();
+                secondActivity.Add("steps", secondSteps);
+                Context.Set("activity", secondActivity);
+
+                await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
+
+                var currentStored = Context.Get<ContextObject>("_activityState.instances[0].content");
+                Context.Set("output.sameStoredReference", object.ReferenceEquals(previousStored, currentStored));
+                """
+            )
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        var (run, provider) = await WorkflowRunner.RunWorkflowDebug([], workflow);
+        Assert.Equal(RunStatus.Success, run.RunStatus);
+
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+        Assert.Single(streamEvents);
+        Assert.Equal(StreamEventKind.ActivitySnapshot, streamEvents[0].EventKind);
+
+        var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
+        var output = ContextObject.Deserialize(run.OutputContext, jsonConverters.GetConverters());
+        Assert.False(output.Get<bool>("output.sameStoredReference"));
+    }
+
+    [Fact]
+    public async Task Code_node_activity_delta_from_context_requires_existing_snapshot()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode(
+                "code",
+                """
+                var activity = new ContextObject();
+                activity.Add("status", "in_progress");
+                Context.Set("activity", activity);
+
+                await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
+                """
+            )
+            .Connect("start", "code")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Contains("Activity instance 'activity-1' has no stored snapshot. Call AddActivitySnapshotFromContextAsync first.", run.Error);
+    }
+
+    [Fact]
+    public async Task Code_node_activity_snapshot_from_context_requires_json_object_root()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode(
+                "code",
+                """
+                var activity = new ContextList();
+                activity.Add("bad");
+                Context.Set("activity", activity);
+
+                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+                """
+            )
+            .Connect("start", "code")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Contains("Activity snapshot requires context path 'activity' to resolve to a JSON object.", run.Error);
+    }
+
+    [Fact]
+    public async Task Code_node_activity_delta_from_context_requires_json_object_root()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode(
+                "code",
+                """
+                var activity = new ContextObject();
+                activity.Add("status", "in_progress");
+                Context.Set("activity", activity);
+                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+
+                var invalid = new ContextList();
+                invalid.Add("bad");
+                Context.Set("activity", invalid);
+
+                await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
+                """
+            )
+            .Connect("start", "code")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Contains("Activity delta requires context path 'activity' to resolve to a JSON object.", run.Error);
+    }
+
+    [Fact]
     public async Task Silent_activity_stream_events_apply_to_each_generated_live_progress_event()
     {
         var workflow = new WorkflowBuilder()
@@ -886,20 +1279,21 @@ public sealed class StreamEventUnitTests
 
                 if (turn == 1)
                 {
-                    await Events.AddActivitySnapshotAsync(
-                        "activity-1",
-                        "PLAN",
-                        new { steps = new[] { new { title = "Search", status = "in_progress" } } },
-                        replace: false
-                    );
+                    var step = new ContextObject();
+                    step.Add("title", "Search");
+                    step.Add("status", "in_progress");
+                    var steps = new ContextList();
+                    steps.Add(step);
+                    var activity = new ContextObject();
+                    activity.Add("steps", steps);
+                    Context.Set("activity", activity);
+
+                    await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity", replace: false);
                 }
                 else
                 {
-                    await Events.AddActivityDeltaAsync(
-                        "activity-1",
-                        "PLAN",
-                        new object[] { new { op = "replace", path = "/steps/0/status", value = "done" } }
-                    );
+                    Context.Set("activity.steps[0].status", "done");
+                    await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
                 }
                 """
             )

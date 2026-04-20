@@ -116,6 +116,24 @@ await Events.AddActivityDeltaAsync(
 );
 ```
 
+For activity state that already lives in workflow context, the higher-level helpers are usually simpler because SharpOMatic stores the previous snapshot in hidden workflow state and computes the JSON Patch for you:
+
+```csharp
+await Events.AddActivitySnapshotFromContextAsync(
+    "plan-1",
+    "PLAN",
+    "activity.plan",
+    replace: false
+);
+
+await Events.AddActivityDeltaFromContextAsync(
+    "plan-1",
+    "activity.plan"
+);
+```
+
+Use the lower-level activity helpers only when you want full control over the emitted payload or patch shape.
+
 If the frontend only needs a simple progress phase marker, emit AG-UI-compatible step lifecycle events:
 
 ```csharp

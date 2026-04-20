@@ -2,13 +2,18 @@ namespace SharpOMatic.Engine.Helpers;
 
 public class StreamEventHelper
 {
-    private readonly ProcessContext _processContext;
-    private readonly JsonSerializerOptions _jsonOptions;
+    private const string ActivityStatePath = "_activityState.instances";
+    private const string ActivityInstanceNameField = "instanceName";
+    private const string ActivityTypeField = "activityType";
+    private const string ActivityContentField = "content";
 
-    public StreamEventHelper(ProcessContext processContext)
+    private readonly ProcessContext _processContext;
+    private readonly ContextObject _context;
+
+    public StreamEventHelper(ProcessContext processContext, ContextObject context)
     {
         _processContext = processContext ?? throw new ArgumentNullException(nameof(processContext));
-        _jsonOptions = new JsonSerializerOptions().BuildOptions(_processContext.JsonConverters);
+        _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
     public Task<List<StreamEvent>> AddTextStartAsync(StreamMessageRole role, string messageId, string? metadata = null, bool silent = false)
@@ -370,7 +375,7 @@ public class StreamEventHelper
                 MessageId = RequireMessageId(messageId),
                 ActivityType = RequireActivityType(activityType),
                 Replace = replace,
-                TextDelta = SerializeJsonPayload(content, "Activity snapshot content must be JSON serializable."),
+                TextDelta = SerializeActivityJsonPayload(content, "Activity snapshot content must be JSON serializable."),
                 Metadata = metadata,
                 Silent = silent,
             }
@@ -387,11 +392,55 @@ public class StreamEventHelper
                 EventKind = StreamEventKind.ActivityDelta,
                 MessageId = RequireMessageId(messageId),
                 ActivityType = RequireActivityType(activityType),
-                TextDelta = SerializeJsonPayload(patch, "Activity delta patch must be JSON serializable."),
+                TextDelta = SerializeActivityJsonPayload(patch, "Activity delta patch must be JSON serializable."),
                 Metadata = metadata,
                 Silent = silent,
             }
         );
+    }
+
+    public async Task<List<StreamEvent>> AddActivitySnapshotFromContextAsync(
+        string instanceName,
+        string activityType,
+        string contextPath,
+        bool? replace = null,
+        string? metadata = null,
+        bool silent = false
+    )
+    {
+        instanceName = RequireActivityInstanceName(instanceName);
+        activityType = RequireActivityType(activityType);
+        var content = ResolveActivityContentFromContextPath(contextPath, "Activity snapshot");
+
+        var events = await AddActivitySnapshotAsync(instanceName, activityType, content, replace, metadata, silent);
+        UpsertStoredActivityState(instanceName, activityType, content);
+        return events;
+    }
+
+    public async Task<List<StreamEvent>> AddActivityDeltaFromContextAsync(
+        string instanceName,
+        string contextPath,
+        string? metadata = null,
+        bool silent = false
+    )
+    {
+        instanceName = RequireActivityInstanceName(instanceName);
+        var existingEntry = FindStoredActivityState(instanceName)
+            ?? throw new SharpOMaticException($"Activity instance '{instanceName}' has no stored snapshot. Call AddActivitySnapshotFromContextAsync first.");
+
+        var activityType = RequireStoredActivityType(existingEntry, instanceName);
+        var content = ResolveActivityContentFromContextPath(contextPath, "Activity delta");
+        var patch = BuildActivityDeltaPatch(RequireStoredActivityContent(existingEntry, instanceName), content);
+
+        if (patch.Count == 0)
+        {
+            UpsertStoredActivityState(instanceName, activityType, content);
+            return [];
+        }
+
+        var events = await AddActivityDeltaAsync(instanceName, activityType, patch, metadata, silent);
+        UpsertStoredActivityState(instanceName, activityType, content);
+        return events;
     }
 
     public Task<List<StreamEvent>> AddStepStartAsync(string stepName, string? metadata = null, bool silent = false)
@@ -457,6 +506,14 @@ public class StreamEventHelper
         return activityType;
     }
 
+    private static string RequireActivityInstanceName(string instanceName)
+    {
+        if (string.IsNullOrWhiteSpace(instanceName))
+            throw new SharpOMaticException("Activity instance name must be a non-empty string.");
+
+        return instanceName;
+    }
+
     private static string RequireStepName(string stepName)
     {
         if (string.IsNullOrWhiteSpace(stepName))
@@ -478,15 +535,166 @@ public class StreamEventHelper
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
-    private string SerializeJsonPayload(object payload, string errorMessage)
+    private ContextObject ResolveActivityContentFromContextPath(string contextPath, string operationName)
+    {
+        contextPath = RequireNonEmpty(contextPath, $"{operationName} context path cannot be empty or whitespace.");
+
+        if (!_context.TryGet<object?>(contextPath, out var value))
+            throw new SharpOMaticException($"{operationName} context path '{contextPath}' could not be found.");
+
+        var json = SerializeActivityJsonPayload(value, $"{operationName} context path '{contextPath}' could not be serialized to JSON.");
+
+        object? cloned;
+        try
+        {
+            cloned = ContextHelpers.FastDeserializeString(json);
+        }
+        catch
+        {
+            throw new SharpOMaticException($"{operationName} context path '{contextPath}' could not be cloned from JSON.");
+        }
+
+        if (cloned is not ContextObject content)
+            throw new SharpOMaticException($"{operationName} requires context path '{contextPath}' to resolve to a JSON object.");
+
+        return content;
+    }
+
+    private ContextObject? FindStoredActivityState(string instanceName)
+    {
+        if (!_context.TryGet<ContextList>(ActivityStatePath, out var instances) || instances is null)
+            return null;
+
+        foreach (var item in instances)
+        {
+            if (item is not ContextObject entry)
+                continue;
+
+            if (entry.TryGet<string>(ActivityInstanceNameField, out var storedInstanceName) && string.Equals(storedInstanceName, instanceName, StringComparison.Ordinal))
+                return entry;
+        }
+
+        return null;
+    }
+
+    private void UpsertStoredActivityState(string instanceName, string activityType, ContextObject content)
+    {
+        var entry = FindStoredActivityState(instanceName);
+        if (entry is not null)
+        {
+            entry[ActivityTypeField] = activityType;
+            entry[ActivityContentField] = content;
+            return;
+        }
+
+        var instances = GetOrCreateStoredActivityInstances();
+        instances.Add(
+            new ContextObject()
+            {
+                [ActivityInstanceNameField] = instanceName,
+                [ActivityTypeField] = activityType,
+                [ActivityContentField] = content,
+            }
+        );
+    }
+
+    private ContextList GetOrCreateStoredActivityInstances()
+    {
+        if (_context.TryGet<ContextList>(ActivityStatePath, out var instances) && instances is not null)
+            return instances;
+
+        instances = [];
+        _context.Set(ActivityStatePath, instances);
+        return instances;
+    }
+
+    private static string RequireStoredActivityType(ContextObject entry, string instanceName)
+    {
+        if (!entry.TryGet<string>(ActivityTypeField, out var activityType) || string.IsNullOrWhiteSpace(activityType))
+            throw new SharpOMaticException($"Stored activity instance '{instanceName}' is missing a valid activity type.");
+
+        return activityType;
+    }
+
+    private static ContextObject RequireStoredActivityContent(ContextObject entry, string instanceName)
+    {
+        if (!entry.TryGet<ContextObject>(ActivityContentField, out var content) || content is null)
+            throw new SharpOMaticException($"Stored activity instance '{instanceName}' is missing valid content.");
+
+        return content;
+    }
+
+    private List<Dictionary<string, object?>> BuildActivityDeltaPatch(ContextObject oldContent, ContextObject newContent)
+    {
+        return ActivityJsonPatchHelper.BuildPatch(
+            SerializeActivityJsonPayload(oldContent, "Stored activity content could not be serialized to JSON."),
+            SerializeActivityJsonPayload(newContent, "Activity content could not be serialized to JSON.")
+        );
+    }
+
+    private string SerializeActivityJsonPayload(object? payload, string errorMessage)
     {
         try
         {
-            return JsonSerializer.Serialize(payload, _jsonOptions);
+            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+            using var writer = new Utf8JsonWriter(buffer);
+            WritePlainActivityJsonValue(writer, payload);
+            writer.Flush();
+            return Encoding.UTF8.GetString(buffer.WrittenSpan);
         }
         catch
         {
             throw new SharpOMaticException(errorMessage);
         }
     }
+
+    private static void WritePlainActivityJsonValue(Utf8JsonWriter writer, object? value)
+    {
+        switch (value)
+        {
+            case null:
+                writer.WriteNullValue();
+                return;
+            case JsonElement element:
+                element.WriteTo(writer);
+                return;
+            case JsonDocument document:
+                document.RootElement.WriteTo(writer);
+                return;
+            case ContextObject contextObject:
+                writer.WriteStartObject();
+                foreach (var entry in contextObject.Snapshot())
+                {
+                    writer.WritePropertyName(entry.Key);
+                    WritePlainActivityJsonValue(writer, entry.Value);
+                }
+                writer.WriteEndObject();
+                return;
+            case ContextList contextList:
+                writer.WriteStartArray();
+                foreach (var item in contextList.Snapshot())
+                    WritePlainActivityJsonValue(writer, item);
+                writer.WriteEndArray();
+                return;
+            case IDictionary<string, object?> dictionary:
+                writer.WriteStartObject();
+                foreach (var entry in dictionary)
+                {
+                    writer.WritePropertyName(entry.Key);
+                    WritePlainActivityJsonValue(writer, entry.Value);
+                }
+                writer.WriteEndObject();
+                return;
+            case IEnumerable enumerable when value is not string:
+                writer.WriteStartArray();
+                foreach (var item in enumerable)
+                    WritePlainActivityJsonValue(writer, item);
+                writer.WriteEndArray();
+                return;
+            default:
+                JsonSerializer.Serialize(writer, value, value.GetType());
+                return;
+        }
+    }
+
 }

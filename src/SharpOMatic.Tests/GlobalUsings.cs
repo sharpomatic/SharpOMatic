@@ -19,6 +19,7 @@ global using SharpOMatic.Engine.Entities.Definitions;
 global using SharpOMatic.Engine.Entities.Enumerations;
 global using SharpOMatic.Engine.Enumerations;
 global using SharpOMatic.Engine.Exceptions;
+global using SharpOMatic.Engine.Helpers;
 global using SharpOMatic.Engine.Interfaces;
 global using SharpOMatic.Engine.Metadata.Definitions;
 global using SharpOMatic.Engine.Repository;

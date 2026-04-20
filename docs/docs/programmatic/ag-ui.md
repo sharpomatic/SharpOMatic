@@ -275,6 +275,22 @@ await Events.AddActivityDeltaAsync(
 );
 ```
 
+If the activity state already lives in workflow context, prefer the higher-level helpers that persist a hidden baseline snapshot and compute the delta automatically:
+
+```csharp
+await Events.AddActivitySnapshotFromContextAsync(
+    "plan-1",
+    "PLAN",
+    "activity.plan",
+    replace: false
+);
+
+await Events.AddActivityDeltaFromContextAsync(
+    "plan-1",
+    "activity.plan"
+);
+```
+
 Use `AddStepStartAsync` and `AddStepEndAsync` when the frontend should render simple AG-UI step lifecycle markers:
 
 ```csharp

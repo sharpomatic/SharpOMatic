@@ -14,7 +14,7 @@ public class CodeNode(ThreadContext threadContext, CodeNodeEntity node) : RunNod
                 ServiceProvider = ProcessContext.ServiceScope.ServiceProvider,
                 Assets = new AssetHelper(ProcessContext.RepositoryService, ProcessContext.AssetStore, ProcessContext.Run.RunId, ProcessContext.Run.ConversationId),
                 Debug = new DebugInformationHelper(Trace, Informations),
-                Events = new StreamEventHelper(ProcessContext),
+                Events = new StreamEventHelper(ProcessContext, ThreadContext.NodeContext),
             };
 
             try
