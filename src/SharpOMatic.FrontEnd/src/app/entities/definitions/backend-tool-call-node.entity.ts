@@ -5,35 +5,38 @@ import { NodeType } from '../enumerations/node-type';
 import { ToolCallDataMode } from '../enumerations/tool-call-data-mode';
 import { ToolCallChatPersistenceMode } from '../enumerations/tool-call-chat-persistence-mode';
 
-export interface FrontendToolCallNodeSnapshot extends NodeSnapshot {
+export interface BackendToolCallNodeSnapshot extends NodeSnapshot {
   functionName: string;
   argumentsMode: ToolCallDataMode;
   argumentsPath: string;
   argumentsJson: string;
-  resultOutputPath: string;
+  resultMode: ToolCallDataMode;
+  resultPath: string;
+  resultJson: string;
   chatPersistenceMode: ToolCallChatPersistenceMode;
-  hideFromReplyAfterHandled: boolean;
 }
 
-export class FrontendToolCallNodeEntity extends NodeEntity<FrontendToolCallNodeSnapshot> {
+export class BackendToolCallNodeEntity extends NodeEntity<BackendToolCallNodeSnapshot> {
   public functionName: WritableSignal<string>;
   public argumentsMode: WritableSignal<ToolCallDataMode>;
   public argumentsPath: WritableSignal<string>;
   public argumentsJson: WritableSignal<string>;
-  public resultOutputPath: WritableSignal<string>;
+  public resultMode: WritableSignal<ToolCallDataMode>;
+  public resultPath: WritableSignal<string>;
+  public resultJson: WritableSignal<string>;
   public chatPersistenceMode: WritableSignal<ToolCallChatPersistenceMode>;
-  public hideFromReplyAfterHandled: WritableSignal<boolean>;
 
-  constructor(snapshot: FrontendToolCallNodeSnapshot) {
+  constructor(snapshot: BackendToolCallNodeSnapshot) {
     super(snapshot);
 
     this.functionName = signal(snapshot.functionName);
     this.argumentsMode = signal(snapshot.argumentsMode);
     this.argumentsPath = signal(snapshot.argumentsPath);
     this.argumentsJson = signal(snapshot.argumentsJson);
-    this.resultOutputPath = signal(snapshot.resultOutputPath);
+    this.resultMode = signal(snapshot.resultMode);
+    this.resultPath = signal(snapshot.resultPath);
+    this.resultJson = signal(snapshot.resultJson);
     this.chatPersistenceMode = signal(snapshot.chatPersistenceMode);
-    this.hideFromReplyAfterHandled = signal(snapshot.hideFromReplyAfterHandled);
 
     const isNodeDirty = this.isDirty;
     this.isDirty = computed(() => {
@@ -45,62 +48,58 @@ export class FrontendToolCallNodeEntity extends NodeEntity<FrontendToolCallNodeS
         this.argumentsMode() !== original.argumentsMode ||
         this.argumentsPath() !== original.argumentsPath ||
         this.argumentsJson() !== original.argumentsJson ||
-        this.resultOutputPath() !== original.resultOutputPath ||
-        this.chatPersistenceMode() !== original.chatPersistenceMode ||
-        this.hideFromReplyAfterHandled() !== original.hideFromReplyAfterHandled
+        this.resultMode() !== original.resultMode ||
+        this.resultPath() !== original.resultPath ||
+        this.resultJson() !== original.resultJson ||
+        this.chatPersistenceMode() !== original.chatPersistenceMode
       );
     });
   }
 
-  public override toSnapshot(): FrontendToolCallNodeSnapshot {
+  public override toSnapshot(): BackendToolCallNodeSnapshot {
     return {
       ...super.toNodeSnapshot(),
       functionName: this.functionName(),
       argumentsMode: this.argumentsMode(),
       argumentsPath: this.argumentsPath(),
       argumentsJson: this.argumentsJson(),
-      resultOutputPath: this.resultOutputPath(),
+      resultMode: this.resultMode(),
+      resultPath: this.resultPath(),
+      resultJson: this.resultJson(),
       chatPersistenceMode: this.chatPersistenceMode(),
-      hideFromReplyAfterHandled: this.hideFromReplyAfterHandled(),
     };
   }
 
   public static fromSnapshot(
-    snapshot: FrontendToolCallNodeSnapshot,
-  ): FrontendToolCallNodeEntity {
-    return new FrontendToolCallNodeEntity(snapshot);
+    snapshot: BackendToolCallNodeSnapshot,
+  ): BackendToolCallNodeEntity {
+    return new BackendToolCallNodeEntity(snapshot);
   }
 
-  public static override defaultSnapshot(): FrontendToolCallNodeSnapshot {
-    const toolResultOutput = ConnectorEntity.defaultSnapshot();
-    const otherInputOutput = ConnectorEntity.defaultSnapshot();
-
-    toolResultOutput.name = 'toolResult';
-    otherInputOutput.name = 'otherInput';
-
+  public static override defaultSnapshot(): BackendToolCallNodeSnapshot {
     return {
       ...NodeEntity.defaultSnapshot(),
-      nodeType: NodeType.FrontendToolCall,
-      title: 'FE Tool Call',
+      nodeType: NodeType.BackendToolCall,
+      title: 'BE Tool Call',
       inputs: [ConnectorEntity.defaultSnapshot()],
-      outputs: [toolResultOutput, otherInputOutput],
+      outputs: [ConnectorEntity.defaultSnapshot()],
       functionName: '',
       argumentsMode: ToolCallDataMode.FixedJson,
       argumentsPath: '',
       argumentsJson: '{}',
-      resultOutputPath: 'output.toolResult',
-      chatPersistenceMode:
-        ToolCallChatPersistenceMode.FunctionCallAndResult,
-      hideFromReplyAfterHandled: false,
+      resultMode: ToolCallDataMode.FixedJson,
+      resultPath: '',
+      resultJson: '{}',
+      chatPersistenceMode: ToolCallChatPersistenceMode.FunctionCallAndResult,
     };
   }
 
   public static create(
     top: number,
     left: number,
-  ): FrontendToolCallNodeEntity {
-    return new FrontendToolCallNodeEntity({
-      ...FrontendToolCallNodeEntity.defaultSnapshot(),
+  ): BackendToolCallNodeEntity {
+    return new BackendToolCallNodeEntity({
+      ...BackendToolCallNodeEntity.defaultSnapshot(),
       top,
       left,
     });

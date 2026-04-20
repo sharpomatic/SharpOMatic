@@ -1,6 +1,6 @@
 namespace SharpOMatic.Engine.Entities.Enumerations;
 
-public enum FrontendToolCallArgumentsMode
+public enum ToolCallDataMode
 {
     ContextPath = 0,
     FixedJson = 1,

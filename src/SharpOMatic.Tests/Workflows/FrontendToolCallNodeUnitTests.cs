@@ -6,7 +6,7 @@ public sealed class FrontendToolCallNodeUnitTests
     public async Task Frontend_tool_call_matches_tool_result_and_keeps_call_and_result_when_requested()
     {
         var workflow = CreateBranchingWorkflow(
-            chatPersistenceMode: FrontendToolCallChatPersistenceMode.FunctionCallAndResult,
+            chatPersistenceMode: ToolCallChatPersistenceMode.FunctionCallAndResult,
             hideFromReplyAfterHandled: true
         );
 
@@ -76,7 +76,7 @@ public sealed class FrontendToolCallNodeUnitTests
     [Fact]
     public async Task Frontend_tool_call_keeps_only_function_call_when_configured()
     {
-        var workflow = CreateBranchingWorkflow(chatPersistenceMode: FrontendToolCallChatPersistenceMode.FunctionCallOnly);
+        var workflow = CreateBranchingWorkflow(chatPersistenceMode: ToolCallChatPersistenceMode.FunctionCallOnly);
 
         using var provider = WorkflowRunner.BuildProvider();
         var repositoryService = provider.GetRequiredService<IRepositoryService>();
@@ -127,7 +127,7 @@ public sealed class FrontendToolCallNodeUnitTests
     [Fact]
     public async Task Frontend_tool_call_removes_tool_messages_from_chat_when_persistence_is_none()
     {
-        var workflow = CreateBranchingWorkflow(chatPersistenceMode: FrontendToolCallChatPersistenceMode.None);
+        var workflow = CreateBranchingWorkflow(chatPersistenceMode: ToolCallChatPersistenceMode.None);
 
         using var provider = WorkflowRunner.BuildProvider();
         var repositoryService = provider.GetRequiredService<IRepositoryService>();
@@ -179,7 +179,7 @@ public sealed class FrontendToolCallNodeUnitTests
     public async Task Frontend_tool_call_other_input_cleans_up_chat_and_hides_tool_call_events()
     {
         var workflow = CreateBranchingWorkflow(
-            chatPersistenceMode: FrontendToolCallChatPersistenceMode.FunctionCallAndResult
+            chatPersistenceMode: ToolCallChatPersistenceMode.FunctionCallAndResult
         );
 
         using var provider = WorkflowRunner.BuildProvider();
@@ -249,10 +249,10 @@ public sealed class FrontendToolCallNodeUnitTests
             .AddFrontendToolCall(
                 title: "call",
                 functionName: "request_confirmation",
-                argumentsMode: FrontendToolCallArgumentsMode.FixedJson,
+                argumentsMode: ToolCallDataMode.FixedJson,
                 argumentsJson: """{"question":"Proceed?"}""",
                 resultOutputPath: "output.toolResult",
-                chatPersistenceMode: FrontendToolCallChatPersistenceMode.FunctionCallAndResult
+                chatPersistenceMode: ToolCallChatPersistenceMode.FunctionCallAndResult
             )
             .Connect("start", "seed")
             .Connect("seed", "call")
@@ -308,7 +308,7 @@ public sealed class FrontendToolCallNodeUnitTests
         var workflow = new WorkflowBuilder()
             .AddStart()
             .AddFrontendToolCall()
-            .Connect("start", "frontendToolCall")
+            .Connect("start", "FE Tool Call")
             .Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
@@ -339,8 +339,8 @@ public sealed class FrontendToolCallNodeUnitTests
         var workflow = new WorkflowBuilder()
             .EnableConversations()
             .AddStart()
-            .AddFrontendToolCall(argumentsMode: FrontendToolCallArgumentsMode.FixedJson, argumentsJson: """{"broken":""")
-            .Connect("start", "frontendToolCall")
+            .AddFrontendToolCall(argumentsMode: ToolCallDataMode.FixedJson, argumentsJson: """{"broken":""")
+            .Connect("start", "FE Tool Call")
             .Build();
 
         using var provider = WorkflowRunner.BuildProvider();
@@ -375,12 +375,12 @@ public sealed class FrontendToolCallNodeUnitTests
             .AddStart()
             .AddEdit("seed", WorkflowBuilder.CreateJsonUpsert("input.payload", json: """{"approved":true,"count":2}"""))
             .AddFrontendToolCall(
-                argumentsMode: FrontendToolCallArgumentsMode.ContextPath,
+                argumentsMode: ToolCallDataMode.ContextPath,
                 argumentsPath: "input.payload",
                 hideFromReplyAfterHandled: false
             )
             .Connect("start", "seed")
-            .Connect("seed", "frontendToolCall")
+            .Connect("seed", "FE Tool Call")
             .Build();
 
         using var provider = WorkflowRunner.BuildProvider();
@@ -417,7 +417,7 @@ public sealed class FrontendToolCallNodeUnitTests
     }
 
     private static WorkflowEntity CreateBranchingWorkflow(
-        FrontendToolCallChatPersistenceMode chatPersistenceMode,
+        ToolCallChatPersistenceMode chatPersistenceMode,
         bool hideFromReplyAfterHandled = false
     )
     {
@@ -427,7 +427,7 @@ public sealed class FrontendToolCallNodeUnitTests
             .AddFrontendToolCall(
                 title: "call",
                 functionName: "request_confirmation",
-                argumentsMode: FrontendToolCallArgumentsMode.FixedJson,
+                argumentsMode: ToolCallDataMode.FixedJson,
                 argumentsJson: """{"question":"Proceed?"}""",
                 resultOutputPath: "output.toolResult",
                 chatPersistenceMode: chatPersistenceMode,
@@ -449,7 +449,7 @@ public sealed class FrontendToolCallNodeUnitTests
         string expectedError
     )
     {
-        var workflow = CreateBranchingWorkflow(FrontendToolCallChatPersistenceMode.FunctionCallAndResult);
+        var workflow = CreateBranchingWorkflow(ToolCallChatPersistenceMode.FunctionCallAndResult);
 
         using var provider = WorkflowRunner.BuildProvider();
         var repositoryService = provider.GetRequiredService<IRepositoryService>();

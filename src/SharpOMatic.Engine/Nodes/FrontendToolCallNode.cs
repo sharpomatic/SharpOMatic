@@ -51,7 +51,7 @@ public sealed class FrontendToolCallNode(ThreadContext threadContext, FrontendTo
 
         ThreadContext.NodeContext[PendingRootPath] = pendingState;
 
-        if (Node.ChatPersistenceMode != FrontendToolCallChatPersistenceMode.None)
+        if (Node.ChatPersistenceMode != ToolCallChatPersistenceMode.None)
         {
             var arguments = ParseArgumentsObject(argumentsJson, $"Frontend Tool Call node '{Node.Title}' arguments must decode to a JSON object when chat persistence is enabled.");
             var functionCallMessage = new ChatMessage(ChatRole.Assistant, [new FunctionCallContent(toolCallId, Node.FunctionName, arguments)])
@@ -122,8 +122,8 @@ public sealed class FrontendToolCallNode(ThreadContext threadContext, FrontendTo
     {
         return Node.ArgumentsMode switch
         {
-            FrontendToolCallArgumentsMode.ContextPath => await ResolveArgumentsFromContextPath(),
-            FrontendToolCallArgumentsMode.FixedJson => ValidateFixedArgumentsJson(Node.ArgumentsJson),
+            ToolCallDataMode.ContextPath => await ResolveArgumentsFromContextPath(),
+            ToolCallDataMode.FixedJson => ValidateFixedArgumentsJson(Node.ArgumentsJson),
             _ => throw new SharpOMaticException($"Unsupported Frontend Tool Call arguments mode '{Node.ArgumentsMode}'."),
         };
     }
@@ -207,14 +207,14 @@ public sealed class FrontendToolCallNode(ThreadContext threadContext, FrontendTo
     {
         switch (Node.ChatPersistenceMode)
         {
-            case FrontendToolCallChatPersistenceMode.None:
+            case ToolCallChatPersistenceMode.None:
                 RemoveCreatedChatMessages(pendingState);
                 RemoveChatMessagesByIds([toolResultMessageId]);
                 break;
-            case FrontendToolCallChatPersistenceMode.FunctionCallOnly:
+            case ToolCallChatPersistenceMode.FunctionCallOnly:
                 RemoveChatMessagesByIds([toolResultMessageId]);
                 break;
-            case FrontendToolCallChatPersistenceMode.FunctionCallAndResult:
+            case ToolCallChatPersistenceMode.FunctionCallAndResult:
                 break;
             default:
                 throw new SharpOMaticException($"Unsupported Frontend Tool Call chat persistence mode '{Node.ChatPersistenceMode}'.");

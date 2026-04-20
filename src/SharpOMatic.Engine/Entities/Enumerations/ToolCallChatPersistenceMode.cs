@@ -1,6 +1,6 @@
 namespace SharpOMatic.Engine.Entities.Enumerations;
 
-public enum FrontendToolCallChatPersistenceMode
+public enum ToolCallChatPersistenceMode
 {
     None = 0,
     FunctionCallOnly = 1,

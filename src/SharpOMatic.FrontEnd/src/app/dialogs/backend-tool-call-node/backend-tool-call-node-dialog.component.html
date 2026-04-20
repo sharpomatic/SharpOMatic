@@ -4,7 +4,7 @@
       class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1"
     >
       <h2 class="">
-        <i class="bi bi-hand-index pe-3 icon-sm"></i>{{ node.title() }}
+        <i class="bi bi-server pe-3 icon-sm"></i>{{ node.title() }}
       </h2>
       <button class="btn btn-primary" (click)="onClose()">Close</button>
     </div>
@@ -14,57 +14,57 @@
     <ng-template #detailsTab>
       <div class="p-3 details">
         <div class="mb-3 form-line">
-          <label for="frontend-title" class="form-label field-label">Title</label>
+          <label for="backend-title" class="form-label field-label">Title</label>
           <div class="flex-fill control-column title">
             <input
               type="text"
               class="form-control w-100"
-              id="frontend-title"
+              id="backend-title"
               [ngModel]="node.title()"
               (ngModelChange)="node.title.set($event)"
             />
           </div>
         </div>
         <div class="mb-3 form-line">
-          <label for="frontend-function-name" class="form-label field-label"
+          <label for="backend-function-name" class="form-label field-label"
             >Tool Name</label
           >
           <div class="flex-fill control-column path">
             <input
               type="text"
               class="form-control w-100"
-              id="frontend-function-name"
+              id="backend-function-name"
               [ngModel]="node.functionName()"
               (ngModelChange)="node.functionName.set($event)"
             />
           </div>
         </div>
         <div class="mb-3 form-line">
-          <label for="frontend-arguments-mode" class="form-label field-label"
+          <label for="backend-arguments-mode" class="form-label field-label"
             >Arguments Mode</label
           >
           <div class="flex-fill control-column small">
             <select
               class="form-select w-100"
-              id="frontend-arguments-mode"
+              id="backend-arguments-mode"
               [ngModel]="node.argumentsMode()"
               (ngModelChange)="node.argumentsMode.set(+$event)"
             >
-              <option [ngValue]="ArgumentsMode.ContextPath">Context Path</option>
-              <option [ngValue]="ArgumentsMode.FixedJson">Fixed JSON</option>
+              <option [ngValue]="DataMode.ContextPath">Context Path</option>
+              <option [ngValue]="DataMode.FixedJson">Fixed JSON</option>
             </select>
           </div>
         </div>
-        @if (node.argumentsMode() === ArgumentsMode.ContextPath) {
+        @if (node.argumentsMode() === DataMode.ContextPath) {
           <div class="mb-3 form-line">
-            <label for="frontend-arguments-path" class="form-label field-label"
+            <label for="backend-arguments-path" class="form-label field-label"
               >Arguments Path</label
             >
             <div class="flex-fill control-column path">
               <input
                 type="text"
                 class="form-control w-100"
-                id="frontend-arguments-path"
+                id="backend-arguments-path"
                 [ngModel]="node.argumentsPath()"
                 (ngModelChange)="node.argumentsPath.set($event)"
               />
@@ -72,13 +72,13 @@
           </div>
         } @else {
           <div class="mb-3 form-line align-start">
-            <label for="frontend-arguments-json" class="form-label field-label"
+            <label for="backend-arguments-json" class="form-label field-label"
               >Arguments JSON</label
             >
             <div class="flex-fill control-column wide">
               <ngx-monaco-editor
                 class="json-editor"
-                id="frontend-arguments-json"
+                id="backend-arguments-json"
                 [options]="editorOptionsJson"
                 [ngModel]="node.argumentsJson()"
                 (ngModelChange)="node.argumentsJson.set($event)"
@@ -87,29 +87,60 @@
           </div>
         }
         <div class="mb-3 form-line">
-          <label for="frontend-result-path" class="form-label field-label"
-            >Result Output Path</label
+          <label for="backend-result-mode" class="form-label field-label"
+            >Result Mode</label
           >
-          <div class="flex-fill control-column path">
-            <input
-              type="text"
-              class="form-control w-100"
-              id="frontend-result-path"
-              [ngModel]="node.resultOutputPath()"
-              (ngModelChange)="node.resultOutputPath.set($event)"
-            />
+          <div class="flex-fill control-column small">
+            <select
+              class="form-select w-100"
+              id="backend-result-mode"
+              [ngModel]="node.resultMode()"
+              (ngModelChange)="node.resultMode.set(+$event)"
+            >
+              <option [ngValue]="DataMode.ContextPath">Context Path</option>
+              <option [ngValue]="DataMode.FixedJson">Fixed JSON</option>
+            </select>
           </div>
         </div>
+        @if (node.resultMode() === DataMode.ContextPath) {
+          <div class="mb-3 form-line">
+            <label for="backend-result-path" class="form-label field-label"
+              >Result Path</label
+            >
+            <div class="flex-fill control-column path">
+              <input
+                type="text"
+                class="form-control w-100"
+                id="backend-result-path"
+                [ngModel]="node.resultPath()"
+                (ngModelChange)="node.resultPath.set($event)"
+              />
+            </div>
+          </div>
+        } @else {
+          <div class="mb-3 form-line align-start">
+            <label for="backend-result-json" class="form-label field-label"
+              >Result JSON</label
+            >
+            <div class="flex-fill control-column wide">
+              <ngx-monaco-editor
+                class="json-editor"
+                id="backend-result-json"
+                [options]="editorOptionsJson"
+                [ngModel]="node.resultJson()"
+                (ngModelChange)="node.resultJson.set($event)"
+              ></ngx-monaco-editor>
+            </div>
+          </div>
+        }
         <div class="mb-3 form-line">
-          <label
-            for="frontend-chat-persistence"
-            class="form-label field-label"
+          <label for="backend-chat-persistence" class="form-label field-label"
             >Chat Persistence</label
           >
           <div class="flex-fill control-column small">
             <select
               class="form-select w-100"
-              id="frontend-chat-persistence"
+              id="backend-chat-persistence"
               [ngModel]="node.chatPersistenceMode()"
               (ngModelChange)="node.chatPersistenceMode.set(+$event)"
             >
@@ -121,22 +152,6 @@
                 Function Call And Result
               </option>
             </select>
-          </div>
-        </div>
-        <div class="mb-3 form-line">
-          <label
-            for="frontend-hide-from-reply"
-            class="form-label field-label"
-            >Hide From Stream</label
-          >
-          <div class="flex-fill control-column small">
-            <input
-              type="checkbox"
-              class="form-check-input"
-              id="frontend-hide-from-reply"
-              [ngModel]="node.hideFromReplyAfterHandled()"
-              (ngModelChange)="node.hideFromReplyAfterHandled.set(!!$event)"
-            />
           </div>
         </div>
       </div>

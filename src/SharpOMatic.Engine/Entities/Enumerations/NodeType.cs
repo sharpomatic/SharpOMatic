@@ -14,4 +14,5 @@ public enum NodeType
     Gosub = 9,
     Suspend = 10,
     FrontendToolCall = 11,
+    BackendToolCall = 12,
 }

@@ -11,6 +11,7 @@ export enum NodeType {
   Gosub = 9,
   Suspend = 10,
   FrontendToolCall = 11,
+  BackendToolCall = 12,
 }
 
 export function getNodeSymbol(nodeType: NodeType): string {
@@ -39,6 +40,8 @@ export function getNodeSymbol(nodeType: NodeType): string {
       return 'bi-pause-circle';
     case NodeType.FrontendToolCall:
       return 'bi-hand-index';
+    case NodeType.BackendToolCall:
+      return 'bi-server';
     default:
       return '';
   }

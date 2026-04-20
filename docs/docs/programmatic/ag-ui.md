@@ -178,6 +178,18 @@ The node:
 It can optionally keep or remove the function call and tool result from `input.chat`.
 It can also mark handled frontend tool-call stream events with `HideFromReply` so future AG-UI replay does not ask the same frontend question again.
 
+## Backend tool calls
+
+SharpOMatic also includes a **Backend Tool Call** node for workflows that already know the tool result during the current run.
+
+This node:
+
+- emits `TOOL_CALL_START`, `TOOL_CALL_ARGS`, `TOOL_CALL_END`, and `TOOL_CALL_RESULT` immediately
+- does not suspend or branch
+- can optionally add the assistant function call and tool result into `input.chat`
+
+Use it when the workflow wants AG-UI tool-call rendering for backend-generated data without waiting for a later frontend response.
+
 ## SSE behavior
 
 The endpoint streams AG-UI SSE events from SharpOMatic workflow stream events:

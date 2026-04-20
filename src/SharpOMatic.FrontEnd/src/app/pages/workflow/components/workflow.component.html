@@ -131,8 +131,18 @@
                       workflowService.workflow()
                     )
                   "
-                  ><i class="dropdown-icon bi bi-hand-index"></i>Frontend Tool
-                  Call</a
+                  ><i class="dropdown-icon bi bi-hand-index"></i>FE Tool Call</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addBackendToolCallNode(
+                      workflowService.workflow()
+                    )
+                  "
+                  ><i class="dropdown-icon bi bi-server"></i>BE Tool Call</a
                 >
               </li>
             </ul>

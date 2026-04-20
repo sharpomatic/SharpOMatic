@@ -142,6 +142,9 @@ For AG-UI workflows that need a frontend action and then a later resume, SharpOM
 It emits AG-UI tool-call events, suspends the conversation, and resumes through `toolResult` or `otherInput`.
 That node can keep or remove the frontend tool exchange from `input.chat`, and it can mark handled stream events with `HideFromReply` so future AG-UI replay does not render the same pending frontend request again.
 
+SharpOMatic also provides a **Backend Tool Call** node for workflows that already know the tool result during the current run.
+It emits the full tool-call lifecycle immediately, does not suspend, and can optionally persist the function call and tool result into `input.chat`.
+
 If a workflow wants to add the incoming AG-UI user message into SharpOMatic stream history without sending it back to the AG-UI caller, use a code node and the transient `silent` flag:
 
 ```csharp

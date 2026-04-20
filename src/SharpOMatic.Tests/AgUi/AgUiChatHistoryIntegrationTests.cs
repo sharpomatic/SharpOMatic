@@ -176,6 +176,80 @@ public sealed class AgUiChatHistoryIntegrationTests
         }
     }
 
+    [Fact]
+    public async Task AgUi_backend_tool_call_workflow_streams_complete_tool_call_lifecycle()
+    {
+        var workflow = new SharpOMatic.Tests.Workflows.WorkflowBuilder()
+            .WithName("Backend Tool Call Workflow")
+            .AddStart()
+            .AddBackendToolCall(
+                functionName: "lookup_weather",
+                argumentsMode: ToolCallDataMode.FixedJson,
+                argumentsJson: """{"city":"Sydney"}""",
+                resultMode: ToolCallDataMode.FixedJson,
+                resultJson: """{"forecast":"Sunny"}"""
+            )
+            .AddEnd()
+            .Connect("start", "BE Tool Call")
+            .Connect("BE Tool Call", "end")
+            .Build();
+
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider(services =>
+        {
+            services.AddSingleton<IAgUiRunEventBroker, AgUiRunEventBroker>();
+            services.AddSingleton<IProgressService, AgUiProgressService>();
+        });
+
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            var controller = new AgUiController(provider.GetRequiredService<IEngineService>(), provider.GetRequiredService<IAgUiRunEventBroker>());
+            controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+            await controller.Post(
+                new AgUiRunRequest()
+                {
+                    ThreadId = "thread-1",
+                    RunId = "protocol-run-1",
+                    ForwardedProps = ParseJson($$"""{"workflowId":"{{workflow.Id}}"}"""),
+                }
+            );
+
+            var events = ReadSseEvents((MemoryStream)controller.HttpContext.Response.Body);
+            Assert.Equal("RUN_STARTED", events[0].GetProperty("type").GetString());
+
+            var toolStart = Assert.Single(events, e => e.GetProperty("type").GetString() == "TOOL_CALL_START");
+            var toolArgs = Assert.Single(events, e => e.GetProperty("type").GetString() == "TOOL_CALL_ARGS");
+            var toolEnd = Assert.Single(events, e => e.GetProperty("type").GetString() == "TOOL_CALL_END");
+            var toolResult = Assert.Single(events, e => e.GetProperty("type").GetString() == "TOOL_CALL_RESULT");
+
+            var toolCallId = toolStart.GetProperty("toolCallId").GetString();
+            Assert.Equal("lookup_weather", toolStart.GetProperty("toolCallName").GetString());
+            Assert.Equal(toolCallId, toolArgs.GetProperty("toolCallId").GetString());
+            Assert.Equal("{\"city\":\"Sydney\"}", toolArgs.GetProperty("delta").GetString());
+            Assert.Equal(toolCallId, toolEnd.GetProperty("toolCallId").GetString());
+            Assert.Equal(toolCallId, toolResult.GetProperty("toolCallId").GetString());
+            Assert.Equal("tool", toolResult.GetProperty("role").GetString());
+            Assert.Equal("{\"forecast\":\"Sunny\"}", toolResult.GetProperty("content").GetString());
+
+            var protocolToolMessageId = toolResult.GetProperty("messageId").GetString();
+            Assert.NotNull(protocolToolMessageId);
+            Assert.StartsWith("tool:backend-tool-result:", protocolToolMessageId);
+            Assert.Equal("RUN_FINISHED", events[^1].GetProperty("type").GetString());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
     private static WorkflowEntity CreateModelWorkflow(Guid modelId, bool isConversationEnabled)
     {
         var workflow = new SharpOMatic.Tests.Workflows.WorkflowBuilder()

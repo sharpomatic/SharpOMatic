@@ -18,6 +18,10 @@ import {
   FrontendToolCallNodeEntity,
   FrontendToolCallNodeSnapshot,
 } from './frontend-tool-call-node.entity';
+import {
+  BackendToolCallNodeEntity,
+  BackendToolCallNodeSnapshot,
+} from './backend-tool-call-node.entity';
 
 export function nodeFromSnapshot(
   snapshot: NodeSnapshot,
@@ -51,6 +55,10 @@ export function nodeFromSnapshot(
     case NodeType.FrontendToolCall:
       return FrontendToolCallNodeEntity.fromSnapshot(
         snapshot as FrontendToolCallNodeSnapshot,
+      );
+    case NodeType.BackendToolCall:
+      return BackendToolCallNodeEntity.fromSnapshot(
+        snapshot as BackendToolCallNodeSnapshot,
       );
   }
 }

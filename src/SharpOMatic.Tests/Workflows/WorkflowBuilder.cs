@@ -315,13 +315,13 @@ public sealed class WorkflowBuilder
     }
 
     public WorkflowBuilder AddFrontendToolCall(
-        string title = "frontendToolCall",
+        string title = "FE Tool Call",
         string functionName = "request_confirmation",
-        FrontendToolCallArgumentsMode argumentsMode = FrontendToolCallArgumentsMode.FixedJson,
+        ToolCallDataMode argumentsMode = ToolCallDataMode.FixedJson,
         string argumentsPath = "",
         string argumentsJson = "{}",
         string resultOutputPath = "output.toolResult",
-        FrontendToolCallChatPersistenceMode chatPersistenceMode = FrontendToolCallChatPersistenceMode.None,
+        ToolCallChatPersistenceMode chatPersistenceMode = ToolCallChatPersistenceMode.None,
         bool hideFromReplyAfterHandled = false
     )
     {
@@ -344,6 +344,44 @@ public sealed class WorkflowBuilder
             ResultOutputPath = resultOutputPath,
             ChatPersistenceMode = chatPersistenceMode,
             HideFromReplyAfterHandled = hideFromReplyAfterHandled,
+        };
+
+        _nodes.Add(node);
+        return this;
+    }
+
+    public WorkflowBuilder AddBackendToolCall(
+        string title = "BE Tool Call",
+        string functionName = "lookup_weather",
+        ToolCallDataMode argumentsMode = ToolCallDataMode.FixedJson,
+        string argumentsPath = "",
+        string argumentsJson = "{}",
+        ToolCallDataMode resultMode = ToolCallDataMode.FixedJson,
+        string resultPath = "",
+        string resultJson = "{}",
+        ToolCallChatPersistenceMode chatPersistenceMode = ToolCallChatPersistenceMode.None
+    )
+    {
+        var node = new BackendToolCallNodeEntity
+        {
+            Id = Guid.NewGuid(),
+            Version = 1,
+            NodeType = NodeType.BackendToolCall,
+            Title = title,
+            Top = 0f,
+            Left = 0f,
+            Width = 80f,
+            Height = 80f,
+            Inputs = [CreateConnector()],
+            Outputs = [CreateConnector()],
+            FunctionName = functionName,
+            ArgumentsMode = argumentsMode,
+            ArgumentsPath = argumentsPath,
+            ArgumentsJson = argumentsJson,
+            ResultMode = resultMode,
+            ResultPath = resultPath,
+            ResultJson = resultJson,
+            ChatPersistenceMode = chatPersistenceMode,
         };
 
         _nodes.Add(node);

@@ -14,13 +14,13 @@ import { DIALOG_DATA } from '../services/dialog.service';
 import { TabComponent, TabItem } from '../../components/tab/tab.component';
 import { ContextViewerComponent } from '../../components/context-viewer/context-viewer.component';
 import { TraceProgressModel } from '../../pages/workflow/interfaces/trace-progress-model';
-import { FrontendToolCallNodeEntity } from '../../entities/definitions/frontend-tool-call-node.entity';
+import { BackendToolCallNodeEntity } from '../../entities/definitions/backend-tool-call-node.entity';
 import { ToolCallDataMode } from '../../entities/enumerations/tool-call-data-mode';
 import { ToolCallChatPersistenceMode } from '../../entities/enumerations/tool-call-chat-persistence-mode';
 import { MonacoService } from '../../services/monaco.service';
 
 @Component({
-  selector: 'app-frontend-tool-call-node-dialog',
+  selector: 'app-backend-tool-call-node-dialog',
   imports: [
     CommonModule,
     FormsModule,
@@ -28,18 +28,18 @@ import { MonacoService } from '../../services/monaco.service';
     TabComponent,
     ContextViewerComponent,
   ],
-  templateUrl: './frontend-tool-call-node-dialog.component.html',
-  styleUrls: ['./frontend-tool-call-node-dialog.component.scss'],
+  templateUrl: './backend-tool-call-node-dialog.component.html',
+  styleUrls: ['./backend-tool-call-node-dialog.component.scss'],
 })
-export class FrontendToolCallNodeDialogComponent implements OnInit {
+export class BackendToolCallNodeDialogComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
   @ViewChild('detailsTab', { static: true }) detailsTab!: TemplateRef<unknown>;
   @ViewChild('inputsTab', { static: true }) inputsTab!: TemplateRef<unknown>;
   @ViewChild('outputsTab', { static: true }) outputsTab!: TemplateRef<unknown>;
 
-  public readonly ArgumentsMode = ToolCallDataMode;
+  public readonly DataMode = ToolCallDataMode;
   public readonly ChatPersistenceMode = ToolCallChatPersistenceMode;
-  public node: FrontendToolCallNodeEntity;
+  public node: BackendToolCallNodeEntity;
   public inputTraces: string[];
   public outputTraces: string[];
   public editorOptionsJson = MonacoService.editorOptionsJson;
@@ -49,7 +49,7 @@ export class FrontendToolCallNodeDialogComponent implements OnInit {
   constructor(
     @Inject(DIALOG_DATA)
     data: {
-      node: FrontendToolCallNodeEntity;
+      node: BackendToolCallNodeEntity;
       nodeTraces: TraceProgressModel[];
     },
   ) {

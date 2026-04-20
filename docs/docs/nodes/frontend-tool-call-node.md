@@ -5,6 +5,8 @@ sidebar_position: 9
 
 The **Frontend Tool Call** node sends an AG-UI tool call to the frontend, suspends the conversation, and then resumes through one of two outputs on the next turn.
 
+If the workflow already knows the tool result during the current run and does not need to suspend, use **Backend Tool Call** instead.
+
 ## When To Use It
 
 Use **Frontend Tool Call** when the workflow needs a frontend action that should not always become durable model chat history, for example:
