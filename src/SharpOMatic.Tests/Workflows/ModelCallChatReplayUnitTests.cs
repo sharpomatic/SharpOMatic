@@ -207,7 +207,7 @@ public sealed class ModelCallChatReplayUnitTests
 
     private sealed class ReplayAwareTestModelCaller(ChatReplayCapture capture) : BaseModelCaller
     {
-        public override Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+        public override Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -225,9 +225,7 @@ public sealed class ModelCallChatReplayUnitTests
             var turnNumber = processContext.Run.TurnNumber ?? 1;
             IList<ChatMessage> responses = turnNumber == 1 ? BuildSeedResponses() : [new ChatMessage(ChatRole.Assistant, [new TextContent($"turn-{turnNumber}")])];
 
-            var tempContext = new ContextObject();
-            tempContext.Set(node.TextOutputPath, $"turn-{turnNumber}");
-            return Task.FromResult<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)>((chat, responses, tempContext));
+            return Task.FromResult<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)>((chat, responses, $"turn-{turnNumber}"));
         }
 
         private static List<ChatMessage> CloneMessages(IEnumerable<ChatMessage> messages)

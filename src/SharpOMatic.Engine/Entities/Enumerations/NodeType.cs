@@ -13,4 +13,5 @@ public enum NodeType
     Batch = 8,
     Gosub = 9,
     Suspend = 10,
+    FrontendToolCall = 11,
 }

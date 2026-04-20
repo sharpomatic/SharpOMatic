@@ -2,7 +2,7 @@ namespace SharpOMatic.Engine.Interfaces;
 
 public interface IModelCaller
 {
-    Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+    Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
         Model model,
         ModelConfig modelConfig,
         Connector connector,

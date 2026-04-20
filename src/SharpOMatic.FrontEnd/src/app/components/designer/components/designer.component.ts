@@ -56,6 +56,8 @@ import { GosubNodeEntity } from '../../../entities/definitions/gosub-node.entity
 import { SuspendNodeEntity } from '../../../entities/definitions/suspend-node.entity';
 import { GosubNodeDialogComponent } from '../../../dialogs/gosub-node/gosub-node-dialog.component';
 import { SuspendNodeDialogComponent } from '../../../dialogs/suspend-node/suspend-node-dialog.component';
+import { FrontendToolCallNodeEntity } from '../../../entities/definitions/frontend-tool-call-node.entity';
+import { FrontendToolCallNodeDialogComponent } from '../../../dialogs/frontend-tool-call-node/frontend-tool-call-node-dialog.component';
 
 @Component({
   selector: 'app-designer',
@@ -369,6 +371,11 @@ export class DesignerComponent {
       this.dialogService.open(GosubNodeDialogComponent, { node, nodeTraces });
     } else if (node instanceof SuspendNodeEntity) {
       this.dialogService.open(SuspendNodeDialogComponent, { node, nodeTraces });
+    } else if (node instanceof FrontendToolCallNodeEntity) {
+      this.dialogService.open(FrontendToolCallNodeDialogComponent, {
+        node,
+        nodeTraces,
+      });
     }
   }
 

@@ -14,6 +14,10 @@ import {
 import { BatchNodeEntity, BatchNodeSnapshot } from './batch-node.entity';
 import { GosubNodeEntity, GosubNodeSnapshot } from './gosub-node.entity';
 import { SuspendNodeEntity, SuspendNodeSnapshot } from './suspend-node.entity';
+import {
+  FrontendToolCallNodeEntity,
+  FrontendToolCallNodeSnapshot,
+} from './frontend-tool-call-node.entity';
 
 export function nodeFromSnapshot(
   snapshot: NodeSnapshot,
@@ -44,5 +48,9 @@ export function nodeFromSnapshot(
       return GosubNodeEntity.fromSnapshot(snapshot as GosubNodeSnapshot);
     case NodeType.Suspend:
       return SuspendNodeEntity.fromSnapshot(snapshot as SuspendNodeSnapshot);
+    case NodeType.FrontendToolCall:
+      return FrontendToolCallNodeEntity.fromSnapshot(
+        snapshot as FrontendToolCallNodeSnapshot,
+      );
   }
 }

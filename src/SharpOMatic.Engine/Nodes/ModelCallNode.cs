@@ -16,12 +16,13 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             throw new SharpOMaticException($"No implementation found for connector '{connectorConfig.ConfigId}'");
 
         // Use specific implementation to perform call for us
-        (var chat, var responses, var tempContext) = await caller.Call(model, modelConfig, connector, connectorConfig, ProcessContext, ThreadContext, Node, progressSink);
+        (var chat, var responses, var resultValue) = await caller.Call(model, modelConfig, connector, connectorConfig, ProcessContext, ThreadContext, Node, progressSink);
         await progressSink.ApplyBatchResponseFallbackAsync(responses);
         await progressSink.CompleteAsync();
 
-        // Merge result context into the nodes context
-        ProcessContext.MergeContexts(ThreadContext.NodeContext, tempContext);
+        var textOutputPath = !string.IsNullOrWhiteSpace(Node.TextOutputPath) ? Node.TextOutputPath : "output.text";
+        if (!ThreadContext.NodeContext.TrySet(textOutputPath, resultValue))
+            throw new SharpOMaticException($"Could not set '{textOutputPath}' into context.");
 
         // If there is an output path for placing new chat history
         if (!string.IsNullOrWhiteSpace(Node.ChatOutputPath))
@@ -685,6 +686,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                 ToolCallId = write.ToolCallId,
                 ParentMessageId = write.ParentMessageId,
                 Metadata = write.Metadata,
+                HideFromReply = false,
             };
 
             _streamEvents.Add(streamEvent);

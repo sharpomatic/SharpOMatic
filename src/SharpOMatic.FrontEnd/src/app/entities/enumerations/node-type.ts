@@ -10,6 +10,7 @@ export enum NodeType {
   Batch = 8,
   Gosub = 9,
   Suspend = 10,
+  FrontendToolCall = 11,
 }
 
 export function getNodeSymbol(nodeType: NodeType): string {
@@ -36,6 +37,8 @@ export function getNodeSymbol(nodeType: NodeType): string {
       return 'bi-diagram-3';
     case NodeType.Suspend:
       return 'bi-pause-circle';
+    case NodeType.FrontendToolCall:
+      return 'bi-hand-index';
     default:
       return '';
   }

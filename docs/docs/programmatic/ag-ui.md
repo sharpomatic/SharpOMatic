@@ -3,7 +3,8 @@ title: AG-UI
 sidebar_position: 2
 ---
 
-SharpOMatic has optional AG-UI support for clients that want to start or resume conversation workflows over a single SSE endpoint.
+SharpOMatic has optional AG-UI support for clients that want to drive workflows over a single SSE endpoint.
+It supports both stateless workflow runs and conversation-enabled workflows.
 
 ## Install the package
 
@@ -46,10 +47,9 @@ builder.Services.AddSharpOMaticAgUi(sharpOMaticBasePath, "/myChatBot");
 
 ## Request contract
 
-SharpOMatic uses the AG-UI request to identify both the target workflow and the target conversation:
+SharpOMatic uses the AG-UI request to identify the target workflow and the AG-UI thread:
 
 - `threadId` is required.
-- `threadId` becomes the SharpOMatic `conversationId`.
 - `forwardedProps` must specify exactly one of `workflowId` or `workflowName`.
 - If `workflowName` is used, it must match exactly one workflow. Zero matches and multiple matches are both errors.
 
@@ -97,14 +97,26 @@ You can also use a workflow name:
 
 For compatibility, SharpOMatic also accepts `workflowId` or `workflowName` directly under `forwardedProps`, but the nested `sharpomatic` object is the preferred convention.
 
-## Conversation behavior
+## Execution modes
 
-AG-UI `threadId` is the real SharpOMatic `conversationId`.
-That means:
+SharpOMatic resolves the target workflow first and then chooses the execution mode automatically:
 
-- the first request for a `(workflow, threadId)` pair starts a new conversation
-- the same `threadId` on later requests continues a completed conversation as a new turn
-- the same `threadId` on later requests resumes a suspended conversation from its suspend point
+- non-conversation workflows are treated as stateless AG-UI targets
+- conversation-enabled workflows keep their normal SharpOMatic conversation behavior
+
+For non-conversation workflows:
+
+- the AG-UI client must send the full message history on every request
+- SharpOMatic rebuilds `input.chat` from that incoming history for the current run only
+- `threadId` remains required AG-UI metadata, but it does not create a SharpOMatic conversation
+
+For conversation-enabled workflows:
+
+- the first request for a `(workflow, threadId)` pair starts a SharpOMatic conversation using `threadId` as the real `conversationId`
+- later requests with the same `threadId` continue or resume that conversation
+- the first request can initialize `input.chat` from the incoming AG-UI messages
+- later requests must be incremental only and send only new messages that should be appended to the end of chat history
+- if a later request resends a previously seen AG-UI message id, SharpOMatic fails the run with `RUN_ERROR`
 
 Because conversation identifiers are strings, your AG-UI client can use any stable identifier that fits your application.
 
@@ -121,8 +133,50 @@ Instead it maps a focused subset into `agent`:
 
 These values are preserved as structured JSON-compatible data.
 For example, `agent.state` remains an object or array tree inside SharpOMatic context rather than becoming one large JSON string.
-On each AG-UI start or resume, SharpOMatic only updates `agent`.
+On each AG-UI start or resume, SharpOMatic updates `agent`.
 If `agent` already exists in workflow context, the incoming AG-UI `agent` object replaces it entirely.
+
+## Chat history conversion
+
+SharpOMatic also converts AG-UI messages into provider-neutral `ChatMessage` objects and stores them at `input.chat`.
+This lets `ModelCall` nodes consume AG-UI history without requiring a dedicated helper node.
+
+Recommended `ModelCall` setup:
+
+- `ChatInputPath = "input.chat"`
+- `ChatOutputPath = "input.chat"` for conversation-enabled workflows that want persisted replay on later turns
+
+Supported conversion rules in this version:
+
+- `system` -> `ChatRole.System`
+- `developer` -> `ChatRole.System`
+- `user` -> `ChatRole.User`
+- `assistant` text and `toolCalls` -> `ChatRole.Assistant`
+- `tool` results -> `ChatRole.Tool`
+
+SharpOMatic ignores AG-UI `reasoning` and `activity` messages when building `input.chat`.
+Unsupported multimodal or non-string message `content` is rejected with `RUN_ERROR`.
+
+## Frontend tool calls
+
+SharpOMatic also includes a **Frontend Tool Call** node for AG-UI workflows that need to suspend, wait for one frontend tool result, and then branch.
+
+This is useful when the frontend interaction is workflow control flow rather than durable model history, for example:
+
+- asking the user for approval
+- collecting a UI choice
+- waiting for a browser-side action before continuing
+
+The node:
+
+- emits AG-UI tool-call stream events
+- suspends the conversation
+- expects exactly one incoming AG-UI message on resume
+- routes to `toolResult` when that message is the expected tool result
+- routes to `otherInput` for anything else
+
+It can optionally keep or remove the function call and tool result from `input.chat`.
+It can also mark handled frontend tool-call stream events with `HideFromReply` so future AG-UI replay does not ask the same frontend question again.
 
 ## SSE behavior
 
@@ -142,6 +196,7 @@ The endpoint streams AG-UI SSE events from SharpOMatic workflow stream events:
 - when a model call runs in batch mode and the provider does not supply message ids, SharpOMatic synthesizes distinct assistant `messageId` values for each separate assistant text lifecycle, seeded from the stream sequence so they remain unique across conversation turns
 - model-call nodes can suppress assistant text, reasoning, or tool-call stream categories, in which case the AG-UI endpoint simply emits fewer events for that run
 - code-node stream-event helpers can mark events as `silent`, in which case SharpOMatic still stores them in stream history but skips the live AG-UI SSE translation for that event
+- some workflow nodes, such as **Frontend Tool Call**, can mark persisted stream events with `HideFromReply`, in which case those events are excluded from future AG-UI replay/history even though they remain stored in the database
 - successful runs emit `RUN_FINISHED`
 - suspended runs also emit `RUN_FINISHED`
 - failed runs emit `RUN_ERROR`

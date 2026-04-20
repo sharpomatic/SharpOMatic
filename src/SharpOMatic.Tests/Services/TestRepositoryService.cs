@@ -302,9 +302,23 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.CompletedTask;
     }
 
+    public Task UpdateStreamEventsHideFromReply(List<Guid> streamEventIds, bool hideFromReply)
+    {
+        foreach (var streamEventId in streamEventIds)
+        {
+            if (_streamEvents.TryGetValue(streamEventId, out var streamEvent))
+            {
+                streamEvent.HideFromReply = hideFromReply;
+                _streamEvents[streamEventId] = streamEvent;
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
     public Task<List<StreamEvent>> GetRunStreamEvents(Guid runId)
     {
-        var streamEvents = _streamEvents.Values.Where(e => e.RunId == runId).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToList();
+        var streamEvents = _streamEvents.Values.Where(e => e.RunId == runId && !e.HideFromReply).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToList();
         return Task.FromResult(streamEvents);
     }
 
@@ -313,7 +327,7 @@ public sealed class TestRepositoryService : IRepositoryService
         if (string.IsNullOrWhiteSpace(conversationId))
             throw new SharpOMaticException("Conversation stream id cannot be empty.");
 
-        var streamEvents = _streamEvents.Values.Where(e => e.ConversationId == conversationId).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToList();
+        var streamEvents = _streamEvents.Values.Where(e => e.ConversationId == conversationId && !e.HideFromReply).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToList();
         return Task.FromResult(streamEvents);
     }
 

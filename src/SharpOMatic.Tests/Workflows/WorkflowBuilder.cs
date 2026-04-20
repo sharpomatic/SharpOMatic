@@ -314,6 +314,42 @@ public sealed class WorkflowBuilder
         return this;
     }
 
+    public WorkflowBuilder AddFrontendToolCall(
+        string title = "frontendToolCall",
+        string functionName = "request_confirmation",
+        FrontendToolCallArgumentsMode argumentsMode = FrontendToolCallArgumentsMode.FixedJson,
+        string argumentsPath = "",
+        string argumentsJson = "{}",
+        string resultOutputPath = "output.toolResult",
+        FrontendToolCallChatPersistenceMode chatPersistenceMode = FrontendToolCallChatPersistenceMode.None,
+        bool hideFromReplyAfterHandled = false
+    )
+    {
+        var node = new FrontendToolCallNodeEntity
+        {
+            Id = Guid.NewGuid(),
+            Version = 1,
+            NodeType = NodeType.FrontendToolCall,
+            Title = title,
+            Top = 0f,
+            Left = 0f,
+            Width = 80f,
+            Height = 80f,
+            Inputs = [CreateConnector()],
+            Outputs = CreateConnectors("toolResult", "otherInput"),
+            FunctionName = functionName,
+            ArgumentsMode = argumentsMode,
+            ArgumentsPath = argumentsPath,
+            ArgumentsJson = argumentsJson,
+            ResultOutputPath = resultOutputPath,
+            ChatPersistenceMode = chatPersistenceMode,
+            HideFromReplyAfterHandled = hideFromReplyAfterHandled,
+        };
+
+        _nodes.Add(node);
+        return this;
+    }
+
     public WorkflowBuilder Connect(string sourceNode, string destinationNode)
     {
         if (string.IsNullOrWhiteSpace(sourceNode))

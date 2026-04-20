@@ -4,7 +4,9 @@
 
 ### Agent
 
-- Implement full state messages and then delta change messages
+- Add backend tool call for rendering on FE
+- Nodes for handling step ouptut
+- Node(s) for handling activity output and update
 - Endpoint for returning history of messages for existing conversation
 - Special handling of state, use the existing agent state and either overwrite for a full state set or path it a delta given
 - Investigate the compacting down to a message snapshot.

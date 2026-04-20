@@ -23,6 +23,7 @@ import { ModelCallNodeEntity } from '../../../entities/definitions/model-call-no
 import { BatchNodeEntity } from '../../../entities/definitions/batch-node.entity';
 import { GosubNodeEntity } from '../../../entities/definitions/gosub-node.entity';
 import { SuspendNodeEntity } from '../../../entities/definitions/suspend-node.entity';
+import { FrontendToolCallNodeEntity } from '../../../entities/definitions/frontend-tool-call-node.entity';
 
 @Injectable({
   providedIn: 'root',
@@ -127,6 +128,14 @@ export class DesignerUpdateService {
     workflow.nodes.update((nodes) => [
       ...nodes,
       SuspendNodeEntity.create(top, left),
+    ]);
+  }
+
+  addFrontendToolCallNode(workflow: WorkflowEntity) {
+    const [top, left] = this.getAddLocation();
+    workflow.nodes.update((nodes) => [
+      ...nodes,
+      FrontendToolCallNodeEntity.create(top, left),
     ]);
   }
 

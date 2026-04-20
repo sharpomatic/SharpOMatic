@@ -203,6 +203,7 @@ public class ProcessContext : ExecutionContext
                 ToolCallId = write.ToolCallId,
                 ParentMessageId = write.ParentMessageId,
                 Metadata = write.Metadata,
+                HideFromReply = false,
             };
 
             streamEvents.Add(streamEvent);
@@ -248,8 +249,8 @@ public class ProcessContext : ExecutionContext
         if (PendingConversationSuspend is not null)
             throw new SharpOMaticException("Only one node can be waiting for conversation resume at a time.");
 
-        if (node is not SuspendNodeEntity)
-            throw new SharpOMaticException("Only suspend nodes can wait for resume.");
+        if (node is not SuspendNodeEntity && node is not FrontendToolCallNodeEntity)
+            throw new SharpOMaticException("Only suspend and Frontend Tool Call nodes can wait for resume.");
 
         if (result.NextNodes.Count > 0)
             throw new SharpOMaticException("A suspended node cannot continue to downstream nodes.");

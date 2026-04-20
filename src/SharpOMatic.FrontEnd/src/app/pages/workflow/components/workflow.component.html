@@ -123,6 +123,18 @@
                   ><i class="dropdown-icon bi bi-pause-circle"></i>Suspend</a
                 >
               </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addFrontendToolCallNode(
+                      workflowService.workflow()
+                    )
+                  "
+                  ><i class="dropdown-icon bi bi-hand-index"></i>Frontend Tool
+                  Call</a
+                >
+              </li>
             </ul>
           </div>
         }

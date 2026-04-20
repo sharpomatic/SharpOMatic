@@ -3,7 +3,7 @@ namespace SharpOMatic.Engine.Services;
 
 public abstract class BaseModelCaller : IModelCaller
 {
-    public abstract Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+    public abstract Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
         Model model,
         ModelConfig modelConfig,
         Connector connector,
@@ -14,7 +14,7 @@ public abstract class BaseModelCaller : IModelCaller
         IModelCallProgressSink progressSink
     );
 
-    protected virtual async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> CallAgent(
+    protected virtual async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> CallAgent(
         AIAgent agent,
         List<ChatMessage> chat,
         ChatOptions? chatOptions,
@@ -23,11 +23,11 @@ public abstract class BaseModelCaller : IModelCaller
     )
     {
         var response = await agent.RunAsync(chat, options: new ChatClientAgentRunOptions(chatOptions));
-        var tempContext = ResponseToContextObject(jsonOutput, response, node);
-        return (chat, response.Messages, tempContext);
+        var resultValue = ResponseToOutputValue(jsonOutput, response);
+        return (chat, response.Messages, resultValue);
     }
 
-    protected virtual async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> CallStreamingAgent(
+    protected virtual async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> CallStreamingAgent(
         AIAgent agent,
         List<ChatMessage> chat,
         ChatOptions? chatOptions,
@@ -126,11 +126,11 @@ public abstract class BaseModelCaller : IModelCaller
         }
 
         var response = updates.ToAgentRunResponse();
-        var tempContext = ResponseToContextObject(jsonOutput, response, node);
-        return (chat, response.Messages, tempContext);
+        var resultValue = ResponseToOutputValue(jsonOutput, response);
+        return (chat, response.Messages, resultValue);
     }
 
-    protected virtual Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> CallConfiguredAgent(
+    protected virtual Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> CallConfiguredAgent(
         AIAgent agent,
         List<ChatMessage> chat,
         ChatOptions? chatOptions,
@@ -592,11 +592,8 @@ public abstract class BaseModelCaller : IModelCaller
         return false;
     }
 
-    protected virtual ContextObject ResponseToContextObject(bool jsonOutput, AgentRunResponse response, ModelCallNodeEntity node)
+    protected virtual object? ResponseToOutputValue(bool jsonOutput, AgentRunResponse response)
     {
-        var tempContext = new ContextObject();
-        var textPath = !string.IsNullOrWhiteSpace(node.TextOutputPath) ? node.TextOutputPath : "output.text";
-
         StringBuilder sb = new();
         foreach (var message in response.Messages)
             if (!string.IsNullOrEmpty(message.Text))
@@ -606,17 +603,14 @@ public abstract class BaseModelCaller : IModelCaller
         {
             try
             {
-                var objects = FastDeserializeString(sb.ToString());
-                tempContext.Set(textPath, objects);
+                return FastDeserializeString(sb.ToString());
             }
             catch
             {
                 throw new SharpOMaticException($"Model response could not be parsed as json.");
             }
         }
-        else
-            tempContext.Set(textPath, sb.ToString());
 
-        return tempContext;
+        return sb.ToString();
     }
 }

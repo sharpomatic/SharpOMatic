@@ -5,6 +5,8 @@ namespace SharpOMatic.AGUI.Controllers;
 [Route("agent/agui")]
 public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBroker broker) : ControllerBase
 {
+    private const string ChatContextPath = "input.chat";
+
     [HttpPost]
     public async Task Post([FromBody] AgUiRunRequest request)
     {
@@ -18,14 +20,8 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
             if (string.IsNullOrWhiteSpace(threadId))
                 throw new SharpOMaticException("AG-UI threadId is required.");
 
-            var workflowId = await ResolveWorkflowId(request);
-            var resumeInput = BuildResumeInput(request, threadId, protocolRunId);
-            var engineRunId = await engineService.StartOrResumeConversationAndNotify(
-                workflowId,
-                threadId,
-                resumeInput: resumeInput,
-                streamConversationId: threadId
-            );
+            var workflowTarget = await ResolveWorkflowTarget(request);
+            var engineRunId = await StartAgUiRun(request, threadId, workflowTarget);
 
             await WriteEventAsync(new
             {
@@ -85,7 +81,36 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         }
     }
 
-    private async Task<Guid> ResolveWorkflowId(AgUiRunRequest request)
+    private async Task<Guid> StartAgUiRun(AgUiRunRequest request, string threadId, ResolvedWorkflowTarget workflowTarget)
+    {
+        if (!workflowTarget.IsConversationEnabled)
+        {
+            var rootContext = BuildBaseContext(request);
+            return await engineService.StartWorkflowRunAndNotify(workflowTarget.WorkflowId, rootContext);
+        }
+
+        var repositoryService = HttpContext?.RequestServices?.GetService<IRepositoryService>();
+        if (repositoryService is null)
+        {
+            var resumeInput = new AgUiAgentResumeInput() { Agent = BuildAgentContext(request) };
+            return await engineService.StartOrResumeConversationAndNotify(
+                workflowTarget.WorkflowId,
+                threadId,
+                resumeInput: resumeInput,
+                streamConversationId: threadId
+            );
+        }
+
+        var mergedContext = await BuildConversationContextAsync(request, threadId, repositoryService);
+        return await engineService.StartOrResumeConversationAndNotify(
+            workflowTarget.WorkflowId,
+            threadId,
+            resumeInput: new ContextMergeResumeInput() { Context = mergedContext },
+            streamConversationId: threadId
+        );
+    }
+
+    private async Task<ResolvedWorkflowTarget> ResolveWorkflowTarget(AgUiRunRequest request)
     {
         var selector = request.ForwardedProps;
         if (!selector.HasValue || selector.Value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
@@ -104,18 +129,51 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         if (string.IsNullOrWhiteSpace(workflowId) == string.IsNullOrWhiteSpace(workflowName))
             throw new SharpOMaticException("Specify exactly one of workflowId or workflowName in AG-UI forwardedProps.");
 
+        Guid resolvedWorkflowId;
         if (!string.IsNullOrWhiteSpace(workflowId))
         {
             if (!Guid.TryParse(workflowId, out var parsedWorkflowId))
                 throw new SharpOMaticException("AG-UI workflowId must be a valid GUID.");
 
-            return parsedWorkflowId;
+            resolvedWorkflowId = parsedWorkflowId;
         }
+        else
+            resolvedWorkflowId = await engineService.GetWorkflowId(workflowName!);
 
-        return await engineService.GetWorkflowId(workflowName!);
+        var repositoryService = HttpContext?.RequestServices?.GetService<IRepositoryService>();
+        if (repositoryService is null)
+            return new ResolvedWorkflowTarget(resolvedWorkflowId, IsConversationEnabled: true);
+
+        var workflow = await repositoryService.GetWorkflow(resolvedWorkflowId);
+        return new ResolvedWorkflowTarget(resolvedWorkflowId, workflow.IsConversationEnabled);
     }
 
-    private static AgUiAgentResumeInput BuildResumeInput(AgUiRunRequest request, string threadId, string protocolRunId)
+    private async Task<ContextObject> BuildConversationContextAsync(AgUiRunRequest request, string threadId, IRepositoryService repositoryService)
+    {
+        var checkpoint = await repositoryService.GetConversationCheckpoint(threadId);
+        var mergedContext = checkpoint is not null && !string.IsNullOrWhiteSpace(checkpoint.ContextJson)
+            ? ContextObject.Deserialize(checkpoint.ContextJson, HttpContext.RequestServices)
+            : new ContextObject();
+
+        ApplyAgUiContext(mergedContext, request);
+        AppendConversationChatHistory(mergedContext, ConvertMessagesToChatHistory(request.Messages));
+        return mergedContext;
+    }
+
+    private static ContextObject BuildBaseContext(AgUiRunRequest request)
+    {
+        var rootContext = new ContextObject();
+        ApplyAgUiContext(rootContext, request);
+        rootContext.Set(ChatContextPath, ToContextList(ConvertMessagesToChatHistory(request.Messages)));
+        return rootContext;
+    }
+
+    private static void ApplyAgUiContext(ContextObject rootContext, AgUiRunRequest request)
+    {
+        rootContext["agent"] = BuildAgentContext(request);
+    }
+
+    private static ContextObject BuildAgentContext(AgUiRunRequest request)
     {
         var agentPayload = new Dictionary<string, object?>();
         AddJsonProperty(agentPayload, "latestUserMessage", FindLatestUserMessage(request.Messages));
@@ -124,10 +182,259 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         AddJsonProperty(agentPayload, "state", request.State);
         AddJsonProperty(agentPayload, "context", request.Context);
 
-        var agentRoot = ContextHelpers.FastDeserializeString(JsonSerializer.Serialize(agentPayload)) as ContextObject
+        return ContextHelpers.FastDeserializeString(JsonSerializer.Serialize(agentPayload)) as ContextObject
             ?? throw new SharpOMaticException("AG-UI request payload could not be converted into workflow context.");
+    }
 
-        return new AgUiAgentResumeInput() { Agent = agentRoot };
+    private static void AppendConversationChatHistory(ContextObject rootContext, List<ChatMessage> incomingMessages)
+    {
+        if (!TryReadChatHistory(rootContext, out var chatHistory))
+        {
+            rootContext.Set(ChatContextPath, ToContextList(incomingMessages));
+            return;
+        }
+
+        if (incomingMessages.Count == 0)
+            return;
+
+        var existingIds = chatHistory.Messages
+            .Where(message => !string.IsNullOrWhiteSpace(message.MessageId))
+            .Select(message => message.MessageId!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var incomingMessage in incomingMessages)
+        {
+            if (string.IsNullOrWhiteSpace(incomingMessage.MessageId))
+                continue;
+
+            if (existingIds.Contains(incomingMessage.MessageId))
+            {
+                throw new SharpOMaticException(
+                    $"Conversation-enabled AG-UI workflows must send only new messages after initialization. Message id '{incomingMessage.MessageId}' was already received."
+                );
+            }
+        }
+
+        foreach (var incomingMessage in incomingMessages)
+            chatHistory.Storage.Add(incomingMessage);
+    }
+
+    private static bool TryReadChatHistory(ContextObject rootContext, out ChatHistory chatHistory)
+    {
+        chatHistory = default!;
+
+        if (rootContext.TryGet<ContextList>(ChatContextPath, out var chatList) && chatList is not null)
+        {
+            List<ChatMessage> messages = [];
+            foreach (var entry in chatList)
+            {
+                if (entry is not ChatMessage message)
+                    throw new SharpOMaticException($"AG-UI expected '{ChatContextPath}' to contain only ChatMessage entries.");
+
+                messages.Add(message);
+            }
+
+            chatHistory = new ChatHistory(chatList, messages);
+            return true;
+        }
+
+        if (rootContext.TryGet<ChatMessage>(ChatContextPath, out var chatMessage) && chatMessage is not null)
+        {
+            ContextList chatStorage = [chatMessage];
+            rootContext.Set(ChatContextPath, chatStorage);
+            chatHistory = new ChatHistory(chatStorage, [chatMessage]);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static ContextList ToContextList(IEnumerable<ChatMessage> messages)
+    {
+        ContextList chat = [];
+        foreach (var message in messages)
+            chat.Add(message);
+
+        return chat;
+    }
+
+    private static List<ChatMessage> ConvertMessagesToChatHistory(JsonElement? messages)
+    {
+        List<ChatMessage> chat = [];
+        if (!messages.HasValue || messages.Value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
+            return chat;
+
+        if (messages.Value.ValueKind != JsonValueKind.Array)
+            throw new SharpOMaticException("AG-UI messages must be a JSON array.");
+
+        foreach (var message in messages.Value.EnumerateArray())
+        {
+            if (message.ValueKind != JsonValueKind.Object)
+                throw new SharpOMaticException("AG-UI messages must contain JSON objects.");
+
+            var role = ReadRequiredIdentifier(message, "role", "AG-UI message role must be a non-empty string.").ToLowerInvariant();
+            switch (role)
+            {
+                case "system":
+                    chat.Add(CreateTextOnlyMessage(message, ChatRole.System));
+                    break;
+                case "developer":
+                    chat.Add(CreateTextOnlyMessage(message, ChatRole.System));
+                    break;
+                case "user":
+                    chat.Add(CreateTextOnlyMessage(message, ChatRole.User));
+                    break;
+                case "assistant":
+                    var assistantMessage = CreateAssistantMessage(message);
+                    if (assistantMessage is not null)
+                        chat.Add(assistantMessage);
+                    break;
+                case "tool":
+                    chat.Add(CreateToolResultMessage(message));
+                    break;
+                case "reasoning":
+                case "activity":
+                    break;
+                default:
+                    throw new SharpOMaticException($"AG-UI message role '{role}' is not supported.");
+            }
+        }
+
+        return chat;
+    }
+
+    private static ChatMessage CreateTextOnlyMessage(JsonElement message, ChatRole role)
+    {
+        var messageId = ReadRequiredIdentifier(message, "id", "AG-UI message id must be a non-empty string.");
+        var content = ReadRequiredStringContent(message, "content", $"AG-UI {message.GetProperty("role").GetString()} message content must be a string.");
+
+        return new ChatMessage(role, [new TextContent(content)])
+        {
+            MessageId = messageId,
+            AuthorName = TryReadStringProperty(message, "name"),
+        };
+    }
+
+    private static ChatMessage? CreateAssistantMessage(JsonElement message)
+    {
+        var messageId = ReadRequiredIdentifier(message, "id", "AG-UI message id must be a non-empty string.");
+        List<AIContent> contents = [];
+
+        if (message.TryGetProperty("content", out var content))
+        {
+            if (content.ValueKind != JsonValueKind.String)
+                throw new SharpOMaticException("AG-UI assistant message content must be a string in this version.");
+
+            var contentText = content.GetString();
+            if (!string.IsNullOrWhiteSpace(contentText))
+                contents.Add(new TextContent(contentText));
+        }
+
+        if (message.TryGetProperty("toolCalls", out var toolCalls))
+        {
+            if (toolCalls.ValueKind != JsonValueKind.Array)
+                throw new SharpOMaticException("AG-UI assistant toolCalls must be a JSON array.");
+
+            foreach (var toolCall in toolCalls.EnumerateArray())
+                contents.Add(CreateFunctionCallContent(toolCall));
+        }
+
+        if (contents.Count == 0)
+            return null;
+
+        return new ChatMessage(ChatRole.Assistant, contents)
+        {
+            MessageId = messageId,
+            AuthorName = TryReadStringProperty(message, "name"),
+        };
+    }
+
+    private static FunctionCallContent CreateFunctionCallContent(JsonElement toolCall)
+    {
+        if (toolCall.ValueKind != JsonValueKind.Object)
+            throw new SharpOMaticException("AG-UI assistant toolCalls entries must be JSON objects.");
+
+        var toolCallId = ReadRequiredIdentifier(toolCall, "id", "AG-UI assistant tool call id must be a non-empty string.");
+        var toolCallType = TryReadStringProperty(toolCall, "type");
+        if (!string.IsNullOrWhiteSpace(toolCallType) && !string.Equals(toolCallType, "function", StringComparison.OrdinalIgnoreCase))
+            throw new SharpOMaticException($"AG-UI assistant tool call type '{toolCallType}' is not supported.");
+
+        if (!toolCall.TryGetProperty("function", out var function) || function.ValueKind != JsonValueKind.Object)
+            throw new SharpOMaticException("AG-UI assistant tool calls must include a function object.");
+
+        var functionName = ReadRequiredIdentifier(function, "name", "AG-UI assistant tool call function name must be a non-empty string.");
+        var argumentsJson = ReadRequiredStringContent(function, "arguments", "AG-UI assistant tool call arguments must be a JSON string.");
+        return new FunctionCallContent(toolCallId, functionName, ParseToolArguments(argumentsJson));
+    }
+
+    private static IDictionary<string, object?> ParseToolArguments(string argumentsJson)
+    {
+        if (string.IsNullOrWhiteSpace(argumentsJson))
+            return new Dictionary<string, object?>();
+
+        try
+        {
+            var parsed = ContextHelpers.FastDeserializeString(argumentsJson);
+            if (parsed is not ContextObject contextObject)
+                throw new SharpOMaticException("AG-UI assistant tool call arguments must decode to a JSON object.");
+
+            Dictionary<string, object?> arguments = [];
+            foreach (var entry in contextObject)
+                arguments[entry.Key] = entry.Value;
+
+            return arguments;
+        }
+        catch (SharpOMaticException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            throw new SharpOMaticException("AG-UI assistant tool call arguments must contain valid JSON.");
+        }
+    }
+
+    private static ChatMessage CreateToolResultMessage(JsonElement message)
+    {
+        var messageId = ReadRequiredIdentifier(message, "id", "AG-UI message id must be a non-empty string.");
+        var toolCallId = ReadRequiredIdentifier(message, "toolCallId", "AG-UI tool messages must include a non-empty toolCallId.");
+        var content = ReadRequiredStringContent(message, "content", "AG-UI tool message content must be a string.");
+
+        return new ChatMessage(ChatRole.Tool, [new FunctionResultContent(toolCallId, content)])
+        {
+            MessageId = messageId,
+            AuthorName = TryReadStringProperty(message, "name"),
+        };
+    }
+
+    private static string ReadRequiredIdentifier(JsonElement element, string propertyName, string errorMessage)
+    {
+        var value = TryReadStringProperty(element, propertyName);
+        if (!string.IsNullOrWhiteSpace(value))
+            return value;
+
+        throw new SharpOMaticException(errorMessage);
+    }
+
+    private static string ReadRequiredStringContent(JsonElement element, string propertyName, string errorMessage)
+    {
+        if (element.TryGetProperty(propertyName, out var propertyValue) && propertyValue.ValueKind != JsonValueKind.String)
+        {
+            throw new SharpOMaticException(
+                propertyName switch
+                {
+                    "content" => errorMessage.Contains("assistant", StringComparison.OrdinalIgnoreCase)
+                        ? "AG-UI assistant message content must be a string in this version."
+                        : errorMessage,
+                    _ => errorMessage
+                }
+            );
+        }
+
+        if (!element.TryGetProperty(propertyName, out var stringProperty))
+            throw new SharpOMaticException(errorMessage);
+
+        return stringProperty.GetString() ?? string.Empty;
     }
 
     private async Task WriteStreamEventAsync(StreamEventProgressItem streamEventUpdate)
@@ -358,7 +665,14 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         if (string.IsNullOrWhiteSpace(rawContent))
             return;
 
-        payload["value"] = ContextHelpers.FastDeserializeString(rawContent);
+        try
+        {
+            payload["value"] = ContextHelpers.FastDeserializeString(rawContent);
+        }
+        catch
+        {
+            // Preserve plain text tool results as raw strings only.
+        }
     }
 
     private static JsonElement? GetLatestMessage(JsonElement? messages)
@@ -481,4 +795,8 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         await Response.WriteAsync($"data: {JsonSerializer.Serialize(payload)}\n\n");
         await Response.Body.FlushAsync(HttpContext.RequestAborted);
     }
+
+    private sealed record ResolvedWorkflowTarget(Guid WorkflowId, bool IsConversationEnabled);
+
+    private sealed record ChatHistory(ContextList Storage, List<ChatMessage> Messages);
 }

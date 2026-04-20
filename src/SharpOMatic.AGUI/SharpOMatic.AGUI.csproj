@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
     <PackageId>SharpOMatic.AGUI</PackageId>
-    <Description>SharpOMatic extension adding AG-UI protocol endpoints for conversation workflows.</Description>
+    <Description>SharpOMatic extension adding AG-UI protocol endpoints for workflow and conversation execution.</Description>
     <Authors>SharpOMatic Contributors</Authors>
     <Company>SharpOMatic</Company>
     <RepositoryUrl>https://github.com/sharpomatic/SharpOMatic</RepositoryUrl>

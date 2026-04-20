@@ -1,6 +1,7 @@
 # SharpOMatic.AGUI
 
-Optional SharpOMatic extension that exposes an AG-UI compatible endpoint for starting or resuming conversation workflows over SSE.
+Optional SharpOMatic extension that exposes an AG-UI compatible endpoint for running SharpOMatic workflows over SSE.
+It supports both stateless workflow runs and conversation-enabled workflows.
 
 ## Usage
 
@@ -30,11 +31,11 @@ The package adds `POST` on the combined path.
 
 ## Request requirements
 
-- `threadId` is required and is used as the SharpOMatic conversation id.
+- `threadId` is required.
 - `forwardedProps` must contain exactly one of `workflowId` or `workflowName`.
 - `workflowName` must match exactly one workflow.
 
-The endpoint starts or resumes the matching SharpOMatic conversation workflow and streams SSE events translated from workflow stream events until the run completes, suspends, or fails.
+The endpoint resolves the matching SharpOMatic workflow, chooses the correct execution mode, and streams SSE events translated from workflow stream events until the run completes, suspends, or fails.
 
 ## SSE event mapping
 
@@ -88,11 +89,25 @@ The recommended request shape is:
 
 For compatibility, the selector can also live directly under `forwardedProps`, but `forwardedProps.sharpomatic` is the preferred convention.
 
-## Conversation identity
+## Execution modes
 
-AG-UI `threadId` and SharpOMatic `conversationId` are the same value.
-If the specified workflow already has a conversation with that id then SharpOMatic resumes or continues it.
-If no conversation exists yet, SharpOMatic creates a new conversation with that id.
+SharpOMatic resolves the target workflow first:
+
+- non-conversation workflows are treated as stateless AG-UI targets
+- conversation-enabled workflows use normal SharpOMatic conversation storage
+
+For non-conversation workflows:
+
+- the client must send the full AG-UI message history on every call
+- SharpOMatic rebuilds `input.chat` from that history for the current run
+- `threadId` remains protocol metadata only
+
+For conversation-enabled workflows:
+
+- the first call uses `threadId` as the SharpOMatic `conversationId`
+- later calls with the same `threadId` continue or resume that conversation
+- later AG-UI calls must be incremental only and send only new messages
+- if a later call resends a previously seen AG-UI message id, SharpOMatic returns `RUN_ERROR`
 
 ## Workflow context
 
@@ -105,8 +120,27 @@ The controller maps selected request data into workflow context under `agent`:
 - `agent.context`: the incoming AG-UI `context` value
 
 These values are passed through as structured JSON-compatible data, not as a single raw JSON string.
-On each AG-UI start or resume, SharpOMatic only updates the `agent` object.
+On each AG-UI start or resume, SharpOMatic updates the `agent` object.
 If the workflow context already contains `agent`, the incoming AG-UI `agent` object replaces it entirely.
+
+The controller also converts supported AG-UI messages into provider-neutral `ChatMessage` entries and stores them at `input.chat`.
+That is the recommended source for `ModelCall.ChatInputPath`.
+For conversation workflows that want replay across turns, also set `ModelCall.ChatOutputPath` to `input.chat`.
+
+Supported `input.chat` conversion in this version:
+
+- `system` -> `ChatRole.System`
+- `developer` -> `ChatRole.System`
+- `user` -> `ChatRole.User`
+- `assistant` text and tool calls -> `ChatRole.Assistant`
+- `tool` results -> `ChatRole.Tool`
+
+AG-UI `reasoning` and `activity` messages are ignored for chat conversion in this version.
+Unsupported multimodal or non-string message content is rejected with `RUN_ERROR`.
+
+For AG-UI workflows that need a frontend action and then a later resume, SharpOMatic also provides a **Frontend Tool Call** node.
+It emits AG-UI tool-call events, suspends the conversation, and resumes through `toolResult` or `otherInput`.
+That node can keep or remove the frontend tool exchange from `input.chat`, and it can mark handled stream events with `HideFromReply` so future AG-UI replay does not render the same pending frontend request again.
 
 If a workflow wants to add the incoming AG-UI user message into SharpOMatic stream history without sending it back to the AG-UI caller, use a code node and the transient `silent` flag:
 

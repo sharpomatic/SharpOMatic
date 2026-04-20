@@ -56,6 +56,7 @@ public interface IRepositoryService
     // ------------------------------------------------
     Task<int> GetNextStreamSequence(Guid runId, string? conversationId);
     Task AppendStreamEvents(List<StreamEvent> events);
+    Task UpdateStreamEventsHideFromReply(List<Guid> streamEventIds, bool hideFromReply);
     Task<List<StreamEvent>> GetRunStreamEvents(Guid runId);
     Task<List<StreamEvent>> GetConversationStreamEvents(string conversationId);
 

@@ -16,6 +16,7 @@ public sealed class EditorProgressServiceUnitTests
             EventKind = StreamEventKind.TextContent,
             MessageId = "message-1",
             TextDelta = "Hello",
+            HideFromReply = false,
         };
 
         var clientProxy = new Mock<IClientProxy>();

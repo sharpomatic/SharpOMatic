@@ -179,6 +179,7 @@ public sealed class AgUiRunEventBroker : IAgUiRunEventBroker
             ToolCallId = streamEvent.ToolCallId,
             ParentMessageId = streamEvent.ParentMessageId,
             Metadata = streamEvent.Metadata,
+            HideFromReply = streamEvent.HideFromReply,
         };
     }
 }

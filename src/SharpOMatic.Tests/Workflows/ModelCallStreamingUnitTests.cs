@@ -434,6 +434,11 @@ public sealed class ModelCallStreamingUnitTests
                 ],
                 streamEvents.Select(e => e.MessageId ?? string.Empty).ToArray()
             );
+
+            var output = ContextObject.Deserialize(secondTurn.OutputContext);
+            Assert.True(output.TryGetObject("output", out var outputObject));
+            Assert.NotNull(outputObject);
+            Assert.Equal("Turn 2 reply", output.Get<string>("output.text"));
         }
         finally
         {
@@ -1163,7 +1168,7 @@ public sealed class ModelCallStreamingUnitTests
 
     private sealed class StreamingTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1189,9 +1194,6 @@ public sealed class ModelCallStreamingUnitTests
             await progressSink.OnToolCallAsync("call-1", "lookup_weather", "{\"city\":\"Sydney\"}", "assistant-1");
             await progressSink.CompleteAsync();
 
-            var tempContext = new ContextObject();
-            tempContext.Set(node.TextOutputPath, "Hello world");
-
             IList<ChatMessage> responses =
             [
                 new ChatMessage(
@@ -1204,13 +1206,13 @@ public sealed class ModelCallStreamingUnitTests
                 ),
             ];
 
-            return (chat, responses, tempContext);
+            return (chat, responses, "Hello world");
         }
     }
 
     private sealed class StreamingConversationReasoningTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1231,9 +1233,6 @@ public sealed class ModelCallStreamingUnitTests
             await progressSink.OnTextDeltaAsync(messageId, " reply");
             await progressSink.CompleteAsync();
 
-            var tempContext = new ContextObject();
-            tempContext.Set(node.TextOutputPath, $"Turn {turnNumber} reply");
-
             return
             (
                 [],
@@ -1246,14 +1245,14 @@ public sealed class ModelCallStreamingUnitTests
                         ]
                     ),
                 ],
-                tempContext
+                $"Turn {turnNumber} reply"
             );
         }
     }
 
     private sealed class GoogleStreamingTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1273,9 +1272,6 @@ public sealed class ModelCallStreamingUnitTests
             await progressSink.OnToolCallResultAsync("google-lookup-result-1", "google-call-1", "Sunny");
             await progressSink.CompleteAsync();
 
-            var tempContext = new ContextObject();
-            tempContext.Set(node.TextOutputPath, "Google reply");
-
             IList<ChatMessage> responses =
             [
                 new ChatMessage(
@@ -1289,13 +1285,13 @@ public sealed class ModelCallStreamingUnitTests
                 ),
             ];
 
-            return ((IList<ChatMessage>)new List<ChatMessage>(), responses, tempContext);
+            return ((IList<ChatMessage>)new List<ChatMessage>(), responses, "Google reply");
         }
     }
 
     private sealed class BatchFallbackTestModelCaller : IModelCaller
     {
-        public Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+        public Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1306,9 +1302,6 @@ public sealed class ModelCallStreamingUnitTests
             IModelCallProgressSink progressSink
         )
         {
-            var tempContext = new ContextObject();
-            tempContext.Set(node.TextOutputPath, "Batch reply");
-
             IList<ChatMessage> responses =
             [
                 new ChatMessage(
@@ -1323,13 +1316,13 @@ public sealed class ModelCallStreamingUnitTests
                 ),
             ];
 
-            return Task.FromResult(((IList<ChatMessage>)new List<ChatMessage>(), responses, tempContext));
+            return Task.FromResult(((IList<ChatMessage>)new List<ChatMessage>(), responses, (object?)"Batch reply"));
         }
     }
 
     private sealed class ReasoningThenToolCallTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1343,16 +1336,13 @@ public sealed class ModelCallStreamingUnitTests
             await progressSink.OnReasoningAsync("assistant-1", "Thinking");
             await progressSink.OnToolCallAsync("call-1", "lookup_weather", "{\"city\":\"Sydney\"}", "assistant-1");
             await progressSink.CompleteAsync();
-
-            var tempContext = new ContextObject();
-            tempContext.Set(node.TextOutputPath, string.Empty);
-            return ([], [], tempContext);
+            return ([], [], string.Empty);
         }
     }
 
     private sealed class TextThenToolCallTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1367,16 +1357,13 @@ public sealed class ModelCallStreamingUnitTests
             await progressSink.OnTextDeltaAsync("assistant-1", "Hello");
             await progressSink.OnToolCallAsync("call-1", "lookup_weather", "{\"city\":\"Sydney\"}", "assistant-1");
             await progressSink.CompleteAsync();
-
-            var tempContext = new ContextObject();
-            tempContext.Set(node.TextOutputPath, "Hello");
-            return ([], [], tempContext);
+            return ([], [], "Hello");
         }
     }
 
     private sealed class AssistantTextOnlyTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1391,16 +1378,13 @@ public sealed class ModelCallStreamingUnitTests
             await progressSink.OnTextDeltaAsync("assistant-1", "Hello");
             await progressSink.OnTextDeltaAsync("assistant-1", " world");
             await progressSink.CompleteAsync();
-
-            var tempContext = new ContextObject();
-            tempContext.Set(node.TextOutputPath, "Hello world");
-            return ([], [], tempContext);
+            return ([], [], "Hello world");
         }
     }
 
     private sealed class WhitespaceAssistantTextTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1413,16 +1397,13 @@ public sealed class ModelCallStreamingUnitTests
         {
             await progressSink.OnTextDeltaAsync("assistant-1", "   ");
             await progressSink.CompleteAsync();
-
-            var tempContext = new ContextObject();
-            tempContext.Set(node.TextOutputPath, string.Empty);
-            return ([], [], tempContext);
+            return ([], [], string.Empty);
         }
     }
 
     private sealed class EmptyReasoningAfterToolCallTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1437,16 +1418,13 @@ public sealed class ModelCallStreamingUnitTests
             await progressSink.OnToolCallAsync("call-1", "lookup_weather", "{\"city\":\"Sydney\"}", "assistant-1");
             await progressSink.OnReasoningAsync("assistant-1", string.Empty);
             await progressSink.CompleteAsync();
-
-            var tempContext = new ContextObject();
-            tempContext.Set(node.TextOutputPath, string.Empty);
-            return ([], [], tempContext);
+            return ([], [], string.Empty);
         }
     }
 
     private sealed class EmptyReasoningOnlyTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1459,10 +1437,7 @@ public sealed class ModelCallStreamingUnitTests
         {
             await progressSink.OnReasoningAsync("assistant-1", string.Empty);
             await progressSink.CompleteAsync();
-
-            var tempContext = new ContextObject();
-            tempContext.Set(node.TextOutputPath, string.Empty);
-            return ([], [], tempContext);
+            return ([], [], string.Empty);
         }
     }
 

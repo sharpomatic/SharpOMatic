@@ -2,7 +2,7 @@
 
 public class GoogleGenAIModelCaller : BaseModelCaller
 {
-    public override async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+    public override async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
         Model model,
         ModelConfig modelConfig,
         Connector connector,

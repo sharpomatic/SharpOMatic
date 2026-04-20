@@ -22,4 +22,5 @@ public class StreamEvent
     public string? ToolCallId { get; set; }
     public string? ParentMessageId { get; set; }
     public string? Metadata { get; set; }
+    public bool HideFromReply { get; set; }
 }

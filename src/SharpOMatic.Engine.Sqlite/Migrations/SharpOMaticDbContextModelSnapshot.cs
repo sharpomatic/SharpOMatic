@@ -740,6 +740,9 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<int>("EventKind")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("HideFromReply")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("ActivityType")
                         .HasColumnType("TEXT");
 

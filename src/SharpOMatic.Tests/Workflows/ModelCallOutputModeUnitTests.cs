@@ -116,7 +116,7 @@ public sealed class ModelCallOutputModeUnitTests
             );
         }
 
-        public override Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> Call(
+        public override Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -130,7 +130,7 @@ public sealed class ModelCallOutputModeUnitTests
             throw new NotSupportedException();
         }
 
-        protected override Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> CallAgent(
+        protected override Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> CallAgent(
             AIAgent agent,
             List<ChatMessage> chat,
             ChatOptions? chatOptions,
@@ -139,12 +139,12 @@ public sealed class ModelCallOutputModeUnitTests
         )
         {
             BatchCallCount += 1;
-            return Task.FromResult<(IList<ChatMessage>, IList<ChatMessage>, ContextObject)>(
-                (chat, new List<ChatMessage>(), new ContextObject())
+            return Task.FromResult<(IList<ChatMessage>, IList<ChatMessage>, object?)>(
+                (chat, new List<ChatMessage>(), string.Empty)
             );
         }
 
-        protected override Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, ContextObject)> CallStreamingAgent(
+        protected override Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> CallStreamingAgent(
             AIAgent agent,
             List<ChatMessage> chat,
             ChatOptions? chatOptions,
@@ -154,8 +154,8 @@ public sealed class ModelCallOutputModeUnitTests
         )
         {
             StreamingCallCount += 1;
-            return Task.FromResult<(IList<ChatMessage>, IList<ChatMessage>, ContextObject)>(
-                (chat, new List<ChatMessage>(), new ContextObject())
+            return Task.FromResult<(IList<ChatMessage>, IList<ChatMessage>, object?)>(
+                (chat, new List<ChatMessage>(), string.Empty)
             );
         }
     }

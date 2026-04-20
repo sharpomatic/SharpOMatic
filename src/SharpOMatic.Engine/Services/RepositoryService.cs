@@ -558,11 +558,21 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
+    public async Task UpdateStreamEventsHideFromReply(List<Guid> streamEventIds, bool hideFromReply)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        if (streamEventIds.Count == 0)
+            return;
+
+        await dbContext.StreamEvents.Where(e => streamEventIds.Contains(e.StreamEventId)).ExecuteUpdateAsync(setters => setters.SetProperty(e => e.HideFromReply, hideFromReply));
+    }
+
     public async Task<List<StreamEvent>> GetRunStreamEvents(Guid runId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        return await dbContext.StreamEvents.AsNoTracking().Where(e => e.RunId == runId).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToListAsync();
+        return await dbContext.StreamEvents.AsNoTracking().Where(e => e.RunId == runId && !e.HideFromReply).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToListAsync();
     }
 
     public async Task<List<StreamEvent>> GetConversationStreamEvents(string conversationId)
@@ -572,7 +582,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (string.IsNullOrWhiteSpace(conversationId))
             throw new SharpOMaticException("Conversation stream id cannot be empty.");
 
-        return await dbContext.StreamEvents.AsNoTracking().Where(e => e.ConversationId == conversationId).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToListAsync();
+        return await dbContext.StreamEvents.AsNoTracking().Where(e => e.ConversationId == conversationId && !e.HideFromReply).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToListAsync();
     }
 
     // ------------------------------------------------

@@ -9,6 +9,7 @@ On the **Details** tab, **Use Batch Output** appears after the model-specific cu
 The model-call dialog also has a **Stream** tab, positioned after **Chat**, where you can disable assistant text, reasoning, or tool-call stream events for that node.
 
 - **Text Output Path** defaults to **output.text** and is the context path that receives text output from a successful model call.
+If the same path is written by later model-call nodes, the later value overwrites the earlier value at that exact path.
 You can leave this field blank to ignore the output. Text output is still generated but discarded.
 
 - **Instructions** (Optional) system-level instructions for the call.
