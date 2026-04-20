@@ -25,6 +25,8 @@ import { GosubNodeEntity } from '../../../entities/definitions/gosub-node.entity
 import { SuspendNodeEntity } from '../../../entities/definitions/suspend-node.entity';
 import { FrontendToolCallNodeEntity } from '../../../entities/definitions/frontend-tool-call-node.entity';
 import { BackendToolCallNodeEntity } from '../../../entities/definitions/backend-tool-call-node.entity';
+import { StepStartNodeEntity } from '../../../entities/definitions/step-start-node.entity';
+import { StepEndNodeEntity } from '../../../entities/definitions/step-end-node.entity';
 
 @Injectable({
   providedIn: 'root',
@@ -145,6 +147,22 @@ export class DesignerUpdateService {
     workflow.nodes.update((nodes) => [
       ...nodes,
       BackendToolCallNodeEntity.create(top, left),
+    ]);
+  }
+
+  addStepStartNode(workflow: WorkflowEntity) {
+    const [top, left] = this.getAddLocation();
+    workflow.nodes.update((nodes) => [
+      ...nodes,
+      StepStartNodeEntity.create(top, left),
+    ]);
+  }
+
+  addStepEndNode(workflow: WorkflowEntity) {
+    const [top, left] = this.getAddLocation();
+    workflow.nodes.update((nodes) => [
+      ...nodes,
+      StepEndNodeEntity.create(top, left),
     ]);
   }
 

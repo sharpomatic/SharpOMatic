@@ -388,6 +388,48 @@ public sealed class WorkflowBuilder
         return this;
     }
 
+    public WorkflowBuilder AddStepStart(string title = "Step Start", string stepName = "")
+    {
+        var node = new StepStartNodeEntity
+        {
+            Id = Guid.NewGuid(),
+            Version = 1,
+            NodeType = NodeType.StepStart,
+            Title = title,
+            Top = 0f,
+            Left = 0f,
+            Width = 80f,
+            Height = 80f,
+            Inputs = [CreateConnector()],
+            Outputs = [CreateConnector()],
+            StepName = stepName,
+        };
+
+        _nodes.Add(node);
+        return this;
+    }
+
+    public WorkflowBuilder AddStepEnd(string title = "Step End", string stepName = "")
+    {
+        var node = new StepEndNodeEntity
+        {
+            Id = Guid.NewGuid(),
+            Version = 1,
+            NodeType = NodeType.StepEnd,
+            Title = title,
+            Top = 0f,
+            Left = 0f,
+            Width = 80f,
+            Height = 80f,
+            Inputs = [CreateConnector()],
+            Outputs = [CreateConnector()],
+            StepName = stepName,
+        };
+
+        _nodes.Add(node);
+        return this;
+    }
+
     public WorkflowBuilder Connect(string sourceNode, string destinationNode)
     {
         if (string.IsNullOrWhiteSpace(sourceNode))

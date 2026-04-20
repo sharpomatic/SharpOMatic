@@ -12,6 +12,8 @@ export enum NodeType {
   Suspend = 10,
   FrontendToolCall = 11,
   BackendToolCall = 12,
+  StepStart = 13,
+  StepEnd = 14,
 }
 
 export function getNodeSymbol(nodeType: NodeType): string {
@@ -42,6 +44,10 @@ export function getNodeSymbol(nodeType: NodeType): string {
       return 'bi-hand-index';
     case NodeType.BackendToolCall:
       return 'bi-server';
+    case NodeType.StepStart:
+      return 'bi-play-circle';
+    case NodeType.StepEnd:
+      return 'bi-stop-circle';
     default:
       return '';
   }

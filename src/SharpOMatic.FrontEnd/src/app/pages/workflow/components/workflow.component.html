@@ -118,6 +118,24 @@
                 <a
                   class="dropdown-item"
                   (click)="
+                    updateService.addStepStartNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-play-circle"></i>Step Start</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addStepEndNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-stop-circle"></i>Step End</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
                     updateService.addSuspendNode(workflowService.workflow())
                   "
                   ><i class="dropdown-icon bi bi-pause-circle"></i>Suspend</a

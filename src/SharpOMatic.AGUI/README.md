@@ -145,6 +145,9 @@ That node can keep or remove the frontend tool exchange from `input.chat`, and i
 SharpOMatic also provides a **Backend Tool Call** node for workflows that already know the tool result during the current run.
 It emits the full tool-call lifecycle immediately, does not suspend, and can optionally persist the function call and tool result into `input.chat`.
 
+For simple progress markers, SharpOMatic also provides **Step Start** and **Step End** nodes.
+They emit `STEP_STARTED` and `STEP_FINISHED` without suspending or touching `input.chat`.
+
 If a workflow wants to add the incoming AG-UI user message into SharpOMatic stream history without sending it back to the AG-UI caller, use a code node and the transient `silent` flag:
 
 ```csharp
@@ -181,3 +184,5 @@ They can also emit AG-UI step lifecycle events directly. The `stepName` is persi
 await Events.AddStepStartAsync("Search");
 await Events.AddStepEndAsync("Search");
 ```
+
+If you do not need code, use the dedicated **Step Start** and **Step End** workflow nodes to emit the same step lifecycle declaratively.

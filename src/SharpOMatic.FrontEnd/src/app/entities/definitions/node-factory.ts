@@ -22,6 +22,14 @@ import {
   BackendToolCallNodeEntity,
   BackendToolCallNodeSnapshot,
 } from './backend-tool-call-node.entity';
+import {
+  StepStartNodeEntity,
+  StepStartNodeSnapshot,
+} from './step-start-node.entity';
+import {
+  StepEndNodeEntity,
+  StepEndNodeSnapshot,
+} from './step-end-node.entity';
 
 export function nodeFromSnapshot(
   snapshot: NodeSnapshot,
@@ -60,5 +68,11 @@ export function nodeFromSnapshot(
       return BackendToolCallNodeEntity.fromSnapshot(
         snapshot as BackendToolCallNodeSnapshot,
       );
+    case NodeType.StepStart:
+      return StepStartNodeEntity.fromSnapshot(
+        snapshot as StepStartNodeSnapshot,
+      );
+    case NodeType.StepEnd:
+      return StepEndNodeEntity.fromSnapshot(snapshot as StepEndNodeSnapshot);
   }
 }

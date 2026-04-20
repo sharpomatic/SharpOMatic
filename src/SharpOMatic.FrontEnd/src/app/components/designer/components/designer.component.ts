@@ -60,6 +60,10 @@ import { FrontendToolCallNodeEntity } from '../../../entities/definitions/fronte
 import { FrontendToolCallNodeDialogComponent } from '../../../dialogs/frontend-tool-call-node/frontend-tool-call-node-dialog.component';
 import { BackendToolCallNodeEntity } from '../../../entities/definitions/backend-tool-call-node.entity';
 import { BackendToolCallNodeDialogComponent } from '../../../dialogs/backend-tool-call-node/backend-tool-call-node-dialog.component';
+import { StepStartNodeEntity } from '../../../entities/definitions/step-start-node.entity';
+import { StepStartNodeDialogComponent } from '../../../dialogs/step-start-node/step-start-node-dialog.component';
+import { StepEndNodeEntity } from '../../../entities/definitions/step-end-node.entity';
+import { StepEndNodeDialogComponent } from '../../../dialogs/step-end-node/step-end-node-dialog.component';
 
 @Component({
   selector: 'app-designer',
@@ -380,6 +384,16 @@ export class DesignerComponent {
       });
     } else if (node instanceof BackendToolCallNodeEntity) {
       this.dialogService.open(BackendToolCallNodeDialogComponent, {
+        node,
+        nodeTraces,
+      });
+    } else if (node instanceof StepStartNodeEntity) {
+      this.dialogService.open(StepStartNodeDialogComponent, {
+        node,
+        nodeTraces,
+      });
+    } else if (node instanceof StepEndNodeEntity) {
+      this.dialogService.open(StepEndNodeDialogComponent, {
         node,
         nodeTraces,
       });

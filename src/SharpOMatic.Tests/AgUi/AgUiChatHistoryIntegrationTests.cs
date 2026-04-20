@@ -250,6 +250,63 @@ public sealed class AgUiChatHistoryIntegrationTests
         }
     }
 
+    [Fact]
+    public async Task AgUi_step_nodes_workflow_streams_step_lifecycle()
+    {
+        var workflow = new SharpOMatic.Tests.Workflows.WorkflowBuilder()
+            .WithName("Step Workflow")
+            .AddStart()
+            .AddStepStart(stepName: "Search")
+            .AddStepEnd(stepName: "Search")
+            .AddEnd()
+            .Connect("start", "Step Start")
+            .Connect("Step Start", "Step End")
+            .Connect("Step End", "end")
+            .Build();
+
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider(services =>
+        {
+            services.AddSingleton<IAgUiRunEventBroker, AgUiRunEventBroker>();
+            services.AddSingleton<IProgressService, AgUiProgressService>();
+        });
+
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            var controller = new AgUiController(provider.GetRequiredService<IEngineService>(), provider.GetRequiredService<IAgUiRunEventBroker>());
+            controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+            await controller.Post(
+                new AgUiRunRequest()
+                {
+                    ThreadId = "thread-1",
+                    RunId = "protocol-run-step-1",
+                    ForwardedProps = ParseJson($$"""{"workflowId":"{{workflow.Id}}"}"""),
+                }
+            );
+
+            var events = ReadSseEvents((MemoryStream)controller.HttpContext.Response.Body);
+            Assert.Equal("RUN_STARTED", events[0].GetProperty("type").GetString());
+
+            var stepStart = Assert.Single(events, e => e.GetProperty("type").GetString() == "STEP_STARTED");
+            var stepEnd = Assert.Single(events, e => e.GetProperty("type").GetString() == "STEP_FINISHED");
+            Assert.Equal("Search", stepStart.GetProperty("stepName").GetString());
+            Assert.Equal("Search", stepEnd.GetProperty("stepName").GetString());
+            Assert.Equal("RUN_FINISHED", events[^1].GetProperty("type").GetString());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
     private static WorkflowEntity CreateModelWorkflow(Guid modelId, bool isConversationEnabled)
     {
         var workflow = new SharpOMatic.Tests.Workflows.WorkflowBuilder()

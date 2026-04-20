@@ -15,4 +15,6 @@ public enum NodeType
     Suspend = 10,
     FrontendToolCall = 11,
     BackendToolCall = 12,
+    StepStart = 13,
+    StepEnd = 14,
 }

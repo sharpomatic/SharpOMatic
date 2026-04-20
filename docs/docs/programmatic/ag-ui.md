@@ -281,3 +281,5 @@ Use `AddStepStartAsync` and `AddStepEndAsync` when the frontend should render si
 await Events.AddStepStartAsync("Search");
 await Events.AddStepEndAsync("Search");
 ```
+
+If you do not need custom code, use the dedicated **Step Start** and **Step End** workflow nodes to emit the same step lifecycle declaratively.
