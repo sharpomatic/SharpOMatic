@@ -7,7 +7,6 @@
 - Add node for templated output of text events with templated text
 - Add node for templated output of reasoning events with templated text
 
-- Low level helpers to output the custom/raw event?
 - Endpoint for returning history of messages for existing conversation
   limit how many of the most recent are returned
 - Investigate the compacting down to a message snapshot.
