@@ -75,6 +75,8 @@ export class StreamViewerComponent {
         return 'State Snapshot';
       case StreamEventKind.StateDelta:
         return 'State Delta';
+      case StreamEventKind.Custom:
+        return 'Custom';
       default:
         return 'Unknown';
     }

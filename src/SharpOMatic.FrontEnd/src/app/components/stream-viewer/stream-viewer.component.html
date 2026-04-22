@@ -88,6 +88,7 @@
               [class.state-delta]="
                 streamEvent.eventKind === StreamEventKind.StateDelta
               "
+              [class.custom-event]="streamEvent.eventKind === StreamEventKind.Custom"
             >
               {{ getEventKindLabel(streamEvent.eventKind) }}
             </span>

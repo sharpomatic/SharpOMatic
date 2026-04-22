@@ -340,4 +340,19 @@ await Events.AddStepStartAsync("Search");
 await Events.AddStepEndAsync("Search");
 ```
 
+Use `AddCustomEventAsync` for AG-UI `CUSTOM` events:
+
+```csharp
+await Events.AddCustomEventAsync(
+    "weather_progress",
+    "{\"stage\":\"fetch\"}"
+);
+```
+
+SharpOMatic maps the custom event name to persisted `TextDelta` and the custom value string to `Metadata`, then emits:
+
+- `type = "CUSTOM"`
+- `name = TextDelta`
+- `value = Metadata`
+
 If you do not need custom code, use the dedicated **Step Start**, **Step End**, **Activity Sync**, and **State Sync** workflow nodes to emit the same protocol-aware updates declaratively.

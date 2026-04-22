@@ -1568,6 +1568,76 @@ public sealed class AgUiControllerUnitTests
     }
 
     [Fact]
+    public async Task AgUi_controller_maps_custom_stream_events_to_protocol_events()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        var streamEvents = new List<StreamEvent>()
+        {
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 1,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.Custom,
+                TextDelta = "weather_progress",
+                Metadata = "{\"stage\":\"fetch\"}",
+            },
+        };
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                streamEvents,
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        httpContext.Response.Body.Position = 0;
+        var payload = Encoding.UTF8.GetString(((MemoryStream)httpContext.Response.Body).ToArray());
+
+        Assert.Contains("\"type\":\"CUSTOM\"", payload);
+        Assert.Contains("\"name\":\"weather_progress\"", payload);
+        Assert.Contains("\"value\":\"{\\u0022stage\\u0022:\\u0022fetch\\u0022}\"", payload);
+    }
+
+    [Fact]
     public async Task AgUi_controller_skips_silent_activity_stream_events()
     {
         var engineRunId = Guid.NewGuid();

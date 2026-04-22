@@ -17,4 +17,5 @@ export enum StreamEventKind {
   StepEnd = 15,
   StateSnapshot = 16,
   StateDelta = 17,
+  Custom = 18,
 }

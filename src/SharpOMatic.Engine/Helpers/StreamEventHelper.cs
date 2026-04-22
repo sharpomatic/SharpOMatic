@@ -429,6 +429,22 @@ public class StreamEventHelper
         );
     }
 
+    public Task<List<StreamEvent>> AddCustomEventAsync(string name, string value, bool silent = false)
+    {
+        if (value is null)
+            throw new SharpOMaticException("Custom event value cannot be null.");
+
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.Custom,
+                TextDelta = RequireCustomEventName(name),
+                Metadata = value,
+                Silent = silent,
+            }
+        );
+    }
+
     public async Task<List<StreamEvent>> AddActivitySyncFromContextAsync(
         string instanceName,
         string activityType,
@@ -603,6 +619,14 @@ public class StreamEventHelper
             throw new SharpOMaticException("Step name must be a non-empty string.");
 
         return stepName;
+    }
+
+    private static string RequireCustomEventName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new SharpOMaticException("Custom event name must be a non-empty string.");
+
+        return name;
     }
 
     private static string RequireNonEmpty(string value, string message)

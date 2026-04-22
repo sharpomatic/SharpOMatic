@@ -1209,6 +1209,61 @@ public sealed class StreamEventUnitTests
     }
 
     [Fact]
+    public async Task Code_node_custom_event_persists_name_and_value()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", """await Events.AddCustomEventAsync("weather_progress", "{\"stage\":\"fetch\"}");""")
+            .AddEnd()
+            .Connect("start", "code")
+            .Connect("code", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var customEvent = Assert.Single(await repositoryService.GetRunStreamEvents(run.RunId));
+            Assert.Equal(StreamEventKind.Custom, customEvent.EventKind);
+            Assert.Equal("weather_progress", customEvent.TextDelta);
+            Assert.Equal("{\"stage\":\"fetch\"}", customEvent.Metadata);
+            Assert.Null(customEvent.MessageId);
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Code_node_custom_event_requires_non_empty_name()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", """await Events.AddCustomEventAsync("   ", "value");""")
+            .Connect("start", "code")
+            .Build();
+
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.Contains("Custom event name must be a non-empty string.", run.Error);
+    }
+
+    [Fact]
     public async Task Conversation_stream_events_use_request_stream_conversation_id_and_continue_sequence()
     {
         var workflow = new WorkflowBuilder()

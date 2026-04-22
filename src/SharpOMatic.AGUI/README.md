@@ -212,4 +212,15 @@ await Events.AddStepStartAsync("Search");
 await Events.AddStepEndAsync("Search");
 ```
 
+For AG-UI `CUSTOM` events, use:
+
+```csharp
+await Events.AddCustomEventAsync(
+    "weather_progress",
+    "{\"stage\":\"fetch\"}"
+);
+```
+
+SharpOMatic stores the custom event name in `TextDelta`, the custom value string in `Metadata`, and replays them as AG-UI `CUSTOM` events with `name` and `value`.
+
 If you do not need code, use the dedicated **Step Start** and **Step End** workflow nodes to emit the same step lifecycle declaratively.

@@ -12,6 +12,7 @@ $stream-role-reasoning: SlateBlue;
 $stream-role-activity: #c2185b;
 $stream-role-state: #00897b;
 $stream-role-step: Magenta;
+$stream-role-custom: #6f42c1;
 
 .stream-viewer {
   min-height: 0;
@@ -235,6 +236,11 @@ $stream-role-step: Magenta;
   &.state-delta {
     color: white;
     background-color: $stream-role-state;
+  }
+
+  &.custom-event {
+    color: white;
+    background-color: $stream-role-custom;
   }
 }
 

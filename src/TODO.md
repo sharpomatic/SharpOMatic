@@ -4,6 +4,9 @@
 
 ### Agent
 
+- Add node for templated output of text events with templated text
+- Add node for templated output of reasoning events with templated text
+
 - Low level helpers to output the custom/raw event?
 - Endpoint for returning history of messages for existing conversation
   limit how many of the most recent are returned
@@ -12,11 +15,6 @@
 ### Others
 
 - Add view button to Runs and Conversation history and causes it to be loaded as the current data for the trace viewer.
-
-### Output Stream
-
-- Add node for templated output of text/reasoning events with templated text
-- Add node for templated output of tool event for fe/be with template name and template args
 
 ### Model Calls
 

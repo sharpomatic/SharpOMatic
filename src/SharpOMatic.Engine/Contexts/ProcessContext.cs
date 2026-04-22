@@ -583,6 +583,9 @@ public class ProcessContext : ExecutionContext
             case StreamEventKind.StateDelta:
                 ValidateStateDeltaEventWrite(write);
                 break;
+            case StreamEventKind.Custom:
+                ValidateCustomEventWrite(write);
+                break;
             default:
                 throw new SharpOMaticException($"Unsupported stream event kind '{write.EventKind}'.");
         }
@@ -683,6 +686,33 @@ public class ProcessContext : ExecutionContext
             throw new SharpOMaticException("StateDelta stream events cannot include ParentMessageId.");
 
         ValidateStateDeltaPatch(write.TextDelta);
+    }
+
+    private static void ValidateCustomEventWrite(StreamEventWrite write)
+    {
+        if (!string.IsNullOrWhiteSpace(write.MessageId))
+            throw new SharpOMaticException("Custom stream events cannot include a MessageId.");
+
+        if (write.MessageRole.HasValue)
+            throw new SharpOMaticException("Custom stream events cannot include a MessageRole.");
+
+        if (!string.IsNullOrWhiteSpace(write.ActivityType))
+            throw new SharpOMaticException("Custom stream events cannot include ActivityType.");
+
+        if (write.Replace.HasValue)
+            throw new SharpOMaticException("Custom stream events cannot include Replace.");
+
+        if (!string.IsNullOrWhiteSpace(write.ToolCallId))
+            throw new SharpOMaticException("Custom stream events cannot include ToolCallId.");
+
+        if (!string.IsNullOrWhiteSpace(write.ParentMessageId))
+            throw new SharpOMaticException("Custom stream events cannot include ParentMessageId.");
+
+        if (string.IsNullOrWhiteSpace(write.TextDelta))
+            throw new SharpOMaticException("Custom stream events require TextDelta to contain the custom event name.");
+
+        if (write.Metadata is null)
+            throw new SharpOMaticException("Custom stream events require Metadata to contain the custom event payload.");
     }
 
     private static void ValidateStateSnapshotContent(string? contentJson)

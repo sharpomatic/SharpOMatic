@@ -188,6 +188,17 @@ await Events.AddStepStartAsync("Search");
 await Events.AddStepEndAsync("Search");
 ```
 
+For application-specific AG-UI protocol extensions, emit a custom event:
+
+```csharp
+await Events.AddCustomEventAsync(
+    "weather_progress",
+    "{\"stage\":\"fetch\"}"
+);
+```
+
+This stores the custom event name in the stream event `TextDelta` field and the custom value string in `Metadata`.
+
 ## Implicit Assemblies
 
 The following using statements are implicitly already applied:

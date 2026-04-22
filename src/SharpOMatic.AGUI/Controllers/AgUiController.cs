@@ -562,6 +562,14 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
             case StreamEventKind.StateDelta:
                 await WriteStateDeltaEventAsync(streamEvent);
                 break;
+            case StreamEventKind.Custom when !string.IsNullOrWhiteSpace(streamEvent.TextDelta):
+                await WriteEventAsync(new
+                {
+                    type = "CUSTOM",
+                    name = streamEvent.TextDelta,
+                    value = streamEvent.Metadata ?? string.Empty
+                });
+                break;
             case StreamEventKind.StepStart when !string.IsNullOrWhiteSpace(streamEvent.TextDelta):
                 await WriteEventAsync(new
                 {
