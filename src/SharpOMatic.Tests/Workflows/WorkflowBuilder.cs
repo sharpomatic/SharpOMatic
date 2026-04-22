@@ -435,7 +435,8 @@ public sealed class WorkflowBuilder
         string instanceName = "activity-1",
         string activityType = "PLAN",
         string contextPath = "activity",
-        bool initialReplace = false
+        bool initialReplace = false,
+        bool snapshotsOnly = false
     )
     {
         var node = new ActivitySyncNodeEntity
@@ -454,6 +455,28 @@ public sealed class WorkflowBuilder
             ActivityType = activityType,
             ContextPath = contextPath,
             InitialReplace = initialReplace,
+            SnapshotsOnly = snapshotsOnly,
+        };
+
+        _nodes.Add(node);
+        return this;
+    }
+
+    public WorkflowBuilder AddStateSync(string title = "State Sync", bool snapshotsOnly = false)
+    {
+        var node = new StateSyncNodeEntity
+        {
+            Id = Guid.NewGuid(),
+            Version = 1,
+            NodeType = NodeType.StateSync,
+            Title = title,
+            Top = 0f,
+            Left = 0f,
+            Width = 80f,
+            Height = 80f,
+            Inputs = [CreateConnector()],
+            Outputs = [CreateConnector()],
+            SnapshotsOnly = snapshotsOnly,
         };
 
         _nodes.Add(node);

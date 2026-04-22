@@ -43,6 +43,7 @@ SharpOMatic translates workflow stream events into AG-UI SSE events:
 
 - `TEXT_MESSAGE_START`, `TEXT_MESSAGE_CONTENT`, `TEXT_MESSAGE_END`
 - `STEP_STARTED`, `STEP_FINISHED`
+- `STATE_SNAPSHOT`, `STATE_DELTA`
 - `REASONING_START`, `REASONING_MESSAGE_START`, `REASONING_MESSAGE_CONTENT`, `REASONING_MESSAGE_END`, `REASONING_END`
 - `TOOL_CALL_START`, `TOOL_CALL_ARGS`, `TOOL_CALL_END`, `TOOL_CALL_RESULT`
 - `ACTIVITY_SNAPSHOT`, `ACTIVITY_DELTA`
@@ -118,6 +119,7 @@ The controller maps selected request data into workflow context under `agent`:
 - `agent.messages`: the full incoming AG-UI `messages` array
 - `agent.state`: the incoming AG-UI `state` value
 - `agent.context`: the incoming AG-UI `context` value
+- `agent._hidden.state`: a hidden deep copy of the incoming AG-UI `state`, used as the baseline for `AddStateSyncAsync()` and the `State Sync` node
 
 These values are passed through as structured JSON-compatible data, not as a single raw JSON string.
 On each AG-UI start or resume, SharpOMatic updates the `agent` object.
@@ -144,6 +146,9 @@ That node can keep or remove the frontend tool exchange from `input.chat`, and i
 
 SharpOMatic also provides a **Backend Tool Call** node for workflows that already know the tool result during the current run.
 It emits the full tool-call lifecycle immediately, does not suspend, and can optionally persist the function call and tool result into `input.chat`.
+
+SharpOMatic also provides a **State Sync** node for workflows that want AG-UI state updates without custom code.
+It always syncs from `agent.state`, compares against hidden baseline state stored at `agent._hidden.state`, and emits either `STATE_DELTA` or `STATE_SNAPSHOT`.
 
 For simple progress markers, SharpOMatic also provides **Step Start** and **Step End** nodes.
 They emit `STEP_STARTED` and `STEP_FINISHED` without suspending or touching `input.chat`.
@@ -176,6 +181,28 @@ await Events.AddActivityDeltaAsync(
     "PLAN",
     new object[] { new { op = "replace", path = "/steps/0/status", value = "done" } }
 );
+```
+
+State snapshots and deltas are supported as well:
+
+```csharp
+await Events.AddStateSnapshotAsync(
+    new { mode = "assistant", count = 1 }
+);
+
+await Events.AddStateDeltaAsync(
+    new object[] { new { op = "replace", path = "/mode", value = "review" } }
+);
+```
+
+If state already lives in `agent.state`, prefer the higher-level sync helper:
+
+```csharp
+Context.Set("agent.state.mode", "assistant");
+await Events.AddStateSyncAsync();
+
+Context.Set("agent.state.mode", "review");
+await Events.AddStateSyncAsync();
 ```
 
 They can also emit AG-UI step lifecycle events directly. The `stepName` is persisted in SharpOMatic stream history using `TextDelta` and replayed as AG-UI step events:

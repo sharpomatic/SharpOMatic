@@ -18,4 +18,5 @@ public enum NodeType
     StepStart = 13,
     StepEnd = 14,
     ActivitySync = 15,
+    StateSync = 16,
 }

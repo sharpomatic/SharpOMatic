@@ -8,6 +8,7 @@ export interface ActivitySyncNodeSnapshot extends NodeSnapshot {
   activityType: string;
   contextPath: string;
   initialReplace: boolean;
+  snapshotsOnly: boolean;
 }
 
 export class ActivitySyncNodeEntity extends NodeEntity<ActivitySyncNodeSnapshot> {
@@ -15,6 +16,7 @@ export class ActivitySyncNodeEntity extends NodeEntity<ActivitySyncNodeSnapshot>
   public activityType: WritableSignal<string>;
   public contextPath: WritableSignal<string>;
   public initialReplace: WritableSignal<boolean>;
+  public snapshotsOnly: WritableSignal<boolean>;
 
   constructor(snapshot: ActivitySyncNodeSnapshot) {
     super(snapshot);
@@ -23,6 +25,7 @@ export class ActivitySyncNodeEntity extends NodeEntity<ActivitySyncNodeSnapshot>
     this.activityType = signal(snapshot.activityType);
     this.contextPath = signal(snapshot.contextPath);
     this.initialReplace = signal(snapshot.initialReplace);
+    this.snapshotsOnly = signal(snapshot.snapshotsOnly);
 
     const isNodeDirty = this.isDirty;
     this.isDirty = computed(() => {
@@ -33,7 +36,8 @@ export class ActivitySyncNodeEntity extends NodeEntity<ActivitySyncNodeSnapshot>
         this.instanceName() !== original.instanceName ||
         this.activityType() !== original.activityType ||
         this.contextPath() !== original.contextPath ||
-        this.initialReplace() !== original.initialReplace
+        this.initialReplace() !== original.initialReplace ||
+        this.snapshotsOnly() !== original.snapshotsOnly
       );
     });
   }
@@ -45,6 +49,7 @@ export class ActivitySyncNodeEntity extends NodeEntity<ActivitySyncNodeSnapshot>
       activityType: this.activityType(),
       contextPath: this.contextPath(),
       initialReplace: this.initialReplace(),
+      snapshotsOnly: this.snapshotsOnly(),
     };
   }
 
@@ -63,6 +68,7 @@ export class ActivitySyncNodeEntity extends NodeEntity<ActivitySyncNodeSnapshot>
       activityType: '',
       contextPath: '',
       initialReplace: false,
+      snapshotsOnly: false,
     };
   }
 

@@ -767,10 +767,10 @@ public sealed class StreamEventUnitTests
             Assert.Equal("PLAN", activityEvent.ActivityType);
 
             var output = ContextObject.Deserialize(run.OutputContext, jsonConverters.GetConverters());
-            Assert.Equal("activity-1", output.Get<string>("_activityState.instances[0].instanceName"));
-            Assert.Equal("PLAN", output.Get<string>("_activityState.instances[0].activityType"));
-            Assert.Equal("Search", output.Get<string>("_activityState.instances[0].content.steps[0].title"));
-            Assert.Equal("in_progress", output.Get<string>("_activityState.instances[0].content.steps[0].status"));
+            Assert.Equal("activity-1", output.Get<string>("_hidden.activity[0].instanceName"));
+            Assert.Equal("PLAN", output.Get<string>("_hidden.activity[0].activityType"));
+            Assert.Equal("Search", output.Get<string>("_hidden.activity[0].content.steps[0].title"));
+            Assert.Equal("in_progress", output.Get<string>("_hidden.activity[0].content.steps[0].status"));
         }
         finally
         {
@@ -812,7 +812,7 @@ public sealed class StreamEventUnitTests
         var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
         var output = ContextObject.Deserialize(run.OutputContext, jsonConverters.GetConverters());
         Assert.Equal("done", output.Get<string>("activity.steps[0].status"));
-        Assert.Equal("in_progress", output.Get<string>("_activityState.instances[0].content.steps[0].status"));
+        Assert.Equal("in_progress", output.Get<string>("_hidden.activity[0].content.steps[0].status"));
     }
 
     [Fact]
@@ -1001,7 +1001,7 @@ public sealed class StreamEventUnitTests
 
                 await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
 
-                var previousStored = Context.Get<ContextObject>("_activityState.instances[0].content");
+                var previousStored = Context.Get<ContextObject>("_hidden.activity[0].content");
 
                 var secondStep = new ContextObject();
                 secondStep.Add("title", "Search");
@@ -1014,7 +1014,7 @@ public sealed class StreamEventUnitTests
 
                 await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
 
-                var currentStored = Context.Get<ContextObject>("_activityState.instances[0].content");
+                var currentStored = Context.Get<ContextObject>("_hidden.activity[0].content");
                 Context.Set("output.sameStoredReference", object.ReferenceEquals(previousStored, currentStored));
                 """
             )

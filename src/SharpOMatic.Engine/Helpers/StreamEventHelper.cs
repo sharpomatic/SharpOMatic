@@ -2,10 +2,12 @@ namespace SharpOMatic.Engine.Helpers;
 
 public class StreamEventHelper
 {
-    private const string ActivityStatePath = "_activityState.instances";
+    private const string ActivityStatePath = "_hidden.activity";
     private const string ActivityInstanceNameField = "instanceName";
     private const string ActivityTypeField = "activityType";
     private const string ActivityContentField = "content";
+    private const string AgentStatePath = "agent.state";
+    private const string StateSyncContentPath = "agent._hidden.state";
 
     private readonly ProcessContext _processContext;
     private readonly ContextObject _context;
@@ -375,7 +377,7 @@ public class StreamEventHelper
                 MessageId = RequireMessageId(messageId),
                 ActivityType = RequireActivityType(activityType),
                 Replace = replace,
-                TextDelta = SerializeActivityJsonPayload(content, "Activity snapshot content must be JSON serializable."),
+                TextDelta = SerializePlainJsonPayload(content, "Activity snapshot content must be JSON serializable."),
                 Metadata = metadata,
                 Silent = silent,
             }
@@ -392,7 +394,35 @@ public class StreamEventHelper
                 EventKind = StreamEventKind.ActivityDelta,
                 MessageId = RequireMessageId(messageId),
                 ActivityType = RequireActivityType(activityType),
-                TextDelta = SerializeActivityJsonPayload(patch, "Activity delta patch must be JSON serializable."),
+                TextDelta = SerializePlainJsonPayload(patch, "Activity delta patch must be JSON serializable."),
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
+    public Task<List<StreamEvent>> AddStateSnapshotAsync(object? snapshot, string? metadata = null, bool silent = false)
+    {
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.StateSnapshot,
+                TextDelta = SerializePlainJsonPayload(snapshot, "State snapshot must be JSON serializable."),
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
+    public Task<List<StreamEvent>> AddStateDeltaAsync(object patch, string? metadata = null, bool silent = false)
+    {
+        ArgumentNullException.ThrowIfNull(patch);
+
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.StateDelta,
+                TextDelta = SerializePlainJsonPayload(patch, "State delta patch must be JSON serializable."),
                 Metadata = metadata,
                 Silent = silent,
             }
@@ -404,6 +434,7 @@ public class StreamEventHelper
         string activityType,
         string contextPath,
         bool? replace = null,
+        bool snapshotsOnly = false,
         string? metadata = null,
         bool silent = false
     )
@@ -411,7 +442,7 @@ public class StreamEventHelper
         instanceName = RequireActivityInstanceName(instanceName);
         activityType = RequireActivityType(activityType);
         var content = ResolveActivityContentFromContextPath(contextPath, "Activity sync");
-        var snapshotJson = SerializeActivityJsonPayload(content, "Activity sync content must be JSON serializable.");
+        var snapshotJson = SerializePlainJsonPayload(content, "Activity sync content must be JSON serializable.");
         var existingEntry = FindStoredActivityState(instanceName);
 
         if (existingEntry is null)
@@ -425,6 +456,13 @@ public class StreamEventHelper
         if (!string.Equals(storedActivityType, activityType, StringComparison.Ordinal))
             throw new SharpOMaticException($"Activity instance '{instanceName}' is already associated with activity type '{storedActivityType}', not '{activityType}'.");
 
+        if (snapshotsOnly)
+        {
+            var snapshotEvents = await AddActivitySnapshotJsonAsync(instanceName, storedActivityType, snapshotJson, true, metadata, silent);
+            UpsertStoredActivityState(instanceName, activityType, content);
+            return snapshotEvents;
+        }
+
         var patch = BuildActivityDeltaPatch(RequireStoredActivityContent(existingEntry, instanceName), content);
 
         if (patch.Count == 0)
@@ -433,12 +471,58 @@ public class StreamEventHelper
             return [];
         }
 
-        var patchJson = SerializeActivityJsonPayload(patch, "Activity sync delta patch must be JSON serializable.");
+        var patchJson = SerializePlainJsonPayload(patch, "Activity sync delta patch must be JSON serializable.");
         var events = GetUtf8Size(patchJson) < GetUtf8Size(snapshotJson)
             ? await AddActivityDeltaJsonAsync(instanceName, storedActivityType, patchJson, metadata, silent)
             : await AddActivitySnapshotJsonAsync(instanceName, storedActivityType, snapshotJson, true, metadata, silent);
 
         UpsertStoredActivityState(instanceName, activityType, content);
+        return events;
+    }
+
+    public async Task<List<StreamEvent>> AddStateSyncAsync(bool snapshotsOnly = false, string? metadata = null, bool silent = false)
+    {
+        if (!_context.TryGet<object?>(AgentStatePath, out var currentState))
+            return [];
+
+        var clonedCurrentState = CloneJsonValue(currentState, $"State sync context path '{AgentStatePath}' could not be cloned from JSON.");
+        var snapshotJson = SerializePlainJsonPayload(clonedCurrentState, "State sync content must be JSON serializable.");
+
+        if (!_context.TryGet<object?>(StateSyncContentPath, out var existingState))
+        {
+            var snapshotEvents = await AddStateSnapshotJsonAsync(snapshotJson, metadata, silent);
+            SetStoredStateSyncContent(clonedCurrentState);
+            return snapshotEvents;
+        }
+
+        if (snapshotsOnly)
+        {
+            var snapshotEvents = await AddStateSnapshotJsonAsync(snapshotJson, metadata, silent);
+            SetStoredStateSyncContent(clonedCurrentState);
+            return snapshotEvents;
+        }
+
+        var clonedExistingState = CloneJsonValue(existingState, "Stored state sync baseline could not be cloned from JSON.");
+        var patch = BuildJsonDeltaPatch(clonedExistingState, clonedCurrentState, allowRootReplace: true);
+
+        if (patch.Count == 0)
+        {
+            SetStoredStateSyncContent(clonedCurrentState);
+            return [];
+        }
+
+        var hasRootReplace = patch.Any(operation =>
+            operation.TryGetValue("path", out var pathValue) &&
+            pathValue is string path &&
+            string.IsNullOrEmpty(path)
+        );
+
+        var patchJson = SerializePlainJsonPayload(patch, "State sync delta patch must be JSON serializable.");
+        var events = !hasRootReplace && GetUtf8Size(patchJson) < GetUtf8Size(snapshotJson)
+            ? await AddStateDeltaJsonAsync(patchJson, metadata, silent)
+            : await AddStateSnapshotJsonAsync(snapshotJson, metadata, silent);
+
+        SetStoredStateSyncContent(clonedCurrentState);
         return events;
     }
 
@@ -541,17 +625,7 @@ public class StreamEventHelper
         if (!_context.TryGet<object?>(contextPath, out var value))
             throw new SharpOMaticException($"{operationName} context path '{contextPath}' could not be found.");
 
-        var json = SerializeActivityJsonPayload(value, $"{operationName} context path '{contextPath}' could not be serialized to JSON.");
-
-        object? cloned;
-        try
-        {
-            cloned = ContextHelpers.FastDeserializeString(json);
-        }
-        catch
-        {
-            throw new SharpOMaticException($"{operationName} context path '{contextPath}' could not be cloned from JSON.");
-        }
+        var cloned = CloneJsonValue(value, $"{operationName} context path '{contextPath}' could not be cloned from JSON.");
 
         if (cloned is not ContextObject content)
             throw new SharpOMaticException($"{operationName} requires context path '{contextPath}' to resolve to a JSON object.");
@@ -654,21 +728,72 @@ public class StreamEventHelper
         );
     }
 
-    private List<Dictionary<string, object?>> BuildActivityDeltaPatch(ContextObject oldContent, ContextObject newContent)
+    private Task<List<StreamEvent>> AddStateSnapshotJsonAsync(string snapshotJson, string? metadata = null, bool silent = false)
     {
-        return ActivityJsonPatchHelper.BuildPatch(
-            SerializeActivityJsonPayload(oldContent, "Stored activity content could not be serialized to JSON."),
-            SerializeActivityJsonPayload(newContent, "Activity content could not be serialized to JSON.")
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.StateSnapshot,
+                TextDelta = snapshotJson,
+                Metadata = metadata,
+                Silent = silent,
+            }
         );
     }
 
-    private string SerializeActivityJsonPayload(object? payload, string errorMessage)
+    private Task<List<StreamEvent>> AddStateDeltaJsonAsync(string patchJson, string? metadata = null, bool silent = false)
+    {
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.StateDelta,
+                TextDelta = patchJson,
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
+    private List<Dictionary<string, object?>> BuildActivityDeltaPatch(ContextObject oldContent, ContextObject newContent)
+    {
+        return BuildJsonDeltaPatch(oldContent, newContent);
+    }
+
+    private List<Dictionary<string, object?>> BuildJsonDeltaPatch(object? oldContent, object? newContent, bool allowRootReplace = false)
+    {
+        return ActivityJsonPatchHelper.BuildPatch(
+            SerializePlainJsonPayload(oldContent, "Stored content could not be serialized to JSON."),
+            SerializePlainJsonPayload(newContent, "Content could not be serialized to JSON."),
+            allowRootReplace
+        );
+    }
+
+    private object? CloneJsonValue(object? value, string errorMessage)
+    {
+        var json = SerializePlainJsonPayload(value, errorMessage);
+
+        try
+        {
+            return ContextHelpers.FastDeserializeString(json);
+        }
+        catch
+        {
+            throw new SharpOMaticException(errorMessage);
+        }
+    }
+
+    private void SetStoredStateSyncContent(object? value)
+    {
+        _context.Set(StateSyncContentPath, value);
+    }
+
+    private string SerializePlainJsonPayload(object? payload, string errorMessage)
     {
         try
         {
             var buffer = new System.Buffers.ArrayBufferWriter<byte>();
             using var writer = new Utf8JsonWriter(buffer);
-            WritePlainActivityJsonValue(writer, payload);
+            WritePlainJsonValue(writer, payload);
             writer.Flush();
             return Encoding.UTF8.GetString(buffer.WrittenSpan);
         }
@@ -678,7 +803,7 @@ public class StreamEventHelper
         }
     }
 
-    private static void WritePlainActivityJsonValue(Utf8JsonWriter writer, object? value)
+    private static void WritePlainJsonValue(Utf8JsonWriter writer, object? value)
     {
         switch (value)
         {
@@ -696,14 +821,14 @@ public class StreamEventHelper
                 foreach (var entry in contextObject.Snapshot())
                 {
                     writer.WritePropertyName(entry.Key);
-                    WritePlainActivityJsonValue(writer, entry.Value);
+                    WritePlainJsonValue(writer, entry.Value);
                 }
                 writer.WriteEndObject();
                 return;
             case ContextList contextList:
                 writer.WriteStartArray();
                 foreach (var item in contextList.Snapshot())
-                    WritePlainActivityJsonValue(writer, item);
+                    WritePlainJsonValue(writer, item);
                 writer.WriteEndArray();
                 return;
             case IDictionary<string, object?> dictionary:
@@ -711,14 +836,14 @@ public class StreamEventHelper
                 foreach (var entry in dictionary)
                 {
                     writer.WritePropertyName(entry.Key);
-                    WritePlainActivityJsonValue(writer, entry.Value);
+                    WritePlainJsonValue(writer, entry.Value);
                 }
                 writer.WriteEndObject();
                 return;
             case IEnumerable enumerable when value is not string:
                 writer.WriteStartArray();
                 foreach (var item in enumerable)
-                    WritePlainActivityJsonValue(writer, item);
+                    WritePlainJsonValue(writer, item);
                 writer.WriteEndArray();
                 return;
             default:

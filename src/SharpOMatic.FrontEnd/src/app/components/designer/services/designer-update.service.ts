@@ -28,6 +28,7 @@ import { BackendToolCallNodeEntity } from '../../../entities/definitions/backend
 import { StepStartNodeEntity } from '../../../entities/definitions/step-start-node.entity';
 import { StepEndNodeEntity } from '../../../entities/definitions/step-end-node.entity';
 import { ActivitySyncNodeEntity } from '../../../entities/definitions/activity-sync-node.entity';
+import { StateSyncNodeEntity } from '../../../entities/definitions/state-sync-node.entity';
 
 @Injectable({
   providedIn: 'root',
@@ -172,6 +173,14 @@ export class DesignerUpdateService {
     workflow.nodes.update((nodes) => [
       ...nodes,
       ActivitySyncNodeEntity.create(top, left),
+    ]);
+  }
+
+  addStateSyncNode(workflow: WorkflowEntity) {
+    const [top, left] = this.getAddLocation();
+    workflow.nodes.update((nodes) => [
+      ...nodes,
+      StateSyncNodeEntity.create(top, left),
     ]);
   }
 

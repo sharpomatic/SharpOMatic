@@ -7,4 +7,5 @@ public sealed class ActivitySyncNodeEntity : NodeEntity
     public required string ActivityType { get; set; }
     public required string ContextPath { get; set; }
     public required bool InitialReplace { get; set; }
+    public bool SnapshotsOnly { get; set; }
 }

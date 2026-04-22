@@ -2,42 +2,42 @@ namespace SharpOMatic.Engine.Helpers;
 
 internal static class ActivityJsonPatchHelper
 {
-    internal static List<Dictionary<string, object?>> BuildPatch(string oldJson, string newJson)
+    internal static List<Dictionary<string, object?>> BuildPatch(string oldJson, string newJson, bool allowRootReplace = false)
     {
         using var oldDocument = JsonDocument.Parse(oldJson);
         using var newDocument = JsonDocument.Parse(newJson);
 
         List<Dictionary<string, object?>> operations = [];
-        AppendDiffOperations(oldDocument.RootElement, newDocument.RootElement, string.Empty, operations);
+        AppendDiffOperations(oldDocument.RootElement, newDocument.RootElement, string.Empty, operations, allowRootReplace);
         return operations;
     }
 
-    private static void AppendDiffOperations(JsonElement oldValue, JsonElement newValue, string path, List<Dictionary<string, object?>> operations)
+    private static void AppendDiffOperations(JsonElement oldValue, JsonElement newValue, string path, List<Dictionary<string, object?>> operations, bool allowRootReplace)
     {
         if (JsonElement.DeepEquals(oldValue, newValue))
             return;
 
         if (oldValue.ValueKind != newValue.ValueKind)
         {
-            AddReplaceOperation(path, newValue, operations);
+            AddReplaceOperation(path, newValue, operations, allowRootReplace);
             return;
         }
 
         switch (oldValue.ValueKind)
         {
             case JsonValueKind.Object:
-                AppendObjectDiffOperations(oldValue, newValue, path, operations);
+                AppendObjectDiffOperations(oldValue, newValue, path, operations, allowRootReplace);
                 return;
             case JsonValueKind.Array:
-                AppendArrayDiffOperations(oldValue, newValue, path, operations);
+                AppendArrayDiffOperations(oldValue, newValue, path, operations, allowRootReplace);
                 return;
             default:
-                AddReplaceOperation(path, newValue, operations);
+                AddReplaceOperation(path, newValue, operations, allowRootReplace);
                 return;
         }
     }
 
-    private static void AppendObjectDiffOperations(JsonElement oldObject, JsonElement newObject, string path, List<Dictionary<string, object?>> operations)
+    private static void AppendObjectDiffOperations(JsonElement oldObject, JsonElement newObject, string path, List<Dictionary<string, object?>> operations, bool allowRootReplace)
     {
         Dictionary<string, JsonElement> oldProperties = [];
         foreach (var property in oldObject.EnumerateObject())
@@ -63,24 +63,24 @@ internal static class ActivityJsonPatchHelper
                 continue;
             }
 
-            AppendDiffOperations(oldPropertyValue, property.Value, propertyPath, operations);
+            AppendDiffOperations(oldPropertyValue, property.Value, propertyPath, operations, allowRootReplace);
         }
     }
 
-    private static void AppendArrayDiffOperations(JsonElement oldArray, JsonElement newArray, string path, List<Dictionary<string, object?>> operations)
+    private static void AppendArrayDiffOperations(JsonElement oldArray, JsonElement newArray, string path, List<Dictionary<string, object?>> operations, bool allowRootReplace)
     {
         var oldLength = oldArray.GetArrayLength();
         var newLength = newArray.GetArrayLength();
 
         if (oldLength != newLength)
         {
-            AddReplaceOperation(path, newArray, operations);
+            AddReplaceOperation(path, newArray, operations, allowRootReplace);
             return;
         }
 
         for (var i = 0; i < oldLength; i++)
         {
-            AppendDiffOperations(oldArray[i], newArray[i], BuildJsonPointer(path, i), operations);
+            AppendDiffOperations(oldArray[i], newArray[i], BuildJsonPointer(path, i), operations, allowRootReplace);
         }
     }
 
@@ -96,10 +96,13 @@ internal static class ActivityJsonPatchHelper
         return patchOperation;
     }
 
-    private static void AddReplaceOperation(string path, JsonElement value, List<Dictionary<string, object?>> operations)
+    private static void AddReplaceOperation(string path, JsonElement value, List<Dictionary<string, object?>> operations, bool allowRootReplace)
     {
         if (string.IsNullOrWhiteSpace(path))
-            throw new SharpOMaticException("Activity diff cannot replace the root activity object.");
+        {
+            if (!allowRootReplace)
+                throw new SharpOMaticException("Activity diff cannot replace the root activity object.");
+        }
 
         operations.Add(CreatePatchOperation("replace", path, DeserializeJsonElementValue(value)));
     }

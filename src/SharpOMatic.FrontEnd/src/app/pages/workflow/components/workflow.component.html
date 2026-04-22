@@ -145,6 +145,15 @@
                 <a
                   class="dropdown-item"
                   (click)="
+                    updateService.addStateSyncNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-arrow-repeat"></i>State Sync</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
                     updateService.addSuspendNode(workflowService.workflow())
                   "
                   ><i class="dropdown-icon bi bi-pause-circle"></i>Suspend</a

@@ -71,6 +71,10 @@ export class StreamViewerComponent {
         return 'Step Start';
       case StreamEventKind.StepEnd:
         return 'Step End';
+      case StreamEventKind.StateSnapshot:
+        return 'State Snapshot';
+      case StreamEventKind.StateDelta:
+        return 'State Delta';
       default:
         return 'Unknown';
     }
@@ -89,6 +93,14 @@ export class StreamViewerComponent {
 
   public isActivityDeltaEvent(streamEvent: StreamEventModel): boolean {
     return streamEvent.eventKind === StreamEventKind.ActivityDelta;
+  }
+
+  public isStateSnapshotEvent(streamEvent: StreamEventModel): boolean {
+    return streamEvent.eventKind === StreamEventKind.StateSnapshot;
+  }
+
+  public isStateDeltaEvent(streamEvent: StreamEventModel): boolean {
+    return streamEvent.eventKind === StreamEventKind.StateDelta;
   }
 
   public isAssistantTextEvent(streamEvent: StreamEventModel): boolean {

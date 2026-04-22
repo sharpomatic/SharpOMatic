@@ -82,6 +82,12 @@
               "
               [class.step-start]="streamEvent.eventKind === StreamEventKind.StepStart"
               [class.step-end]="streamEvent.eventKind === StreamEventKind.StepEnd"
+              [class.state-snapshot]="
+                streamEvent.eventKind === StreamEventKind.StateSnapshot
+              "
+              [class.state-delta]="
+                streamEvent.eventKind === StreamEventKind.StateDelta
+              "
             >
               {{ getEventKindLabel(streamEvent.eventKind) }}
             </span>
@@ -110,6 +116,12 @@
                 </div>
               }
               @if (isActivityDeltaEvent(streamEvent) && streamEvent.textDelta) {
+                <div class="payload-row">
+                  <span class="payload-value">{{ streamEvent.textDelta }}</span>
+                </div>
+              }
+            } @else if (isStateSnapshotEvent(streamEvent) || isStateDeltaEvent(streamEvent)) {
+              @if (streamEvent.textDelta) {
                 <div class="payload-row">
                   <span class="payload-value">{{ streamEvent.textDelta }}</span>
                 </div>

@@ -1432,6 +1432,142 @@ public sealed class AgUiControllerUnitTests
     }
 
     [Fact]
+    public async Task AgUi_controller_maps_state_snapshot_stream_events_to_protocol_events()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        var streamEvents = new List<StreamEvent>()
+        {
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 1,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.StateSnapshot,
+                TextDelta = """{"mode":"assistant","count":1}""",
+            },
+        };
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                streamEvents,
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        httpContext.Response.Body.Position = 0;
+        var payload = Encoding.UTF8.GetString(((MemoryStream)httpContext.Response.Body).ToArray());
+
+        Assert.Contains("STATE_SNAPSHOT", payload);
+        Assert.Contains("\"snapshot\":{\"mode\":\"assistant\",\"count\":1}", payload);
+    }
+
+    [Fact]
+    public async Task AgUi_controller_maps_state_delta_stream_events_to_protocol_events()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .ReturnsAsync(engineRunId);
+
+        var streamEvents = new List<StreamEvent>()
+        {
+            new()
+            {
+                StreamEventId = Guid.NewGuid(),
+                RunId = engineRunId,
+                WorkflowId = workflowId,
+                SequenceNumber = 1,
+                Created = DateTime.UtcNow,
+                EventKind = StreamEventKind.StateDelta,
+                TextDelta = """[{"op":"replace","path":"/mode","value":"assistant"}]""",
+            },
+        };
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                streamEvents,
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = new DefaultHttpContext();
+        httpContext.Response.Body = new MemoryStream();
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            RunId = "protocol-run-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        httpContext.Response.Body.Position = 0;
+        var payload = Encoding.UTF8.GetString(((MemoryStream)httpContext.Response.Body).ToArray());
+
+        Assert.Contains("STATE_DELTA", payload);
+        Assert.Contains("\"delta\":[{\"op\":\"replace\",\"path\":\"/mode\",\"value\":\"assistant\"}]", payload);
+    }
+
+    [Fact]
     public async Task AgUi_controller_skips_silent_activity_stream_events()
     {
         var engineRunId = Guid.NewGuid();
@@ -1707,6 +1843,7 @@ public sealed class AgUiControllerUnitTests
         Assert.Equal(string.Empty, capturedContext!.Get<string>("agent.latestToolResult.content"));
         Assert.Equal("call-1", capturedContext.Get<string>("agent.latestToolResult.toolCallId"));
         Assert.Equal("assistant", capturedContext.Get<string>("agent.state.mode"));
+        Assert.Equal("assistant", capturedContext.Get<string>("agent._hidden.state.mode"));
         Assert.Equal("ctx-1", capturedContext.Get<string>("agent.context[0].id"));
 
         var inputChat = capturedContext.Get<ContextList>("input.chat");
@@ -1832,6 +1969,7 @@ public sealed class AgUiControllerUnitTests
         var mergeInput = Assert.IsType<ContextMergeResumeInput>(capturedResumeInput);
         Assert.Equal(42, mergeInput.Context.Get<int>("existing.value"));
         Assert.Equal("assistant", mergeInput.Context.Get<string>("agent.state.mode"));
+        Assert.Equal("assistant", mergeInput.Context.Get<string>("agent._hidden.state.mode"));
 
         var chat = mergeInput.Context.Get<ContextList>("input.chat");
         Assert.Equal(3, chat.Count);

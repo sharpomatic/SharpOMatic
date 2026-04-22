@@ -10,6 +10,7 @@ $stream-role-system: #6c757d;
 $stream-role-tool: #0dcaf0;
 $stream-role-reasoning: SlateBlue;
 $stream-role-activity: #c2185b;
+$stream-role-state: #00897b;
 $stream-role-step: Magenta;
 
 .stream-viewer {
@@ -224,6 +225,16 @@ $stream-role-step: Magenta;
   &.step-end {
     color: white;
     background-color: $stream-role-step;
+  }
+
+  &.state-snapshot {
+    color: white;
+    background-color: $stream-role-state;
+  }
+
+  &.state-delta {
+    color: white;
+    background-color: $stream-role-state;
   }
 }
 

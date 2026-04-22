@@ -20,9 +20,12 @@ It wraps the same high-level sync behavior as `Events.AddActivitySyncFromContext
   The path to a JSON object in workflow context that represents the current activity state.
 - `Replace on first snapshot`
   Controls the `replace` flag on the first emitted snapshot only. Replacement snapshots used later as a fallback are always emitted with `replace: true`.
+- `Snapshots only`
+  When enabled, the node always emits snapshots and never attempts to emit deltas.
 
 ## Notes
 
 - The context path must resolve to a JSON object.
 - The node stores hidden baseline state in workflow context so it can compare later executions.
 - If the same `Instance Name` is reused with a different `Activity Type`, execution fails.
+- In `Snapshots only` mode, each execution emits a snapshot even when a smaller delta would be possible.

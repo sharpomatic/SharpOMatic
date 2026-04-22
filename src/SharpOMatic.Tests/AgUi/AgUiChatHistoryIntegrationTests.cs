@@ -307,6 +307,96 @@ public sealed class AgUiChatHistoryIntegrationTests
         }
     }
 
+    [Fact]
+    public async Task AgUi_state_sync_node_workflow_streams_state_snapshot_and_delta()
+    {
+        var requestStateJson = JsonSerializer.Serialize(new { title = new string('x', 200), mode = "assistant" });
+        var workflow = new SharpOMatic.Tests.Workflows.WorkflowBuilder()
+            .WithName("State Sync Workflow")
+            .EnableConversations()
+            .AddStart()
+            .AddCode(
+                "update",
+                """
+                var turn = Context.TryGet<int>("state.turn", out var currentTurn) ? currentTurn + 1 : 1;
+                Context.Set("state.turn", turn);
+                Context.Set("agent.state.title", new string('x', 200));
+
+                if (turn == 1)
+                    Context.Set("agent.state.mode", "assistant");
+                else
+                    Context.Set("agent.state.mode", "review");
+                """
+            )
+            .AddStateSync()
+            .AddEnd()
+            .Connect("start", "update")
+            .Connect("update", "State Sync")
+            .Connect("State Sync", "end")
+            .Build();
+
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider(services =>
+        {
+            services.AddSingleton<IAgUiRunEventBroker, AgUiRunEventBroker>();
+            services.AddSingleton<IProgressService, AgUiProgressService>();
+        });
+
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            var controller = new AgUiController(provider.GetRequiredService<IEngineService>(), provider.GetRequiredService<IAgUiRunEventBroker>());
+
+            var firstHttpContext = CreateHttpContext(provider);
+            controller.ControllerContext = new ControllerContext() { HttpContext = firstHttpContext };
+            await controller.Post(
+                new AgUiRunRequest()
+                {
+                    ThreadId = "thread-1",
+                    RunId = "protocol-run-state-1",
+                    ForwardedProps = ParseJson($$"""{"workflowId":"{{workflow.Id}}"}"""),
+                }
+            );
+            await WaitForConversationToBeIdleAsync(repositoryService, "thread-1");
+
+            var secondHttpContext = CreateHttpContext(provider);
+            controller.ControllerContext = new ControllerContext() { HttpContext = secondHttpContext };
+            await controller.Post(
+                new AgUiRunRequest()
+                {
+                    ThreadId = "thread-1",
+                    RunId = "protocol-run-state-2",
+                    State = ParseJson(requestStateJson),
+                    ForwardedProps = ParseJson($$"""{"workflowId":"{{workflow.Id}}"}"""),
+                }
+            );
+
+            var firstEvents = ReadSseEvents((MemoryStream)firstHttpContext.Response.Body);
+            var secondEvents = ReadSseEvents((MemoryStream)secondHttpContext.Response.Body);
+            Assert.Equal("RUN_STARTED", firstEvents[0].GetProperty("type").GetString());
+            Assert.Equal("RUN_STARTED", secondEvents[0].GetProperty("type").GetString());
+
+            var stateSnapshot = Assert.Single(firstEvents, e => e.GetProperty("type").GetString() == "STATE_SNAPSHOT");
+            var stateDelta = Assert.Single(secondEvents, e => e.GetProperty("type").GetString() == "STATE_DELTA");
+            Assert.Equal("assistant", stateSnapshot.GetProperty("snapshot").GetProperty("mode").GetString());
+            Assert.Equal("replace", stateDelta.GetProperty("delta")[0].GetProperty("op").GetString());
+            Assert.Equal("/mode", stateDelta.GetProperty("delta")[0].GetProperty("path").GetString());
+            Assert.Equal("review", stateDelta.GetProperty("delta")[0].GetProperty("value").GetString());
+            Assert.Equal("RUN_FINISHED", firstEvents[^1].GetProperty("type").GetString());
+            Assert.Equal("RUN_FINISHED", secondEvents[^1].GetProperty("type").GetString());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
     private static WorkflowEntity CreateModelWorkflow(Guid modelId, bool isConversationEnabled)
     {
         var workflow = new SharpOMatic.Tests.Workflows.WorkflowBuilder()

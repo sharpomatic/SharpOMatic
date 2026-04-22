@@ -577,6 +577,12 @@ public class ProcessContext : ExecutionContext
             case StreamEventKind.StepEnd:
                 ValidateStepEventWrite(write, "StepEnd");
                 break;
+            case StreamEventKind.StateSnapshot:
+                ValidateStateSnapshotEventWrite(write);
+                break;
+            case StreamEventKind.StateDelta:
+                ValidateStateDeltaEventWrite(write);
+                break;
             default:
                 throw new SharpOMaticException($"Unsupported stream event kind '{write.EventKind}'.");
         }
@@ -630,8 +636,84 @@ public class ProcessContext : ExecutionContext
 
     private static void ValidateActivityDeltaPatch(string? patchJson)
     {
+        ValidateJsonPatchPayload(patchJson, "ActivityDelta");
+    }
+
+    private static void ValidateStateSnapshotEventWrite(StreamEventWrite write)
+    {
+        if (!string.IsNullOrWhiteSpace(write.MessageId))
+            throw new SharpOMaticException("StateSnapshot stream events cannot include a MessageId.");
+
+        if (write.MessageRole.HasValue)
+            throw new SharpOMaticException("StateSnapshot stream events cannot include a MessageRole.");
+
+        if (!string.IsNullOrWhiteSpace(write.ActivityType))
+            throw new SharpOMaticException("StateSnapshot stream events cannot include ActivityType.");
+
+        if (write.Replace.HasValue)
+            throw new SharpOMaticException("StateSnapshot stream events cannot include Replace.");
+
+        if (!string.IsNullOrWhiteSpace(write.ToolCallId))
+            throw new SharpOMaticException("StateSnapshot stream events cannot include ToolCallId.");
+
+        if (!string.IsNullOrWhiteSpace(write.ParentMessageId))
+            throw new SharpOMaticException("StateSnapshot stream events cannot include ParentMessageId.");
+
+        ValidateStateSnapshotContent(write.TextDelta);
+    }
+
+    private static void ValidateStateDeltaEventWrite(StreamEventWrite write)
+    {
+        if (!string.IsNullOrWhiteSpace(write.MessageId))
+            throw new SharpOMaticException("StateDelta stream events cannot include a MessageId.");
+
+        if (write.MessageRole.HasValue)
+            throw new SharpOMaticException("StateDelta stream events cannot include a MessageRole.");
+
+        if (!string.IsNullOrWhiteSpace(write.ActivityType))
+            throw new SharpOMaticException("StateDelta stream events cannot include ActivityType.");
+
+        if (write.Replace.HasValue)
+            throw new SharpOMaticException("StateDelta stream events cannot include Replace.");
+
+        if (!string.IsNullOrWhiteSpace(write.ToolCallId))
+            throw new SharpOMaticException("StateDelta stream events cannot include ToolCallId.");
+
+        if (!string.IsNullOrWhiteSpace(write.ParentMessageId))
+            throw new SharpOMaticException("StateDelta stream events cannot include ParentMessageId.");
+
+        ValidateStateDeltaPatch(write.TextDelta);
+    }
+
+    private static void ValidateStateSnapshotContent(string? contentJson)
+    {
+        if (string.IsNullOrWhiteSpace(contentJson))
+            throw new SharpOMaticException("StateSnapshot stream events require TextDelta.");
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(contentJson);
+        }
+        catch (JsonException)
+        {
+            throw new SharpOMaticException("StateSnapshot stream events require TextDelta to contain valid JSON.");
+        }
+
+        using (document)
+        {
+        }
+    }
+
+    private static void ValidateStateDeltaPatch(string? patchJson)
+    {
+        ValidateJsonPatchPayload(patchJson, "StateDelta");
+    }
+
+    private static void ValidateJsonPatchPayload(string? patchJson, string eventKindName)
+    {
         if (string.IsNullOrWhiteSpace(patchJson))
-            throw new SharpOMaticException("ActivityDelta stream events require TextDelta.");
+            throw new SharpOMaticException($"{eventKindName} stream events require TextDelta.");
 
         JsonDocument document;
         try
@@ -640,42 +722,42 @@ public class ProcessContext : ExecutionContext
         }
         catch (JsonException)
         {
-            throw new SharpOMaticException("ActivityDelta stream events require TextDelta to contain valid JSON.");
+            throw new SharpOMaticException($"{eventKindName} stream events require TextDelta to contain valid JSON.");
         }
 
         using (document)
         {
             if (document.RootElement.ValueKind != JsonValueKind.Array)
-                throw new SharpOMaticException("ActivityDelta stream events require TextDelta to contain a JSON array.");
+                throw new SharpOMaticException($"{eventKindName} stream events require TextDelta to contain a JSON array.");
 
             var operations = document.RootElement.EnumerateArray().ToList();
             if (operations.Count == 0)
-                throw new SharpOMaticException("ActivityDelta stream events require TextDelta to contain at least one JSON Patch operation.");
+                throw new SharpOMaticException($"{eventKindName} stream events require TextDelta to contain at least one JSON Patch operation.");
 
             for (var i = 0; i < operations.Count; i += 1)
-                ValidateJsonPatchOperation(operations[i], i);
+                ValidateJsonPatchOperation(operations[i], i, eventKindName);
         }
     }
 
-    private static void ValidateJsonPatchOperation(JsonElement operation, int index)
+    private static void ValidateJsonPatchOperation(JsonElement operation, int index, string eventKindName)
     {
         if (operation.ValueKind != JsonValueKind.Object)
-            throw new SharpOMaticException($"ActivityDelta JSON Patch operation at index {index} must be an object.");
+            throw new SharpOMaticException($"{eventKindName} JSON Patch operation at index {index} must be an object.");
 
         if (!TryGetRequiredStringProperty(operation, "op", out var op))
-            throw new SharpOMaticException($"ActivityDelta JSON Patch operation at index {index} must include a non-empty 'op' property.");
+            throw new SharpOMaticException($"{eventKindName} JSON Patch operation at index {index} must include a non-empty 'op' property.");
 
         if (!TryGetRequiredStringProperty(operation, "path", out _))
-            throw new SharpOMaticException($"ActivityDelta JSON Patch operation at index {index} must include a non-empty 'path' property.");
+            throw new SharpOMaticException($"{eventKindName} JSON Patch operation at index {index} must include a non-empty 'path' property.");
 
         if (!IsSupportedPatchOperation(op))
-            throw new SharpOMaticException($"ActivityDelta JSON Patch operation at index {index} has unsupported op '{op}'.");
+            throw new SharpOMaticException($"{eventKindName} JSON Patch operation at index {index} has unsupported op '{op}'.");
 
         if ((op == "move" || op == "copy") && !TryGetRequiredStringProperty(operation, "from", out _))
-            throw new SharpOMaticException($"ActivityDelta JSON Patch operation '{op}' at index {index} must include a non-empty 'from' property.");
+            throw new SharpOMaticException($"{eventKindName} JSON Patch operation '{op}' at index {index} must include a non-empty 'from' property.");
 
         if ((op == "add" || op == "replace" || op == "test") && !operation.TryGetProperty("value", out _))
-            throw new SharpOMaticException($"ActivityDelta JSON Patch operation '{op}' at index {index} must include a 'value' property.");
+            throw new SharpOMaticException($"{eventKindName} JSON Patch operation '{op}' at index {index} must include a 'value' property.");
     }
 
     private static bool TryGetRequiredStringProperty(JsonElement element, string propertyName, [NotNullWhen(true)] out string? value)

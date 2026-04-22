@@ -76,6 +76,18 @@
                 Replace on first snapshot
               </label>
             </div>
+            <div class="form-check mt-2">
+              <input
+                type="checkbox"
+                class="form-check-input"
+                id="activity-sync-snapshots-only"
+                [ngModel]="node.snapshotsOnly()"
+                (ngModelChange)="node.snapshotsOnly.set($event)"
+              />
+              <label class="form-check-label" for="activity-sync-snapshots-only">
+                Snapshots only
+              </label>
+            </div>
           </div>
         </div>
       </div>

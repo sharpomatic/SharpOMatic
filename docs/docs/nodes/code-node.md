@@ -134,8 +134,52 @@ await Events.AddActivitySyncFromContextAsync(
 ```
 
 On the first call, this emits an activity snapshot. Later calls emit either an activity delta or, if the delta would be larger, a replacement snapshot.
+Pass `snapshotsOnly: true` to force a snapshot on every sync call:
+
+```csharp
+await Events.AddActivitySyncFromContextAsync(
+    "plan-1",
+    "PLAN",
+    "activity.plan",
+    snapshotsOnly: true
+);
+```
 
 Use the lower-level activity helpers only when you want full control over the emitted payload or patch shape.
+
+State messages are also supported for AG-UI-compatible frontends.
+Use a snapshot to publish the full current `agent.state` payload:
+
+```csharp
+await Events.AddStateSnapshotAsync(
+    new { mode = "assistant", count = 1 }
+);
+```
+
+Use a delta to apply RFC 6902 JSON Patch updates to the current state:
+
+```csharp
+await Events.AddStateDeltaAsync(
+    new object[] { new { op = "replace", path = "/mode", value = "review" } }
+);
+```
+
+If your workflow already keeps state in `agent.state`, prefer the higher-level sync helper:
+
+```csharp
+Context.Set("agent.state.mode", "assistant");
+await Events.AddStateSyncAsync();
+
+Context.Set("agent.state.mode", "review");
+await Events.AddStateSyncAsync();
+```
+
+This compares the current `agent.state` value to hidden baseline state at `agent._hidden.state` and emits either `StateDelta` or `StateSnapshot`.
+Pass `snapshotsOnly: true` to force a snapshot on every sync call:
+
+```csharp
+await Events.AddStateSyncAsync(snapshotsOnly: true);
+```
 
 If the frontend only needs a simple progress phase marker, emit AG-UI-compatible step lifecycle events:
 

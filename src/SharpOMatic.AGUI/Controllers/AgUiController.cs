@@ -6,6 +6,7 @@ namespace SharpOMatic.AGUI.Controllers;
 public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBroker broker) : ControllerBase
 {
     private const string ChatContextPath = "input.chat";
+    private const string StateSyncContentPath = "agent._hidden.state";
 
     [HttpPost]
     public async Task Post([FromBody] AgUiRunRequest request)
@@ -171,6 +172,11 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
     private static void ApplyAgUiContext(ContextObject rootContext, AgUiRunRequest request)
     {
         rootContext["agent"] = BuildAgentContext(request);
+
+        if (request.State.HasValue && request.State.Value.ValueKind is not JsonValueKind.Undefined and not JsonValueKind.Null)
+            rootContext.Set(StateSyncContentPath, ContextHelpers.FastDeserializeString(request.State.Value.GetRawText()));
+        else
+            rootContext.RemovePath(StateSyncContentPath);
     }
 
     private static ContextObject BuildAgentContext(AgUiRunRequest request)
@@ -550,6 +556,12 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
             case StreamEventKind.ActivityDelta when activityMessageId is not null && !string.IsNullOrWhiteSpace(streamEvent.ActivityType):
                 await WriteActivityDeltaEventAsync(activityMessageId, streamEvent);
                 break;
+            case StreamEventKind.StateSnapshot:
+                await WriteStateSnapshotEventAsync(streamEvent);
+                break;
+            case StreamEventKind.StateDelta:
+                await WriteStateDeltaEventAsync(streamEvent);
+                break;
             case StreamEventKind.StepStart when !string.IsNullOrWhiteSpace(streamEvent.TextDelta):
                 await WriteEventAsync(new
                 {
@@ -751,6 +763,30 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
             messageId = activityMessageId,
             activityType = streamEvent.ActivityType!,
             patch
+        });
+    }
+
+    private async Task WriteStateSnapshotEventAsync(StreamEvent streamEvent)
+    {
+        var snapshot = ParseJsonPayload(streamEvent.TextDelta, "StateSnapshot");
+
+        await WriteEventAsync(new
+        {
+            type = "STATE_SNAPSHOT",
+            snapshot
+        });
+    }
+
+    private async Task WriteStateDeltaEventAsync(StreamEvent streamEvent)
+    {
+        var delta = ParseJsonPayload(streamEvent.TextDelta, "StateDelta");
+        if (delta.ValueKind != JsonValueKind.Array)
+            throw new SharpOMaticException("StateDelta stream event payload must be a JSON array.");
+
+        await WriteEventAsync(new
+        {
+            type = "STATE_DELTA",
+            delta
         });
     }
 

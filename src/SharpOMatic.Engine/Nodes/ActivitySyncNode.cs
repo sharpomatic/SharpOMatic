@@ -6,7 +6,7 @@ public sealed class ActivitySyncNode(ThreadContext threadContext, ActivitySyncNo
     protected override async Task<NodeExecutionResult> RunInternal()
     {
         var helper = new StreamEventHelper(ProcessContext, ThreadContext.NodeContext);
-        await helper.AddActivitySyncFromContextAsync(Node.InstanceName, Node.ActivityType, Node.ContextPath, Node.InitialReplace);
+        await helper.AddActivitySyncFromContextAsync(Node.InstanceName, Node.ActivityType, Node.ContextPath, Node.InitialReplace, Node.SnapshotsOnly);
 
         return NodeExecutionResult.Continue($"Activity sync '{Node.InstanceName}' processed.", ResolveOptionalSingleOutput(ThreadContext));
     }

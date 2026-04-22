@@ -130,6 +130,7 @@ Instead it maps a focused subset into `agent`:
 - `agent.messages`: the full incoming `messages` array
 - `agent.state`: the incoming AG-UI `state`
 - `agent.context`: the incoming AG-UI `context`
+- `agent._hidden.state`: a hidden deep copy of the incoming AG-UI `state`, used as the baseline for `AddStateSyncAsync()` and the `State Sync` node
 
 These values are preserved as structured JSON-compatible data.
 For example, `agent.state` remains an object or array tree inside SharpOMatic context rather than becoming one large JSON string.
@@ -197,6 +198,7 @@ The endpoint streams AG-UI SSE events from SharpOMatic workflow stream events:
 - `RUN_STARTED` is emitted after the workflow turn starts
 - text stream events become `TEXT_MESSAGE_START`, `TEXT_MESSAGE_CONTENT`, and `TEXT_MESSAGE_END`
 - step stream events become `STEP_STARTED` and `STEP_FINISHED`
+- state stream events become `STATE_SNAPSHOT` and `STATE_DELTA`
 - visible reasoning stream events become `REASONING_START`, `REASONING_MESSAGE_START`, `REASONING_MESSAGE_CONTENT`, `REASONING_MESSAGE_END`, and `REASONING_END`
 - tool-call stream events become `TOOL_CALL_START`, `TOOL_CALL_ARGS`, `TOOL_CALL_END`, and `TOOL_CALL_RESULT`
 - activity stream events become `ACTIVITY_SNAPSHOT` and `ACTIVITY_DELTA`
@@ -292,6 +294,45 @@ await Events.AddActivitySyncFromContextAsync(
 );
 ```
 
+If you want the higher-level activity helper to emit snapshots only and skip delta generation entirely, call:
+
+```csharp
+await Events.AddActivitySyncFromContextAsync(
+    "plan-1",
+    "PLAN",
+    "activity.plan",
+    snapshotsOnly: true
+);
+```
+
+Use `AddStateSnapshotAsync` and `AddStateDeltaAsync` when the frontend should render AG-UI state changes directly:
+
+```csharp
+await Events.AddStateSnapshotAsync(
+    new { mode = "assistant", count = 1 }
+);
+
+await Events.AddStateDeltaAsync(
+    new object[] { new { op = "replace", path = "/mode", value = "review" } }
+);
+```
+
+If the state already lives in `agent.state`, prefer the higher-level sync helper. It compares `agent.state` to the hidden `agent._hidden.state` baseline, emits a JSON Patch delta when that is smaller, and falls back to a full snapshot when that is cheaper:
+
+```csharp
+Context.Set("agent.state.mode", "assistant");
+await Events.AddStateSyncAsync();
+
+Context.Set("agent.state.mode", "review");
+await Events.AddStateSyncAsync();
+```
+
+If you want the higher-level helper to emit snapshots only and skip delta generation entirely, call:
+
+```csharp
+await Events.AddStateSyncAsync(snapshotsOnly: true);
+```
+
 Use `AddStepStartAsync` and `AddStepEndAsync` when the frontend should render simple AG-UI step lifecycle markers:
 
 ```csharp
@@ -299,4 +340,4 @@ await Events.AddStepStartAsync("Search");
 await Events.AddStepEndAsync("Search");
 ```
 
-If you do not need custom code, use the dedicated **Step Start** and **Step End** workflow nodes to emit the same step lifecycle declaratively.
+If you do not need custom code, use the dedicated **Step Start**, **Step End**, **Activity Sync**, and **State Sync** workflow nodes to emit the same protocol-aware updates declaratively.

@@ -15,6 +15,7 @@ export enum NodeType {
   StepStart = 13,
   StepEnd = 14,
   ActivitySync = 15,
+  StateSync = 16,
 }
 
 export function getNodeSymbol(nodeType: NodeType): string {
@@ -50,6 +51,8 @@ export function getNodeSymbol(nodeType: NodeType): string {
     case NodeType.StepEnd:
       return 'bi-stop-circle';
     case NodeType.ActivitySync:
+      return 'bi-arrow-repeat';
+    case NodeType.StateSync:
       return 'bi-arrow-repeat';
     default:
       return '';
