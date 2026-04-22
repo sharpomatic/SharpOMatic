@@ -67,11 +67,10 @@ The recommended selector shape is `forwardedProps.sharpomatic`:
     }
   ],
   "state": {
-    "profile": {
-      "name": "Sharpy Demo",
-      "tier": "test"
+    "example": {
+      "first": "Sharpy Demo",
+      "second": "test"
     },
-    "tags": ["one", "two", "three"]
   },
   "context": [],
   "forwardedProps": {
@@ -114,8 +113,9 @@ For conversation-enabled workflows:
 
 - the first request for a `(workflow, threadId)` pair starts a SharpOMatic conversation using `threadId` as the real `conversationId`
 - later requests with the same `threadId` continue or resume that conversation
-- the first request can initialize `input.chat` from the incoming AG-UI messages
-- later requests must be incremental only and send only new messages that should be appended to the end of chat history
+- when the controller can load and merge the stored conversation context, incoming AG-UI messages are appended into `input.chat`, creating it if needed
+- when the controller cannot load repository-backed conversation state and falls back to `AgUiAgentResumeInput`, it does not build or update `input.chat`
+- later requests must be incremental only and send only new messages that should be appended to the end of existing chat history
 - if a later request resends a previously seen AG-UI message id, SharpOMatic fails the run with `RUN_ERROR`
 
 Because conversation identifiers are strings, your AG-UI client can use any stable identifier that fits your application.
@@ -137,26 +137,55 @@ For example, `agent.state` remains an object or array tree inside SharpOMatic co
 On each AG-UI start or resume, SharpOMatic updates `agent`.
 If `agent` already exists in workflow context, the incoming AG-UI `agent` object replaces it entirely.
 
-## Chat history conversion
+## input.chat behavior
 
-SharpOMatic also converts AG-UI messages into provider-neutral `ChatMessage` objects and stores them at `input.chat`.
-This lets `ModelCall` nodes consume AG-UI history without requiring a dedicated helper node.
+`input.chat` is important for `ModelCall` nodes, but AG-UI does not populate it in exactly the same way for every run mode.
 
-Recommended `ModelCall` setup:
+Use these settings when a workflow should pass AG-UI chat into a `ModelCall`:
 
 - `ChatInputPath = "input.chat"`
 - `ChatOutputPath = "input.chat"` for conversation-enabled workflows that want persisted replay on later turns
 
-Supported conversion rules in this version:
+### When SharpOMatic populates input.chat
+
+- non-conversation workflows:
+  the controller always sets `input.chat` from the current incoming AG-UI `messages` array for that run
+- conversation-enabled workflows with repository-backed checkpoint loading:
+  the controller loads the stored workflow context and appends converted incoming AG-UI messages to the existing `input.chat`
+- conversation-enabled workflows without repository access:
+  the controller resumes with `AgUiAgentResumeInput` and does not build or update `input.chat`
+
+### What is written to input.chat
+
+When `input.chat` is populated, SharpOMatic converts supported AG-UI messages into provider-neutral `ChatMessage` objects there.
+
+Supported conversion rules:
 
 - `system` -> `ChatRole.System`
 - `developer` -> `ChatRole.System`
 - `user` -> `ChatRole.User`
-- `assistant` text and `toolCalls` -> `ChatRole.Assistant`
-- `tool` results -> `ChatRole.Tool`
+- `assistant` messages with string `content`, `toolCalls`, or both -> `ChatRole.Assistant`
+- `tool` results with string `content` and `toolCallId` -> `ChatRole.Tool`
 
-SharpOMatic ignores AG-UI `reasoning` and `activity` messages when building `input.chat`.
-Unsupported multimodal or non-string message `content` is rejected with `RUN_ERROR`.
+### Conversion details
+
+- `developer` message `name` is preserved as `AuthorName`
+- assistant `toolCalls` must be a JSON array
+- each assistant tool call must contain a `function` object with a non-empty `name`
+- assistant tool call `function.arguments` must be a JSON string that decodes to a JSON object
+- assistant messages with neither non-empty string `content` nor any tool calls are skipped rather than added to `input.chat`
+- AG-UI `reasoning` and `activity` messages are ignored when building `input.chat`
+- unsupported roles are rejected with `RUN_ERROR`
+- multimodal or other non-string message `content` is rejected with `RUN_ERROR`
+
+### Conversation append behavior
+
+For conversation-enabled workflows that load stored context:
+
+- later AG-UI calls must send only new messages
+- duplicate message ids are rejected with `RUN_ERROR`
+- incoming converted messages are appended to the end of the existing `input.chat`
+- if `input.chat` does not exist yet, SharpOMatic creates it
 
 ## Frontend tool calls
 

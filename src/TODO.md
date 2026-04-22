@@ -11,6 +11,9 @@
   limit how many of the most recent are returned
 - Investigate the compacting down to a message snapshot.
 
+- Check two paths outputing at the same time
+- Check two paths, the first has a FE tool call, other does not
+
 ### Others
 
 - Add view button to Runs and Conversation history and causes it to be loaded as the current data for the trace viewer.

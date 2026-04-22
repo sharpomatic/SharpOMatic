@@ -277,7 +277,7 @@ For model calls, `StreamEventProgress` can now include:
 
 For code-node stream helpers, `StreamEventProgress` also carries a transient `Silent` flag.
 That flag is only for live progress consumers such as AG-UI SSE translation and is not stored in the persisted `StreamEvent` rows.
-Code nodes can emit text, step, reasoning, tool-call, activity, and state lifecycles through the `Events.Add*` helper methods, including `AddStepStartAsync`, `AddStepEndAsync`, `AddReasoningMessageAsync`, `AddToolCallAsync`, `AddToolCallWithResultAsync`, `AddActivitySnapshotAsync`, `AddActivityDeltaAsync`, `AddActivitySyncFromContextAsync`, `AddStateSnapshotAsync`, `AddStateDeltaAsync`, and `AddStateSyncAsync`.
+Code nodes can emit text, step, reasoning, tool-call, activity, state, and custom lifecycles through the `Events.Add*` helper methods.
 
 `InformationsProgress` can include the corresponding assistant, reasoning, and tool-call trace entries that appear in the trace viewer.
 
