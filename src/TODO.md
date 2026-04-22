@@ -4,7 +4,6 @@
 
 ### Agent
 
-- Node for handling activity (single node does snapshrt, delta onwards unless would be bigger than snapshot)
 - Endpoint for returning history of messages for existing conversation
 - Special handling of state, use the existing agent state and either overwrite for a full state set or path it a delta given
 - Investigate the compacting down to a message snapshot.

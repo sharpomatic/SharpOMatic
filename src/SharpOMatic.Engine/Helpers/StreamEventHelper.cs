@@ -399,7 +399,7 @@ public class StreamEventHelper
         );
     }
 
-    public async Task<List<StreamEvent>> AddActivitySnapshotFromContextAsync(
+    public async Task<List<StreamEvent>> AddActivitySyncFromContextAsync(
         string instanceName,
         string activityType,
         string contextPath,
@@ -410,35 +410,34 @@ public class StreamEventHelper
     {
         instanceName = RequireActivityInstanceName(instanceName);
         activityType = RequireActivityType(activityType);
-        var content = ResolveActivityContentFromContextPath(contextPath, "Activity snapshot");
+        var content = ResolveActivityContentFromContextPath(contextPath, "Activity sync");
+        var snapshotJson = SerializeActivityJsonPayload(content, "Activity sync content must be JSON serializable.");
+        var existingEntry = FindStoredActivityState(instanceName);
 
-        var events = await AddActivitySnapshotAsync(instanceName, activityType, content, replace, metadata, silent);
-        UpsertStoredActivityState(instanceName, activityType, content);
-        return events;
-    }
+        if (existingEntry is null)
+        {
+            var snapshotEvents = await AddActivitySnapshotJsonAsync(instanceName, activityType, snapshotJson, replace, metadata, silent);
+            UpsertStoredActivityState(instanceName, activityType, content);
+            return snapshotEvents;
+        }
 
-    public async Task<List<StreamEvent>> AddActivityDeltaFromContextAsync(
-        string instanceName,
-        string contextPath,
-        string? metadata = null,
-        bool silent = false
-    )
-    {
-        instanceName = RequireActivityInstanceName(instanceName);
-        var existingEntry = FindStoredActivityState(instanceName)
-            ?? throw new SharpOMaticException($"Activity instance '{instanceName}' has no stored snapshot. Call AddActivitySnapshotFromContextAsync first.");
+        var storedActivityType = RequireStoredActivityType(existingEntry, instanceName);
+        if (!string.Equals(storedActivityType, activityType, StringComparison.Ordinal))
+            throw new SharpOMaticException($"Activity instance '{instanceName}' is already associated with activity type '{storedActivityType}', not '{activityType}'.");
 
-        var activityType = RequireStoredActivityType(existingEntry, instanceName);
-        var content = ResolveActivityContentFromContextPath(contextPath, "Activity delta");
         var patch = BuildActivityDeltaPatch(RequireStoredActivityContent(existingEntry, instanceName), content);
 
         if (patch.Count == 0)
         {
-            UpsertStoredActivityState(instanceName, activityType, content);
+            UpsertStoredActivityState(instanceName, storedActivityType, content);
             return [];
         }
 
-        var events = await AddActivityDeltaAsync(instanceName, activityType, patch, metadata, silent);
+        var patchJson = SerializeActivityJsonPayload(patch, "Activity sync delta patch must be JSON serializable.");
+        var events = GetUtf8Size(patchJson) < GetUtf8Size(snapshotJson)
+            ? await AddActivityDeltaJsonAsync(instanceName, storedActivityType, patchJson, metadata, silent)
+            : await AddActivitySnapshotJsonAsync(instanceName, storedActivityType, snapshotJson, true, metadata, silent);
+
         UpsertStoredActivityState(instanceName, activityType, content);
         return events;
     }
@@ -624,6 +623,37 @@ public class StreamEventHelper
         return content;
     }
 
+    private Task<List<StreamEvent>> AddActivitySnapshotJsonAsync(string messageId, string activityType, string contentJson, bool? replace = null, string? metadata = null, bool silent = false)
+    {
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ActivitySnapshot,
+                MessageId = RequireMessageId(messageId),
+                ActivityType = RequireActivityType(activityType),
+                Replace = replace,
+                TextDelta = contentJson,
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
+    private Task<List<StreamEvent>> AddActivityDeltaJsonAsync(string messageId, string activityType, string patchJson, string? metadata = null, bool silent = false)
+    {
+        return AddEventsAsync(
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.ActivityDelta,
+                MessageId = RequireMessageId(messageId),
+                ActivityType = RequireActivityType(activityType),
+                TextDelta = patchJson,
+                Metadata = metadata,
+                Silent = silent,
+            }
+        );
+    }
+
     private List<Dictionary<string, object?>> BuildActivityDeltaPatch(ContextObject oldContent, ContextObject newContent)
     {
         return ActivityJsonPatchHelper.BuildPatch(
@@ -695,6 +725,11 @@ public class StreamEventHelper
                 JsonSerializer.Serialize(writer, value, value.GetType());
                 return;
         }
+    }
+
+    private static int GetUtf8Size(string value)
+    {
+        return Encoding.UTF8.GetByteCount(value);
     }
 
 }

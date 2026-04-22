@@ -430,6 +430,36 @@ public sealed class WorkflowBuilder
         return this;
     }
 
+    public WorkflowBuilder AddActivitySync(
+        string title = "Activity Sync",
+        string instanceName = "activity-1",
+        string activityType = "PLAN",
+        string contextPath = "activity",
+        bool initialReplace = false
+    )
+    {
+        var node = new ActivitySyncNodeEntity
+        {
+            Id = Guid.NewGuid(),
+            Version = 1,
+            NodeType = NodeType.ActivitySync,
+            Title = title,
+            Top = 0f,
+            Left = 0f,
+            Width = 80f,
+            Height = 80f,
+            Inputs = [CreateConnector()],
+            Outputs = [CreateConnector()],
+            InstanceName = instanceName,
+            ActivityType = activityType,
+            ContextPath = contextPath,
+            InitialReplace = initialReplace,
+        };
+
+        _nodes.Add(node);
+        return this;
+    }
+
     public WorkflowBuilder Connect(string sourceNode, string destinationNode)
     {
         if (string.IsNullOrWhiteSpace(sourceNode))

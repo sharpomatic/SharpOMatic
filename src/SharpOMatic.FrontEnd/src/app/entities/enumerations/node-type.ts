@@ -14,6 +14,7 @@ export enum NodeType {
   BackendToolCall = 12,
   StepStart = 13,
   StepEnd = 14,
+  ActivitySync = 15,
 }
 
 export function getNodeSymbol(nodeType: NodeType): string {
@@ -48,6 +49,8 @@ export function getNodeSymbol(nodeType: NodeType): string {
       return 'bi-play-circle';
     case NodeType.StepEnd:
       return 'bi-stop-circle';
+    case NodeType.ActivitySync:
+      return 'bi-arrow-repeat';
     default:
       return '';
   }

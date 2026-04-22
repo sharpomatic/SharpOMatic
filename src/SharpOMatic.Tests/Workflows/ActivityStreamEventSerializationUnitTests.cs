@@ -14,17 +14,18 @@ public sealed class ActivityStreamEventSerializationUnitTests
                 details.Add("status", "running");
 
                 var activity = new ContextObject();
+                activity.Add("title", new string('x', 200));
                 activity.Add("details", details);
                 Context.Set("activity", activity);
 
-                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
 
                 var updatedDetails = new ContextObject();
                 updatedDetails.Add("status", "completed");
                 updatedDetails.Add("summary", "done");
                 Context.Set("activity.details", updatedDetails);
 
-                await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
                 """
             )
             .AddEnd()

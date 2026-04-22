@@ -275,18 +275,19 @@ await Events.AddActivityDeltaAsync(
 );
 ```
 
-If the activity state already lives in workflow context, prefer the higher-level helpers that persist a hidden baseline snapshot and compute the delta automatically:
+If the activity state already lives in workflow context, prefer the higher-level sync helper that persists a hidden baseline snapshot, computes the delta automatically, and falls back to a replacement snapshot when that is smaller:
 
 ```csharp
-await Events.AddActivitySnapshotFromContextAsync(
+await Events.AddActivitySyncFromContextAsync(
     "plan-1",
     "PLAN",
     "activity.plan",
     replace: false
 );
 
-await Events.AddActivityDeltaFromContextAsync(
+await Events.AddActivitySyncFromContextAsync(
     "plan-1",
+    "PLAN",
     "activity.plan"
 );
 ```

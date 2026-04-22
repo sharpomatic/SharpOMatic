@@ -64,6 +64,8 @@ import { StepStartNodeEntity } from '../../../entities/definitions/step-start-no
 import { StepStartNodeDialogComponent } from '../../../dialogs/step-start-node/step-start-node-dialog.component';
 import { StepEndNodeEntity } from '../../../entities/definitions/step-end-node.entity';
 import { StepEndNodeDialogComponent } from '../../../dialogs/step-end-node/step-end-node-dialog.component';
+import { ActivitySyncNodeEntity } from '../../../entities/definitions/activity-sync-node.entity';
+import { ActivitySyncNodeDialogComponent } from '../../../dialogs/activity-sync-node/activity-sync-node-dialog.component';
 
 @Component({
   selector: 'app-designer',
@@ -394,6 +396,11 @@ export class DesignerComponent {
       });
     } else if (node instanceof StepEndNodeEntity) {
       this.dialogService.open(StepEndNodeDialogComponent, {
+        node,
+        nodeTraces,
+      });
+    } else if (node instanceof ActivitySyncNodeEntity) {
+      this.dialogService.open(ActivitySyncNodeDialogComponent, {
         node,
         nodeTraces,
       });

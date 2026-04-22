@@ -116,21 +116,24 @@ await Events.AddActivityDeltaAsync(
 );
 ```
 
-For activity state that already lives in workflow context, the higher-level helpers are usually simpler because SharpOMatic stores the previous snapshot in hidden workflow state and computes the JSON Patch for you:
+For activity state that already lives in workflow context, the higher-level sync helper is usually simpler because SharpOMatic stores the previous snapshot in hidden workflow state, computes the JSON Patch for you, and automatically falls back to a replacement snapshot when the patch would be larger:
 
 ```csharp
-await Events.AddActivitySnapshotFromContextAsync(
+await Events.AddActivitySyncFromContextAsync(
     "plan-1",
     "PLAN",
     "activity.plan",
     replace: false
 );
 
-await Events.AddActivityDeltaFromContextAsync(
+await Events.AddActivitySyncFromContextAsync(
     "plan-1",
+    "PLAN",
     "activity.plan"
 );
 ```
+
+On the first call, this emits an activity snapshot. Later calls emit either an activity delta or, if the delta would be larger, a replacement snapshot.
 
 Use the lower-level activity helpers only when you want full control over the emitted payload or patch shape.
 

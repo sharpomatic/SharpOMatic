@@ -30,6 +30,10 @@ import {
   StepEndNodeEntity,
   StepEndNodeSnapshot,
 } from './step-end-node.entity';
+import {
+  ActivitySyncNodeEntity,
+  ActivitySyncNodeSnapshot,
+} from './activity-sync-node.entity';
 
 export function nodeFromSnapshot(
   snapshot: NodeSnapshot,
@@ -74,5 +78,7 @@ export function nodeFromSnapshot(
       );
     case NodeType.StepEnd:
       return StepEndNodeEntity.fromSnapshot(snapshot as StepEndNodeSnapshot);
+    case NodeType.ActivitySync:
+      return ActivitySyncNodeEntity.fromSnapshot(snapshot as ActivitySyncNodeSnapshot);
   }
 }

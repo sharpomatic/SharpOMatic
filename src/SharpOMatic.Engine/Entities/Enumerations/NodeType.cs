@@ -17,4 +17,5 @@ public enum NodeType
     BackendToolCall = 12,
     StepStart = 13,
     StepEnd = 14,
+    ActivitySync = 15,
 }

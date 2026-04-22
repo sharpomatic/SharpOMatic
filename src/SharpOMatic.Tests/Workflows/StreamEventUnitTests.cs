@@ -719,7 +719,7 @@ public sealed class StreamEventUnitTests
     }
 
     [Fact]
-    public async Task Code_node_activity_snapshot_from_context_emits_snapshot_and_persists_hidden_state()
+    public async Task Code_node_activity_sync_from_context_emits_snapshot_on_first_call_and_persists_hidden_state()
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
@@ -735,7 +735,7 @@ public sealed class StreamEventUnitTests
                 activity.Add("steps", steps);
                 Context.Set("activity", activity);
 
-                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity", replace: false);
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity", replace: false);
                 """
             )
             .AddEnd()
@@ -780,7 +780,7 @@ public sealed class StreamEventUnitTests
     }
 
     [Fact]
-    public async Task Code_node_activity_snapshot_from_context_stores_detached_copy()
+    public async Task Code_node_activity_sync_from_context_stores_detached_copy()
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
@@ -796,7 +796,7 @@ public sealed class StreamEventUnitTests
                 activity.Add("steps", steps);
                 Context.Set("activity", activity);
 
-                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
 
                 Context.Set("activity.steps[0].status", "done");
                 """
@@ -816,7 +816,7 @@ public sealed class StreamEventUnitTests
     }
 
     [Fact]
-    public async Task Code_node_activity_delta_from_context_emits_patch_and_reuses_stored_activity_type()
+    public async Task Code_node_activity_sync_from_context_emits_patch_when_smaller_and_activity_type_matches()
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
@@ -824,12 +824,13 @@ public sealed class StreamEventUnitTests
                 "code",
                 """
                 var activity = new ContextObject();
+                activity.Add("title", new string('x', 200));
                 activity.Add("status", "in_progress");
                 Context.Set("activity", activity);
 
-                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
                 Context.Set("activity.status", "done");
-                await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
                 """
             )
             .AddEnd()
@@ -870,7 +871,7 @@ public sealed class StreamEventUnitTests
     }
 
     [Fact]
-    public async Task Code_node_activity_delta_from_context_recurses_nested_objects()
+    public async Task Code_node_activity_sync_from_context_recurses_nested_objects()
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
@@ -880,12 +881,13 @@ public sealed class StreamEventUnitTests
                 var details = new ContextObject();
                 details.Add("status", "in_progress");
                 var activity = new ContextObject();
+                activity.Add("title", new string('x', 200));
                 activity.Add("details", details);
                 Context.Set("activity", activity);
 
-                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
                 Context.Set("activity.details.status", "done");
-                await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
                 """
             )
             .AddEnd()
@@ -922,7 +924,7 @@ public sealed class StreamEventUnitTests
     }
 
     [Fact]
-    public async Task Code_node_activity_delta_from_context_replaces_changed_arrays()
+    public async Task Code_node_activity_sync_from_context_falls_back_to_snapshot_when_patch_would_be_larger()
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
@@ -936,13 +938,13 @@ public sealed class StreamEventUnitTests
                 activity.Add("items", items);
                 Context.Set("activity", activity);
 
-                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
                 var updatedItems = new ContextList();
                 updatedItems.Add("one");
                 updatedItems.Add("two");
                 updatedItems.Add("three");
                 Context.Set("activity.items", updatedItems);
-                await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
                 """
             )
             .AddEnd()
@@ -967,11 +969,11 @@ public sealed class StreamEventUnitTests
             Assert.Equal(RunStatus.Success, run.RunStatus);
 
             var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
-            using var patch = JsonDocument.Parse(streamEvents[1].TextDelta!);
-            Assert.Equal("replace", patch.RootElement[0].GetProperty("op").GetString());
-            Assert.Equal("/items", patch.RootElement[0].GetProperty("path").GetString());
-            Assert.Equal(JsonValueKind.Array, patch.RootElement[0].GetProperty("value").ValueKind);
-            Assert.Equal(3, patch.RootElement[0].GetProperty("value").GetArrayLength());
+            Assert.Equal([StreamEventKind.ActivitySnapshot, StreamEventKind.ActivitySnapshot], streamEvents.Select(e => e.EventKind).ToArray());
+            Assert.True(streamEvents[1].Replace);
+            using var snapshot = JsonDocument.Parse(streamEvents[1].TextDelta!);
+            Assert.Equal(JsonValueKind.Array, snapshot.RootElement.GetProperty("items").ValueKind);
+            Assert.Equal(3, snapshot.RootElement.GetProperty("items").GetArrayLength());
         }
         finally
         {
@@ -981,7 +983,7 @@ public sealed class StreamEventUnitTests
     }
 
     [Fact]
-    public async Task Code_node_activity_delta_from_context_no_op_emits_no_event_and_refreshes_stored_copy()
+    public async Task Code_node_activity_sync_from_context_no_op_emits_no_event_and_refreshes_stored_copy()
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
@@ -997,7 +999,7 @@ public sealed class StreamEventUnitTests
                 firstActivity.Add("steps", firstSteps);
                 Context.Set("activity", firstActivity);
 
-                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
 
                 var previousStored = Context.Get<ContextObject>("_activityState.instances[0].content");
 
@@ -1010,7 +1012,7 @@ public sealed class StreamEventUnitTests
                 secondActivity.Add("steps", secondSteps);
                 Context.Set("activity", secondActivity);
 
-                await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
 
                 var currentStored = Context.Get<ContextObject>("_activityState.instances[0].content");
                 Context.Set("output.sameStoredReference", object.ReferenceEquals(previousStored, currentStored));
@@ -1035,7 +1037,7 @@ public sealed class StreamEventUnitTests
     }
 
     [Fact]
-    public async Task Code_node_activity_delta_from_context_requires_existing_snapshot()
+    public async Task Code_node_activity_sync_from_context_requires_matching_activity_type_for_existing_instance()
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
@@ -1046,7 +1048,8 @@ public sealed class StreamEventUnitTests
                 activity.Add("status", "in_progress");
                 Context.Set("activity", activity);
 
-                await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "STATUS", "activity");
                 """
             )
             .Connect("start", "code")
@@ -1055,11 +1058,11 @@ public sealed class StreamEventUnitTests
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.Equal(RunStatus.Failed, run.RunStatus);
-        Assert.Contains("Activity instance 'activity-1' has no stored snapshot. Call AddActivitySnapshotFromContextAsync first.", run.Error);
+        Assert.Contains("Activity instance 'activity-1' is already associated with activity type 'PLAN', not 'STATUS'.", run.Error);
     }
 
     [Fact]
-    public async Task Code_node_activity_snapshot_from_context_requires_json_object_root()
+    public async Task Code_node_activity_sync_from_context_requires_json_object_root()
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
@@ -1070,7 +1073,7 @@ public sealed class StreamEventUnitTests
                 activity.Add("bad");
                 Context.Set("activity", activity);
 
-                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
                 """
             )
             .Connect("start", "code")
@@ -1079,11 +1082,11 @@ public sealed class StreamEventUnitTests
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.Equal(RunStatus.Failed, run.RunStatus);
-        Assert.Contains("Activity snapshot requires context path 'activity' to resolve to a JSON object.", run.Error);
+        Assert.Contains("Activity sync requires context path 'activity' to resolve to a JSON object.", run.Error);
     }
 
     [Fact]
-    public async Task Code_node_activity_delta_from_context_requires_json_object_root()
+    public async Task Code_node_activity_sync_from_context_requires_json_object_root_on_later_calls()
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
@@ -1093,13 +1096,13 @@ public sealed class StreamEventUnitTests
                 var activity = new ContextObject();
                 activity.Add("status", "in_progress");
                 Context.Set("activity", activity);
-                await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
 
                 var invalid = new ContextList();
                 invalid.Add("bad");
                 Context.Set("activity", invalid);
 
-                await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
+                await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
                 """
             )
             .Connect("start", "code")
@@ -1108,7 +1111,7 @@ public sealed class StreamEventUnitTests
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.Equal(RunStatus.Failed, run.RunStatus);
-        Assert.Contains("Activity delta requires context path 'activity' to resolve to a JSON object.", run.Error);
+        Assert.Contains("Activity sync requires context path 'activity' to resolve to a JSON object.", run.Error);
     }
 
     [Fact]
@@ -1285,15 +1288,16 @@ public sealed class StreamEventUnitTests
                     var steps = new ContextList();
                     steps.Add(step);
                     var activity = new ContextObject();
+                    activity.Add("title", new string('x', 200));
                     activity.Add("steps", steps);
                     Context.Set("activity", activity);
 
-                    await Events.AddActivitySnapshotFromContextAsync("activity-1", "PLAN", "activity", replace: false);
+                    await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity", replace: false);
                 }
                 else
                 {
                     Context.Set("activity.steps[0].status", "done");
-                    await Events.AddActivityDeltaFromContextAsync("activity-1", "activity");
+                    await Events.AddActivitySyncFromContextAsync("activity-1", "PLAN", "activity");
                 }
                 """
             )
