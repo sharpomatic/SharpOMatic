@@ -70,10 +70,11 @@ Microsoft.Extensions.AI.HostedWebSearchTool
 
 ### Examples
 
-- Chatbot where the workflow is started each time from the start node
+- Simple Chatbot where the workflow is started each time from the start node
 - (uses the full history from the input to have history)
-- Chatbot where the conversation is restarted from the suspend point
+- Simple Chatbot where the conversation is restarted from the suspend point
 - (uses the chat history array that is persisted to have history)
+- Example of manually outputting each type of protocol data.
 
 ### Promotion
 
