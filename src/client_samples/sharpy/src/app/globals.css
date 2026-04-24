@@ -1,0 +1,566 @@
+:root {
+  --background: #f3f7f4;
+  --foreground: #14211a;
+  --muted: #5b6b61;
+  --line: #c8d3cb;
+  --surface: #edf3ee;
+  --surface-strong: #e2ebe4;
+  --accent: #0d8a55;
+  --accent-strong: #086e43;
+  --shadow: 0 18px 45px rgba(20, 33, 26, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 450px minmax(0, 1fr);
+}
+
+.rail {
+  border-right: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(237, 243, 238, 0.96), rgba(227, 237, 229, 0.96));
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.brand {
+  display: block;
+}
+
+.brandCopy h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 1.1;
+}
+
+.brandCopy p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.metaGroup {
+  display: grid;
+  gap: 16px;
+}
+
+.metaBlock {
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+}
+
+.metaBlock:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.label {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.value {
+  margin: 0;
+  word-break: break-word;
+}
+
+.endpointValue {
+  font-size: calc(1rem - 1pt);
+}
+
+.mono {
+  font-family: var(--font-geist-mono), "Courier New", monospace;
+}
+
+.threadControls {
+  display: grid;
+  gap: 10px;
+}
+
+.threadInput {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--foreground);
+}
+
+.threadInput:focus {
+  outline: 2px solid rgba(13, 138, 85, 0.18);
+  border-color: var(--accent);
+}
+
+.buttonRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--foreground);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.checkboxInput {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.button {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: #fff;
+  color: var(--foreground);
+}
+
+.buttonPrimary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.workspace {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+.chatWrap {
+  flex: 1;
+  min-height: 0;
+  background: #fff;
+  display: flex;
+  padding: 24px;
+}
+
+.chat {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+}
+
+.chat .copilotKitChat {
+  height: 100%;
+}
+
+.chat .copilotKitMessages {
+  justify-content: flex-start;
+  min-height: 100%;
+}
+
+.runErrorCard {
+  border: 1px solid rgba(188, 66, 58, 0.2);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(252, 237, 236, 0.99));
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.runErrorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.runErrorEyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9f2a22;
+}
+
+.runErrorCode {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: rgba(188, 66, 58, 0.12);
+  color: #9f2a22;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.runErrorMessage {
+  margin: 12px 0 0;
+  color: #6f231e;
+  line-height: 1.55;
+  font-weight: 600;
+}
+
+.stepDivider {
+  align-self: stretch;
+  display: grid;
+  grid-template-rows: auto 2px;
+  justify-items: center;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 10px;
+  width: 100%;
+}
+
+.stepDividerLabel {
+  color: #000;
+  font-size: calc(0.74rem + 3pt);
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.stepDividerLine {
+  width: 100%;
+  height: 2px;
+  background: #4a4a4a;
+}
+
+.toolConfirmCard {
+  margin-top: 8px;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  background: #fafafa;
+  padding: 14px 16px;
+}
+
+.toolConfirmPending,
+.toolConfirmMessage {
+  margin: 0;
+  color: #000;
+  line-height: 1.55;
+}
+
+.toolConfirmTitle {
+  margin: 0 0 8px;
+  color: #000;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.toolConfirmActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.toolConfirmButton {
+  min-width: 112px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  padding: 10px 16px;
+  font-weight: 600;
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.toolConfirmButton:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none;
+}
+
+.toolConfirmButton:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.toolConfirmButtonPrimary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.toolConfirmButtonPrimary:not(:disabled):hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.toolConfirmButtonSecondary {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: var(--line);
+  color: var(--foreground);
+}
+
+.toolConfirmButtonSecondary:not(:disabled):hover {
+  border-color: rgba(20, 33, 26, 0.18);
+  background: #fff;
+}
+
+.toolConfirmResult {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-top: 18px;
+  border-top: 1px solid rgba(200, 211, 203, 0.8);
+  padding-top: 14px;
+}
+
+.toolConfirmResultLabel {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.toolConfirmResultValue {
+  order: -1;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+.weatherToolCard {
+  margin-top: 8px;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  background: #fafafa;
+  padding: 14px 16px;
+}
+
+.weatherToolPending {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.weatherToolHeading {
+  margin: 0 0 12px;
+  color: #000;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.weatherToolBody {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.weatherToolIcon {
+  display: grid;
+  place-items: center;
+  width: 116px;
+  height: 116px;
+  font-size: 4rem;
+  line-height: 1;
+}
+
+.weatherToolTitle {
+  margin-left: 25px;
+  color: var(--foreground);
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.weatherToolTemperature {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.weatherToolTemperature sup {
+  font-size: 0.45em;
+  line-height: 0;
+  vertical-align: super;
+}
+
+.weatherToolTemperatureUnknown {
+  margin: 0;
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+.weatherToolCold {
+  background: #e8f1fa;
+}
+
+.weatherToolMild {
+  background: #eef3ee;
+}
+
+.weatherToolHot {
+  background: #fcf1dd;
+}
+
+.weatherToolUnknown {
+  background: #fafafa;
+}
+
+.activityCard {
+  margin-top: 8px;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  background: #fafafa;
+  padding: 14px 16px;
+}
+
+.activityContent {
+  margin: 0;
+  overflow-x: auto;
+  border-radius: 12px;
+  background: rgba(20, 33, 26, 0.04);
+  padding: 12px;
+  color: var(--foreground);
+  font-family: var(--font-geist-mono), "Courier New", monospace;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.activityBody {
+  display: grid;
+  gap: 14px;
+}
+
+.activityMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.activitySummary {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.activityCount {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.activitySteps {
+  list-style: decimal;
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 10px;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.activityStep {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.activityStepBody {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.activityStepDescription {
+  color: #000;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.activityStepState {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.activityStepStatePending {
+  background: #075333;
+  color: #fff;
+}
+
+.activityStepStateRunning {
+  background: #075333;
+  color: #fff;
+}
+
+.activityStepStateDone {
+  background: #075333;
+  color: #fff;
+}
+
+.activityStepStateFailed {
+  background: #075333;
+  color: #fff;
+}
+
+@media (max-width: 960px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .rail {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .workspace {
+    min-height: 70vh;
+  }
+
+  .toolConfirmActions {
+    flex-direction: column;
+  }
+
+  .toolConfirmButton {
+    width: 100%;
+  }
+
+  .weatherToolBody {
+    align-items: flex-start;
+  }
+
+  .runErrorHeader,
+  .activityMeta,
+  .activityStep {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
