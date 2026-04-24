@@ -182,6 +182,40 @@ button {
   min-height: 100%;
 }
 
+.stepDivider {
+  align-self: stretch;
+  display: grid;
+  grid-template-rows: auto 2px;
+  justify-items: center;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 10px;
+  width: 100%;
+}
+
+.stepDividerLabel {
+  color: #000;
+  font-size: calc(0.74rem + 3pt);
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.stepDividerLine {
+  width: 100%;
+  height: 2px;
+  background: #4a4a4a;
+}
+
+.sampleToolCard {
+  margin-top: 8px;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  background: #fafafa;
+  padding: 14px 16px;
+}
+
 .runErrorCard {
   border: 1px solid rgba(188, 66, 58, 0.2);
   border-radius: 16px;
@@ -223,40 +257,6 @@ button {
   font-weight: 600;
 }
 
-.stepDivider {
-  align-self: stretch;
-  display: grid;
-  grid-template-rows: auto 2px;
-  justify-items: center;
-  align-items: center;
-  gap: 8px;
-  margin: 18px 0 10px;
-  width: 100%;
-}
-
-.stepDividerLabel {
-  color: #000;
-  font-size: calc(0.74rem + 3pt);
-  font-weight: 800;
-  line-height: 1;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.stepDividerLine {
-  width: 100%;
-  height: 2px;
-  background: #4a4a4a;
-}
-
-.toolConfirmCard {
-  margin-top: 8px;
-  border: 1px solid #e4e4e7;
-  border-radius: 12px;
-  background: #fafafa;
-  padding: 14px 16px;
-}
-
 .toolConfirmPending,
 .toolConfirmMessage {
   margin: 0;
@@ -280,6 +280,7 @@ button {
 }
 
 .toolConfirmButton {
+  appearance: none;
   min-width: 112px;
   border-radius: 10px;
   border: 1px solid transparent;
@@ -303,18 +304,13 @@ button {
 }
 
 .toolConfirmButtonPrimary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
   color: #fff;
 }
 
-.toolConfirmButtonPrimary:not(:disabled):hover {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
-}
-
 .toolConfirmButtonSecondary {
-  background: rgba(255, 255, 255, 0.9);
+  background: #fff;
   border-color: var(--line);
   color: var(--foreground);
 }
@@ -345,14 +341,6 @@ button {
   order: -1;
   font-weight: 700;
   color: var(--accent-strong);
-}
-
-.weatherToolCard {
-  margin-top: 8px;
-  border: 1px solid #e4e4e7;
-  border-radius: 12px;
-  background: #fafafa;
-  padding: 14px 16px;
 }
 
 .weatherToolPending {
@@ -400,12 +388,6 @@ button {
   line-height: 1;
 }
 
-.weatherToolTemperature sup {
-  font-size: 0.45em;
-  line-height: 0;
-  vertical-align: super;
-}
-
 .weatherToolTemperatureUnknown {
   margin: 0;
   color: var(--foreground);
@@ -426,14 +408,6 @@ button {
 
 .weatherToolUnknown {
   background: #fafafa;
-}
-
-.activityCard {
-  margin-top: 8px;
-  border: 1px solid #e4e4e7;
-  border-radius: 12px;
-  background: #fafafa;
-  padding: 14px 16px;
 }
 
 .activityContent {
@@ -511,21 +485,9 @@ button {
   line-height: 1;
 }
 
-.activityStepStatePending {
-  background: #075333;
-  color: #fff;
-}
-
-.activityStepStateRunning {
-  background: #075333;
-  color: #fff;
-}
-
-.activityStepStateDone {
-  background: #075333;
-  color: #fff;
-}
-
+.activityStepStatePending,
+.activityStepStateRunning,
+.activityStepStateDone,
 .activityStepStateFailed {
   background: #075333;
   color: #fff;
