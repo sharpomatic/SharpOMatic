@@ -20,6 +20,7 @@ Use this sample when a workflow needs explicit user input, approval, or a UI cho
 The workflow starts by calling the frontend `ask_a_question` tool and stores the result at `output.toolResult`.
 If the tool result is returned, execution continues into the **ModelCall** node.
 Other input follows the alternate branch and emits a simple assistant error message.
+The frontend tool call does not write its function call or result into `input.chat`; the returned choice is workflow control-flow data rather than model tool-call history.
 
 ## Setup notes
 

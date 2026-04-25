@@ -11,7 +11,7 @@ Use this sample when you want to understand the minimum setup for a model-backed
 ## What it demonstrates
 
 - A **Start** node connected directly to a **ModelCall** node.
-- Using `{{$agent.latestUserMessage}}` as the model prompt.
+- Using `{{$agent.latestUserMessage.content}}` as the model prompt.
 - Producing text output from a non-conversation workflow.
 
 ## How it works

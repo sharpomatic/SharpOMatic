@@ -205,6 +205,8 @@ public sealed class FrontendToolCallNode(ThreadContext threadContext, FrontendTo
 
     private void ApplyMatchedChatPersistence(ContextObject pendingState, IncomingMessage incomingMessage, string expectedToolCallId)
     {
+        RemoveChatMessagesByIds([incomingMessage.MessageId]);
+
         switch (Node.ChatPersistenceMode)
         {
             case ToolCallChatPersistenceMode.None:

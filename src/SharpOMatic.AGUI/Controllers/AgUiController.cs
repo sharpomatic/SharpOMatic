@@ -93,7 +93,7 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         var repositoryService = HttpContext?.RequestServices?.GetService<IRepositoryService>();
         if (repositoryService is null)
         {
-            var resumeInput = new AgUiAgentResumeInput() { Agent = BuildAgentContext(request) };
+            var resumeInput = new AgUiAgentResumeInput() { Agent = BuildAgentContext(request, latestMessageOnly: true) };
             return await engineService.StartOrResumeConversationAndNotify(
                 workflowTarget.WorkflowId,
                 threadId,
@@ -156,7 +156,7 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
             ? ContextObject.Deserialize(checkpoint.ContextJson, HttpContext.RequestServices)
             : new ContextObject();
 
-        ApplyAgUiContext(mergedContext, request);
+        ApplyAgUiContext(mergedContext, request, latestMessageOnly: true);
         return mergedContext;
     }
 
@@ -168,9 +168,9 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         return rootContext;
     }
 
-    private static void ApplyAgUiContext(ContextObject rootContext, AgUiRunRequest request)
+    private static void ApplyAgUiContext(ContextObject rootContext, AgUiRunRequest request, bool latestMessageOnly = false)
     {
-        rootContext["agent"] = BuildAgentContext(request);
+        rootContext["agent"] = BuildAgentContext(request, latestMessageOnly);
 
         if (request.State.HasValue && request.State.Value.ValueKind is not JsonValueKind.Undefined and not JsonValueKind.Null)
             rootContext.Set(StateSyncContentPath, ContextHelpers.FastDeserializeString(request.State.Value.GetRawText()));
@@ -178,12 +178,13 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
             rootContext.RemovePath(StateSyncContentPath);
     }
 
-    private static ContextObject BuildAgentContext(AgUiRunRequest request)
+    private static ContextObject BuildAgentContext(AgUiRunRequest request, bool latestMessageOnly = false)
     {
+        var messages = latestMessageOnly ? CreateSingleMessageArray(GetLatestMessage(request.Messages)) : request.Messages;
         var agentPayload = new Dictionary<string, object?>();
-        AddJsonProperty(agentPayload, "latestUserMessage", FindLatestUserMessage(request.Messages));
-        AddJsonProperty(agentPayload, "latestToolResult", FindLatestToolResult(request.Messages));
-        AddJsonProperty(agentPayload, "messages", request.Messages);
+        AddJsonProperty(agentPayload, "latestUserMessage", FindLatestUserMessage(messages));
+        AddJsonProperty(agentPayload, "latestToolResult", FindLatestToolResult(messages));
+        AddJsonProperty(agentPayload, "messages", messages);
         AddJsonProperty(agentPayload, "state", request.State);
         AddJsonProperty(agentPayload, "context", request.Context);
 
@@ -663,6 +664,15 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
             return null;
 
         return latestMessage;
+    }
+
+    private static JsonElement? CreateSingleMessageArray(JsonElement? message)
+    {
+        if (!message.HasValue)
+            return null;
+
+        using var document = JsonDocument.Parse($"[{message.Value.GetRawText()}]");
+        return document.RootElement.Clone();
     }
 
     private static bool HasRole(JsonElement message, string expectedRole)

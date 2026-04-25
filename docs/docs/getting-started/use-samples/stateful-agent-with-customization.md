@@ -20,6 +20,7 @@ Use this sample when you want to see how several agent-facing features work toge
 
 The workflow asks whether the user wants a customized response style, initializes an activity plan, publishes it to the frontend, then runs a model call that can use selected tools.
 After the model response, Code and backend tool nodes update context values and activity state before the step ends.
+The frontend question result is kept as workflow context rather than persisted as model chat history.
 
 ## Setup notes
 

@@ -12,7 +12,7 @@ Use this sample when you want a basic chatbot that can remember previous message
 
 - Enabling conversation behavior on a workflow.
 - A simple **Start** to **ModelCall** flow.
-- Using `{{$agent.latestUserMessage}}` while preserving chat context through the workflow conversation state.
+- Using `{{$agent.latestUserMessage.content}}` while preserving chat context through the workflow conversation state.
 
 ## How it works
 

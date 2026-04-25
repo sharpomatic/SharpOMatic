@@ -107,8 +107,8 @@ For conversation-enabled workflows:
 
 - the first call uses `threadId` as the SharpOMatic `conversationId`
 - later calls with the same `threadId` continue or resume that conversation
-- later AG-UI calls must be incremental only and send only new messages
-- the controller updates `agent` from those new messages but does not append them into `input.chat`
+- later AG-UI calls must be incremental only and send only the new message
+- the controller exposes only the latest incoming AG-UI message at `agent.messages` and does not append it into `input.chat`
 
 ## Workflow context
 
@@ -116,7 +116,7 @@ The controller maps selected request data into workflow context under `agent`:
 
 - `agent.latestUserMessage`: the final item in `messages`, but only when that item is a user text message
 - `agent.latestToolResult`: the final item in `messages`, but only when that item is a tool result message. Its `content` stays as the original string, and if that string is non-empty JSON then SharpOMatic also stores the parsed payload in `agent.latestToolResult.value`.
-- `agent.messages`: the full incoming AG-UI `messages` array
+- `agent.messages`: for non-conversation workflows, the full incoming AG-UI `messages` array; for conversation-enabled workflows, only the latest incoming message
 - `agent.state`: the incoming AG-UI `state` value
 - `agent.context`: the incoming AG-UI `context` value
 - `agent._hidden.state`: a hidden deep copy of the incoming AG-UI `state`, used as the baseline for `AddStateSyncAsync()` and the `State Sync` node
@@ -128,7 +128,8 @@ If the workflow context already contains `agent`, the incoming AG-UI `agent` obj
 For non-conversation workflows, the controller converts supported AG-UI messages into provider-neutral `ChatMessage` entries at `input.chat` for the current run.
 For conversation workflows, `input.chat` is canonical model history owned by workflow nodes.
 Use it as the recommended source for `ModelCall.ChatInputPath`, and set `ModelCall.ChatOutputPath` to `input.chat` when model responses should be replayed across turns.
-Frontend tool results are persisted by the **Frontend Tool Call** node according to its chat persistence setting.
+Incoming user text is stored as silent stream history for conversation turns, but it is not appended to `input.chat`.
+Frontend tool results are persisted by the **Frontend Tool Call** node according to its chat persistence setting, which defaults to `None` for new frontend tool-call nodes.
 
 Supported `input.chat` conversion in this version:
 
@@ -150,18 +151,9 @@ SharpOMatic also includes protocol-aware workflow nodes for common AG-UI pattern
 
 Use the dedicated node and AG-UI docs for the detailed behavior of each node.
 
-If a workflow wants to add the incoming AG-UI user message into SharpOMatic stream history without sending it back to the AG-UI caller, use a code node and the transient `silent` flag:
-
-```csharp
-var latestUserMessage = Context.Get<ContextObject>("agent.latestUserMessage");
-var messageId = latestUserMessage.Get<string>("id");
-var text = latestUserMessage.Get<string>("content");
-
-await Events.AddTextMessageAsync(StreamMessageRole.User, messageId, text, silent: true);
-```
-
-The `silent` flag only affects the current live AG-UI SSE stream.
-The underlying stream event is still persisted in SharpOMatic history, and the flag itself is not stored in the database.
+For conversation turns, SharpOMatic automatically stores `agent.latestUserMessage` as user text stream events before workflow nodes run.
+Those events are marked with the transient `silent` flag for the current live AG-UI SSE stream, so the caller does not render its submitted message twice.
+The underlying stream events are still persisted in SharpOMatic history, and the flag itself is not stored in the database.
 
 Code nodes can also emit AG-UI tool-call, activity, state, step, and custom events through the `Events.Add*` helpers.
 For the higher-level activity/state sync helpers and the full helper surface, see the AG-UI and Code Node docs.

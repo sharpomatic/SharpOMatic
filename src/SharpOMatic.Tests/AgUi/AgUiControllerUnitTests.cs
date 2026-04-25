@@ -247,7 +247,9 @@ public sealed class AgUiControllerUnitTests
         await controller.Post(request);
 
         var resumeInput = Assert.IsType<AgUiAgentResumeInput>(capturedResumeInput);
-        Assert.Equal("Hi", resumeInput.Agent.Get<string>("messages[1].content"));
+        var messages = resumeInput.Agent.Get<ContextList>("messages");
+        Assert.Single(messages);
+        Assert.Equal("Hi", resumeInput.Agent.Get<string>("messages[0].content"));
         Assert.False(resumeInput.Agent.TryGet<ContextObject>("latestUserMessage", out _));
         Assert.False(resumeInput.Agent.TryGet<ContextObject>("latestToolResult", out _));
     }
@@ -310,7 +312,9 @@ public sealed class AgUiControllerUnitTests
         Assert.Equal("Sunny", resumeInput.Agent.Get<string>("latestToolResult.value.status"));
         Assert.Equal(24, resumeInput.Agent.Get<int>("latestToolResult.value.temperatureC"));
         Assert.Equal("call-1", resumeInput.Agent.Get<string>("latestToolResult.toolCallId"));
-        Assert.Equal("{\"status\":\"Sunny\",\"temperatureC\":24}", resumeInput.Agent.Get<string>("messages[1].content"));
+        var messages = resumeInput.Agent.Get<ContextList>("messages");
+        Assert.Single(messages);
+        Assert.Equal("{\"status\":\"Sunny\",\"temperatureC\":24}", resumeInput.Agent.Get<string>("messages[0].content"));
         Assert.False(resumeInput.Agent.TryGet<ContextObject>("latestUserMessage", out _));
     }
 
@@ -2090,6 +2094,10 @@ public sealed class AgUiControllerUnitTests
 
         var mergeInput = Assert.IsType<ContextMergeResumeInput>(capturedResumeInput);
         Assert.Equal("Next prompt", mergeInput.Context.Get<string>("agent.latestUserMessage.content"));
+        var agentMessages = mergeInput.Context.Get<ContextList>("agent.messages");
+        Assert.Single(agentMessages);
+        Assert.Equal("user-2", mergeInput.Context.Get<string>("agent.messages[0].id"));
+        Assert.Equal("Next prompt", mergeInput.Context.Get<string>("agent.messages[0].content"));
 
         var chat = mergeInput.Context.Get<ContextList>("input.chat");
         Assert.Equal(2, chat.Count);

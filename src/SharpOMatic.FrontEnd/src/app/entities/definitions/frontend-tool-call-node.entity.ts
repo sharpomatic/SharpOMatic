@@ -89,8 +89,7 @@ export class FrontendToolCallNodeEntity extends NodeEntity<FrontendToolCallNodeS
       argumentsPath: '',
       argumentsJson: '{}',
       resultOutputPath: 'output.toolResult',
-      chatPersistenceMode:
-        ToolCallChatPersistenceMode.FunctionCallAndResult,
+      chatPersistenceMode: ToolCallChatPersistenceMode.None,
       hideFromReplyAfterHandled: false,
     };
   }

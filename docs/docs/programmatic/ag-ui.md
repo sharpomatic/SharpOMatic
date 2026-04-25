@@ -115,7 +115,8 @@ For conversation-enabled workflows:
 - later requests with the same `threadId` continue or resume that conversation
 - when the controller can load and merge the stored conversation context, it updates `agent` but does not append incoming AG-UI messages into `input.chat`
 - when the controller cannot load repository-backed conversation state and falls back to `AgUiAgentResumeInput`, it does not build or update `input.chat`
-- later requests should be incremental only and send the new AG-UI messages for the current turn
+- the controller exposes only the latest incoming AG-UI message at `agent.messages`, so a normal user turn has exactly one user text message there
+- later requests should be incremental only and send the new AG-UI message for the current turn
 
 Because conversation identifiers are strings, your AG-UI client can use any stable identifier that fits your application.
 
@@ -126,7 +127,7 @@ Instead it maps a focused subset into `agent`:
 
 - `agent.latestUserMessage`: the final item in `messages`, but only when that item is a user text message
 - `agent.latestToolResult`: the final item in `messages`, but only when that item is a tool result message. Its `content` stays as the original string, and if that string is non-empty JSON then SharpOMatic also stores the parsed payload in `agent.latestToolResult.value`.
-- `agent.messages`: the full incoming `messages` array
+- `agent.messages`: for non-conversation workflows, the full incoming `messages` array; for conversation-enabled workflows, only the latest incoming message
 - `agent.state`: the incoming AG-UI `state`
 - `agent.context`: the incoming AG-UI `context`
 - `agent._hidden.state`: a hidden deep copy of the incoming AG-UI `state`, used as the baseline for `AddStateSyncAsync()` and the `State Sync` node
@@ -186,6 +187,7 @@ For conversation-enabled workflows:
 - a `ModelCall` node appends its model response messages when `ChatOutputPath` is set
 - a `Frontend Tool Call` node appends a returned frontend tool result only when its chat persistence mode is `Function Call And Result`
 - AG-UI stream-event echoes from prior model output are not appended back into `input.chat`
+- incoming user text is stored as stream history for conversation turns, but it is not added to `input.chat`
 
 ## Frontend tool calls
 
@@ -206,6 +208,7 @@ The node:
 - routes to `otherInput` for anything else
 
 It can optionally keep or remove the function call and tool result from `input.chat`.
+New Frontend Tool Call nodes default this chat persistence setting to `None`, which keeps frontend control-flow tool calls out of model chat history unless a workflow explicitly opts in.
 It can also mark handled frontend tool-call stream events with `HideFromReply` so future AG-UI replay does not ask the same frontend question again.
 
 ## Backend tool calls
@@ -246,21 +249,14 @@ The endpoint streams AG-UI SSE events from SharpOMatic workflow stream events:
 
 The SSE request ends when the underlying workflow run finishes, suspends, or fails.
 
-## Silent replay for incoming user messages
+## Incoming user message history
 
 AG-UI clients already know about the incoming user message they just submitted.
-If your workflow also wants that message recorded in SharpOMatic stream history, add it through a code node with `silent: true` so the chat client does not render the same user message twice.
-
-```csharp
-var latestUserMessage = Context.Get<ContextObject>("agent.latestUserMessage");
-var messageId = latestUserMessage.Get<string>("id");
-var text = latestUserMessage.Get<string>("content");
-
-await Events.AddTextMessageAsync(StreamMessageRole.User, messageId, text, silent: true);
-```
+When a conversation turn includes `agent.latestUserMessage`, SharpOMatic automatically stores that message as user text stream events before the workflow nodes run.
+Those stored events make run and conversation history complete after a page refresh, but they are sent to the current live AG-UI stream with `silent: true` so the caller does not render the submitted message twice.
 
 The `silent` flag only affects the live AG-UI SSE output for the current run.
-The stored run or conversation stream history still contains the event, and no persisted stream-event field is added for the flag.
+The stored run or conversation stream history still contains the user message events, and no persisted stream-event field is added for the flag.
 
 ## Emitting tool calls from code nodes
 

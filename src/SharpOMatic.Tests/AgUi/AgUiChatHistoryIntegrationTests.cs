@@ -179,6 +179,85 @@ public sealed class AgUiChatHistoryIntegrationTests
     }
 
     [Fact]
+    public async Task AgUi_conversation_workflow_persists_latest_user_message_as_silent_stream_history()
+    {
+        var workflow = new SharpOMatic.Tests.Workflows.WorkflowBuilder()
+            .WithName("User History Workflow")
+            .EnableConversations()
+            .AddStart()
+            .AddEnd()
+            .Connect("start", "end")
+            .Build();
+
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider(services =>
+        {
+            services.AddSingleton<IAgUiRunEventBroker, AgUiRunEventBroker>();
+            services.AddSingleton<IProgressService, AgUiProgressService>();
+        });
+
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            var controller = new AgUiController(provider.GetRequiredService<IEngineService>(), provider.GetRequiredService<IAgUiRunEventBroker>());
+            controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+            await controller.Post(
+                new AgUiRunRequest()
+                {
+                    ThreadId = "thread-1",
+                    RunId = "protocol-run-1",
+                    Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello history" }]"""),
+                    ForwardedProps = ParseJson($$"""{"workflowId":"{{workflow.Id}}"}"""),
+                }
+            );
+
+            var liveEvents = ReadSseEvents((MemoryStream)controller.HttpContext.Response.Body);
+            Assert.DoesNotContain(liveEvents, e =>
+                e.GetProperty("type").GetString() == "TEXT_MESSAGE_START"
+                && e.TryGetProperty("role", out var role)
+                && role.GetString() == "user"
+            );
+
+            var run = Assert.Single(await repositoryService.GetConversationRuns("thread-1"));
+            var storedEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.Collection(
+                storedEvents,
+                streamEvent =>
+                {
+                    Assert.Equal(StreamEventKind.TextStart, streamEvent.EventKind);
+                    Assert.Equal(StreamMessageRole.User, streamEvent.MessageRole);
+                    Assert.Equal("user-1", streamEvent.MessageId);
+                    Assert.Equal(1, streamEvent.SequenceNumber);
+                },
+                streamEvent =>
+                {
+                    Assert.Equal(StreamEventKind.TextContent, streamEvent.EventKind);
+                    Assert.Equal("user-1", streamEvent.MessageId);
+                    Assert.Equal("Hello history", streamEvent.TextDelta);
+                    Assert.Equal(2, streamEvent.SequenceNumber);
+                },
+                streamEvent =>
+                {
+                    Assert.Equal(StreamEventKind.TextEnd, streamEvent.EventKind);
+                    Assert.Equal("user-1", streamEvent.MessageId);
+                    Assert.Equal(3, streamEvent.SequenceNumber);
+                }
+            );
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
     public async Task AgUi_backend_tool_call_workflow_streams_complete_tool_call_lifecycle()
     {
         var workflow = new SharpOMatic.Tests.Workflows.WorkflowBuilder()

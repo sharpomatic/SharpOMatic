@@ -62,7 +62,11 @@ When the expected tool result is received:
 - `Function Call Only`: keep only the assistant function call
 - `Function Call And Result`: keep both the assistant function call and the tool result
 
+New Frontend Tool Call nodes default to `None`.
+Use the other modes only when the frontend tool exchange should become durable model chat history.
+
 If `otherInput` is taken, the node removes any chat entries that it created for the frontend tool call.
+When `toolResult` is taken, any incoming frontend tool-result message is treated as transient resume input and replaced by the node's configured canonical chat persistence.
 The AG-UI controller does not append frontend tool results to conversation `input.chat`; this node owns that persistence so backend model-call stream events cannot be replayed as duplicate tool results.
 
 ## Replay Visibility
