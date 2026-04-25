@@ -61,6 +61,10 @@ jobs:
         working-directory: src
         run: dotnet pack SharpOMatic.Engine.SqlServer/SharpOMatic.Engine.SqlServer.csproj --configuration Release --no-build /p:VersionPrefix=$VERSION_PREFIX /p:VersionSuffix=$VERSION_SUFFIX -o ../artifacts
 
+      - name: Pack AGUI
+        working-directory: src
+        run: dotnet pack SharpOMatic.AGUI/SharpOMatic.AGUI.csproj --configuration Release --no-build /p:VersionPrefix=$VERSION_PREFIX /p:VersionSuffix=$VERSION_SUFFIX -o ../artifacts
+
       - name: Pack Editor
         working-directory: src
         run: dotnet pack SharpOMatic.Editor/SharpOMatic.Editor.csproj --configuration Release --no-build /p:VersionPrefix=$VERSION_PREFIX /p:VersionSuffix=$VERSION_SUFFIX -o ../artifacts

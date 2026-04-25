@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - 'src/SharpOMatic.FrontEnd/**'
+      - 'src/SharpOMatic.AGUI/**'
       - 'src/SharpOMatic.Editor/**'
       - 'src/SharpOMatic.Engine/**'
       - 'src/SharpOMatic.Engine.Sqlite/**'
@@ -18,6 +19,7 @@ on:
       - main
     paths:
       - 'src/SharpOMatic.FrontEnd/**'
+      - 'src/SharpOMatic.AGUI/**'
       - 'src/SharpOMatic.Editor/**'
       - 'src/SharpOMatic.Engine/**'
       - 'src/SharpOMatic.Engine.Sqlite/**'
