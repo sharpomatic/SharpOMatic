@@ -11,6 +11,9 @@
   limit how many of the most recent are returned
 - Investigate the compacting down to a message snapshot.
 
+- Make the input.chat a detais defined path instead of being hardcoded.
+- Make the agents path details defined and not hard coded.
+
 - Check two paths outputing at the same time
 - Check two paths, the first has a FE tool call, other does not
 
