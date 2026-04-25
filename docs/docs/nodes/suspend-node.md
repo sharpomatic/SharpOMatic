@@ -21,8 +21,30 @@ Instead it marks the current turn as suspended and stores the checkpoint needed 
 When the conversation is resumed:
 
 - the same continuation point is invoked again
-- resume input can either be empty or merge a `ContextObject` into the current node context
+- resume input can be empty, merge a `ContextObject` into the current node context, or update the AG-UI `agent` context
 - execution then continues to downstream nodes
+
+## Resume Input
+
+The resume payload controls what is available to downstream nodes:
+
+- empty resume: continue from the checkpoint without changing context
+- context merge resume: overwrite or add the supplied context values, then continue
+- AG-UI conversation resume: replace the `agent` object with the latest mapped AG-UI request values, then continue
+
+For AG-UI user replies, downstream nodes should read the current user text from `agent.latestUserMessage.content`.
+For AG-UI frontend tool results, downstream nodes can read `agent.latestToolResult`, and a waiting **Frontend Tool Call** node will validate the expected `toolCallId`.
+
+## Messages And Stream Events
+
+The Suspend node does not create `ChatMessage` entries, does not update `input.chat`, and does not emit stream events.
+It only records the checkpoint and later continues from it.
+
+During an AG-UI conversation resume with a user message, SharpOMatic stores the incoming user text as silent stream history before the workflow nodes continue.
+That makes refreshed conversation history complete, but it still does not append the user text to `input.chat`.
+
+During an AG-UI resume with a frontend tool result, the suspend/resume mechanism does not create a `TOOL_CALL_RESULT` event and does not append the result to `input.chat`.
+The waiting **Frontend Tool Call** node creates the result stream event and any optional chat messages when the incoming `tool` message matches its pending `toolCallId`.
 
 ## Notes
 

@@ -100,7 +100,7 @@ SharpOMatic resolves the target workflow first:
 For non-conversation workflows:
 
 - the client must send the full AG-UI message history on every call
-- SharpOMatic rebuilds `input.chat` from that history for the current run
+- SharpOMatic rebuilds `input.chat` from that history for the current run, except for the latest user text message exposed as `agent.latestUserMessage`
 - `threadId` remains protocol metadata only
 
 For conversation-enabled workflows:
@@ -128,7 +128,16 @@ If the workflow context already contains `agent`, the incoming AG-UI `agent` obj
 For non-conversation workflows, the controller converts supported AG-UI messages into provider-neutral `ChatMessage` entries at `input.chat` for the current run.
 For conversation workflows, `input.chat` is canonical model history owned by workflow nodes.
 Use it as the recommended source for `ModelCall.ChatInputPath`, and set `ModelCall.ChatOutputPath` to `input.chat` when model responses should be replayed across turns.
-Incoming user text is stored as silent stream history for conversation turns, but it is not appended to `input.chat`.
+
+The components that can create or change `input.chat` are:
+
+- the AG-UI controller, only for non-conversation workflows, from the incoming `messages` array
+- the **Model Call** node, when **Chat Output Path** is set, usually to `input.chat`
+- the **Frontend Tool Call** node, only when **Chat Persistence** is not `None`
+- the **Backend Tool Call** node, only when **Chat Persistence** is not `None`
+
+The AG-UI controller does not append incoming user text or frontend tool results to conversation `input.chat`.
+Incoming user text is stored as silent stream history for conversation turns, but it is not a `ChatMessage`.
 Frontend tool results are persisted by the **Frontend Tool Call** node according to its chat persistence setting, which defaults to `None` for new frontend tool-call nodes.
 
 Supported `input.chat` conversion in this version:
@@ -150,6 +159,14 @@ SharpOMatic also includes protocol-aware workflow nodes for common AG-UI pattern
 - **Step Start** and **Step End** for simple progress markers
 
 Use the dedicated node and AG-UI docs for the detailed behavior of each node.
+
+Frontend and backend tool-call nodes always emit AG-UI tool-call stream events for display.
+Those stream events are separate from chat persistence.
+With **Chat Persistence** set to `None`, the frontend can still render the tool call from stream history, but later model calls do not receive it through `input.chat`.
+
+The **Suspend** node stores and resumes a checkpoint only.
+It does not write `input.chat` and does not emit stream events.
+On AG-UI resume, `agent` is updated with the latest user message or latest tool result before downstream nodes continue.
 
 For conversation turns, SharpOMatic automatically stores `agent.latestUserMessage` as user text stream events before workflow nodes run.
 Those events are marked with the transient `silent` flag for the current live AG-UI SSE stream, so the caller does not render its submitted message twice.

@@ -74,11 +74,17 @@ If defined, the **Chat Output Path** specifies the context location to output th
 This includes all original entries sent to the model along with all the replies from the model.
 For example, the output from the above example is six message entries.
 
+When **Chat Output Path** is `input.chat`, the Model Call node creates or replaces that chat history with the full model transcript for downstream nodes and later conversation turns.
+This is the normal way a conversation workflow turns the current prompt from `agent.latestUserMessage.content` into a durable user `ChatMessage`.
+Reading **Chat Input Path** alone does not mutate `input.chat`; only writing **Chat Output Path** does.
+
 In batch output mode, the returned model messages are the canonical transcript written to **Chat Output Path**.
 Stream events are generated from that transcript for UI display, but they are not the source of persisted chat history.
 
 When a later turn reuses this chat history as input, SharpOMatic automatically rebuilds a portable version of the stored messages before sending them to the model.
 This replay keeps normal text, tool calls, tool results, and provider-neutral content such as data/image parts, but strips reasoning and any provider-private message state.
+Reasoning chat messages are not passed back to the source model during replay.
+Reasoning content can be provider-specific, and it may not be compatible if the workflow is later changed to use a different model provider.
 
 The first three are the ones we sent to the model.
 
@@ -98,8 +104,14 @@ The next 3 are replies from the model.
 
 ## Chat Bot
 
-To create a chat bot, build a workflow that takes a list of **ChatMessage** entries as input.
-The workflow outputs the updated list, with the model replies appended.
-After the workflow completes, present the most recent model response to the user in the format that fits your application.
-If the user continues the conversation, add their text as a new message at the end of the list and run the workflow again.
-This repeated execution uses the accumulated chat messages to maintain the conversation.
+For a non-conversation chat bot, send the full chat history on every run and use **Chat Input Path** to read it.
+With AG-UI non-conversation runs, SharpOMatic creates `input.chat` from the incoming AG-UI `messages` array for that run.
+
+For a conversation-enabled chat bot, let the workflow own `input.chat`.
+A common AG-UI setup is:
+
+- **Prompt**: `{{$agent.latestUserMessage.content}}`
+- **Chat Input Path**: `input.chat`
+- **Chat Output Path**: `input.chat`
+
+With that setup, the AG-UI controller exposes the latest user message under `agent`, and the Model Call node writes the resulting user and assistant `ChatMessage` history to `input.chat` for the next turn.

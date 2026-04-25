@@ -22,14 +22,17 @@ On the first pass, the node:
 - generates a new internal `toolCallId`
 - resolves the arguments from either a context path or fixed JSON
 - emits AG-UI `TOOL_CALL_START`, `TOOL_CALL_ARGS`, and `TOOL_CALL_END`
-- optionally writes an assistant function-call message into `input.chat`
+- optionally writes an assistant function-call `ChatMessage` into `input.chat`
 - suspends the conversation
 
 On resume, the node is strict:
 
 - `agent.messages` must contain exactly one incoming message
-- if that single message is a `tool` result with the expected `toolCallId`, the node follows `toolResult`
+- if that single message is a `tool` result with the expected `toolCallId`, the node emits `TOOL_CALL_RESULT` and follows `toolResult`
 - anything else follows `otherInput`
+
+The AG-UI controller does not add the incoming tool-result message to `input.chat`.
+The node owns any chat persistence for the frontend tool exchange.
 
 ## Outputs
 
@@ -68,6 +71,24 @@ Use the other modes only when the frontend tool exchange should become durable m
 If `otherInput` is taken, the node removes any chat entries that it created for the frontend tool call.
 When `toolResult` is taken, any incoming frontend tool-result message is treated as transient resume input and replaced by the node's configured canonical chat persistence.
 The AG-UI controller does not append frontend tool results to conversation `input.chat`; this node owns that persistence so backend model-call stream events cannot be replayed as duplicate tool results.
+
+If `input.chat` does not exist and chat persistence is enabled, the node creates it before adding the configured messages.
+If chat persistence is `None`, the tool call can still appear in AG-UI stream history, but it will not be sent to later `ModelCall` nodes through `input.chat`.
+
+## Stream Events
+
+On the first pass, the node stores tool-call stream events for AG-UI display:
+
+- `TOOL_CALL_START`
+- `TOOL_CALL_ARGS`
+- `TOOL_CALL_END`
+
+On a matching tool-result resume, the node stores:
+
+- `TOOL_CALL_RESULT`
+
+These stream events are independent from `input.chat`.
+Changing **Chat Persistence** changes model chat history only; it does not stop the node from emitting the AG-UI tool-call lifecycle.
 
 ## Replay Visibility
 

@@ -21,7 +21,7 @@ The node:
 - resolves arguments from either a context path or fixed JSON
 - resolves result content from either a context path or fixed JSON
 - emits `TOOL_CALL_START`, `TOOL_CALL_ARGS`, `TOOL_CALL_END`, and `TOOL_CALL_RESULT`
-- optionally writes an assistant function-call and tool-result message into `input.chat`
+- optionally writes an assistant function-call and tool-result `ChatMessage` into `input.chat`
 - continues through its single output
 
 Unlike **Frontend Tool Call**, this node does not suspend, does not branch, and does not wait for later input.
@@ -57,6 +57,20 @@ For `Result Mode = Fixed JSON`:
 - `Function Call And Result`: add both the assistant function call and the tool result
 
 When chat persistence is enabled, arguments must decode to a JSON object so SharpOMatic can create provider-neutral `FunctionCallContent`.
+If `input.chat` does not exist, the node creates it before adding the configured messages.
+Chat persistence is separate from AG-UI stream events: with `None`, the tool call is still emitted and stored as stream history, but it is not included in later model chat history.
+
+## Stream Events
+
+The node always stores the complete AG-UI tool-call lifecycle during the current run:
+
+- `TOOL_CALL_START`
+- `TOOL_CALL_ARGS`
+- `TOOL_CALL_END`
+- `TOOL_CALL_RESULT`
+
+These events are used for live SSE output and stored stream history.
+They do not automatically create `ChatMessage` entries; only **Chat Persistence** controls writes to `input.chat`.
 
 ## Notes
 

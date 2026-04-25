@@ -14,6 +14,13 @@ If your workflow does not need to enforce inputs, leave the node unchanged.
 When initialization is enabled, the context is rebuilt from the listed entries and any unlisted values are dropped.
 If the list is empty, the resulting context is empty.
 
+The Start node does not create `ChatMessage` entries by itself.
+For AG-UI non-conversation runs, the AG-UI controller creates `input.chat` from the incoming AG-UI `messages` array before the workflow reaches the Start node.
+For AG-UI conversation-enabled workflows, the controller updates `agent` with the latest incoming message and loads any stored workflow context, but it does not append the incoming message to `input.chat`.
+
+If initialization is enabled, only the configured context entries are kept.
+Include `agent`, `input.chat`, or any other AG-UI values in the initialization list when the workflow needs them after the Start node.
+
 ## Mandatory values
 
 You can choose to initialize the context.

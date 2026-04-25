@@ -139,25 +139,28 @@ If `agent` already exists in workflow context, the incoming AG-UI `agent` object
 
 ## input.chat behavior
 
-`input.chat` is important for `ModelCall` nodes, but AG-UI does not populate it in exactly the same way for every run mode.
-
-Use these settings when a workflow should pass AG-UI chat into a `ModelCall`:
+`input.chat` is the conventional context path for provider-neutral `ChatMessage` history used by `ModelCall` nodes.
+It is not a transcript mirror of every AG-UI event.
+Use these settings when a workflow should pass that history into a model:
 
 - `ChatInputPath = "input.chat"`
-- `ChatOutputPath = "input.chat"` for conversation-enabled workflows that want persisted replay on later turns
+- `ChatOutputPath = "input.chat"` for conversation-enabled workflows that want the model request and response to become the next turn's replay history
 
-### When SharpOMatic populates input.chat
+SharpOMatic creates or changes `input.chat` only in these places:
 
-- non-conversation workflows:
-  the controller sets `input.chat` from the current incoming AG-UI `messages` array for that run, excluding `agent.latestUserMessage`
-- conversation-enabled workflows with repository-backed checkpoint loading:
-  the controller loads the stored workflow context and leaves `input.chat` unchanged; workflow nodes such as `ModelCall` and `Frontend Tool Call` update it when they intentionally persist canonical model chat
-- conversation-enabled workflows without repository access:
-  the controller resumes with `AgUiAgentResumeInput` and does not build or update `input.chat`
+| Source | When it runs | What it writes to `input.chat` |
+| --- | --- | --- |
+| AG-UI controller for non-conversation workflows | Every AG-UI request for a non-conversation workflow | A new `ContextList` built from the incoming AG-UI `messages` array for this run only. This replaces any need for stored conversation chat because the run is stateless. |
+| AG-UI controller for conversation workflows | Never directly | It loads stored context and replaces `agent`, but it does not append incoming AG-UI messages to `input.chat`. |
+| `ModelCall` node | When **Chat Output Path** is set, commonly to `input.chat` | The full model request chat plus model response messages. This is how the current user prompt usually becomes durable conversation chat history. |
+| `Frontend Tool Call` node | Only when **Chat Persistence** is not `None` | An assistant function-call message, and optionally the matching tool-result message. New nodes default to `None`. |
+| `Backend Tool Call` node | Only when **Chat Persistence** is not `None` | An assistant function-call message, and optionally the tool-result message. |
+| `Suspend` node | Never | Resume input updates context or `agent`, but the node does not create chat messages or stream events. |
 
-### What is written to input.chat
+### Non-conversation workflows
 
-When `input.chat` is populated, SharpOMatic converts supported AG-UI messages into provider-neutral `ChatMessage` objects there.
+For non-conversation workflows, the AG-UI client must send the full relevant message history on every request.
+The controller creates `input.chat` from that incoming history before the workflow starts.
 
 Supported conversion rules:
 
@@ -167,6 +170,42 @@ Supported conversion rules:
 - `assistant` messages with string `content`, `toolCalls`, or both -> `ChatRole.Assistant`
 - `tool` results with string `content` and `toolCallId` -> `ChatRole.Tool`
 
+The latest user text message is deliberately kept out of `input.chat`.
+Use `{{$agent.latestUserMessage.content}}` as the current model prompt instead.
+If a `ModelCall` node also writes `ChatOutputPath = "input.chat"`, the model call output becomes the `input.chat` value for the rest of that run.
+Because the run is stateless, the next AG-UI request starts from the next incoming `messages` array again.
+
+### Conversation workflows
+
+For conversation-enabled workflows, `input.chat` is canonical model history owned by workflow nodes.
+The AG-UI controller does not rebuild it from incoming AG-UI messages on every turn.
+
+On a new turn, SharpOMatic loads the stored workflow context from the previous checkpoint.
+If that context contains `input.chat`, it is reused.
+The incoming AG-UI message is exposed under `agent`, and a `ModelCall` usually appends it to `input.chat` by using `Prompt = "{{$agent.latestUserMessage.content}}"` and `ChatOutputPath = "input.chat"`.
+
+Incoming AG-UI stream-event echoes from prior model output are not appended back into `input.chat`.
+Incoming frontend tool results are also not appended by the controller; the waiting `Frontend Tool Call` node owns any optional chat persistence for that result.
+
+When a conversation turn includes `agent.latestUserMessage`, SharpOMatic also stores that user text in stream history before nodes run.
+Those stream events are marked silent for the current SSE response so the caller does not render the message it just submitted a second time.
+That history write still does not create a `ChatMessage`.
+
+### Workflow-owned writers
+
+`ModelCall` reads **Chat Input Path** to build the provider request, then writes **Chat Output Path** only after the model call has produced responses.
+When that output path is `input.chat`, the written list includes any input chat, prompt text, image messages, assistant responses, model tool calls, and model tool results that were part of the model call transcript.
+
+`Frontend Tool Call` and `Backend Tool Call` are the only non-model nodes that can write tool-call `ChatMessage` entries into `input.chat`.
+Both are controlled by **Chat Persistence**:
+
+- `None`: no chat messages are written
+- `Function Call Only`: an assistant message with `FunctionCallContent` is written
+- `Function Call And Result`: the assistant function-call message and the matching tool-result message are written
+
+The two tool-call nodes always emit AG-UI tool-call stream events for display.
+Those stream events are separate from chat persistence.
+
 ### Conversion details
 
 - `developer` message `name` is preserved as `AuthorName`
@@ -174,20 +213,9 @@ Supported conversion rules:
 - each assistant tool call must contain a `function` object with a non-empty `name`
 - assistant tool call `function.arguments` must be a JSON string that decodes to a JSON object
 - assistant messages with neither non-empty string `content` nor any tool calls are skipped rather than added to `input.chat`
-- the latest user text message is not added to `input.chat`; use `agent.latestUserMessage` as the current turn prompt instead
 - AG-UI `reasoning` and `activity` messages are ignored when building `input.chat`
 - unsupported roles are rejected with `RUN_ERROR`
 - multimodal or other non-string message `content` is rejected with `RUN_ERROR`
-
-### Conversation chat ownership
-
-For conversation-enabled workflows:
-
-- `input.chat` is canonical model history owned by workflow nodes
-- a `ModelCall` node appends its model response messages when `ChatOutputPath` is set
-- a `Frontend Tool Call` node appends a returned frontend tool result only when its chat persistence mode is `Function Call And Result`
-- AG-UI stream-event echoes from prior model output are not appended back into `input.chat`
-- incoming user text is stored as stream history for conversation turns, but it is not added to `input.chat`
 
 ## Frontend tool calls
 
@@ -201,15 +229,21 @@ This is useful when the frontend interaction is workflow control flow rather tha
 
 The node:
 
-- emits AG-UI tool-call stream events
+- emits AG-UI `TOOL_CALL_START`, `TOOL_CALL_ARGS`, and `TOOL_CALL_END` stream events before suspending
 - suspends the conversation
 - expects exactly one incoming AG-UI message on resume
-- routes to `toolResult` when that message is the expected tool result
+- emits `TOOL_CALL_RESULT` when that message is the expected tool result
+- routes to `toolResult` after storing the result at the configured result output path
 - routes to `otherInput` for anything else
 
 It can optionally keep or remove the function call and tool result from `input.chat`.
 New Frontend Tool Call nodes default this chat persistence setting to `None`, which keeps frontend control-flow tool calls out of model chat history unless a workflow explicitly opts in.
 It can also mark handled frontend tool-call stream events with `HideFromReply` so future AG-UI replay does not ask the same frontend question again.
+
+The AG-UI controller does not append the incoming frontend tool result to `input.chat`.
+On resume, the node compares the single incoming `tool` message to the stored expected `toolCallId`.
+If it matches, the node owns the optional chat persistence and the `TOOL_CALL_RESULT` stream event.
+If it does not match, the node abandons the pending frontend tool call, removes any chat messages it created for that pending call, hides the original tool-call stream events from future replay, and follows `otherInput`.
 
 ## Backend tool calls
 
@@ -222,6 +256,26 @@ This node:
 - can optionally add the assistant function call and tool result into `input.chat`
 
 Use it when the workflow wants AG-UI tool-call rendering for backend-generated data without waiting for a later frontend response.
+The emitted stream events are created regardless of **Chat Persistence**.
+When **Chat Persistence** is `None`, the frontend can still render the tool call in the live stream and stored stream history, but no `ChatMessage` is added for future model input.
+
+## Suspend resume behavior
+
+The **Suspend** node pauses a conversation-enabled workflow and stores a checkpoint.
+The node itself does not write to `input.chat` and does not emit any stream events.
+
+On resume:
+
+- an empty resume continues from the checkpoint without changing context
+- a context-merge resume overwrites or adds the provided context values before execution continues
+- an AG-UI conversation resume replaces `agent` with the latest AG-UI request mapping
+
+For a user reply, the resumed workflow reads the text from `agent.latestUserMessage.content`.
+SharpOMatic stores that incoming user text as silent stream history for page-refresh and replay completeness, but it is not appended to `input.chat`.
+
+For a frontend tool result, the resumed workflow reads the result from `agent.latestToolResult` or from the waiting **Frontend Tool Call** node.
+The suspend resume mechanism does not append that tool result to `input.chat` and does not create a `TOOL_CALL_RESULT` event by itself.
+The **Frontend Tool Call** node creates the tool-result stream event and any optional chat messages when the resumed message matches its pending `toolCallId`.
 
 ## SSE behavior
 
