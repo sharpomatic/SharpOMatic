@@ -300,31 +300,10 @@ function normalizeActivitySteps(
 }
 
 function getActivityStateClassName(state: string) {
-  const normalized = state.toLowerCase();
+  const normalized = state.trim().toLowerCase();
 
-  if (
-    normalized.includes("complete") ||
-    normalized.includes("success") ||
-    normalized.includes("done")
-  ) {
+  if (normalized === "finished" || normalized === "100%") {
     return "activityStepStateDone";
-  }
-
-  if (
-    normalized.includes("run") ||
-    normalized.includes("progress") ||
-    normalized.includes("execut") ||
-    normalized.includes("active")
-  ) {
-    return "activityStepStateRunning";
-  }
-
-  if (
-    normalized.includes("fail") ||
-    normalized.includes("error") ||
-    normalized.includes("cancel")
-  ) {
-    return "activityStepStateFailed";
   }
 
   return "activityStepStatePending";

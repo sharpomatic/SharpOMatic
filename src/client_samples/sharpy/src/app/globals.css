@@ -485,10 +485,12 @@ button {
   line-height: 1;
 }
 
-.activityStepStatePending,
-.activityStepStateRunning,
-.activityStepStateDone,
-.activityStepStateFailed {
+.activityStepStatePending {
+  background: #c85f16;
+  color: #fff;
+}
+
+.activityStepStateDone {
   background: #075333;
   color: #fff;
 }

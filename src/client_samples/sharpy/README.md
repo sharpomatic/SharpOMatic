@@ -7,11 +7,11 @@
 - Direct browser-to-AG-UI chat using `@copilotkit/react-core/v2`.
 - Passing the selected SharpOMatic `workflowId` through `forwardedProps.sharpomatic.workflowId` on every run.
 - Switching message forwarding behavior with `Send All Messages`:
-  - enabled: sends the full local CopilotKit message history.
-  - disabled: sends only new client-created user/tool messages after the first request.
+  - enabled: sends the full local CopilotKit message history. This is used when calling a non-conversational workflow.
+  - disabled: sends only new client-created user/tool messages after the first request. This is used to call a conversation workflow which already records previous state.
 - Continuing or resetting conversations with the editable thread ID. In SharpOMatic, this maps to the AG-UI conversation ID.
 - Rendering SharpOMatic step events as inline activity dividers.
-- Showing AG-UI activity snapshots/deltas as compact progress cards when the payload looks like steps.
+- Showing AG-UI activity snapshots/deltas as compact progress cards when the payload looks like steps, with finished/100% states highlighted in green and all other states in orange.
 - Handling the `ask_a_question(title, message)` human-in-the-loop tool with an inline Yes/No card that returns a boolean result to the backend.
 - Rendering `get_weather` tool results with a custom weather card, while leaving other tools to CopilotKit's default wildcard renderer.
 - Displaying AG-UI run errors above the chat and logging debug events to the browser console.
