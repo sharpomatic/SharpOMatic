@@ -5,12 +5,14 @@ import { AGUI_URL, SAMPLE_STATE } from "./config";
 type ClientMessage = {
   id: string;
   role: string;
+  toolCallId?: string;
 };
 
 type AgentRefs = {
   workflowIdRef: React.RefObject<string>;
   sendAllMessagesRef: React.RefObject<boolean>;
   sentMessageIdsByThreadRef: React.RefObject<Map<string, Set<string>>>;
+  browserToolCallIdsByThreadRef: React.RefObject<Map<string, Set<string>>>;
 };
 
 export function nextThreadId() {
@@ -19,13 +21,14 @@ export function nextThreadId() {
 
 function getPendingClientMessages<T extends ClientMessage>(
   messages: ReadonlyArray<T>,
+  browserToolCallIds: ReadonlySet<string>,
 ) {
   const pending: T[] = [];
 
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
 
-    if (message.role === "user" || message.role === "tool") {
+    if (isForwardableClientMessage(message, browserToolCallIds)) {
       pending.unshift(message);
       continue;
     }
@@ -36,10 +39,29 @@ function getPendingClientMessages<T extends ClientMessage>(
   return pending;
 }
 
+function isBrowserToolResult(
+  message: ClientMessage,
+  browserToolCallIds: ReadonlySet<string>,
+) {
+  return (
+    message.role === "tool" &&
+    typeof message.toolCallId === "string" &&
+    browserToolCallIds.has(message.toolCallId)
+  );
+}
+
+function isForwardableClientMessage(
+  message: ClientMessage,
+  browserToolCallIds: ReadonlySet<string>,
+) {
+  return message.role === "user" || isBrowserToolResult(message, browserToolCallIds);
+}
+
 export function createSharpyAgent({
   workflowIdRef,
   sendAllMessagesRef,
   sentMessageIdsByThreadRef,
+  browserToolCallIdsByThreadRef,
 }: AgentRefs) {
   const httpAgent = new HttpAgent({
     url: AGUI_URL,
@@ -55,14 +77,19 @@ export function createSharpyAgent({
       )?.sharpomatic ?? {};
     const existingSentMessageIds =
       sentMessageIdsByThreadRef.current.get(input.threadId) ?? new Set();
-    const pendingClientMessages = getPendingClientMessages(input.messages);
+    const browserToolCallIds =
+      browserToolCallIdsByThreadRef.current.get(input.threadId) ?? new Set();
+    const pendingClientMessages = getPendingClientMessages(
+      input.messages,
+      browserToolCallIds,
+    );
     const filteredMessages = sendAllMessagesRef.current
       ? input.messages
       : existingSentMessageIds.size === 0
         ? pendingClientMessages
         : input.messages.filter(
             (message) =>
-              (message.role === "user" || message.role === "tool") &&
+              isForwardableClientMessage(message, browserToolCallIds) &&
               !existingSentMessageIds.has(message.id),
           );
 

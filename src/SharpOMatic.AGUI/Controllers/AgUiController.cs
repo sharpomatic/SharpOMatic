@@ -157,7 +157,6 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
             : new ContextObject();
 
         ApplyAgUiContext(mergedContext, request);
-        AppendConversationChatHistory(mergedContext, ConvertMessagesToChatHistory(request.Messages));
         return mergedContext;
     }
 
@@ -192,69 +191,6 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
             ?? throw new SharpOMaticException("AG-UI request payload could not be converted into workflow context.");
     }
 
-    private static void AppendConversationChatHistory(ContextObject rootContext, List<ChatMessage> incomingMessages)
-    {
-        if (!TryReadChatHistory(rootContext, out var chatHistory))
-        {
-            rootContext.Set(ChatContextPath, ToContextList(incomingMessages));
-            return;
-        }
-
-        if (incomingMessages.Count == 0)
-            return;
-
-        var existingIds = chatHistory.Messages
-            .Where(message => !string.IsNullOrWhiteSpace(message.MessageId))
-            .Select(message => message.MessageId!)
-            .ToHashSet(StringComparer.Ordinal);
-
-        foreach (var incomingMessage in incomingMessages)
-        {
-            if (string.IsNullOrWhiteSpace(incomingMessage.MessageId))
-                continue;
-
-            if (existingIds.Contains(incomingMessage.MessageId))
-            {
-                throw new SharpOMaticException(
-                    $"Conversation-enabled AG-UI workflows must send only new messages after initialization. Message id '{incomingMessage.MessageId}' was already received."
-                );
-            }
-        }
-
-        foreach (var incomingMessage in incomingMessages)
-            chatHistory.Storage.Add(incomingMessage);
-    }
-
-    private static bool TryReadChatHistory(ContextObject rootContext, out ChatHistory chatHistory)
-    {
-        chatHistory = default!;
-
-        if (rootContext.TryGet<ContextList>(ChatContextPath, out var chatList) && chatList is not null)
-        {
-            List<ChatMessage> messages = [];
-            foreach (var entry in chatList)
-            {
-                if (entry is not ChatMessage message)
-                    throw new SharpOMaticException($"AG-UI expected '{ChatContextPath}' to contain only ChatMessage entries.");
-
-                messages.Add(message);
-            }
-
-            chatHistory = new ChatHistory(chatList, messages);
-            return true;
-        }
-
-        if (rootContext.TryGet<ChatMessage>(ChatContextPath, out var chatMessage) && chatMessage is not null)
-        {
-            ContextList chatStorage = [chatMessage];
-            rootContext.Set(ChatContextPath, chatStorage);
-            chatHistory = new ChatHistory(chatStorage, [chatMessage]);
-            return true;
-        }
-
-        return false;
-    }
-
     private static ContextList ToContextList(IEnumerable<ChatMessage> messages)
     {
         ContextList chat = [];
@@ -273,6 +209,7 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         if (messages.Value.ValueKind != JsonValueKind.Array)
             throw new SharpOMaticException("AG-UI messages must be a JSON array.");
 
+        var latestUserMessageId = FindLatestUserMessageId(messages);
         foreach (var message in messages.Value.EnumerateArray())
         {
             if (message.ValueKind != JsonValueKind.Object)
@@ -288,6 +225,9 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
                     chat.Add(CreateTextOnlyMessage(message, ChatRole.System));
                     break;
                 case "user":
+                    if (IsLatestUserMessage(message, latestUserMessageId))
+                        break;
+
                     chat.Add(CreateTextOnlyMessage(message, ChatRole.User));
                     break;
                 case "assistant":
@@ -307,6 +247,21 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         }
 
         return chat;
+    }
+
+    private static string? FindLatestUserMessageId(JsonElement? messages)
+    {
+        var latestUserMessage = FindLatestUserMessage(messages);
+        if (!latestUserMessage.HasValue)
+            return null;
+
+        return TryReadStringProperty(latestUserMessage.Value, "id");
+    }
+
+    private static bool IsLatestUserMessage(JsonElement message, string? latestUserMessageId)
+    {
+        return !string.IsNullOrWhiteSpace(latestUserMessageId)
+            && string.Equals(TryReadStringProperty(message, "id"), latestUserMessageId, StringComparison.Ordinal);
     }
 
     private static ChatMessage CreateTextOnlyMessage(JsonElement message, ChatRole role)
@@ -841,6 +796,4 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
     }
 
     private sealed record ResolvedWorkflowTarget(Guid WorkflowId, bool IsConversationEnabled);
-
-    private sealed record ChatHistory(ContextList Storage, List<ChatMessage> Messages);
 }

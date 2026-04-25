@@ -6,7 +6,7 @@ public sealed class AgUiChatHistoryIntegrationTests
     public async Task AgUi_non_conversation_workflow_passes_full_message_history_to_model_call()
     {
         var model = CreateModel("openai");
-        var workflow = CreateModelWorkflow(model.ModelId, isConversationEnabled: false);
+        var workflow = CreateModelWorkflow(model.ModelId, isConversationEnabled: false, prompt: string.Empty);
         var capture = new AgUiChatCapture();
 
         using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider(services =>
@@ -105,7 +105,7 @@ public sealed class AgUiChatHistoryIntegrationTests
     public async Task AgUi_conversation_workflow_replays_stored_input_chat_and_appends_incremental_messages()
     {
         var model = CreateModel("openai");
-        var workflow = CreateModelWorkflow(model.ModelId, isConversationEnabled: true);
+        var workflow = CreateModelWorkflow(model.ModelId, isConversationEnabled: true, prompt: "{{$agent.latestUserMessage.content}}");
         var capture = new AgUiChatCapture();
 
         using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider(services =>
@@ -155,14 +155,16 @@ public sealed class AgUiChatHistoryIntegrationTests
 
             var firstTurnChat = capture.CapturedChats[0];
             Assert.Single(firstTurnChat);
-            Assert.Equal("user-1", firstTurnChat[0].MessageId);
+            Assert.Null(firstTurnChat[0].MessageId);
+            Assert.Equal("First prompt", Assert.IsType<TextContent>(firstTurnChat[0].Contents.Single()).Text);
 
             var secondTurnChat = capture.CapturedChats[1];
             Assert.Equal(3, secondTurnChat.Count);
-            Assert.Equal("user-1", secondTurnChat[0].MessageId);
+            Assert.Null(secondTurnChat[0].MessageId);
+            Assert.Equal("First prompt", Assert.IsType<TextContent>(secondTurnChat[0].Contents.Single()).Text);
             Assert.Equal("assistant-1", secondTurnChat[1].MessageId);
             Assert.Equal(ChatRole.Assistant, secondTurnChat[1].Role);
-            Assert.Equal("user-2", secondTurnChat[2].MessageId);
+            Assert.Null(secondTurnChat[2].MessageId);
             Assert.Equal("Second prompt", Assert.IsType<TextContent>(secondTurnChat[2].Contents.Single()).Text);
 
             var events = ReadSseEvents((MemoryStream)controller.HttpContext.Response.Body);
@@ -397,7 +399,7 @@ public sealed class AgUiChatHistoryIntegrationTests
         }
     }
 
-    private static WorkflowEntity CreateModelWorkflow(Guid modelId, bool isConversationEnabled)
+    private static WorkflowEntity CreateModelWorkflow(Guid modelId, bool isConversationEnabled, string prompt)
     {
         var workflow = new SharpOMatic.Tests.Workflows.WorkflowBuilder()
             .AddStart()
@@ -412,7 +414,7 @@ public sealed class AgUiChatHistoryIntegrationTests
         var definition = workflow.Build();
         var node = Assert.IsType<ModelCallNodeEntity>(definition.Nodes.Single(n => n.Title == "model"));
         node.ModelId = modelId;
-        node.Prompt = string.Empty;
+        node.Prompt = prompt;
         node.ChatInputPath = "input.chat";
         node.ChatOutputPath = isConversationEnabled ? "input.chat" : string.Empty;
         node.TextOutputPath = "output.text";
@@ -528,7 +530,7 @@ public sealed class AgUiChatHistoryIntegrationTests
 
     private sealed class AgUiCaptureModelCaller(AgUiChatCapture capture) : BaseModelCaller
     {
-        public override Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public override async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -541,6 +543,7 @@ public sealed class AgUiChatHistoryIntegrationTests
         {
             List<ChatMessage> chat = [];
             AddChatInputPathMessages(chat, threadContext, node);
+            await ResolveInstructionsAndPrompt(chat, processContext, threadContext, node);
             capture.CapturedChats.Add(CloneMessages(chat));
 
             var turnNumber = processContext.Run.TurnNumber ?? 1;
@@ -549,7 +552,7 @@ public sealed class AgUiChatHistoryIntegrationTests
                 new ChatMessage(ChatRole.Assistant, [new TextContent($"reply-{turnNumber}")]) { MessageId = $"assistant-{turnNumber}" },
             ];
 
-            return Task.FromResult<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)>((chat, responses, $"reply-{turnNumber}"));
+            return (chat, responses, $"reply-{turnNumber}");
         }
 
         private static List<ChatMessage> CloneMessages(IEnumerable<ChatMessage> messages)

@@ -108,7 +108,7 @@ For conversation-enabled workflows:
 - the first call uses `threadId` as the SharpOMatic `conversationId`
 - later calls with the same `threadId` continue or resume that conversation
 - later AG-UI calls must be incremental only and send only new messages
-- if a later call resends a previously seen AG-UI message id, SharpOMatic returns `RUN_ERROR`
+- the controller updates `agent` from those new messages but does not append them into `input.chat`
 
 ## Workflow context
 
@@ -125,15 +125,16 @@ These values are passed through as structured JSON-compatible data, not as a sin
 On each AG-UI start or resume, SharpOMatic updates the `agent` object.
 If the workflow context already contains `agent`, the incoming AG-UI `agent` object replaces it entirely.
 
-When the controller is building or merging chat history for the current AG-UI execution path, it converts supported AG-UI messages into provider-neutral `ChatMessage` entries at `input.chat`.
-That is the recommended source for `ModelCall.ChatInputPath`.
-For conversation workflows that want replay across turns, also set `ModelCall.ChatOutputPath` to `input.chat`.
+For non-conversation workflows, the controller converts supported AG-UI messages into provider-neutral `ChatMessage` entries at `input.chat` for the current run.
+For conversation workflows, `input.chat` is canonical model history owned by workflow nodes.
+Use it as the recommended source for `ModelCall.ChatInputPath`, and set `ModelCall.ChatOutputPath` to `input.chat` when model responses should be replayed across turns.
+Frontend tool results are persisted by the **Frontend Tool Call** node according to its chat persistence setting.
 
 Supported `input.chat` conversion in this version:
 
 - `system` -> `ChatRole.System`
 - `developer` -> `ChatRole.System`
-- `user` -> `ChatRole.User`
+- `user` -> `ChatRole.User`, except the latest user text message when it is exposed as `agent.latestUserMessage`
 - `assistant` text and tool calls -> `ChatRole.Assistant`
 - `tool` results -> `ChatRole.Tool`
 

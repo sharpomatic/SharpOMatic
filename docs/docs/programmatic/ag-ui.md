@@ -106,17 +106,16 @@ SharpOMatic resolves the target workflow first and then chooses the execution mo
 For non-conversation workflows:
 
 - the AG-UI client must send the full message history on every request
-- SharpOMatic rebuilds `input.chat` from that incoming history for the current run only
+- SharpOMatic rebuilds `input.chat` from that incoming history for the current run only, excluding the latest user text message when it is exposed as `agent.latestUserMessage`
 - `threadId` remains required AG-UI metadata, but it does not create a SharpOMatic conversation
 
 For conversation-enabled workflows:
 
 - the first request for a `(workflow, threadId)` pair starts a SharpOMatic conversation using `threadId` as the real `conversationId`
 - later requests with the same `threadId` continue or resume that conversation
-- when the controller can load and merge the stored conversation context, incoming AG-UI messages are appended into `input.chat`, creating it if needed
+- when the controller can load and merge the stored conversation context, it updates `agent` but does not append incoming AG-UI messages into `input.chat`
 - when the controller cannot load repository-backed conversation state and falls back to `AgUiAgentResumeInput`, it does not build or update `input.chat`
-- later requests must be incremental only and send only new messages that should be appended to the end of existing chat history
-- if a later request resends a previously seen AG-UI message id, SharpOMatic fails the run with `RUN_ERROR`
+- later requests should be incremental only and send the new AG-UI messages for the current turn
 
 Because conversation identifiers are strings, your AG-UI client can use any stable identifier that fits your application.
 
@@ -149,9 +148,9 @@ Use these settings when a workflow should pass AG-UI chat into a `ModelCall`:
 ### When SharpOMatic populates input.chat
 
 - non-conversation workflows:
-  the controller always sets `input.chat` from the current incoming AG-UI `messages` array for that run
+  the controller sets `input.chat` from the current incoming AG-UI `messages` array for that run, excluding `agent.latestUserMessage`
 - conversation-enabled workflows with repository-backed checkpoint loading:
-  the controller loads the stored workflow context and appends converted incoming AG-UI messages to the existing `input.chat`
+  the controller loads the stored workflow context and leaves `input.chat` unchanged; workflow nodes such as `ModelCall` and `Frontend Tool Call` update it when they intentionally persist canonical model chat
 - conversation-enabled workflows without repository access:
   the controller resumes with `AgUiAgentResumeInput` and does not build or update `input.chat`
 
@@ -163,7 +162,7 @@ Supported conversion rules:
 
 - `system` -> `ChatRole.System`
 - `developer` -> `ChatRole.System`
-- `user` -> `ChatRole.User`
+- `user` -> `ChatRole.User`, except the latest user text message when it is exposed as `agent.latestUserMessage`
 - `assistant` messages with string `content`, `toolCalls`, or both -> `ChatRole.Assistant`
 - `tool` results with string `content` and `toolCallId` -> `ChatRole.Tool`
 
@@ -174,18 +173,19 @@ Supported conversion rules:
 - each assistant tool call must contain a `function` object with a non-empty `name`
 - assistant tool call `function.arguments` must be a JSON string that decodes to a JSON object
 - assistant messages with neither non-empty string `content` nor any tool calls are skipped rather than added to `input.chat`
+- the latest user text message is not added to `input.chat`; use `agent.latestUserMessage` as the current turn prompt instead
 - AG-UI `reasoning` and `activity` messages are ignored when building `input.chat`
 - unsupported roles are rejected with `RUN_ERROR`
 - multimodal or other non-string message `content` is rejected with `RUN_ERROR`
 
-### Conversation append behavior
+### Conversation chat ownership
 
-For conversation-enabled workflows that load stored context:
+For conversation-enabled workflows:
 
-- later AG-UI calls must send only new messages
-- duplicate message ids are rejected with `RUN_ERROR`
-- incoming converted messages are appended to the end of the existing `input.chat`
-- if `input.chat` does not exist yet, SharpOMatic creates it
+- `input.chat` is canonical model history owned by workflow nodes
+- a `ModelCall` node appends its model response messages when `ChatOutputPath` is set
+- a `Frontend Tool Call` node appends a returned frontend tool result only when its chat persistence mode is `Function Call And Result`
+- AG-UI stream-event echoes from prior model output are not appended back into `input.chat`
 
 ## Frontend tool calls
 

@@ -74,6 +74,9 @@ If defined, the **Chat Output Path** specifies the context location to output th
 This includes all original entries sent to the model along with all the replies from the model.
 For example, the output from the above example is six message entries.
 
+In batch output mode, the returned model messages are the canonical transcript written to **Chat Output Path**.
+Stream events are generated from that transcript for UI display, but they are not the source of persisted chat history.
+
 When a later turn reuses this chat history as input, SharpOMatic automatically rebuilds a portable version of the stored messages before sending them to the model.
 This replay keeps normal text, tool calls, tool results, and provider-neutral content such as data/image parts, but strips reasoning and any provider-private message state.
 

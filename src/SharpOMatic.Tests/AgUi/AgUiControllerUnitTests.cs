@@ -1952,7 +1952,153 @@ public sealed class AgUiControllerUnitTests
     }
 
     [Fact]
-    public async Task AgUi_controller_uses_context_merge_resume_input_for_conversation_workflows_and_appends_new_chat_messages()
+    public async Task AgUi_controller_keeps_latest_user_message_out_of_input_chat_for_non_conversation_workflows()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+        ContextObject? capturedContext = null;
+
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: false));
+
+        engineService
+            .Setup(service => service.StartWorkflowRunAndNotify(
+                workflowId,
+                It.IsAny<ContextObject?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false
+            ))
+            .Callback<Guid, ContextObject?, ContextEntryListEntity?, bool>((_, context, _, _) => capturedContext = context)
+            .ReturnsAsync(engineRunId);
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                [],
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = CreateHttpContext(provider);
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Current prompt" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        Assert.NotNull(capturedContext);
+        Assert.Equal("Current prompt", capturedContext!.Get<string>("agent.latestUserMessage.content"));
+        Assert.Empty(capturedContext.Get<ContextList>("input.chat"));
+    }
+
+    [Fact]
+    public async Task AgUi_controller_does_not_append_incoming_messages_to_input_chat_for_conversation_workflows()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+        NodeResumeInput? capturedResumeInput = null;
+
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+
+        ContextList existingChat =
+        [
+            new ChatMessage(
+                ChatRole.Assistant,
+                [new FunctionCallContent("call-1", "GetGreeting", new Dictionary<string, object?>())]
+            ),
+            new ChatMessage(ChatRole.Tool, [new FunctionResultContent("call-1", "Howdy doody!")]),
+        ];
+        var existingContext = new ContextObject();
+        existingContext.Set("input.chat", existingChat);
+
+        await repositoryService.UpsertConversationCheckpoint(
+            new ConversationCheckpoint()
+            {
+                ConversationId = "thread-1",
+                ResumeMode = ConversationResumeMode.StartNode,
+                ContextJson = existingContext.Serialize(provider),
+                ResumeStateJson = null,
+                WorkflowSnapshotsJson = null,
+                GosubStackJson = null,
+                CheckpointCreated = DateTime.UtcNow,
+                SourceRunId = null,
+            }
+        );
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .Callback<Guid, string, NodeResumeInput?, ContextEntryListEntity?, bool, string?>((_, _, resumeInput, _, _, _) => capturedResumeInput = resumeInput)
+            .ReturnsAsync(engineRunId);
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                [],
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object);
+        var httpContext = CreateHttpContext(provider);
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            Messages = ParseJson(
+                """
+                [
+                  { "id": "tool:tool-result:batch:1:1:0", "role": "tool", "toolCallId": "call-1", "content": "\"Howdy doody!\"" },
+                  { "id": "user-2", "role": "user", "content": "Next prompt" }
+                ]
+                """
+            ),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        var mergeInput = Assert.IsType<ContextMergeResumeInput>(capturedResumeInput);
+        Assert.Equal("Next prompt", mergeInput.Context.Get<string>("agent.latestUserMessage.content"));
+
+        var chat = mergeInput.Context.Get<ContextList>("input.chat");
+        Assert.Equal(2, chat.Count);
+        Assert.Equal(ChatRole.Assistant, Assert.IsType<ChatMessage>(chat[0]).Role);
+        Assert.Equal(ChatRole.Tool, Assert.IsType<ChatMessage>(chat[1]).Role);
+    }
+
+    [Fact]
+    public async Task AgUi_controller_uses_context_merge_resume_input_for_conversation_workflows_and_keeps_latest_user_message_out_of_input_chat()
     {
         var engineRunId = Guid.NewGuid();
         var workflowId = Guid.NewGuid();
@@ -2038,26 +2184,24 @@ public sealed class AgUiControllerUnitTests
 
         var mergeInput = Assert.IsType<ContextMergeResumeInput>(capturedResumeInput);
         Assert.Equal(42, mergeInput.Context.Get<int>("existing.value"));
+        Assert.Equal("New prompt", mergeInput.Context.Get<string>("agent.latestUserMessage.content"));
         Assert.Equal("assistant", mergeInput.Context.Get<string>("agent.state.mode"));
         Assert.Equal("assistant", mergeInput.Context.Get<string>("agent._hidden.state.mode"));
 
         var chat = mergeInput.Context.Get<ContextList>("input.chat");
-        Assert.Equal(3, chat.Count);
+        Assert.Equal(2, chat.Count);
         Assert.Equal("user-1", Assert.IsType<ChatMessage>(chat[0]).MessageId);
         Assert.Equal("assistant-1", Assert.IsType<ChatMessage>(chat[1]).MessageId);
-
-        var appendedMessage = Assert.IsType<ChatMessage>(chat[2]);
-        Assert.Equal("user-2", appendedMessage.MessageId);
-        Assert.Equal(ChatRole.User, appendedMessage.Role);
-        Assert.Equal("New prompt", Assert.IsType<TextContent>(appendedMessage.Contents.Single()).Text);
     }
 
     [Fact]
-    public async Task AgUi_controller_returns_run_error_when_conversation_request_resends_existing_message_id()
+    public async Task AgUi_controller_allows_agent_message_ids_to_match_input_chat_for_conversation_workflows()
     {
+        var engineRunId = Guid.NewGuid();
         var workflowId = Guid.NewGuid();
         var engineService = new Mock<IEngineService>();
         var broker = new Mock<IAgUiRunEventBroker>();
+        NodeResumeInput? capturedResumeInput = null;
 
         using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
         var repositoryService = provider.GetRequiredService<IRepositoryService>();
@@ -2081,6 +2225,31 @@ public sealed class AgUiControllerUnitTests
             }
         );
 
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .Callback<Guid, string, NodeResumeInput?, ContextEntryListEntity?, bool, string?>((_, _, resumeInput, _, _, _) => capturedResumeInput = resumeInput)
+            .ReturnsAsync(engineRunId);
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                [],
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
         var controller = new AgUiController(engineService.Object, broker.Object);
         var httpContext = CreateHttpContext(provider);
         controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
@@ -2097,22 +2266,21 @@ public sealed class AgUiControllerUnitTests
 
         engineService.Verify(
             service => service.StartOrResumeConversationAndNotify(
-                It.IsAny<Guid>(),
-                It.IsAny<string>(),
+                workflowId,
+                "thread-1",
                 It.IsAny<NodeResumeInput?>(),
                 It.IsAny<ContextEntryListEntity?>(),
-                It.IsAny<bool>(),
-                It.IsAny<string?>()
+                false,
+                "thread-1"
             ),
-            Times.Never
+            Times.Once
         );
 
-        var events = ReadSseEvents((MemoryStream)httpContext.Response.Body);
-        var errorEvent = Assert.Single(events);
-        Assert.Equal("RUN_ERROR", errorEvent.GetProperty("type").GetString());
-        Assert.Equal("thread-1", errorEvent.GetProperty("threadId").GetString());
-        Assert.Equal("protocol-run-1", errorEvent.GetProperty("runId").GetString());
-        Assert.Contains("must send only new messages", errorEvent.GetProperty("message").GetString());
+        var mergeInput = Assert.IsType<ContextMergeResumeInput>(capturedResumeInput);
+        Assert.Equal("Repeated prompt", mergeInput.Context.Get<string>("agent.latestUserMessage.content"));
+        var chat = mergeInput.Context.Get<ContextList>("input.chat");
+        Assert.Single(chat);
+        Assert.Equal("user-1", Assert.IsType<ChatMessage>(chat[0]).MessageId);
     }
 
     [Fact]

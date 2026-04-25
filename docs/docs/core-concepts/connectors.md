@@ -25,6 +25,10 @@ Secrets are stored with the connector instance and are hidden by default when re
 
 Currently, the following connectors are supported.
 
+Connector implementations are built and tested against the provider SDK versions referenced by the SharpOMatic packages.
+If you consume SharpOMatic from NuGet, avoid overriding or independently upgrading OpenAI, Azure OpenAI, Microsoft Agents AI, or Google SDK package versions in the host application.
+Those SDKs can change API names and tool-calling semantics between releases, so connector package upgrades should be made together with matching SharpOMatic code changes.
+
 ### OpenAI
 
 This allows direct connection to the OpenAI API.

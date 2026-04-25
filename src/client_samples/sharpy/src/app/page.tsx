@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CopilotChat,
   CopilotKitProvider,
+  useAgent,
   useDefaultRenderTool,
   useHumanInTheLoop,
   useRenderTool,
@@ -21,7 +22,30 @@ import {
   WeatherToolCall,
 } from "./tool-renderers";
 
-function SharpyChat({ threadId }: { threadId: string }) {
+function SharpyChat({
+  browserToolCallIdsByThreadRef,
+  threadId,
+}: {
+  browserToolCallIdsByThreadRef: React.RefObject<Map<string, Set<string>>>;
+  threadId: string;
+}) {
+  const { agent } = useAgent({
+    agentId: "sharpy",
+    threadId,
+  });
+
+  useEffect(() => {
+    return agent.subscribe({
+      onToolExecutionStart: ({ toolCallId }) => {
+        const browserToolCallIds =
+          browserToolCallIdsByThreadRef.current.get(threadId) ?? new Set();
+
+        browserToolCallIds.add(toolCallId);
+        browserToolCallIdsByThreadRef.current.set(threadId, browserToolCallIds);
+      },
+    }).unsubscribe;
+  }, [agent, browserToolCallIdsByThreadRef, threadId]);
+
   useHumanInTheLoop(
     {
       agentId: "sharpy",
@@ -70,6 +94,7 @@ export default function SharpyPage() {
   const workflowIdRef = useRef(workflowId);
   const sendAllMessagesRef = useRef(sendAllMessages);
   const sentMessageIdsByThreadRef = useRef(new Map<string, Set<string>>());
+  const browserToolCallIdsByThreadRef = useRef(new Map<string, Set<string>>());
 
   useEffect(() => {
     workflowIdRef.current = workflowId;
@@ -85,6 +110,7 @@ export default function SharpyPage() {
         workflowIdRef,
         sendAllMessagesRef,
         sentMessageIdsByThreadRef,
+        browserToolCallIdsByThreadRef,
       }),
     [],
   );
@@ -156,7 +182,10 @@ export default function SharpyPage() {
 
         <section className="workspace">
           <div className="chatWrap">
-            <SharpyChat threadId={threadId} />
+            <SharpyChat
+              browserToolCallIdsByThreadRef={browserToolCallIdsByThreadRef}
+              threadId={threadId}
+            />
           </div>
         </section>
       </main>

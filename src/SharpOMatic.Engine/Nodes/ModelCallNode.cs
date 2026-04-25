@@ -17,14 +17,27 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
         // Use specific implementation to perform call for us
         (var chat, var responses, var resultValue) = await caller.Call(model, modelConfig, connector, connectorConfig, ProcessContext, ThreadContext, Node, progressSink);
-        await progressSink.ApplyBatchResponseFallbackAsync(responses);
-        await progressSink.CompleteAsync();
 
         var textOutputPath = !string.IsNullOrWhiteSpace(Node.TextOutputPath) ? Node.TextOutputPath : "output.text";
         if (!ThreadContext.NodeContext.TrySet(textOutputPath, resultValue))
             throw new SharpOMaticException($"Could not set '{textOutputPath}' into context.");
 
-        // If there is an output path for placing new chat history
+        if (Node.BatchOutput)
+            WriteChatOutput(chat, responses);
+
+        await progressSink.ApplyBatchResponseFallbackAsync(responses);
+        await progressSink.CompleteAsync();
+
+        if (!Node.BatchOutput)
+            WriteChatOutput(chat, responses);
+
+        await progressSink.PersistAsync();
+
+        return NodeExecutionResult.Continue($"{model.Name ?? "(empty)"}", ResolveOptionalSingleOutput(ThreadContext));
+    }
+
+    private void WriteChatOutput(IList<ChatMessage> chat, IList<ChatMessage> responses)
+    {
         if (!string.IsNullOrWhiteSpace(Node.ChatOutputPath))
         {
             ContextList chatList = [];
@@ -35,10 +48,6 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
             ThreadContext.NodeContext.TrySet(Node.ChatOutputPath, chatList);
         }
-
-        await progressSink.PersistAsync();
-
-        return NodeExecutionResult.Continue($"{model.Name ?? "(empty)"}", ResolveOptionalSingleOutput(ThreadContext));
     }
 
     private async Task<(Model, ModelConfig, Connector, ConnectorConfig)> LoadModelAndConnector()

@@ -22,6 +22,15 @@ If you also want to accept AG-UI clients, install the optional package:
 dotnet add package SharpOMatic.AGUI
 ```
 
+## Provider SDK versions
+
+SharpOMatic's model connectors depend on specific OpenAI, Azure OpenAI, Microsoft Agents AI, and Google SDK versions.
+When you install the SharpOMatic packages, let NuGet resolve those provider SDK dependencies from the SharpOMatic package graph.
+
+Do not independently upgrade the OpenAI/Azure model-calling packages in the host application unless you are also updating SharpOMatic source code to match the newer SDK APIs.
+The OpenAI and Azure OpenAI SDKs are still changing quickly, and newer package combinations can change type names and tool-calling behavior.
+SharpOMatic is tested against the provider SDK versions referenced by the current SharpOMatic projects and packages.
+
 ## Register services
 
 Update `Program.cs` to add the required services.

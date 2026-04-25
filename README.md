@@ -68,6 +68,12 @@ Start here:
 - [Evaluations](docs/docs/core-concepts/evaluations.md)
 - [Programmatic workflow execution](docs/docs/programmatic/run-workflow.md)
 
+## Provider SDK Compatibility
+
+SharpOMatic's OpenAI, Azure OpenAI, Microsoft Agents AI, and Google integrations are tested against the SDK versions referenced by the SharpOMatic projects and packages.
+If you install SharpOMatic from NuGet, let the SharpOMatic packages control those provider SDK dependency versions.
+Do not independently upgrade the OpenAI/Azure model-calling SDK packages in a host application unless you are also updating SharpOMatic source to match the newer SDK APIs.
+
 ## Affiliation
 
 SharpOMatic is a personal project created and maintained by Phil Wright.

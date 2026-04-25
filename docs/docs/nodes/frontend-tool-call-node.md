@@ -54,6 +54,7 @@ When the expected tool result is received:
 
 - if the returned `content` is valid JSON, the parsed JSON structure is written to `Result Output Path`
 - otherwise the raw text is written there
+- the raw returned `content` is used as the tool result text if the node is configured to persist the result into `input.chat`
 
 ## Chat Persistence
 
@@ -62,6 +63,7 @@ When the expected tool result is received:
 - `Function Call And Result`: keep both the assistant function call and the tool result
 
 If `otherInput` is taken, the node removes any chat entries that it created for the frontend tool call.
+The AG-UI controller does not append frontend tool results to conversation `input.chat`; this node owns that persistence so backend model-call stream events cannot be replayed as duplicate tool results.
 
 ## Replay Visibility
 

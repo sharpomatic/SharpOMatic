@@ -94,7 +94,7 @@ public sealed class FrontendToolCallNode(ThreadContext threadContext, FrontendTo
                 );
 
                 WriteResultOutput(incomingMessage.Content ?? string.Empty);
-                ApplyMatchedChatPersistence(pendingState, incomingMessage.MessageId);
+                ApplyMatchedChatPersistence(pendingState, incomingMessage, expectedToolCallId);
 
                 if (Node.HideFromReplyAfterHandled)
                     await HideStoredStreamEvents(GetStoredStreamEventIds(pendingState).Concat(createdResultEvents.Select(e => e.StreamEventId)));
@@ -203,18 +203,22 @@ public sealed class FrontendToolCallNode(ThreadContext threadContext, FrontendTo
             throw new SharpOMaticException($"Could not set '{Node.ResultOutputPath}' into context.");
     }
 
-    private void ApplyMatchedChatPersistence(ContextObject pendingState, string toolResultMessageId)
+    private void ApplyMatchedChatPersistence(ContextObject pendingState, IncomingMessage incomingMessage, string expectedToolCallId)
     {
         switch (Node.ChatPersistenceMode)
         {
             case ToolCallChatPersistenceMode.None:
                 RemoveCreatedChatMessages(pendingState);
-                RemoveChatMessagesByIds([toolResultMessageId]);
                 break;
             case ToolCallChatPersistenceMode.FunctionCallOnly:
-                RemoveChatMessagesByIds([toolResultMessageId]);
                 break;
             case ToolCallChatPersistenceMode.FunctionCallAndResult:
+                GetOrCreateChatHistory().Add(
+                    new ChatMessage(ChatRole.Tool, [new FunctionResultContent(expectedToolCallId, incomingMessage.Content ?? string.Empty)])
+                    {
+                        MessageId = incomingMessage.MessageId,
+                    }
+                );
                 break;
             default:
                 throw new SharpOMaticException($"Unsupported Frontend Tool Call chat persistence mode '{Node.ChatPersistenceMode}'.");
