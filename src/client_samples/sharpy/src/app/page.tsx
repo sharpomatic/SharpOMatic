@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CopilotChat,
   CopilotKitProvider,
-  useAgent,
+  useCopilotKit,
   useDefaultRenderTool,
   useHumanInTheLoop,
   useRenderTool,
@@ -29,14 +29,15 @@ function SharpyChat({
   browserToolCallIdsByThreadRef: React.RefObject<Map<string, Set<string>>>;
   threadId: string;
 }) {
-  const { agent } = useAgent({
-    agentId: "sharpy",
-    threadId,
-  });
+  const { copilotkit } = useCopilotKit();
 
   useEffect(() => {
-    return agent.subscribe({
-      onToolExecutionStart: ({ toolCallId }) => {
+    return copilotkit.subscribe({
+      onToolExecutionStart: ({ agentId, toolCallId }) => {
+        if (agentId !== "sharpy") {
+          return;
+        }
+
         const browserToolCallIds =
           browserToolCallIdsByThreadRef.current.get(threadId) ?? new Set();
 
@@ -44,7 +45,7 @@ function SharpyChat({
         browserToolCallIdsByThreadRef.current.set(threadId, browserToolCallIds);
       },
     }).unsubscribe;
-  }, [agent, browserToolCallIdsByThreadRef, threadId]);
+  }, [browserToolCallIdsByThreadRef, copilotkit, threadId]);
 
   useHumanInTheLoop(
     {

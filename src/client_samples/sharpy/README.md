@@ -8,7 +8,7 @@
 - Passing the selected SharpOMatic `workflowId` through `forwardedProps.sharpomatic.workflowId` on every run.
 - Switching message forwarding behavior with `Send All Messages`:
   - enabled: sends the full local CopilotKit message history. This is used when calling a non-conversational workflow.
-  - disabled: sends only new client-created user/tool messages after the first request. This is used to call a conversation workflow which already records previous state.
+  - disabled: sends only new user messages and browser-executed tool results after the first request. Tool result messages that originated from backend AG-UI protocol events are not resent. This is used to call a conversation workflow which already records previous state.
 - Continuing or resetting conversations with the editable thread ID. In SharpOMatic, this maps to the AG-UI conversation ID.
 - Rendering SharpOMatic step events as inline activity dividers.
 - Showing AG-UI activity snapshots/deltas as compact progress cards when the payload looks like steps, with finished/100% states highlighted in green and all other states in orange.
