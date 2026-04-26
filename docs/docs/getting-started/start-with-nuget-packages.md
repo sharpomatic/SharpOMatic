@@ -12,15 +12,11 @@ You could start from scratch by creating a new ASP.NET Core project and then run
 dotnet add package SharpOMatic.Engine
 dotnet add package SharpOMatic.Engine.Sqlite
 dotnet add package SharpOMatic.Editor
+dotnet add package SharpOMatic.AGUI
 ```
 
 For SQL Server, install `SharpOMatic.Engine.SqlServer` instead of `SharpOMatic.Engine.Sqlite`.
-
-If you also want to accept AG-UI clients, install the optional package:
-
-```powershell
-dotnet add package SharpOMatic.AGUI
-```
+The `SharpOMatic.AGUI` package exposes the AG-UI endpoint used by the AG-UI samples and the 'Sharpy' client example.
 
 ## Provider SDK versions
 
@@ -41,6 +37,8 @@ For example, if your username is JohnDoe, then the files will be at:<br />
 `C:\Users\JohnDoe\AppData\Local\SharpOMatic`
 
 ```csharp
+  builder.Services.AddCors();
+
   // Assets are stored in the current user's profile
   builder.Services.Configure<FileSystemAssetStoreOptions>(
     builder.Configuration.GetSection("AssetStorage:FileSystem"));
@@ -54,11 +52,12 @@ For example, if your username is JohnDoe, then the files will be at:<br />
       connectionString: $"Data Source={Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sharpomatic.db")}");
 ```
 
-The first 3 lines are used to setup how assets are stored.
+The first line enables CORS so browser-based AG-UI clients such as Sharpy can connect during local development.
+The asset storage lines are used to setup how assets are stored.
 It uses the file system implementation which is the easiest for getting started.
 We want to use the browser based editor and so need to call **AddSharpOMaticEditor**.
 To enable import and export we then add **AddSharpOMaticTransfer**.
-If you want AG-UI protocol clients, add **AddSharpOMaticAgUi**.
+To enable the AG-UI samples and the Sharpy client example, add **AddSharpOMaticAgUi**.
 Finally the **AddSharpOMaticEngine** call is used to setup the repository.
 For simplicity we use SQLite, it will create the database automatically on first start.
 
@@ -77,6 +76,9 @@ dotnet add package SharpOMatic.Engine.SqlServer
 ## Map the editor UI
 
 ```csharp
+  app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+  app.MapControllers();
+
   app.MapSharpOMaticEditor();
 ```
 
@@ -87,6 +89,9 @@ That gives you:
 - Editor and transfer APIs: `/sharpomatic/api/...`
 - AG-UI: `/sharpomatic/api/agui`
 
+Sharpy is configured to call `http://localhost:9000/sharpomatic/api/agui` by default.
+If your host uses another port or base path, update the Sharpy AG-UI URL to match.
+
 If you want a different base path, define one variable and use it consistently:
 
 ```csharp
@@ -96,6 +101,7 @@ If you want a different base path, define one variable and use it consistently:
   builder.Services.AddSharpOMaticTransfer(sharpOMaticBasePath);
   builder.Services.AddSharpOMaticAgUi(sharpOMaticBasePath);
 
+  app.MapControllers();
   app.MapSharpOMaticEditor(sharpOMaticBasePath);
 ```
 
@@ -112,3 +118,5 @@ Check the generated port number for new project in the `launchSettings.json`.<br
 NOTE: The demo server uses `https://localhost:9001` and `http://localhost:9000` by default. Replace those ports if your host uses different values.
 
 Use your favorite browser to open https://localhost:9001/sharpomatic/editor
+
+Once the editor is open, follow [Use Samples](./use-samples/index.md) to create and run a sample workflow.

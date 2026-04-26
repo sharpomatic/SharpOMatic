@@ -16,12 +16,12 @@ Using SharpOMatic, you can prefer configuration over code, which lets you iterat
 
 All AI based workflows should have evaluations.
 They compound the benefit of configuration over code because your evaluation is run for each new prompt, design change and model release.
-Objective measures are needed for reliable production systems, not just eye balling results.
+Objective measures are needed for reliable production systems, not just eye balling results and assuming it will be fine.
 
-## Conversations
+## AG-UI and Conversations
 
 SharpOMatic also supports multi-turn conversations.
-Conversation workflows can suspend, persist their state, and later resume from the waiting continuation point or start a new turn from the saved conversation context.
+Conversation workflows can suspend, persist their state, and later resume from the waiting continuation point or start a new turn from the saved conversation context. Support for the AG-UI protocol allows your client to invoke a workflow to start or continue a conversation in a standardized way.
 
 ## Host your own execution
 
@@ -39,6 +39,7 @@ Expose your C# types for structured outputs and C# functions for tool calling.
 
 - Build workflows with nodes for models, code, branching, and orchestration.
 - Build multi-turn conversation workflows with persisted history and resume support.
+- Use CopilotKit, or other client, over AG-UI to invoke your workflows.
 - Run and debug workflows with rich run state and persisted history.
 - Configure and run evaluations against datasets with grader workflows.
 - Embed the editor into your own ASP.NET Core host.
@@ -49,6 +50,7 @@ Expose your C# types for structured outputs and C# functions for tool calling.
 - Frontend UI: `src/SharpOMatic.FrontEnd`
 - Editor host: `src/SharpOMatic.Editor`
 - Workflow engine: `src/SharpOMatic.Engine`
+- AG-UI endpoint: `src/SharpOMatic.AGUI`
 - Sqlite for storage: `src/SharpOMatic.Engine.Sqlite`
 - SQL Server for storage: `src/SharpOMatic.Engine.SqlServer`
 - Sample host: `src/SharpOMatic.DemoServer`

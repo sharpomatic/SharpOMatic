@@ -30,10 +30,12 @@ dotnet run --project src/SharpOMatic.DemoServer
 
 ## Open visual editor
 
-Check the generated port number for new project in the `launchSettings.json`.<br/>
+Check the generated port number for new project in the `launchSettings.json`.<br/><br/>
 NOTE: The demo server uses `https://localhost:9001` and `http://localhost:9000` by default. Replace those ports if you changed the launch profile.
 
 Use your favorite browser to open https://localhost:9001/sharpomatic/editor
+
+Once the editor is open, follow [Use Samples](./use-samples/index.md) to create and run a sample workflow.
 
 ## Default SharpOMatic paths
 
