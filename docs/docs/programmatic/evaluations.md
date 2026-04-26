@@ -43,6 +43,29 @@ var evalRun = await engine.StartEvalRun(
     sampleCount: 25);
 ```
 
+## Score calculation
+
+Grader workflows should write their score to the output context path `score`.
+The score can be numeric, or a string value that can be parsed as a number.
+
+Each grader's pass threshold is used for pass-rate summaries: a scored grader result passes when `score >= passThreshold`.
+Failed grader runs and grader runs without a numeric score are excluded from score statistics and pass-rate denominators.
+
+`EvalConfig.RowScoreMode` controls row scores:
+
+- `FirstGrader`: use the first grader's score, based on grader order.
+- `Average`: average all available grader scores for the row.
+- `Minimum`: use the lowest available grader score for the row.
+- `Maximum`: use the highest available grader score for the row.
+
+`EvalConfig.RunScoreMode` controls the metric stored in `EvalRun.Score`.
+Only graders with `IncludeInScore` enabled contribute to this run score:
+
+- `AverageScore`: average the selected graders' average scores.
+- `MinimumScore`: average the selected graders' minimum scores.
+- `MaximumScore`: average the selected graders' maximum scores.
+- `PassRate`: average the selected graders' pass rates.
+
 ## Completion notifications
 
 If you register `IEngineNotification`, evaluation completion arrives through `EvalRunCompleted`.

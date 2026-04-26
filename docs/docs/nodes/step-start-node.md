@@ -1,6 +1,6 @@
 ---
 title: Step Start Node
-sidebar_position: 11
+sidebar_position: 13
 ---
 
 The **Step Start** node emits a single AG-UI `STEP_STARTED` event and then immediately continues through its normal output.

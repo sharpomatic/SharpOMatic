@@ -3,9 +3,9 @@ title: Use Samples
 sidebar_position: 3
 ---
 
-SharpOMatic includes sample workflows you can load into your workspace.<br/>
+SharpOMatic includes sample workflows you can load into your workspace.<br/><br/>
 Samples are useful for exploring the editor, exploring different features and seeing recommended patterns.
-Samples include AG-UI conversation patterns and basic orchestration patterns such as fan-out/fan-in, batch processing, loops and more.<br/>
+Samples include AG-UI conversation patterns and basic orchestration patterns such as fan-out/fan-in, batch processing, loops and more.<br/><br/>
 If a sample needs to use a model then you will need to create a connector and then model.
 Once added you can edit the **ModelCall** in the workflow and select the model you just defined.
 

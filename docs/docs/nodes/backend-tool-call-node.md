@@ -28,7 +28,7 @@ Unlike **Frontend Tool Call**, this node does not suspend, does not branch, and 
 
 ## Settings
 
-- `Function Name`: the AG-UI tool name to emit
+- `Tool Name`: the AG-UI tool name to emit
 - `Arguments Mode`
 - `Arguments Path`: used when arguments come from workflow context
 - `Arguments JSON`: used when arguments are fixed JSON
@@ -36,6 +36,8 @@ Unlike **Frontend Tool Call**, this node does not suspend, does not branch, and 
 - `Result Path`: used when the result comes from workflow context
 - `Result JSON`: used when the result is fixed JSON
 - `Chat Persistence`
+
+New Backend Tool Call nodes default **Chat Persistence** to **Function Call And Result**.
 
 ## Result Sources
 
@@ -59,6 +61,9 @@ For `Result Mode = Fixed JSON`:
 When chat persistence is enabled, arguments must decode to a JSON object so SharpOMatic can create provider-neutral `FunctionCallContent`.
 If `input.chat` does not exist, the node creates it before adding the configured messages.
 Chat persistence is separate from AG-UI stream events: with `None`, the tool call is still emitted and stored as stream history, but it is not included in later model chat history.
+
+When **Function Call And Result** is used, the result is parsed as JSON for the persisted tool-result `ChatMessage` when possible.
+If it is empty or cannot be parsed as JSON, the raw result string is persisted.
 
 ## Stream Events
 

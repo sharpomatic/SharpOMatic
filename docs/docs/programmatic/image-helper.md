@@ -73,6 +73,9 @@ Context.Set("output.annotatedImage", annotatedAsset);
 
 ## Available Helpers
 
+All `ImageHelper` methods are synchronous.
+Use `await` for the `Assets` helper calls that load or save image bytes, but call `ImageHelper` methods directly.
+
 ### ExtractRectangles
 
 Use `ExtractRectangles` when you want cropped image regions returned as separate images.
@@ -208,7 +211,7 @@ var polygons = new List<IReadOnlyList<PointF>>
     ]
 };
 
-var annotated = await ImageHelper.AnnotatePolygons(
+var annotated = ImageHelper.AnnotatePolygons(
     imageBytes,
     polygons,
     ["Detected area"]);
@@ -229,7 +232,8 @@ When to use it:
 
 Notes:
 
-- returns `Task<byte[]>`
+- returns PNG bytes for the full image
+- if no polygons are supplied, the original bytes are returned unchanged
 - polygon labels are optional and matched by index
 - polygons need at least 3 points
 

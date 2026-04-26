@@ -1,6 +1,6 @@
 ---
 title: Repository
-sidebar_position: 5
+sidebar_position: 6
 ---
 
 The repository is the persistent store for workflows and other data.
@@ -13,11 +13,15 @@ The major types of data stored are:
 - **Workflows**: store workflow metadata plus JSON blobs for nodes and connections.
 - **Runs**: store run status, timestamps, and serialized input/output context.
 - **Traces**: store per-node execution status, messages, and context snapshots.
-- **Evals**: store evaluation definitions and evaluation run results.
+- **Informations**: store node-level information messages and structured data published during runs.
+- **Conversations**: store conversation status, checkpoints, turn numbers, lease information, last run references, and errors.
+- **Events**: store text, reasoning, tool-call, activity, state, step, and custom events emitted during runs and conversations.
+- **Evals**: store evaluation definitions, columns, rows, row data, graders, runs, run rows, grader results, and grader summaries.
 - **Metadata**: store predefined metadata for known connectors and models.
 - **Connectors**: store user-defined connector instances.
 - **Models**: store user-defined model instances.
-- **Assets**: store asset metadata and storage keys.
+- **Assets**: store asset metadata, scopes, run/conversation links, media types, sizes, and storage keys.
+- **Asset folders**: store reusable library asset folder names.
 - **Settings**: store runtime configuration such as run history and node limits.
 
 Repository operations are exposed through **IRepositoryService**, which handles upserts, deletions, and queries.

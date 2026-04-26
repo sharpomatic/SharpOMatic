@@ -22,6 +22,14 @@ Common node types include:
 - **Gosub** - call a child workflow and optionally map context in and out.
 - **Suspend** - pause a conversation turn and continue it later.
 
+AG-UI-specific node types include:
+
+- **FE Tool Call** - send a tool call to an AG-UI frontend, suspend the conversation, and resume when the frontend returns the tool result.
+- **BE Tool Call** - emit a complete AG-UI tool-call lifecycle when the workflow already knows the tool arguments and result.
+- **Activity Sync** - publish activity snapshots and deltas from workflow context for AG-UI frontends.
+- **State Sync** - publish AG-UI state updates from `agent.state`.
+- **Step Start** / **Step End** - emit simple AG-UI step lifecycle events.
+
 ## Connections
 
 A connection links two nodes and controls the execution flow.

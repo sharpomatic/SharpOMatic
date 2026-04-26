@@ -1,6 +1,6 @@
 ---
 title: Transfers
-sidebar_position: 7
+sidebar_position: 8
 ---
 
 Transfers let you export and import workflows, evaluations, connectors, models, and library assets between environments.

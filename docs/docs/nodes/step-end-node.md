@@ -1,6 +1,6 @@
 ---
 title: Step End Node
-sidebar_position: 12
+sidebar_position: 14
 ---
 
 The **Step End** node emits a single AG-UI `STEP_FINISHED` event and then immediately continues through its normal output.

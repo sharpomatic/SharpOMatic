@@ -1,6 +1,6 @@
 ---
 title: Models
-sidebar_position: 3
+sidebar_position: 4
 ---
 
 Models describe which LLM to call and which parameters to use.

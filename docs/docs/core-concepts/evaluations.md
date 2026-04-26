@@ -1,6 +1,6 @@
 ---
 title: Evaluations
-sidebar_position: 8
+sidebar_position: 9
 ---
 
 Evaluations help you measure workflow quality in a repeatable way.
@@ -40,19 +40,45 @@ When you run the evaluation, each row becomes one workflow execution input.
 ### Graders
 
 Graders are workflows that score or assess the output from the main evaluation workflow.
-You can define multiple graders and set a pass threshold for each one.
-After the run completes, grader summaries provide statistics such as average score and pass rate.
+You can define multiple graders, set a pass threshold for each one, and choose whether each grader contributes to the overall run score.
+After the run completes, grader summaries provide statistics such as minimum score, maximum score, average score, median score, standard deviation, and pass rate.
 
 Evaluation workflows and grader workflows must be standard one-shot workflows.
 Conversation-enabled workflows are intentionally excluded from the evaluation workflow selectors because evaluations do not provide a way to answer suspend events during row execution.
 
 ### Grader Output Contract
 
-A grader workflow is expected to write its numeric score to the context path `score`.
+A grader workflow is expected to write its score to the context path `score`.
 This value is used for score statistics and pass-rate calculations.
+The score can be numeric, or a string value that can be parsed as a number.
 
 If a grader completes without providing a numeric `score`, the grader run can still complete, but score-based aggregates will not include that row.
 For consistent evaluation metrics, ensure every grader writes a valid numeric value to `score`.
+
+### Score Calculation
+
+Each completed grader result has its own raw score.
+The grader's **Pass Threshold** is used only for pass-rate calculations: a scored grader result passes when `score >= passThreshold`.
+Failed grader runs and completed grader runs without a numeric score are excluded from score statistics and pass-rate denominators.
+
+The evaluation's **Row Score** setting controls how each row score is calculated from that row's grader scores:
+
+- **First grader**: use the first grader's score, based on grader order.
+- **Average**: average all available grader scores for the row.
+- **Minimum**: use the lowest available grader score for the row.
+- **Maximum**: use the highest available grader score for the row.
+
+The evaluation's **Run Score** setting controls which per-grader summary metric contributes to the run score:
+
+- **Average score**: use each selected grader's average score.
+- **Average min score**: use each selected grader's minimum score.
+- **Average max score**: use each selected grader's maximum score.
+- **Average pass rate**: use each selected grader's pass rate.
+
+For each grader, the **Run Score** checkbox controls whether that grader is included in the run score calculation.
+The final run score is the average of the selected metric across included graders that have a value.
+If no graders are included, or none of the included graders produced a usable metric, the run score is empty.
+Pass thresholds still appear in grader summaries even when the run score is not based on pass rate.
 
 ## Running an Evaluation
 

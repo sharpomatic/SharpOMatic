@@ -1,3 +1,8 @@
+---
+title: Activity Sync Node
+sidebar_position: 11
+---
+
 # Activity Sync Node
 
 The `Activity Sync` node emits AG-UI activity updates from a JSON object stored in workflow context.
@@ -29,3 +34,4 @@ It wraps the same high-level sync behavior as `Events.AddActivitySyncFromContext
 - The node stores hidden baseline state in workflow context so it can compare later executions.
 - If the same `Instance Name` is reused with a different `Activity Type`, execution fails.
 - In `Snapshots only` mode, each execution emits a snapshot even when a smaller delta would be possible.
+- The node continues through its single output after processing the sync.

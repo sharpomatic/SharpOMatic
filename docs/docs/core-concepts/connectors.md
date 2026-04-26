@@ -1,6 +1,6 @@
 ---
 title: Connectors
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 Connectors define how SharpOMatic connects to external providers.

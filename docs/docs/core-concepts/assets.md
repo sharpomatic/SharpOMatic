@@ -1,6 +1,6 @@
 ---
 title: Assets
-sidebar_position: 6
+sidebar_position: 7
 ---
 
 Assets are files that workflows can reference, such as text, images, and other media.

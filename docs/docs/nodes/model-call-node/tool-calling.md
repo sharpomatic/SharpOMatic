@@ -1,6 +1,6 @@
 ---
 title: Tool Calling
-sidebar_position: 5
+sidebar_position: 6
 ---
 
 If the model supports tool calling, this tab is available.
@@ -60,7 +60,7 @@ Models offering this capability allow you to use this checkbox to turn it on or 
 
 When a model call performs tool calling, SharpOMatic now emits tool-call stream events as part of the live run output.
 These appear in the stream tab and are also translated to AG-UI protocol events when using the AG-UI endpoint.
-If the node has **Disable Tool Stream Events** enabled on its **Stream** tab, these protocol-style tool stream events are suppressed for that model call, but the tool-call trace information is still recorded.
+If the node has **Disable Tool Events** enabled on its [**Stream** tab](./stream.md), these protocol-style tool stream events are suppressed for that model call, but the tool-call trace information is still recorded.
 
 The tool-call stream lifecycle is:
 

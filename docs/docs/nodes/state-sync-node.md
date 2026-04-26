@@ -1,3 +1,8 @@
+---
+title: State Sync Node
+sidebar_position: 12
+---
+
 # State Sync Node
 
 The `State Sync` node emits AG-UI state updates from `agent.state`.
@@ -23,3 +28,4 @@ It wraps the same high-level sync behavior as `Events.AddStateSyncAsync()`:
 - AG-UI requests seed `agent._hidden.state` from the incoming `state` payload on each start or resume.
 - State snapshots can contain any JSON root: object, array, scalar, or `null`.
 - In `Snapshots only` mode, each execution emits a snapshot even when a smaller delta would be possible.
+- The node continues through its single output after processing the sync.

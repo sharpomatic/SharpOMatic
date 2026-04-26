@@ -28,8 +28,10 @@ On the first pass, the node:
 On resume, the node is strict:
 
 - `agent.messages` must contain exactly one incoming message
-- if that single message is a `tool` result with the expected `toolCallId`, the node emits `TOOL_CALL_RESULT` and follows `toolResult`
-- anything else follows `otherInput`
+- that single message must be a JSON object with a non-empty `id`
+- if the message includes `content`, it must be a string
+- if that single valid message is a `tool` result with the expected `toolCallId`, the node emits `TOOL_CALL_RESULT` and follows `toolResult`
+- any other single valid message follows `otherInput`
 
 The AG-UI controller does not add the incoming tool-result message to `input.chat`.
 The node owns any chat persistence for the frontend tool exchange.
@@ -43,13 +45,17 @@ The `otherInput` branch always abandons the pending frontend tool call and clean
 
 ## Settings
 
-- `Function Name`: the AG-UI tool name sent to the frontend
+- `Tool Name`: the AG-UI tool name sent to the frontend
 - `Arguments Mode`
 - `Arguments Path`: used when arguments come from workflow context
 - `Arguments JSON`: used when arguments are fixed JSON
 - `Result Output Path`: where the returned tool result is stored
 - `Chat Persistence`
-- `Hide From Reply After Handled`
+- `Hide From Stream`
+
+When **Arguments Mode** is **Context Path**, the context value is serialized to JSON and sent as the tool-call arguments.
+When **Arguments Mode** is **Fixed JSON**, the configured value must be valid JSON.
+If **Chat Persistence** is enabled, the resolved arguments must decode to a JSON object so SharpOMatic can create a provider-neutral function-call chat message.
 
 ## Result Output
 
@@ -94,7 +100,7 @@ Changing **Chat Persistence** changes model chat history only; it does not stop 
 
 Pending frontend tool calls stay visible in AG-UI replay until they are handled.
 
-- if `Hide From Reply After Handled` is enabled and `toolResult` is taken, the node marks its tool-call and tool-result stream events as hidden from future replay
+- if **Hide From Stream** is enabled and `toolResult` is taken, the node marks its tool-call and tool-result stream events as hidden from future replay
 - if `otherInput` is taken, the node always hides its tool-call stream events from future replay
 
 The underlying stream events are still stored in the database.

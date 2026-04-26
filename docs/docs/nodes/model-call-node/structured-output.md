@@ -1,6 +1,6 @@
 ---
 title: Structured Output
-sidebar_position: 6
+sidebar_position: 7
 ---
 
 If the model supports structured output, this tab is available.

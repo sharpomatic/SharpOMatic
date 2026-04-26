@@ -34,10 +34,13 @@ builder.Services.AddSharpOMaticEditor(sharpOMaticBasePath);
 builder.Services.AddSharpOMaticTransfer(sharpOMaticBasePath);
 builder.Services.AddSharpOMaticAgUi(sharpOMaticBasePath);
 
+app.MapControllers();
 app.MapSharpOMaticEditor(sharpOMaticBasePath);
 ```
 
 `MapSharpOMaticEditor` automatically adds `/editor` to the base path.
+`AddSharpOMaticAgUi` registers an MVC controller route, so the host must call `app.MapControllers()`.
+There is no separate `MapSharpOMaticAgUi` call.
 
 If you also want to override the AG-UI child path, pass a second argument:
 
@@ -70,7 +73,7 @@ The recommended selector shape is `forwardedProps.sharpomatic`:
     "example": {
       "first": "Sharpy Demo",
       "second": "test"
-    },
+    }
   },
   "context": [],
   "forwardedProps": {
@@ -113,8 +116,8 @@ For conversation-enabled workflows:
 
 - the first request for a `(workflow, threadId)` pair starts a SharpOMatic conversation using `threadId` as the real `conversationId`
 - later requests with the same `threadId` continue or resume that conversation
-- when the controller can load and merge the stored conversation context, it updates `agent` but does not append incoming AG-UI messages into `input.chat`
-- when the controller cannot load repository-backed conversation state and falls back to `AgUiAgentResumeInput`, it does not build or update `input.chat`
+- the controller loads the stored conversation context, replaces `agent` with the latest AG-UI request mapping, and sets or clears `agent._hidden.state` from the incoming `state`
+- the controller does not append incoming AG-UI messages into `input.chat`
 - the controller exposes only the latest incoming AG-UI message at `agent.messages`, so a normal user turn has exactly one user text message there
 - later requests should be incremental only and send the new AG-UI message for the current turn
 
@@ -145,17 +148,6 @@ Use these settings when a workflow should pass that history into a model:
 
 - `ChatInputPath = "input.chat"`
 - `ChatOutputPath = "input.chat"` for conversation-enabled workflows that want the model request and response to become the next turn's replay history
-
-SharpOMatic creates or changes `input.chat` only in these places:
-
-| Source | When it runs | What it writes to `input.chat` |
-| --- | --- | --- |
-| AG-UI controller for non-conversation workflows | Every AG-UI request for a non-conversation workflow | A new `ContextList` built from the incoming AG-UI `messages` array for this run only. This replaces any need for stored conversation chat because the run is stateless. |
-| AG-UI controller for conversation workflows | Never directly | It loads stored context and replaces `agent`, but it does not append incoming AG-UI messages to `input.chat`. |
-| `ModelCall` node | When **Chat Output Path** is set, commonly to `input.chat` | The full model request chat plus model response messages. This is how the current user prompt usually becomes durable conversation chat history. |
-| `Frontend Tool Call` node | Only when **Chat Persistence** is not `None` | An assistant function-call message, and optionally the matching tool-result message. New nodes default to `None`. |
-| `Backend Tool Call` node | Only when **Chat Persistence** is not `None` | An assistant function-call message, and optionally the tool-result message. |
-| `Suspend` node | Never | Resume input updates context or `agent`, but the node does not create chat messages or stream events. |
 
 ### Non-conversation workflows
 
@@ -234,16 +226,17 @@ The node:
 - expects exactly one incoming AG-UI message on resume
 - emits `TOOL_CALL_RESULT` when that message is the expected tool result
 - routes to `toolResult` after storing the result at the configured result output path
-- routes to `otherInput` for anything else
+- routes to `otherInput` for any other single valid incoming message
 
 It can optionally keep or remove the function call and tool result from `input.chat`.
 New Frontend Tool Call nodes default this chat persistence setting to `None`, which keeps frontend control-flow tool calls out of model chat history unless a workflow explicitly opts in.
-It can also mark handled frontend tool-call stream events with `HideFromReply` so future AG-UI replay does not ask the same frontend question again.
+If **Hide From Stream** is enabled, handled frontend tool-call stream events are marked with `HideFromReply` so future AG-UI replay does not ask the same frontend question again.
 
 The AG-UI controller does not append the incoming frontend tool result to `input.chat`.
 On resume, the node compares the single incoming `tool` message to the stored expected `toolCallId`.
 If it matches, the node owns the optional chat persistence and the `TOOL_CALL_RESULT` stream event.
 If it does not match, the node abandons the pending frontend tool call, removes any chat messages it created for that pending call, hides the original tool-call stream events from future replay, and follows `otherInput`.
+Invalid resume payloads, such as missing message ids or non-string `content`, fail the run rather than branching.
 
 ## Backend tool calls
 
@@ -257,6 +250,7 @@ This node:
 
 Use it when the workflow wants AG-UI tool-call rendering for backend-generated data without waiting for a later frontend response.
 The emitted stream events are created regardless of **Chat Persistence**.
+New Backend Tool Call nodes default **Chat Persistence** to `Function Call And Result`.
 When **Chat Persistence** is `None`, the frontend can still render the tool call in the live stream and stored stream history, but no `ChatMessage` is added for future model input.
 
 ## Suspend resume behavior
@@ -268,7 +262,7 @@ On resume:
 
 - an empty resume continues from the checkpoint without changing context
 - a context-merge resume overwrites or adds the provided context values before execution continues
-- an AG-UI conversation resume replaces `agent` with the latest AG-UI request mapping
+- an AG-UI conversation request is normally converted into a context-merge resume that loads checkpoint context, replaces `agent`, and sets or clears the hidden state baseline
 
 For a user reply, the resumed workflow reads the text from `agent.latestUserMessage.content`.
 SharpOMatic stores that incoming user text as silent stream history for page-refresh and replay completeness, but it is not appended to `input.chat`.
@@ -288,6 +282,7 @@ The endpoint streams AG-UI SSE events from SharpOMatic workflow stream events:
 - visible reasoning stream events become `REASONING_START`, `REASONING_MESSAGE_START`, `REASONING_MESSAGE_CONTENT`, `REASONING_MESSAGE_END`, and `REASONING_END`
 - tool-call stream events become `TOOL_CALL_START`, `TOOL_CALL_ARGS`, `TOOL_CALL_END`, and `TOOL_CALL_RESULT`
 - activity stream events become `ACTIVITY_SNAPSHOT` and `ACTIVITY_DELTA`
+- custom stream events become `CUSTOM`
 - `TOOL_CALL_RESULT` preserves both the tool result `messageId` and the linked `toolCallId`
 - `TOOL_CALL_START` includes the tool name and can include `parentMessageId` when the underlying model output supplies it
 - reasoning events use AG-UI-specific `messageId` values prefixed with `reason:` so they cannot collide with assistant text messages when a provider reuses one underlying response id for both
@@ -396,7 +391,7 @@ await Events.AddStateDeltaAsync(
 );
 ```
 
-If the state already lives in `agent.state`, prefer the higher-level sync helper. It compares `agent.state` to the hidden `agent._hidden.state` baseline, emits a JSON Patch delta when that is smaller, and falls back to a full snapshot when that is cheaper:
+If the state already lives in `agent.state`, prefer the higher-level sync helper. It compares `agent.state` to the hidden `agent._hidden.state` baseline, emits a JSON Patch delta when possible and smaller, and falls back to a full snapshot for root replacements or when the snapshot is cheaper:
 
 ```csharp
 Context.Set("agent.state.mode", "assistant");
