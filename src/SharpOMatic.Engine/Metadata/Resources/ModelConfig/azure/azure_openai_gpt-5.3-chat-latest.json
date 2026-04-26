@@ -3,7 +3,7 @@
   "ConfigId": "azure_openai_gpt-5.3-chat-latest",
   "DisplayName": "gpt-5.3-chat-latest",
   "Description": "Chat completion model",
-  "ConnectorConfigId": "openai",
+  "ConnectorConfigId": "azure_openai",
   "IsCustom": false,
   "Information": [
     {

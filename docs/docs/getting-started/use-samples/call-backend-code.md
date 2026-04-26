@@ -1,8 +1,8 @@
 ---
-title: Call backend code
+title: "Basic: Call backend code"
 ---
 
-This sample shows how Code nodes can call classes and methods from the host application.
+This sample shows how **Code** nodes can call classes and methods from the host application.
 
 ## Choose this when
 
@@ -23,5 +23,5 @@ The next Code node awaits `CodeExample.SlowDoubled` and writes `output.slowDoubl
 
 ## Setup notes
 
-This sample depends on the DemoServer host code that defines `CodeExample`.
+This sample depends on the 'DemoServer' host code that defines `CodeExample`.
 In your own host application, use the same pattern with classes or services available to your workflow code.

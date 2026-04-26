@@ -1,8 +1,8 @@
 ---
-title: Example activity events output
+title: "AG-UI: Example activity events output"
 ---
 
-This sample shows how to publish activity progress to the frontend while a workflow is running.
+This sample shows how to publish AG-UI activity progress to the frontend while a workflow is running.
 
 ## Choose this when
 
@@ -24,3 +24,5 @@ Each loop updates the second activity step and syncs the latest state until the 
 
 No connector or model is required.
 This sample is not conversation-enabled, so it is suitable for learning activity rendering without chat state.
+It needs the 'Sharpy' client sample because it understands the expected rendering method for the activity events.
+

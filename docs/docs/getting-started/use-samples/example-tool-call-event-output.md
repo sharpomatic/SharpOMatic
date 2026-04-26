@@ -1,8 +1,8 @@
 ---
-title: Example tool call event output
+title: "AG-UI: Example tool call event output"
 ---
 
-This sample shows backend tool call events that can be rendered by the frontend.
+This sample shows backend AG-UI tool call events that can be rendered by the frontend.
 
 ## Choose this when
 
@@ -22,5 +22,6 @@ It then runs a Code node that sets `temperature` to a random value, which gives 
 
 ## Setup notes
 
-No model is required.
-Run it in an editor environment that has the sample backend tool renderer available.
+No connector or model is required.
+This sample is not conversation-enabled, so it is suitable for learning activity rendering without chat state.
+It needs the 'Sharpy' client sample because it understands the expected `get_weather` backend tool for rendering.

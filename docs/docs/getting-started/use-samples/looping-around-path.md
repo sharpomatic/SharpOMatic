@@ -1,5 +1,5 @@
 ---
-title: Looping around path
+title: "Basic: Looping around path"
 ---
 
 This sample loops through the same workflow path a fixed number of times.
@@ -12,7 +12,7 @@ Use this sample when you need to repeat workflow logic until a counter or other 
 
 - Initializing a configurable `loops` value.
 - Using an **Edit** node to initialize `count`.
-- Using a **Switch** node to choose between loop and finished paths.
+- Using a **Switch** node to choose between looping and finished paths.
 - Updating context from a **Code** node before returning to the switch.
 
 ## How it works

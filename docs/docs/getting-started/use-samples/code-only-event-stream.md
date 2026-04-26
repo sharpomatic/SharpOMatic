@@ -1,8 +1,8 @@
 ---
-title: Code only event stream
+title: "AG-UI: Code only event stream"
 ---
 
-This sample emits multi-turn conversation stream events directly from Code nodes without calling a model.
+This sample emits a multi-turn AG-UI conversation stream directly from Code nodes without calling a model.
 
 ## Choose this when
 

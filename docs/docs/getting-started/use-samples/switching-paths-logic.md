@@ -1,5 +1,5 @@
 ---
-title: Switching paths logic
+title: "Basic: Switching paths logic"
 ---
 
 This sample routes execution through different branches based on a random number.

@@ -1,5 +1,5 @@
 ---
-title: Batch processing of items
+title: "Basic: Batch processing of items"
 ---
 
 This sample processes a generated list in parallel batches and merges the batch outputs.
@@ -19,7 +19,7 @@ Use this sample when you need to split a list into chunks and process more than 
 
 The workflow starts with an optional `count` input defaulting to `10`, then creates an `inputs` list containing numbers from `0` to `count - 1`.
 The **Batch** node splits `inputs` into chunks of two and runs up to two chunks in parallel.
-The batch Code node doubles each number and writes the slice to `outputs`, which the Batch node merges before continuing to **End**.
+The batch **Code** node doubles each number and writes the slice to `outputs`, which the **Batch** node merges before continuing to **End**.
 
 ## Setup notes
 

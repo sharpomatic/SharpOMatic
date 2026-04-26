@@ -1,5 +1,5 @@
 ---
-title: Parallel paths logic
+title: "Basic: Parallel paths logic"
 ---
 
 This sample runs multiple paths in parallel and merges their output values.

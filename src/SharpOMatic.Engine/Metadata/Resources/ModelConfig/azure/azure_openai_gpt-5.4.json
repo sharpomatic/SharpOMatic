@@ -3,7 +3,7 @@
   "ConfigId": "azure_openai_gpt-5.4",
   "DisplayName": "gpt-5.4",
   "Description": "Reasoning model",
-  "ConnectorConfigId": "openai",
+  "ConnectorConfigId": "azure_openai",
   "IsCustom": false,
   "Information": [
     {

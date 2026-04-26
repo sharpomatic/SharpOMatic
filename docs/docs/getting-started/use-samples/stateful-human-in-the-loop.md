@@ -1,8 +1,8 @@
 ---
-title: Stateful human in the loop
+title: "AG-UI: Stateful human in the loop"
 ---
 
-This sample asks the user a frontend question before continuing to a model response.
+This sample is a human-in-the-loop chatbot that asks the user a frontend question before continuing to a model response.
 
 ## Choose this when
 
@@ -25,4 +25,5 @@ The frontend tool call does not write its function call or result into `input.ch
 ## Setup notes
 
 Create a connector and model before running this sample, then select that model in the **ModelCall** node.
-This sample is conversation-enabled and is intended for interactive runs rather than evaluation workflows.
+It needs the 'Sharpy' client sample because it understands the `ask_a_question` tool call and how to present it to the user.
+When using the 'Sharpy' client sample, make sure you uncheck the 'Send All Messages' checkbox and put the workflow ID into the input with the same name.

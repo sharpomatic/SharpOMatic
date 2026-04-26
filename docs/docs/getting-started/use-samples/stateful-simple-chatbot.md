@@ -1,8 +1,8 @@
 ---
-title: Stateful simple chatbot
+title: "AG-UI: Stateful simple chatbot"
 ---
 
-This sample is a minimal conversation-enabled chatbot that keeps chat history across turns.
+This sample is a minimal AG-UI chatbot with a stateful workflow that keeps chat history across turns.
 
 ## Choose this when
 
@@ -22,3 +22,4 @@ Later turns reuse that history, so the model can respond with prior messages in 
 ## Setup notes
 
 Create a connector and model before running this sample, then select that model in the **ModelCall** node.
+When using the 'Sharpy' client sample, make sure you uncheck the 'Send All Messages' checkbox and put the workflow ID into the input with the same name.

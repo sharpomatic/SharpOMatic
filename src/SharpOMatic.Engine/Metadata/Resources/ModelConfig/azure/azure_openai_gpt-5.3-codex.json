@@ -3,7 +3,7 @@
   "ConfigId": "azure_openai_gpt-5.3-codex",
   "DisplayName": "gpt-5.3-codex",
   "Description": "Coding model",
-  "ConnectorConfigId": "openai",
+  "ConnectorConfigId": "azure_openai",
   "IsCustom": false,
   "Information": [
     {

@@ -31,11 +31,7 @@
 
 ### Upgrade
 
-- Move packages to latest once the GA of MAF occurs
-
-### Metadata
-
-- List models in descending order so higher numbers appear first
+- Move agent nuget to latest versions
 
 ### Engine
 
@@ -70,14 +66,6 @@ Microsoft.Extensions.AI.HostedWebSearchTool
 ### Assets
 
 - Check that removing a run gets rid of run assets and the run assets folder for that run
-
-### Examples
-
-- Simple Chatbot where the workflow is started each time from the start node
-- (uses the full history from the input to have history)
-- Simple Chatbot where the conversation is restarted from the suspend point
-- (uses the chat history array that is persisted to have history)
-- Example of manually outputting each type of protocol data.
 
 ### Promotion
 
