@@ -102,6 +102,46 @@ Keep the same thread ID to continue a conversation, or select **New thread** to 
 This controls how much local chat history Sharpy sends to the endpoint.
 Use it differently for non-conversation and conversation workflows.
 
+## Test a workflow with Sharpy
+
+Use this path when you want to prove a workflow works through AG-UI:
+
+1. Start the SharpOMatic demo server:
+
+   ```powershell
+   dotnet run --project src/SharpOMatic.DemoServer
+   ```
+
+2. Open the editor:
+
+   ```text
+   https://localhost:9001/sharpomatic/editor
+   ```
+
+3. Create a workflow from one of the AG-UI samples in the **Samples** menu.
+4. Configure any required connector and model, then save the workflow.
+5. Copy the workflow ID from the workflow URL or workflow details.
+6. Start Sharpy:
+
+   ```powershell
+   cd src/client_samples/sharpy
+   npm install
+   npm run dev
+   ```
+
+7. Open `http://localhost:3000`.
+8. Paste the workflow ID into **Workflow ID**.
+9. Set **Send All Messages** for the workflow type.
+10. Send a test message in the chat.
+11. Return to the editor and inspect the run or conversation history for the workflow.
+
+## Quick settings
+
+| Workflow type | Send All Messages | Thread ID meaning | What SharpOMatic stores |
+| --- | --- | --- | --- |
+| Non-conversation | Checked | AG-UI metadata only | Run history only |
+| Conversation | Unchecked | SharpOMatic conversation ID | Conversation state, stream history, and run history |
+
 ## Non-conversation workflows
 
 Use these settings for a stateless workflow:
@@ -133,3 +173,41 @@ The workflow owns durable chat history, usually by having the `ModelCall` node w
 Use **New thread** when you want to test a fresh conversation without reusing the saved state from an earlier run.
 
 This is the right setting for samples such as **AG-UI: Stateful simple chatbot**, **AG-UI: Stateful human in the loop**, and **AG-UI: Stateful agent with customization**.
+
+## What to inspect
+
+When testing a workflow over AG-UI, check both Sharpy and the SharpOMatic editor:
+
+- Sharpy should show streamed assistant text as the workflow emits output.
+- The editor should show a new run for non-conversation workflows.
+- The editor should show conversation history for conversation-enabled workflows.
+- The workflow **Stream** tab should contain the events that were translated into AG-UI output.
+- Frontend tool-call samples should pause in the workflow and resume after the browser returns the tool result.
+- Changing **Thread ID** should start a separate conversation for conversation-enabled workflows.
+
+## Troubleshooting
+
+**Sharpy cannot connect**
+
+Check that the demo server or host is running and that `AGUI_URL` in `src/app/config.ts` matches the host URL.
+The default Sharpy URL is `http://localhost:9000/sharpomatic/api/agui`.
+
+**Browser CORS errors**
+
+Enable CORS in the ASP.NET Core host when calling AG-UI directly from the browser during local development.
+The getting-started host example uses `app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader())`.
+
+**Workflow is not found**
+
+Confirm the workflow ID is copied correctly and pasted into **Workflow ID**.
+Sharpy sends it as `forwardedProps.sharpomatic.workflowId`.
+
+**Conversation repeats or loses context**
+
+Check **Send All Messages**.
+Use checked for non-conversation workflows and unchecked for conversation-enabled workflows.
+
+**Unexpected old conversation state appears**
+
+Use **New thread** to generate a fresh thread ID.
+For conversation-enabled workflows, the thread ID is the SharpOMatic conversation ID, so reusing it continues the same saved conversation.
