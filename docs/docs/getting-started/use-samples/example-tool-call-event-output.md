@@ -24,4 +24,4 @@ It then runs a Code node that sets `temperature` to a random value, which gives 
 
 No connector or model is required.
 This sample is not conversation-enabled, so it is suitable for learning activity rendering without chat state.
-It needs the 'Sharpy' client sample because it understands the expected `get_weather` backend tool for rendering.
+It needs the [Sharpy client sample](../../ag-ui/sharpy.md) because it understands the expected `get_weather` backend tool for rendering.

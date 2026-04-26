@@ -8,6 +8,7 @@ Samples are useful for exploring the editor, exploring different features and se
 Samples include AG-UI conversation patterns and basic orchestration patterns such as fan-out/fan-in, batch processing, loops and more.<br/><br/>
 If a sample needs to use a model then you will need to create a connector and then model.
 Once added you can edit the **ModelCall** in the workflow and select the model you just defined.
+To test AG-UI samples over the browser protocol, use the [Sharpy client sample](../../ag-ui/sharpy.md).
 
 ## Choose a sample
 

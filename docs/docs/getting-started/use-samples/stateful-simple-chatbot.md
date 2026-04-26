@@ -22,4 +22,4 @@ Later turns reuse that history, so the model can respond with prior messages in 
 ## Setup notes
 
 Create a connector and model before running this sample, then select that model in the **ModelCall** node.
-When using the 'Sharpy' client sample, make sure you uncheck the 'Send All Messages' checkbox and put the workflow ID into the input with the same name.
+When using the [Sharpy client sample](../../ag-ui/sharpy.md), make sure you uncheck the **Send All Messages** checkbox and put the workflow ID into the input with the same name.

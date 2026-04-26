@@ -16,7 +16,7 @@ dotnet add package SharpOMatic.AGUI
 ```
 
 For SQL Server, install `SharpOMatic.Engine.SqlServer` instead of `SharpOMatic.Engine.Sqlite`.
-The `SharpOMatic.AGUI` package exposes the AG-UI endpoint used by the AG-UI samples and the 'Sharpy' client example.
+The `SharpOMatic.AGUI` package exposes the AG-UI endpoint used by the AG-UI samples and the [Sharpy client sample](../ag-ui/sharpy.md).
 
 ## Provider SDK versions
 
@@ -52,12 +52,12 @@ For example, if your username is JohnDoe, then the files will be at:<br />
       connectionString: $"Data Source={Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sharpomatic.db")}");
 ```
 
-The first line enables CORS so browser-based AG-UI clients such as Sharpy can connect during local development.
+The first line enables CORS so browser-based AG-UI clients such as [Sharpy](../ag-ui/sharpy.md) can connect during local development.
 The asset storage lines are used to setup how assets are stored.
 It uses the file system implementation which is the easiest for getting started.
 We want to use the browser based editor and so need to call **AddSharpOMaticEditor**.
 To enable import and export we then add **AddSharpOMaticTransfer**.
-To enable the AG-UI samples and the Sharpy client example, add **AddSharpOMaticAgUi**.
+To enable the AG-UI samples and the [Sharpy client sample](../ag-ui/sharpy.md), add **AddSharpOMaticAgUi**.
 Finally the **AddSharpOMaticEngine** call is used to setup the repository.
 For simplicity we use SQLite, it will create the database automatically on first start.
 
@@ -91,6 +91,7 @@ That gives you:
 
 Sharpy is configured to call `http://localhost:9000/sharpomatic/api/agui` by default.
 If your host uses another port or base path, update the Sharpy AG-UI URL to match.
+For setup and workflow-mode settings, see [Sharpy client sample](../ag-ui/sharpy.md).
 
 If you want a different base path, define one variable and use it consistently:
 

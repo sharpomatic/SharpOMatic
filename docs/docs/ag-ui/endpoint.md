@@ -1,6 +1,6 @@
 ---
-title: AG-UI
-sidebar_position: 2
+title: Endpoint Reference
+sidebar_position: 3
 ---
 
 SharpOMatic has optional AG-UI support for clients that want to drive workflows over a single SSE endpoint.

@@ -290,4 +290,4 @@ Code nodes can emit text, step, reasoning, tool-call, activity, state, and custo
 - `conversationId` is a string and can be any identifier your application controls.
 
 For more detail on state handling, see [Managing State](./managing-state.md).
-For protocol-based conversation clients, see [AG-UI](./ag-ui.md).
+For protocol-based conversation clients, see [AG-UI](../ag-ui/endpoint.md).

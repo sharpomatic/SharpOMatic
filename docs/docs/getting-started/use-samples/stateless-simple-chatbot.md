@@ -25,4 +25,4 @@ Therefore, the client must send the entire message history on each call so the m
 ## Setup notes
 
 Create a connector and model before running this sample, then select that model in the **ModelCall** node.
-When using the 'Sharpy' client sample, make sure you check the 'Send All Messages' checkbox and put the workflow ID into the input with the same name.
+When using the [Sharpy client sample](../../ag-ui/sharpy.md), make sure you check the **Send All Messages** checkbox and put the workflow ID into the input with the same name.

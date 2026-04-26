@@ -24,5 +24,4 @@ Each loop updates the second activity step and syncs the latest state until the 
 
 No connector or model is required.
 This sample is not conversation-enabled, so it is suitable for learning activity rendering without chat state.
-It needs the 'Sharpy' client sample because it understands the expected rendering method for the activity events.
-
+It needs the [Sharpy client sample](../../ag-ui/sharpy.md) because it understands the expected rendering method for the activity events.

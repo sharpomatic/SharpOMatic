@@ -24,3 +24,4 @@ The delays in the Code nodes make the stream behavior visible in the editor.
 
 No connector or model is required.
 Run this as an interactive conversation workflow so you can see the streamed events and suspend points.
+When using the [Sharpy client sample](../../ag-ui/sharpy.md), uncheck **Send All Messages** and keep the same thread ID between turns.

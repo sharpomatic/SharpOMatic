@@ -36,6 +36,7 @@ NOTE: The demo server uses `https://localhost:9001` and `http://localhost:9000` 
 Use your favorite browser to open https://localhost:9001/sharpomatic/editor
 
 Once the editor is open, follow [Use Samples](./use-samples/index.md) to create and run a sample workflow.
+To test an AG-UI sample through the browser protocol, run the [Sharpy client sample](../ag-ui/sharpy.md).
 
 ## Default SharpOMatic paths
 

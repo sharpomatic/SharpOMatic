@@ -25,6 +25,6 @@ The frontend question result is kept as workflow context rather than persisted a
 ## Setup notes
 
 Create a connector and model before running this sample, then select that model in the **ModelCall** node.
-It needs the 'Sharpy' client sample because it understands the `ask_a_question` tool and other details needed for the sample.
-When using the 'Sharpy' client sample, make sure you uncheck the 'Send All Messages' checkbox and put the workflow ID into the input with the same name.
+It needs the [Sharpy client sample](../../ag-ui/sharpy.md) because it understands the `ask_a_question` tool and other details needed for the sample.
+When using Sharpy, make sure you uncheck the **Send All Messages** checkbox and put the workflow ID into the input with the same name.
 This sample depends on the 'DemoServer' host code that defines function tools used by the model.
