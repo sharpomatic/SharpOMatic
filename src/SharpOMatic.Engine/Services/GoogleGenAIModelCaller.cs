@@ -124,11 +124,11 @@ public class GoogleGenAIModelCaller : BaseModelCaller
     {
         return thinkingLevel.ToLower() switch
         {
-            "minimal" => Google.GenAI.Types.ThinkingLevel.MINIMAL,
-            "low" => Google.GenAI.Types.ThinkingLevel.LOW,
-            "medium" => Google.GenAI.Types.ThinkingLevel.MEDIUM,
-            "high" => Google.GenAI.Types.ThinkingLevel.HIGH,
-            _ => Google.GenAI.Types.ThinkingLevel.THINKING_LEVEL_UNSPECIFIED,
+            "minimal" => Google.GenAI.Types.ThinkingLevel.Minimal,
+            "low" => Google.GenAI.Types.ThinkingLevel.Low,
+            "medium" => Google.GenAI.Types.ThinkingLevel.Medium,
+            "high" => Google.GenAI.Types.ThinkingLevel.High,
+            _ => Google.GenAI.Types.ThinkingLevel.ThinkingLevelUnspecified,
         };
     }
 
