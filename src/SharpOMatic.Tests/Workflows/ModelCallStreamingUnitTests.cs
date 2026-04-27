@@ -18,9 +18,11 @@ public sealed class ModelCallStreamingUnitTests
         ConfigureModelNode(workflow, "model", model.ModelId);
         var modelNode = Assert.IsType<ModelCallNodeEntity>(workflow.Nodes.Single(n => n.Title == "model"));
         modelNode.Prompt = "Say {{$input.topic}}";
+        var progress = new CapturingProgressService();
 
         using var provider = WorkflowRunner.BuildProvider(services =>
         {
+            services.AddSingleton<IProgressService>(progress);
             services.AddKeyedScoped<IModelCaller, PromptEventTestModelCaller>("openai");
         });
 
@@ -65,6 +67,73 @@ public sealed class ModelCallStreamingUnitTests
             Assert.Equal(StreamMessageRole.Assistant, streamEvents[3].MessageRole);
             Assert.Equal("Assistant reply", streamEvents[4].TextDelta);
             Assert.Equal(Enumerable.Range(1, 6).ToArray(), streamEvents.Select(e => e.SequenceNumber).ToArray());
+            Assert.Equal([true, true, true, false, false, false], progress.StreamEventSilentFlags.ToArray());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Model_call_can_disable_user_stream_events_without_affecting_model_prompt_or_output()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddModelCall("model")
+            .AddEnd()
+            .Connect("start", "model")
+            .Connect("model", "end")
+            .Build();
+
+        var model = CreateModel("openai");
+        ConfigureModelNode(workflow, "model", model.ModelId, disableStreamUser: true);
+        var modelNode = Assert.IsType<ModelCallNodeEntity>(workflow.Nodes.Single(n => n.Title == "model"));
+        modelNode.Prompt = "Say {{$input.topic}}";
+        var progress = new CapturingProgressService();
+
+        using var provider = WorkflowRunner.BuildProvider(services =>
+        {
+            services.AddSingleton<IProgressService>(progress);
+            services.AddKeyedScoped<IModelCaller, PromptEventTestModelCaller>("openai");
+        });
+
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "openai", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        var context = new ContextObject();
+        context.Set("input.topic", "hello");
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, context);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.Equal(
+                [
+                    StreamEventKind.TextStart,
+                    StreamEventKind.TextContent,
+                    StreamEventKind.TextEnd,
+                ],
+                streamEvents.Select(e => e.EventKind).ToArray()
+            );
+
+            Assert.Equal(StreamMessageRole.Assistant, streamEvents[0].MessageRole);
+            Assert.Equal("Assistant reply", streamEvents[1].TextDelta);
+            Assert.Equal([false, false, false], progress.StreamEventSilentFlags.ToArray());
+
+            var output = ContextObject.Deserialize(run.OutputContext);
+            Assert.Equal("Assistant reply", output.Get<string>("output.text"));
         }
         finally
         {
@@ -1160,6 +1229,7 @@ public sealed class ModelCallStreamingUnitTests
         string chatInputPath = "",
         string chatOutputPath = "",
         bool batchOutput = false,
+        bool disableStreamUser = false,
         bool disableStreamTool = false,
         bool disableStreamReasoning = false,
         bool disableStreamAssistantText = false
@@ -1168,6 +1238,7 @@ public sealed class ModelCallStreamingUnitTests
         var node = Assert.IsType<ModelCallNodeEntity>(workflow.Nodes.Single(n => n.Title == title));
         node.ModelId = modelId;
         node.BatchOutput = batchOutput;
+        node.DisableStreamUser = disableStreamUser;
         node.DisableStreamTool = disableStreamTool;
         node.DisableStreamReasoning = disableStreamReasoning;
         node.DisableStreamAssistantText = disableStreamAssistantText;
@@ -1295,7 +1366,7 @@ public sealed class ModelCallStreamingUnitTests
         {
             List<ChatMessage> chat = [];
             (var _, var prompt) = await ResolveInstructionsAndPrompt(chat, processContext, threadContext, node);
-            await EmitPromptStreamEvents(processContext, prompt);
+            await EmitPromptStreamEvents(processContext, prompt, node.DisableStreamUser);
 
             await progressSink.OnTextStartAsync("assistant-1");
             await progressSink.OnTextDeltaAsync("assistant-1", "Assistant reply");

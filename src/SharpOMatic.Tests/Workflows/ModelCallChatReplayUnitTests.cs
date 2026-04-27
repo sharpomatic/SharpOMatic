@@ -42,15 +42,28 @@ public sealed class ModelCallChatReplayUnitTests
             Assert.Empty(capture.CapturedChats[0]);
 
             var replayedChat = capture.CapturedChats[1];
-            Assert.Single(replayedChat);
+            Assert.Equal(3, replayedChat.Count);
 
-            var sanitizedMessage = replayedChat[0];
-            Assert.Equal(ChatRole.Assistant, sanitizedMessage.Role);
-            Assert.Equal(3, sanitizedMessage.Contents.Count);
-            Assert.IsType<TextContent>(sanitizedMessage.Contents[0]);
-            Assert.IsType<FunctionCallContent>(sanitizedMessage.Contents[1]);
-            Assert.IsType<FunctionResultContent>(sanitizedMessage.Contents[2]);
-            Assert.DoesNotContain(sanitizedMessage.Contents, content => content is TextReasoningContent);
+            Assert.Equal(ChatRole.Assistant, replayedChat[0].Role);
+            Assert.Equal("Portable text", Assert.IsType<TextContent>(replayedChat[0].Contents.Single()).Text);
+
+            Assert.Equal(ChatRole.User, replayedChat[1].Role);
+            Assert.Equal(
+                "Result of calling tool lookup_weather with arguments {\"city\":\"Sydney\"} = Sunny",
+                Assert.IsType<TextContent>(replayedChat[1].Contents.Single()).Text
+            );
+
+            Assert.Equal(ChatRole.User, replayedChat[2].Role);
+            Assert.Equal(
+                "Result of calling tool get_time with no arguments = Noon",
+                Assert.IsType<TextContent>(replayedChat[2].Contents.Single()).Text
+            );
+
+            Assert.All(replayedChat, message =>
+            {
+                Assert.True(message.Role == ChatRole.User || message.Role == ChatRole.Assistant);
+                Assert.DoesNotContain(message.Contents, content => content is TextReasoningContent or FunctionCallContent or FunctionResultContent);
+            });
         }
         finally
         {
@@ -101,21 +114,18 @@ public sealed class ModelCallChatReplayUnitTests
 
             Assert.Equal(2, capture.CapturedChats.Count);
             var replayedChat = capture.CapturedChats[1];
-            Assert.Single(replayedChat);
+            Assert.Equal(3, replayedChat.Count);
 
             var sanitizedMessage = replayedChat[0];
             Assert.Equal(ChatRole.Assistant, sanitizedMessage.Role);
-            Assert.Equal(3, sanitizedMessage.Contents.Count);
-            Assert.IsType<TextContent>(sanitizedMessage.Contents[0]);
-
-            var functionCall = Assert.IsType<FunctionCallContent>(sanitizedMessage.Contents[1]);
-            Assert.Equal("call-1", functionCall.CallId);
-            Assert.Equal("lookup_weather", functionCall.Name);
-
-            var functionResult = Assert.IsType<FunctionResultContent>(sanitizedMessage.Contents[2]);
-            Assert.Equal("call-1", functionResult.CallId);
-            Assert.Equal("Sunny", functionResult.Result?.ToString());
-            Assert.DoesNotContain(sanitizedMessage.Contents, content => content is TextReasoningContent);
+            Assert.Equal("Portable text", Assert.IsType<TextContent>(sanitizedMessage.Contents.Single()).Text);
+            Assert.Equal("Result of calling tool lookup_weather with arguments {\"city\":\"Sydney\"} = Sunny", Assert.IsType<TextContent>(replayedChat[1].Contents.Single()).Text);
+            Assert.Equal("Result of calling tool get_time with no arguments = Noon", Assert.IsType<TextContent>(replayedChat[2].Contents.Single()).Text);
+            Assert.All(replayedChat, message =>
+            {
+                Assert.True(message.Role == ChatRole.User || message.Role == ChatRole.Assistant);
+                Assert.DoesNotContain(message.Contents, content => content is TextReasoningContent or FunctionCallContent or FunctionResultContent);
+            });
         }
         finally
         {
@@ -124,7 +134,56 @@ public sealed class ModelCallChatReplayUnitTests
         }
     }
 
-    private static WorkflowEntity CreateReplayWorkflow(Guid workflowId, Guid modelId)
+    [Fact]
+    public async Task Conversation_chat_replay_can_drop_tool_calls_from_chat_output()
+    {
+        var workflowId = Guid.NewGuid();
+        var model = CreateModel("openai");
+        var workflow = CreateReplayWorkflow(workflowId, model.ModelId, dropToolCalls: true);
+        var capture = new ChatReplayCapture();
+
+        using var provider = WorkflowRunner.BuildProvider(services =>
+        {
+            services.AddSingleton(capture);
+            services.AddKeyedScoped<IModelCaller, ReplayAwareTestModelCaller>("openai");
+        });
+
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "openai", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+        var conversationId = Guid.NewGuid().ToString("N");
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+
+            var firstTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId);
+            Assert.Equal(RunStatus.Success, firstTurn.RunStatus);
+            await Task.Delay(100);
+
+            var secondTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId);
+            Assert.Equal(RunStatus.Success, secondTurn.RunStatus);
+
+            Assert.Equal(2, capture.CapturedChats.Count);
+            var replayedChat = capture.CapturedChats[1];
+            var sanitizedMessage = Assert.Single(replayedChat);
+            Assert.Equal(ChatRole.Assistant, sanitizedMessage.Role);
+            Assert.Equal("Portable text", Assert.IsType<TextContent>(sanitizedMessage.Contents.Single()).Text);
+            Assert.DoesNotContain(sanitizedMessage.Contents, content => content is TextReasoningContent or FunctionCallContent or FunctionResultContent);
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    private static WorkflowEntity CreateReplayWorkflow(Guid workflowId, Guid modelId, bool dropToolCalls = false)
     {
         var workflow = new WorkflowBuilder()
             .WithId(workflowId)
@@ -139,6 +198,7 @@ public sealed class ModelCallChatReplayUnitTests
         var node = Assert.IsType<ModelCallNodeEntity>(workflow.Nodes.Single(n => n.Title == "model"));
         node.ModelId = modelId;
         node.Prompt = string.Empty;
+        node.DropToolCalls = dropToolCalls;
         node.ChatInputPath = "conversation.chat";
         node.ChatOutputPath = "conversation.chat";
         node.TextOutputPath = "output.text";
@@ -283,6 +343,8 @@ public sealed class ModelCallChatReplayUnitTests
                         new TextReasoningContent("Hidden reasoning") { ProtectedData = "reasoning-secret" },
                         new FunctionCallContent("call-1", "lookup_weather", new Dictionary<string, object?>() { ["city"] = "Sydney" }),
                         new FunctionResultContent("call-1", "Sunny"),
+                        new FunctionCallContent("call-2", "get_time", new Dictionary<string, object?>()),
+                        new FunctionResultContent("call-2", "Noon"),
                     ]
                 ),
                 new ChatMessage(

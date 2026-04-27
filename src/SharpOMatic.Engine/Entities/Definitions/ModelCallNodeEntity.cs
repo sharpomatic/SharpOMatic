@@ -5,6 +5,8 @@ public class ModelCallNodeEntity : NodeEntity
 {
     public required Guid? ModelId { get; set; }
     public bool BatchOutput { get; set; }
+    public bool DropToolCalls { get; set; }
+    public bool DisableStreamUser { get; set; }
     public bool DisableStreamTool { get; set; }
     public bool DisableStreamReasoning { get; set; }
     public bool DisableStreamAssistantText { get; set; }

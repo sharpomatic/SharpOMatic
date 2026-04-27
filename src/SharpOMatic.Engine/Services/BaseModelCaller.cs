@@ -36,7 +36,7 @@ public abstract class BaseModelCaller : IModelCaller
         IModelCallProgressSink progressSink
     )
     {
-        List<AgentRunResponseUpdate> updates = [];
+        List<AgentResponseUpdate> updates = [];
         string syntheticMessageId = $"assistant-{Guid.NewGuid():N}";
         string? currentAssistantMessageId = null;
 
@@ -125,7 +125,7 @@ public abstract class BaseModelCaller : IModelCaller
             await progressSink.CompleteAsync();
         }
 
-        var response = updates.ToAgentRunResponse();
+        var response = updates.ToAgentResponse();
         var resultValue = ResponseToOutputValue(jsonOutput, response);
         return (chat, response.Messages, resultValue);
     }
@@ -144,7 +144,7 @@ public abstract class BaseModelCaller : IModelCaller
             : CallStreamingAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
     }
 
-    protected virtual string ResolveMessageId(AgentRunResponseUpdate update, string syntheticMessageId)
+    protected virtual string ResolveMessageId(AgentResponseUpdate update, string syntheticMessageId)
     {
         if (!string.IsNullOrWhiteSpace(update.MessageId))
             return update.MessageId.Trim();
@@ -177,7 +177,7 @@ public abstract class BaseModelCaller : IModelCaller
     }
 
     protected virtual string ResolveToolResultMessageId(
-        AgentRunResponseUpdate update,
+        AgentResponseUpdate update,
         FunctionResultContent functionResultContent,
         string syntheticMessageId
     )
@@ -470,9 +470,9 @@ public abstract class BaseModelCaller : IModelCaller
         return (instructions, null);
     }
 
-    protected virtual Task EmitPromptStreamEvents(ProcessContext processContext, string? prompt)
+    protected virtual Task EmitPromptStreamEvents(ProcessContext processContext, string? prompt, bool disableStreamUser)
     {
-        if (string.IsNullOrWhiteSpace(prompt))
+        if (disableStreamUser || string.IsNullOrWhiteSpace(prompt))
             return Task.CompletedTask;
 
         var messageId = $"user-{Guid.NewGuid():N}";
@@ -483,17 +483,20 @@ public abstract class BaseModelCaller : IModelCaller
                     EventKind = StreamEventKind.TextStart,
                     MessageId = messageId,
                     MessageRole = StreamMessageRole.User,
+                    Silent = true,
                 },
                 new StreamEventWrite()
                 {
                     EventKind = StreamEventKind.TextContent,
                     MessageId = messageId,
                     TextDelta = prompt,
+                    Silent = true,
                 },
                 new StreamEventWrite()
                 {
                     EventKind = StreamEventKind.TextEnd,
                     MessageId = messageId,
+                    Silent = true,
                 },
             ]
         );
@@ -627,7 +630,7 @@ public abstract class BaseModelCaller : IModelCaller
         return false;
     }
 
-    protected virtual object? ResponseToOutputValue(bool jsonOutput, AgentRunResponse response)
+    protected virtual object? ResponseToOutputValue(bool jsonOutput, AgentResponse response)
     {
         StringBuilder sb = new();
         foreach (var message in response.Messages)

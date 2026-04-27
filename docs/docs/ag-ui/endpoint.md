@@ -179,14 +179,11 @@ The incoming AG-UI message is exposed under `agent`, and a `ModelCall` usually a
 Incoming AG-UI stream-event echoes from prior model output are not appended back into `input.chat`.
 Incoming frontend tool results are also not appended by the controller; the waiting `Frontend Tool Call` node owns any optional chat persistence for that result.
 
-When a conversation turn includes `agent.latestUserMessage`, SharpOMatic also stores that user text in stream history before nodes run.
-Those stream events are marked silent for the current SSE response so the caller does not render the message it just submitted a second time.
-That history write still does not create a `ChatMessage`.
-
 ### Workflow-owned writers
 
 `ModelCall` reads **Chat Input Path** to build the provider request, then writes **Chat Output Path** only after the model call has produced responses.
-When that output path is `input.chat`, the written list includes any input chat, prompt text, image messages, assistant responses, model tool calls, and model tool results that were part of the model call transcript.
+When that output path is `input.chat`, the written list includes portable input chat, prompt text, image messages, assistant responses, and synthetic user messages for model tool results.
+If **Drop Tool Calls** is enabled on the model call, model tool calls and tool results are omitted from the written chat history.
 
 `Frontend Tool Call` and `Backend Tool Call` are the only non-model nodes that can write tool-call `ChatMessage` entries into `input.chat`.
 Both are controlled by **Chat Persistence**:
@@ -265,7 +262,8 @@ On resume:
 - an AG-UI conversation request is normally converted into a context-merge resume that loads checkpoint context, replaces `agent`, and sets or clears the hidden state baseline
 
 For a user reply, the resumed workflow reads the text from `agent.latestUserMessage.content`.
-SharpOMatic stores that incoming user text as silent stream history for page-refresh and replay completeness, but it is not appended to `input.chat`.
+SharpOMatic does not store that incoming user text as stream history during conversation resume, and it is not appended to `input.chat`.
+If the workflow needs a user message in stream history without a model call, add it explicitly from a **Code** node with `Events.AddTextMessageAsync(StreamMessageRole.User, messageId, text, silent: true)`.
 
 For a frontend tool result, the resumed workflow reads the result from `agent.latestToolResult` or from the waiting **Frontend Tool Call** node.
 The suspend resume mechanism does not append that tool result to `input.chat` and does not create a `TOOL_CALL_RESULT` event by itself.
@@ -301,11 +299,18 @@ The SSE request ends when the underlying workflow run finishes, suspends, or fai
 ## Incoming user message history
 
 AG-UI clients already know about the incoming user message they just submitted.
-When a conversation turn includes `agent.latestUserMessage`, SharpOMatic automatically stores that message as user text stream events before the workflow nodes run.
-Those stored events make run and conversation history complete after a page refresh, but they are sent to the current live AG-UI stream with `silent: true` so the caller does not render the submitted message twice.
+When a conversation turn includes `agent.latestUserMessage`, SharpOMatic exposes that value in workflow context but does not automatically store it as user text stream events.
+Model Call nodes store their resolved prompt as silent user text stream events immediately before the provider call unless **Disable User Event** is enabled on the node's **Stream** tab.
+If a workflow needs to store the incoming user text without a model call, add it explicitly from a **Code** node:
+
+```csharp
+var messageId = Context.Get<string>("agent.latestUserMessage.id");
+var text = Context.Get<string>("agent.latestUserMessage.content");
+await Events.AddTextMessageAsync(StreamMessageRole.User, messageId, text, silent: true);
+```
 
 The `silent` flag only affects the live AG-UI SSE output for the current run.
-The stored run or conversation stream history still contains the user message events, and no persisted stream-event field is added for the flag.
+The stored run or conversation stream history still contains manually emitted user message events, and no persisted stream-event field is added for the flag.
 
 ## Emitting tool calls from code nodes
 

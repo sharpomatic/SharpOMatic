@@ -16,10 +16,14 @@ public sealed class ModelCallOutputModeUnitTests
 
         var json = SharpOMatic.Engine.Helpers.WorkflowSnapshotSerializer.SerializeWorkflow(workflow);
         json = json.Replace("\"batchOutput\":false,", string.Empty, StringComparison.Ordinal);
+        json = json.Replace("\"dropToolCalls\":false,", string.Empty, StringComparison.Ordinal);
+        json = json.Replace("\"disableStreamUser\":false,", string.Empty, StringComparison.Ordinal);
 
         var deserialized = SharpOMatic.Engine.Helpers.WorkflowSnapshotSerializer.DeserializeWorkflow(json);
         var modelNode = Assert.IsType<ModelCallNodeEntity>(deserialized.Nodes.Single(n => n.Title == "model"));
         Assert.False(modelNode.BatchOutput);
+        Assert.False(modelNode.DropToolCalls);
+        Assert.False(modelNode.DisableStreamUser);
         Assert.False(modelNode.DisableStreamTool);
         Assert.False(modelNode.DisableStreamReasoning);
         Assert.False(modelNode.DisableStreamAssistantText);
@@ -43,6 +47,8 @@ public sealed class ModelCallOutputModeUnitTests
             Outputs = [],
             ModelId = null,
             BatchOutput = false,
+            DropToolCalls = false,
+            DisableStreamUser = false,
             DisableStreamTool = false,
             DisableStreamReasoning = false,
             DisableStreamAssistantText = false,
@@ -80,6 +86,8 @@ public sealed class ModelCallOutputModeUnitTests
             Outputs = [],
             ModelId = null,
             BatchOutput = true,
+            DropToolCalls = false,
+            DisableStreamUser = false,
             DisableStreamTool = false,
             DisableStreamReasoning = false,
             DisableStreamAssistantText = false,

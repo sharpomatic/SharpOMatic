@@ -6,6 +6,8 @@ import { NodeType } from '../enumerations/node-type';
 export interface ModelCallNodeSnapshot extends NodeSnapshot {
   modelId: string | null;
   batchOutput?: boolean;
+  dropToolCalls?: boolean;
+  disableStreamUser?: boolean;
   disableStreamTool?: boolean;
   disableStreamReasoning?: boolean;
   disableStreamAssistantText?: boolean;
@@ -22,6 +24,8 @@ export interface ModelCallNodeSnapshot extends NodeSnapshot {
 export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
   public modelId: WritableSignal<string | null>;
   public batchOutput: WritableSignal<boolean>;
+  public dropToolCalls: WritableSignal<boolean>;
+  public disableStreamUser: WritableSignal<boolean>;
   public disableStreamTool: WritableSignal<boolean>;
   public disableStreamReasoning: WritableSignal<boolean>;
   public disableStreamAssistantText: WritableSignal<boolean>;
@@ -39,6 +43,8 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
 
     this.modelId = signal(snapshot.modelId);
     this.batchOutput = signal(snapshot.batchOutput ?? false);
+    this.dropToolCalls = signal(snapshot.dropToolCalls ?? false);
+    this.disableStreamUser = signal(snapshot.disableStreamUser ?? false);
     this.disableStreamTool = signal(snapshot.disableStreamTool ?? false);
     this.disableStreamReasoning = signal(snapshot.disableStreamReasoning ?? false);
     this.disableStreamAssistantText = signal(snapshot.disableStreamAssistantText ?? false);
@@ -59,6 +65,8 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       const currentIsDirty = baseIsDirty();
       const currentModelId = this.modelId();
       const currentBatchOutput = this.batchOutput();
+      const currentDropToolCalls = this.dropToolCalls();
+      const currentDisableStreamUser = this.disableStreamUser();
       const currentDisableStreamTool = this.disableStreamTool();
       const currentDisableStreamReasoning = this.disableStreamReasoning();
       const currentDisableStreamAssistantText = this.disableStreamAssistantText();
@@ -75,6 +83,8 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
         currentIsDirty ||
         currentModelId !== snapshot.modelId ||
         currentBatchOutput !== (snapshot.batchOutput ?? false) ||
+        currentDropToolCalls !== (snapshot.dropToolCalls ?? false) ||
+        currentDisableStreamUser !== (snapshot.disableStreamUser ?? false) ||
         currentDisableStreamTool !== (snapshot.disableStreamTool ?? false) ||
         currentDisableStreamReasoning !== (snapshot.disableStreamReasoning ?? false) ||
         currentDisableStreamAssistantText !== (snapshot.disableStreamAssistantText ?? false) ||
@@ -98,6 +108,8 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       ...super.toNodeSnapshot(),
       modelId: this.modelId(),
       batchOutput: this.batchOutput(),
+      dropToolCalls: this.dropToolCalls(),
+      disableStreamUser: this.disableStreamUser(),
       disableStreamTool: this.disableStreamTool(),
       disableStreamReasoning: this.disableStreamReasoning(),
       disableStreamAssistantText: this.disableStreamAssistantText(),
@@ -127,6 +139,8 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       outputs: [ConnectorEntity.defaultSnapshot()],
       modelId: null,
       batchOutput: false,
+      dropToolCalls: false,
+      disableStreamUser: false,
       disableStreamTool: false,
       disableStreamReasoning: false,
       disableStreamAssistantText: false,

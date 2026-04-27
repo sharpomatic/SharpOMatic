@@ -208,8 +208,6 @@ public class EngineService(
             else
                 nextNode = await BuildFreshTurnStart(processContext, workflowId, previousCheckpoint, resumeInput, inputEntries);
 
-            await AppendLatestUserMessageStreamEvents(processContext, resumeInput);
-
             conversation.Status = ConversationStatus.Running;
             conversation.Updated = DateTime.UtcNow;
             conversation.CurrentTurnNumber = turnNumber;
@@ -1097,59 +1095,4 @@ public class EngineService(
         }
     }
 
-    private static async Task AppendLatestUserMessageStreamEvents(ProcessContext processContext, NodeResumeInput resumeInput)
-    {
-        if (!TryGetResumeAgent(resumeInput, out var agent) || agent is null)
-            return;
-
-        if (!agent.TryGetObject("latestUserMessage", out var latestUserMessage) || latestUserMessage is null)
-            return;
-
-        if (!latestUserMessage.TryGet<string>("id", out var messageId) || string.IsNullOrWhiteSpace(messageId))
-            return;
-
-        if (!latestUserMessage.TryGet<string>("content", out var content) || string.IsNullOrWhiteSpace(content))
-            return;
-
-        var normalizedMessageId = messageId.Trim();
-        await processContext.AppendStreamEvents(
-            [
-                new StreamEventWrite()
-                {
-                    EventKind = StreamEventKind.TextStart,
-                    MessageId = normalizedMessageId,
-                    MessageRole = StreamMessageRole.User,
-                    Silent = true,
-                },
-                new StreamEventWrite()
-                {
-                    EventKind = StreamEventKind.TextContent,
-                    MessageId = normalizedMessageId,
-                    TextDelta = content,
-                    Silent = true,
-                },
-                new StreamEventWrite()
-                {
-                    EventKind = StreamEventKind.TextEnd,
-                    MessageId = normalizedMessageId,
-                    Silent = true,
-                }
-            ]
-        );
-    }
-
-    private static bool TryGetResumeAgent(NodeResumeInput resumeInput, [MaybeNullWhen(false)] out ContextObject agent)
-    {
-        switch (resumeInput)
-        {
-            case AgUiAgentResumeInput agUiAgent:
-                agent = agUiAgent.Agent;
-                return true;
-            case ContextMergeResumeInput contextMerge:
-                return contextMerge.Context.TryGetObject("agent", out agent);
-            default:
-                agent = null;
-                return false;
-        }
-    }
 }

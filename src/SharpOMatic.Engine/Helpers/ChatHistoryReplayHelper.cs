@@ -2,6 +2,65 @@ namespace SharpOMatic.Engine.Helpers;
 
 internal static class ChatHistoryReplayHelper
 {
+    public static ContextList CreatePortableOutputMessages(IEnumerable<ChatMessage> messages, bool dropToolCalls)
+    {
+        ContextList portableMessages = [];
+        Dictionary<string, FunctionCallContent> toolCallsById = new(StringComparer.Ordinal);
+        Queue<FunctionCallContent> anonymousToolCalls = [];
+
+        foreach (var message in messages)
+        {
+            List<AIContent> portableContents = [];
+            List<ChatMessage> toolResultMessages = [];
+
+            foreach (var content in message.Contents)
+            {
+                switch (content)
+                {
+                    case TextReasoningContent:
+                        break;
+
+                    case TextContent textContent when IsPortableOutputRole(message.Role) && !string.IsNullOrWhiteSpace(textContent.Text):
+                        portableContents.Add(new TextContent(textContent.Text));
+                        break;
+
+                    case DataContent dataContent when IsPortableOutputRole(message.Role):
+                        portableContents.Add(CloneDataContent(dataContent));
+                        break;
+
+                    case UriContent uriContent when IsPortableOutputRole(message.Role):
+                        portableContents.Add(CloneUriContent(uriContent));
+                        break;
+
+                    case FunctionCallContent functionCallContent when !dropToolCalls:
+                        TrackToolCall(functionCallContent, toolCallsById, anonymousToolCalls);
+                        break;
+
+                    case FunctionResultContent functionResultContent when !dropToolCalls:
+                        toolResultMessages.Add(CreateToolResultUserMessage(functionResultContent, toolCallsById, anonymousToolCalls));
+                        break;
+                }
+            }
+
+            if (portableContents.Count > 0)
+            {
+                portableMessages.Add(
+                    new ChatMessage(message.Role, portableContents)
+                    {
+                        AuthorName = message.AuthorName,
+                        CreatedAt = message.CreatedAt,
+                        MessageId = message.MessageId,
+                    }
+                );
+            }
+
+            foreach (var toolResultMessage in toolResultMessages)
+                portableMessages.Add(toolResultMessage);
+        }
+
+        return portableMessages;
+    }
+
     public static void AddPreparedInputMessages(List<ChatMessage> chat, ContextObject nodeContext, string chatInputPath)
     {
         var storedMessages = ReadStoredMessages(nodeContext, chatInputPath);
@@ -25,6 +84,7 @@ internal static class ChatHistoryReplayHelper
 
         return messages;
     }
+
     private static List<ChatMessage> CreatePortableReplayMessages(IEnumerable<ChatMessage> messages)
     {
         List<ChatMessage> portableMessages = [];
@@ -54,6 +114,101 @@ internal static class ChatHistoryReplayHelper
         }
 
         return portableMessages;
+    }
+
+    private static bool IsPortableOutputRole(ChatRole role)
+    {
+        return role == ChatRole.User || role == ChatRole.Assistant;
+    }
+
+    private static void TrackToolCall(
+        FunctionCallContent functionCallContent,
+        Dictionary<string, FunctionCallContent> toolCallsById,
+        Queue<FunctionCallContent> anonymousToolCalls
+    )
+    {
+        if (!string.IsNullOrWhiteSpace(functionCallContent.CallId))
+        {
+            toolCallsById[functionCallContent.CallId.Trim()] = functionCallContent;
+            return;
+        }
+
+        anonymousToolCalls.Enqueue(functionCallContent);
+    }
+
+    private static ChatMessage CreateToolResultUserMessage(
+        FunctionResultContent functionResultContent,
+        Dictionary<string, FunctionCallContent> toolCallsById,
+        Queue<FunctionCallContent> anonymousToolCalls
+    )
+    {
+        var functionCallContent = ResolveToolCall(functionResultContent, toolCallsById, anonymousToolCalls);
+        var toolName = ResolveToolName(functionResultContent, functionCallContent);
+        var resultText = SerializeToolResult(functionResultContent.Result);
+        var argumentsText = SerializeToolArguments(functionCallContent);
+        var text = string.IsNullOrWhiteSpace(argumentsText)
+            ? $"Result of calling tool {toolName} with no arguments = {resultText}"
+            : $"Result of calling tool {toolName} with arguments {argumentsText} = {resultText}";
+
+        return new ChatMessage(ChatRole.User, [new TextContent(text)]);
+    }
+
+    private static FunctionCallContent? ResolveToolCall(
+        FunctionResultContent functionResultContent,
+        Dictionary<string, FunctionCallContent> toolCallsById,
+        Queue<FunctionCallContent> anonymousToolCalls
+    )
+    {
+        if (!string.IsNullOrWhiteSpace(functionResultContent.CallId) && toolCallsById.Remove(functionResultContent.CallId.Trim(), out var functionCallContent))
+            return functionCallContent;
+
+        return anonymousToolCalls.Count > 0
+            ? anonymousToolCalls.Dequeue()
+            : null;
+    }
+
+    private static string ResolveToolName(FunctionResultContent functionResultContent, FunctionCallContent? functionCallContent)
+    {
+        if (!string.IsNullOrWhiteSpace(functionCallContent?.Name))
+            return functionCallContent.Name.Trim();
+
+        if (!string.IsNullOrWhiteSpace(functionResultContent.CallId))
+            return functionResultContent.CallId.Trim();
+
+        return "unknown";
+    }
+
+    private static string? SerializeToolArguments(FunctionCallContent? functionCallContent)
+    {
+        if ((functionCallContent?.Arguments is null) || (functionCallContent.Arguments.Count == 0))
+            return null;
+
+        try
+        {
+            return JsonSerializer.Serialize(functionCallContent.Arguments);
+        }
+        catch
+        {
+            return functionCallContent.Arguments.ToString();
+        }
+    }
+
+    private static string SerializeToolResult(object? result)
+    {
+        if (result is null)
+            return string.Empty;
+
+        if (result is string resultText)
+            return resultText;
+
+        try
+        {
+            return JsonSerializer.Serialize(result);
+        }
+        catch
+        {
+            return result.ToString() ?? string.Empty;
+        }
     }
 
     private static AIContent? ClonePortableContent(AIContent content)

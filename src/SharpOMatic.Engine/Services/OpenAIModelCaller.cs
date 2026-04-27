@@ -33,15 +33,20 @@ public class OpenAIModelCaller : BaseModelCaller
 
         // Resolve the instructions and prompts as templates
         (var instructions, var prompt) = await ResolveInstructionsAndPrompt(chat, processContext, threadContext, node);
-        var agentClient = GetOpenAIResponseClient(model, modelConfig, authenticationModeConfig, connectionFields);
+        (var agentClient, var modelName) = GetOpenAIResponseClient(model, modelConfig, authenticationModeConfig, connectionFields);
 
         // Use the Microsoft Agent Framework by creating an agent from the responses AI client, then run the agent call
-        var agent = agentClient.CreateAIAgent(instructions: instructions, services: agentServiceProvider);
-        await EmitPromptStreamEvents(processContext, prompt);
+        var agent = agentClient.AsAIAgent(modelName, instructions: instructions, services: agentServiceProvider);
+        await EmitPromptStreamEvents(processContext, prompt, node.DisableStreamUser);
         return await CallConfiguredAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
     }
 
-    public virtual OpenAIResponseClient GetOpenAIResponseClient(Model model, ModelConfig modelConfig, AuthenticationModeConfig authenticationModeConfig, Dictionary<string, string?> connectionFields)
+    public virtual (ResponsesClient client, string modelName) GetOpenAIResponseClient(
+        Model model,
+        ModelConfig modelConfig,
+        AuthenticationModeConfig authenticationModeConfig,
+        Dictionary<string, string?> connectionFields
+    )
     {
         var options = new OpenAIClientOptions();
         if (!connectionFields.TryGetValue("api_key", out var apiKey) || string.IsNullOrWhiteSpace(apiKey))
@@ -63,7 +68,7 @@ public class OpenAIModelCaller : BaseModelCaller
             options.ProjectId = projectId;
 
         var client = new OpenAIClient(new ApiKeyCredential(apiKey ?? ""), options);
-        return client.GetOpenAIResponseClient(modelName);
+        return (client.GetResponsesClient(), modelName);
     }
 
     protected virtual (AuthenticationModeConfig, Dictionary<string, string?>) GetAuthenticationFields(Connector connector, ConnectorConfig connectorConfig, ProcessContext processContext)
@@ -93,7 +98,7 @@ public class OpenAIModelCaller : BaseModelCaller
         return (authenticationModel, connectionFields);
     }
 
-    protected virtual (ChatOptions, ResponseCreationOptions) SetupResponsesBasicCapabilities(
+    protected virtual (ChatOptions, CreateResponseOptions) SetupResponsesBasicCapabilities(
         Model model,
         ModelConfig modelConfig,
         ProcessContext processContext,
@@ -103,7 +108,7 @@ public class OpenAIModelCaller : BaseModelCaller
     )
     {
         // Mostly we have set the ChatOptions but sometimes we have to drop down to the Responses AI specific ResponseCreationOptions
-        var responseOptions = new ResponseCreationOptions();
+        var responseOptions = new CreateResponseOptions();
         chatOptions = chatOptions ?? new ChatOptions() { AdditionalProperties = [], RawRepresentationFactory = (_) => responseOptions };
 
         // Setup common capabilites using base class
@@ -117,7 +122,7 @@ public class OpenAIModelCaller : BaseModelCaller
 
     protected virtual IServiceProvider SetupToolCalling(
         ChatOptions chatOptions,
-        ResponseCreationOptions responseOptions,
+        CreateResponseOptions responseOptions,
         Model model,
         ModelConfig modelConfig,
         ProcessContext processContext,

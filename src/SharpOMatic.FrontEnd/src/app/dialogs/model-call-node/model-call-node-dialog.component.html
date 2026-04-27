@@ -98,10 +98,46 @@
             </div>
           </div>
         </div>
+
+        <div class="mb-3 form-line">
+          <label for="model-call-drop-tool-calls" class="form-label field-label"
+            >Drop Tool Calls</label
+          >
+          <div class="flex-fill control-column long">
+            <div class="form-check mb-0">
+              <input
+                id="model-call-drop-tool-calls"
+                class="form-check-input"
+                type="checkbox"
+                [checked]="node.dropToolCalls()"
+                (change)="node.dropToolCalls.set($any($event.target).checked)"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </ng-template>
     <ng-template #streamTab>
       <div class="bg-body-tertiary p-3 stream-settings">
+        <div class="mb-3 form-line">
+          <label
+            for="model-call-disable-stream-user"
+            class="form-label field-label stream-field-label"
+            >Disable User Event</label
+          >
+          <div class="flex-fill control-column long">
+            <div class="form-check mb-0">
+              <input
+                id="model-call-disable-stream-user"
+                class="form-check-input"
+                type="checkbox"
+                [checked]="node.disableStreamUser()"
+                (change)="node.disableStreamUser.set($any($event.target).checked)"
+              />
+            </div>
+          </div>
+        </div>
+
         <div class="mb-3 form-line">
           <label
             for="model-call-disable-stream-tool"

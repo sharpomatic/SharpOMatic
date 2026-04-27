@@ -3,12 +3,17 @@ namespace SharpOMatic.Engine.Services;
 
 public class AzureOpenAIModelCaller : OpenAIModelCaller
 {
-    public override OpenAIResponseClient GetOpenAIResponseClient(Model model, ModelConfig modelConfig, AuthenticationModeConfig authenticationModeConfig, Dictionary<string, string?> connectionFields)
+    public override (ResponsesClient client, string modelName) GetOpenAIResponseClient(
+        Model model,
+        ModelConfig modelConfig,
+        AuthenticationModeConfig authenticationModeConfig,
+        Dictionary<string, string?> connectionFields
+    )
     {
         if (!connectionFields.TryGetValue("endpoint", out var endpoint))
             throw new SharpOMaticException("Connector endpoint not specified.");
 
-        if (!model.ParameterValues.TryGetValue("deployment_name", out var deploymentName))
+        if (!model.ParameterValues.TryGetValue("deployment_name", out var deploymentName) || string.IsNullOrWhiteSpace(deploymentName))
             throw new SharpOMaticException("Model does not specify a deployment name");
 
         AzureOpenAIClient? azureClient = null;
@@ -27,6 +32,6 @@ public class AzureOpenAIModelCaller : OpenAIModelCaller
                 throw new SharpOMaticException($"Unsupported authentication method of '{authenticationModeConfig.Id}'");
         }
 
-        return azureClient.GetOpenAIResponseClient(deploymentName);
+        return (azureClient.GetResponsesClient(), deploymentName);
     }
 }

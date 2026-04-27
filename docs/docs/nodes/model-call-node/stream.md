@@ -5,10 +5,23 @@ sidebar_position: 5
 
 The **Stream** tab controls which live stream events the **ModelCall** node emits while it is running.
 When the node has a resolved prompt, it first emits that prompt as a user text message immediately before calling the provider.
-These events are shown in the workflow run **Stream** tab and are translated to AG-UI events when the AG-UI endpoint is used.
+These prompt events are stored in the workflow run **Stream** tab, but are marked silent so they are not sent as live AG-UI events.
 
 The settings on this tab do not change the model request, final context output, chat output, tool execution, or trace information.
 They only suppress the selected categories of model-call stream events.
+
+## Disable User Event
+
+Enable **Disable User Event** when you do not want the resolved **Prompt** to be stored as initial user text stream events.
+
+When enabled, the following prompt lifecycle is suppressed:
+
+- `TextStart`
+- `TextContent`
+- `TextEnd`
+
+The prompt is still sent to the model and still participates in **Chat Output Path** when that path is configured.
+This setting defaults to off for existing workflows.
 
 ## Disable Tool Events
 
@@ -22,7 +35,7 @@ When enabled, the following stream event lifecycle is suppressed:
 - `ToolCallResult`
 
 The model can still call tools, tool results are still available to the model, and tool-call information is still recorded in the trace viewer.
-If **Chat Output Path** is set, the chat transcript can still include the model's tool calls and tool results.
+If **Chat Output Path** is set, the chat transcript can still include synthetic user messages for model tool results unless **Drop Tool Calls** is enabled on the **Details** tab.
 
 ## Disable Reasoning Events
 

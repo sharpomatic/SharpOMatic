@@ -221,6 +221,8 @@ public sealed class WorkflowBuilder
             Outputs = [CreateConnector()],
             ModelId = null,
             BatchOutput = false,
+            DropToolCalls = false,
+            DisableStreamUser = false,
             DisableStreamTool = false,
             DisableStreamReasoning = false,
             DisableStreamAssistantText = false,

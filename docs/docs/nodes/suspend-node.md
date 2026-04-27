@@ -40,8 +40,8 @@ For AG-UI frontend tool results, downstream nodes can read `agent.latestToolResu
 The Suspend node does not create `ChatMessage` entries, does not update `input.chat`, and does not emit stream events.
 It only records the checkpoint and later continues from it.
 
-During an AG-UI conversation resume with a user message, SharpOMatic stores the incoming user text as silent stream history before the workflow nodes continue.
-That makes refreshed conversation history complete, but it still does not append the user text to `input.chat`.
+During an AG-UI conversation resume with a user message, SharpOMatic exposes the incoming user text at `agent.latestUserMessage.content` but does not automatically store it as stream history.
+If a workflow needs that stream history without a model call, add it explicitly from a **Code** node with `Events.AddTextMessageAsync(StreamMessageRole.User, messageId, text, silent: true)`.
 
 During an AG-UI resume with a frontend tool result, the suspend/resume mechanism does not create a `TOOL_CALL_RESULT` event and does not append the result to `input.chat`.
 The waiting **Frontend Tool Call** node creates the result stream event and any optional chat messages when the incoming `tool` message matches its pending `toolCallId`.

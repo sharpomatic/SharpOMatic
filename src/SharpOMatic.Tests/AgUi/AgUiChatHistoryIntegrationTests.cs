@@ -179,7 +179,7 @@ public sealed class AgUiChatHistoryIntegrationTests
     }
 
     [Fact]
-    public async Task AgUi_conversation_workflow_persists_latest_user_message_as_silent_stream_history()
+    public async Task AgUi_conversation_workflow_does_not_persist_latest_user_message_as_stream_history()
     {
         var workflow = new SharpOMatic.Tests.Workflows.WorkflowBuilder()
             .WithName("User History Workflow")
@@ -226,29 +226,7 @@ public sealed class AgUiChatHistoryIntegrationTests
 
             var run = Assert.Single(await repositoryService.GetConversationRuns("thread-1"));
             var storedEvents = await repositoryService.GetRunStreamEvents(run.RunId);
-            Assert.Collection(
-                storedEvents,
-                streamEvent =>
-                {
-                    Assert.Equal(StreamEventKind.TextStart, streamEvent.EventKind);
-                    Assert.Equal(StreamMessageRole.User, streamEvent.MessageRole);
-                    Assert.Equal("user-1", streamEvent.MessageId);
-                    Assert.Equal(1, streamEvent.SequenceNumber);
-                },
-                streamEvent =>
-                {
-                    Assert.Equal(StreamEventKind.TextContent, streamEvent.EventKind);
-                    Assert.Equal("user-1", streamEvent.MessageId);
-                    Assert.Equal("Hello history", streamEvent.TextDelta);
-                    Assert.Equal(2, streamEvent.SequenceNumber);
-                },
-                streamEvent =>
-                {
-                    Assert.Equal(StreamEventKind.TextEnd, streamEvent.EventKind);
-                    Assert.Equal("user-1", streamEvent.MessageId);
-                    Assert.Equal(3, streamEvent.SequenceNumber);
-                }
-            );
+            Assert.Empty(storedEvents);
         }
         finally
         {

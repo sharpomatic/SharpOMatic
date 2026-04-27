@@ -71,7 +71,7 @@ This is then referenced by the **Chat Input Path**.
 ## Output messages
 
 If defined, the **Chat Output Path** specifies the context location to output the full message history.
-This includes all original entries sent to the model along with all the replies from the model.
+This includes portable versions of the original entries sent to the model along with portable replies from the model.
 For example, the output from the above example is six message entries.
 
 When **Chat Output Path** is `input.chat`, the Model Call node creates or replaces that chat history with the full model transcript for downstream nodes and later conversation turns.
@@ -81,10 +81,11 @@ Reading **Chat Input Path** alone does not mutate `input.chat`; only writing **C
 In batch output mode, the returned model messages are the canonical transcript written to **Chat Output Path**.
 Stream events are generated from that transcript for UI display, but they are not the source of persisted chat history.
 
-When a later turn reuses this chat history as input, SharpOMatic automatically rebuilds a portable version of the stored messages before sending them to the model.
-This replay keeps normal text, tool calls, tool results, and provider-neutral content such as data/image parts, but strips reasoning and any provider-private message state.
-Reasoning chat messages are not passed back to the source model during replay.
-Reasoning content can be provider-specific, and it may not be compatible if the workflow is later changed to use a different model provider.
+When writing **Chat Output Path**, SharpOMatic removes reasoning and provider-specific tool content so later model calls can replay the history across different providers.
+Assistant text is stored as assistant messages.
+Tool results are stored as user messages such as `Result of calling tool lookup_weather with arguments {"city":"Sydney"} = Sunny`, or `Result of calling tool get_time with no arguments = Noon`.
+If **Drop Tool Calls** is enabled on the **Details** tab, model tool calls and tool results are omitted from **Chat Output Path** instead.
+The next model call receives only user and assistant messages from this stored history.
 
 The first three are the ones we sent to the model.
 
@@ -98,8 +99,8 @@ The next 3 are replies from the model.
 
 <img src="/img/modelcall-chat-output.png" alt="Output Messages" width="900" style={{ maxWidth: '100%', height: 'auto' }} />
 
-**message[3]** requests that two function calls be executed.<br/>
-**message[4]** contains the outcome of those calls sent to the model.<br/>
+**message[3]** contains the outcome of the first tool call as a user message.<br/>
+**message[4]** contains the outcome of the second tool call as a user message.<br/>
 **message[5]** is the final text reply from the model with the requested description.
 
 ## Chat Bot

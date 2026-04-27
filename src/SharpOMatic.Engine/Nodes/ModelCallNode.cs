@@ -40,13 +40,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
     {
         if (!string.IsNullOrWhiteSpace(Node.ChatOutputPath))
         {
-            ContextList chatList = [];
-            chatList.AddRange(chat);
-
-            foreach (var message in responses)
-                chatList.Add(message);
-
-            ThreadContext.NodeContext.TrySet(Node.ChatOutputPath, chatList);
+            ThreadContext.NodeContext.TrySet(Node.ChatOutputPath, ChatHistoryReplayHelper.CreatePortableOutputMessages(chat.Concat(responses), Node.DropToolCalls));
         }
     }
 
