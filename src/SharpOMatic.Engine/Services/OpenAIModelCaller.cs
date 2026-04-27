@@ -32,11 +32,12 @@ public class OpenAIModelCaller : BaseModelCaller
         await AddImageMessages(chat, model, modelConfig, processContext, threadContext, node);
 
         // Resolve the instructions and prompts as templates
-        var instructions = await ResolveInstructionsAndPrompt(chat, processContext, threadContext, node);
+        (var instructions, var prompt) = await ResolveInstructionsAndPrompt(chat, processContext, threadContext, node);
         var agentClient = GetOpenAIResponseClient(model, modelConfig, authenticationModeConfig, connectionFields);
 
         // Use the Microsoft Agent Framework by creating an agent from the responses AI client, then run the agent call
         var agent = agentClient.CreateAIAgent(instructions: instructions, services: agentServiceProvider);
+        await EmitPromptStreamEvents(processContext, prompt);
         return await CallConfiguredAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
     }
 

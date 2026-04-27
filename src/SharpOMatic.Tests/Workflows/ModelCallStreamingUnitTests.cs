@@ -4,6 +4,76 @@ namespace SharpOMatic.Tests.Workflows;
 public sealed class ModelCallStreamingUnitTests
 {
     [Fact]
+    public async Task Model_call_emits_resolved_prompt_stream_events_before_model_output()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddModelCall("model")
+            .AddEnd()
+            .Connect("start", "model")
+            .Connect("model", "end")
+            .Build();
+
+        var model = CreateModel("openai");
+        ConfigureModelNode(workflow, "model", model.ModelId);
+        var modelNode = Assert.IsType<ModelCallNodeEntity>(workflow.Nodes.Single(n => n.Title == "model"));
+        modelNode.Prompt = "Say {{$input.topic}}";
+
+        using var provider = WorkflowRunner.BuildProvider(services =>
+        {
+            services.AddKeyedScoped<IModelCaller, PromptEventTestModelCaller>("openai");
+        });
+
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "openai", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        var context = new ContextObject();
+        context.Set("input.topic", "hello");
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, context);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.Equal(
+                [
+                    StreamEventKind.TextStart,
+                    StreamEventKind.TextContent,
+                    StreamEventKind.TextEnd,
+                    StreamEventKind.TextStart,
+                    StreamEventKind.TextContent,
+                    StreamEventKind.TextEnd,
+                ],
+                streamEvents.Select(e => e.EventKind).ToArray()
+            );
+
+            var userMessageId = streamEvents[0].MessageId ?? string.Empty;
+            Assert.False(string.IsNullOrWhiteSpace(userMessageId));
+            Assert.Equal(StreamMessageRole.User, streamEvents[0].MessageRole);
+            Assert.Equal("Say hello", streamEvents[1].TextDelta);
+            Assert.Equal([userMessageId, userMessageId, userMessageId], streamEvents.Take(3).Select(e => e.MessageId ?? string.Empty).ToArray());
+
+            Assert.Equal(StreamMessageRole.Assistant, streamEvents[3].MessageRole);
+            Assert.Equal("Assistant reply", streamEvents[4].TextDelta);
+            Assert.Equal(Enumerable.Range(1, 6).ToArray(), streamEvents.Select(e => e.SequenceNumber).ToArray());
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
     public async Task Model_call_streams_reasoning_events_and_informations_before_completion()
     {
         var workflow = new WorkflowBuilder()
@@ -1207,6 +1277,31 @@ public sealed class ModelCallStreamingUnitTests
             ];
 
             return (chat, responses, "Hello world");
+        }
+    }
+
+    private sealed class PromptEventTestModelCaller : BaseModelCaller
+    {
+        public override async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+            Model model,
+            ModelConfig modelConfig,
+            Connector connector,
+            ConnectorConfig connectorConfig,
+            ProcessContext processContext,
+            ThreadContext threadContext,
+            ModelCallNodeEntity node,
+            IModelCallProgressSink progressSink
+        )
+        {
+            List<ChatMessage> chat = [];
+            (var _, var prompt) = await ResolveInstructionsAndPrompt(chat, processContext, threadContext, node);
+            await EmitPromptStreamEvents(processContext, prompt);
+
+            await progressSink.OnTextStartAsync("assistant-1");
+            await progressSink.OnTextDeltaAsync("assistant-1", "Assistant reply");
+            await progressSink.OnTextEndAsync("assistant-1");
+
+            return (chat, [new ChatMessage(ChatRole.Assistant, [new TextContent("Assistant reply")])], "Assistant reply");
         }
     }
 

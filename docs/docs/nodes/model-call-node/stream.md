@@ -4,6 +4,7 @@ sidebar_position: 5
 ---
 
 The **Stream** tab controls which live stream events the **ModelCall** node emits while it is running.
+When the node has a resolved prompt, it first emits that prompt as a user text message immediately before calling the provider.
 These events are shown in the workflow run **Stream** tab and are translated to AG-UI events when the AG-UI endpoint is used.
 
 The settings on this tab do not change the model request, final context output, chat output, tool execution, or trace information.

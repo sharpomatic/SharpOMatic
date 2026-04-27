@@ -432,7 +432,12 @@ public abstract class BaseModelCaller : IModelCaller
         }
     }
 
-    protected virtual async Task<string?> ResolveInstructionsAndPrompt(List<ChatMessage> chat, ProcessContext processContext, ThreadContext threadContext, ModelCallNodeEntity node)
+    protected virtual async Task<(string? instructions, string? prompt)> ResolveInstructionsAndPrompt(
+        List<ChatMessage> chat,
+        ProcessContext processContext,
+        ThreadContext threadContext,
+        ModelCallNodeEntity node
+    )
     {
         string? instructions = null;
         if (!string.IsNullOrWhiteSpace(node.Instructions))
@@ -459,9 +464,39 @@ public abstract class BaseModelCaller : IModelCaller
             );
 
             chat.Add(new ChatMessage(ChatRole.User, [new TextContent(prompt)]));
+            return (instructions, prompt);
         }
 
-        return instructions;
+        return (instructions, null);
+    }
+
+    protected virtual Task EmitPromptStreamEvents(ProcessContext processContext, string? prompt)
+    {
+        if (string.IsNullOrWhiteSpace(prompt))
+            return Task.CompletedTask;
+
+        var messageId = $"user-{Guid.NewGuid():N}";
+        return processContext.AppendStreamEvents(
+            [
+                new StreamEventWrite()
+                {
+                    EventKind = StreamEventKind.TextStart,
+                    MessageId = messageId,
+                    MessageRole = StreamMessageRole.User,
+                },
+                new StreamEventWrite()
+                {
+                    EventKind = StreamEventKind.TextContent,
+                    MessageId = messageId,
+                    TextDelta = prompt,
+                },
+                new StreamEventWrite()
+                {
+                    EventKind = StreamEventKind.TextEnd,
+                    MessageId = messageId,
+                },
+            ]
+        );
     }
 
     protected static object? FastDeserializeString(string json)

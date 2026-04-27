@@ -16,6 +16,7 @@ You can leave this field blank to ignore the output. Text output is still genera
 - **Prompt** (Mandatory) user-level prompt for the call.
 
 When you use an OpenAI, Azure OpenAI, or Google model, runtime output is now incremental.
+Immediately before the provider call, the resolved **Prompt** is emitted as user text stream events.
 Assistant text is streamed during execution, visible reasoning is emitted as reasoning stream events, and tool calls are emitted as tool-call stream events.
 Assistant, reasoning, and tool-call trace entries are also updated while the node is still running.
 If you disable one of those categories in the **Stream** tab, only the matching stream events are suppressed. Final outputs and assistant/reasoning/tool trace entries are still produced.
