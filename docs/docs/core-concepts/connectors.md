@@ -45,6 +45,7 @@ You can provide the following values:
 
 This allows requests to Azure-hosted models that support the OpenAI protocol.
 Azure access is provided with two authentication modes.
+Azure model calls are scoped to the deployment name configured on the selected model, so this value must match the Azure deployment name rather than just the underlying model family name.
 
 #### API Key
 
