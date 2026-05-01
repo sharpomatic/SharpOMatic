@@ -24,6 +24,9 @@ When the conversation is resumed:
 - resume input can be empty, merge a `ContextObject` into the current node context, or update the AG-UI `agent` context
 - execution then continues to downstream nodes
 
+The resumed run's input context is recorded after the resume input has been applied to the restored checkpoint, but before the resumed node performs its own work.
+Node-side changes such as frontend tool-result outputs, pending-state cleanup, and optional chat persistence appear in the resumed run's output context instead.
+
 ## Resume Input
 
 The resume payload controls what is available to downstream nodes:

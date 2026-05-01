@@ -6,7 +6,7 @@ sidebar_position: 2
 If the model supports text input or text output, this tab is available.
 
 On the **Details** tab, **Use Batch Output** appears after the model-specific custom fields, followed by **Drop Tool Calls**.
-**Drop Tool Calls** prevents model tool-call results from being carried into **Chat Output Path** as synthetic user messages.
+**Drop Tool Calls** prevents model tool-call results from being carried into **Chat Output Path** as synthetic assistant messages.
 The model-call dialog also has a [**Stream** tab](./stream.md), positioned after **Chat**, where you can disable assistant text, reasoning, or tool-call stream events for that node.
 
 - **Text Output Path** defaults to **output.text** and is the context path that receives text output from a successful model call.

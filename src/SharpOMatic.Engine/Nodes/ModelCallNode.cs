@@ -18,9 +18,8 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         // Use specific implementation to perform call for us
         (var chat, var responses, var resultValue) = await caller.Call(model, modelConfig, connector, connectorConfig, ProcessContext, ThreadContext, Node, progressSink);
 
-        var textOutputPath = !string.IsNullOrWhiteSpace(Node.TextOutputPath) ? Node.TextOutputPath : "output.text";
-        if (!ThreadContext.NodeContext.TrySet(textOutputPath, resultValue))
-            throw new SharpOMaticException($"Could not set '{textOutputPath}' into context.");
+        if (!string.IsNullOrWhiteSpace(Node.TextOutputPath) && !ThreadContext.NodeContext.TrySet(Node.TextOutputPath, resultValue))
+            throw new SharpOMaticException($"Could not set '{Node.TextOutputPath}' into context.");
 
         if (Node.BatchOutput)
             WriteChatOutput(chat, responses);

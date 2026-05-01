@@ -535,6 +535,7 @@ public sealed class SuspendNodeUnitTests
             .AddCode("setup", """
                 Context.Set<string>("agent.latestUserMessage.id", "user-1");
                 Context.Set<string>("agent.latestUserMessage.content", "before");
+                Context.Set<string>("agent.latestToolResult.content", "old tool result");
                 Context.Set<string>("agent.state.keep", "existing");
                 Context.Set<string>("agent.context.old", "value");
                 """)
@@ -543,6 +544,7 @@ public sealed class SuspendNodeUnitTests
                 Context.Set<string>("output.messageContent", Context.Get<string>("agent.latestUserMessage.content"));
                 Context.Set<string>("output.newValue", Context.Get<string>("agent.state.newValue"));
                 Context.Set<bool>("output.hasMessageId", Context.TryGet<string>("agent.latestUserMessage.id", out _));
+                Context.Set<bool>("output.hasLatestToolResult", Context.TryGet<string>("agent.latestToolResult.content", out _));
                 Context.Set<bool>("output.hasKeep", Context.TryGet<string>("agent.state.keep", out _));
                 Context.Set<bool>("output.hasOldContext", Context.TryGet<string>("agent.context.old", out _));
                 """)
@@ -581,8 +583,200 @@ public sealed class SuspendNodeUnitTests
             Assert.Equal("after", output.Get<string>("output.messageContent"));
             Assert.Equal("fresh", output.Get<string>("output.newValue"));
             Assert.False(output.Get<bool>("output.hasMessageId"));
+            Assert.False(output.Get<bool>("output.hasLatestToolResult"));
             Assert.False(output.Get<bool>("output.hasKeep"));
             Assert.False(output.Get<bool>("output.hasOldContext"));
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Completed_conversation_agui_agent_input_replaces_agent_context_atomically_on_next_turn()
+    {
+        var workflow = new WorkflowBuilder()
+            .EnableConversations()
+            .AddStart()
+            .AddCode("inspect", """
+                Context.Set<bool>("output.hasLatestUserMessage", Context.TryGet<string>("agent.latestUserMessage.content", out _));
+                Context.Set<bool>("output.hasLatestToolResult", Context.TryGet<string>("agent.latestToolResult.content", out var toolResult));
+                if (toolResult is not null)
+                    Context.Set<string>("output.toolResult", toolResult);
+                """)
+            .AddEnd()
+            .Connect("start", "inspect")
+            .Connect("inspect", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+        var conversationId = NewConversationId();
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+
+            var firstTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId, CreateAgUiAgentResumeInput(
+                ("latestUserMessage.content", "first prompt")
+            ));
+            Assert.Equal(RunStatus.Success, firstTurn.RunStatus);
+
+            var secondTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId, CreateAgUiAgentResumeInput(
+                ("latestToolResult.content", "tool result"),
+                ("latestToolResult.toolCallId", "call-1")
+            ));
+            Assert.Equal(RunStatus.Success, secondTurn.RunStatus);
+
+            var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
+            var output = ContextObject.Deserialize(secondTurn.OutputContext, jsonConverters.GetConverters());
+            Assert.False(output.Get<bool>("output.hasLatestUserMessage"));
+            Assert.True(output.Get<bool>("output.hasLatestToolResult"));
+            Assert.Equal("tool result", output.Get<string>("output.toolResult"));
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Suspend_resume_with_context_merge_input_merges_agent_context_recursively()
+    {
+        var workflow = new WorkflowBuilder()
+            .EnableConversations()
+            .AddStart()
+            .AddCode("setup", """
+                Context.Set<string>("agent.latestToolResult.content", "old tool result");
+                Context.Set<string>("agent.latestToolResult.toolCallId", "old-call");
+                Context.Set<string>("agent.state.old", "old state");
+                Context.Set<string>("settings.keep", "checkpoint");
+                """)
+            .AddSuspend("ask")
+            .AddCode("after", """
+                Context.Set<string>("output.userMessage", Context.Get<string>("agent.latestUserMessage.content"));
+                Context.Set<string>("output.keep", Context.Get<string>("settings.keep"));
+                Context.Set<string>("output.added", Context.Get<string>("settings.added"));
+                Context.Set<bool>("output.hasLatestToolResult", Context.TryGet<string>("agent.latestToolResult.content", out _));
+                Context.Set<bool>("output.hasOldAgentState", Context.TryGet<string>("agent.state.old", out _));
+                """)
+            .AddEnd()
+            .Connect("start", "setup")
+            .Connect("setup", "ask")
+            .Connect("ask", "after")
+            .Connect("after", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+        var conversationId = NewConversationId();
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+
+            var firstTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId);
+            Assert.Equal(RunStatus.Suspended, firstTurn.RunStatus);
+
+            var secondTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId, CreateContextResumeInput(
+                ("agent.latestUserMessage.content", "new prompt"),
+                ("settings.added", "fresh")
+            ));
+            Assert.Equal(RunStatus.Success, secondTurn.RunStatus);
+
+            var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
+            var input = ContextObject.Deserialize(secondTurn.InputContext, jsonConverters.GetConverters());
+            Assert.Equal("new prompt", input.Get<string>("agent.latestUserMessage.content"));
+            Assert.Equal("old tool result", input.Get<string>("agent.latestToolResult.content"));
+            Assert.Equal("old state", input.Get<string>("agent.state.old"));
+            Assert.Equal("checkpoint", input.Get<string>("settings.keep"));
+            Assert.Equal("fresh", input.Get<string>("settings.added"));
+            Assert.False(input.TryGet<string>("output.userMessage", out _));
+
+            var output = ContextObject.Deserialize(secondTurn.OutputContext, jsonConverters.GetConverters());
+            Assert.Equal("new prompt", output.Get<string>("output.userMessage"));
+            Assert.Equal("checkpoint", output.Get<string>("output.keep"));
+            Assert.Equal("fresh", output.Get<string>("output.added"));
+            Assert.True(output.Get<bool>("output.hasLatestToolResult"));
+            Assert.True(output.Get<bool>("output.hasOldAgentState"));
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Completed_conversation_context_merge_input_merges_agent_context_recursively_on_next_turn()
+    {
+        var workflow = new WorkflowBuilder()
+            .EnableConversations()
+            .AddStart()
+            .AddCode("inspect", """
+                Context.Set<bool>("output.hasLatestUserMessage", Context.TryGet<string>("agent.latestUserMessage.content", out _));
+                Context.Set<bool>("output.hasLatestToolResult", Context.TryGet<string>("agent.latestToolResult.content", out var toolResult));
+                if (toolResult is not null)
+                    Context.Set<string>("output.toolResult", toolResult);
+
+                Context.Set<string>("output.keep", Context.Get<string>("settings.keep"));
+                if (Context.TryGet<string>("settings.added", out var added))
+                    Context.Set<string>("output.added", added);
+                """)
+            .AddEnd()
+            .Connect("start", "inspect")
+            .Connect("inspect", "end")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+        var conversationId = NewConversationId();
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+
+            var firstTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId, CreateContextResumeInput(
+                ("agent.latestUserMessage.content", "first prompt"),
+                ("settings.keep", "checkpoint")
+            ));
+            Assert.Equal(RunStatus.Success, firstTurn.RunStatus);
+
+            var secondTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId, CreateContextResumeInput(
+                ("agent.latestToolResult.content", "tool result"),
+                ("agent.latestToolResult.toolCallId", "call-1"),
+                ("settings.added", "fresh")
+            ));
+            Assert.Equal(RunStatus.Success, secondTurn.RunStatus);
+
+            var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
+            var output = ContextObject.Deserialize(secondTurn.OutputContext, jsonConverters.GetConverters());
+            Assert.True(output.Get<bool>("output.hasLatestUserMessage"));
+            Assert.True(output.Get<bool>("output.hasLatestToolResult"));
+            Assert.Equal("tool result", output.Get<string>("output.toolResult"));
+            Assert.Equal("checkpoint", output.Get<string>("output.keep"));
+            Assert.Equal("fresh", output.Get<string>("output.added"));
         }
         finally
         {
@@ -874,6 +1068,16 @@ public sealed class SuspendNodeUnitTests
         ContextObject context = [];
         if (!context.TrySet(path, value))
             throw new InvalidOperationException($"Could not set '{path}' into test resume context.");
+
+        return new ContextMergeResumeInput() { Context = context };
+    }
+
+    private static ContextMergeResumeInput CreateContextResumeInput(params (string Path, object? Value)[] values)
+    {
+        ContextObject context = [];
+        foreach (var (path, value) in values)
+            if (!context.TrySet(path, value))
+                throw new InvalidOperationException($"Could not set '{path}' into test resume context.");
 
         return new ContextMergeResumeInput() { Context = context };
     }

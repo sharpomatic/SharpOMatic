@@ -1050,6 +1050,7 @@ public class EngineService(
         }
 
         var nodeContext = ContextObject.Deserialize(checkpoint.ContextJson, processContext.JsonConverters);
+        ApplyResumeInputContextEffects(nodeContext, resumeInput);
 
         processContext.Run.InputContext = nodeContext.Serialize(processContext.JsonConverters);
         var threadContext = processContext.RestoreThread(nodeContext, currentContext);
@@ -1085,6 +1086,9 @@ public class EngineService(
             case ContinueResumeInput:
                 return;
             case AgUiAgentResumeInput agUiAgent:
+                if (agUiAgent.Context is not null)
+                    ContextHelpers.OverwriteContexts(nodeContext, agUiAgent.Context);
+
                 nodeContext["agent"] = agUiAgent.Agent;
                 return;
             case ContextMergeResumeInput contextMerge:
@@ -1092,6 +1096,26 @@ public class EngineService(
                 return;
             default:
                 throw new SharpOMaticException($"Conversation start cannot handle resume input type '{resumeInput.GetType().Name}'.");
+        }
+    }
+
+    private static void ApplyResumeInputContextEffects(ContextObject nodeContext, NodeResumeInput resumeInput)
+    {
+        switch (resumeInput)
+        {
+            case ContinueResumeInput:
+                return;
+            case AgUiAgentResumeInput agUiAgent:
+                if (agUiAgent.Context is not null)
+                    ContextHelpers.OverwriteContexts(nodeContext, agUiAgent.Context);
+
+                nodeContext["agent"] = agUiAgent.Agent;
+                return;
+            case ContextMergeResumeInput contextMerge:
+                ContextHelpers.OverwriteContexts(nodeContext, contextMerge.Context);
+                return;
+            default:
+                return;
         }
     }
 

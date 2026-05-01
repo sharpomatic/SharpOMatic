@@ -74,6 +74,68 @@ public sealed class FrontendToolCallNodeUnitTests
     }
 
     [Fact]
+    public async Task Frontend_tool_call_can_resume_from_agui_agent_resume_input()
+    {
+        var workflow = CreateBranchingWorkflow(ToolCallChatPersistenceMode.FunctionCallAndResult);
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+        var conversationId = NewConversationId();
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+
+            var firstTurn = await engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId);
+            Assert.Equal(RunStatus.Suspended, firstTurn.RunStatus);
+            await WaitForConversationStatusAsync(repositoryService, conversationId, ConversationStatus.Suspended);
+
+            var pendingContext = await GetCheckpointContext(repositoryService, conversationId, jsonConverters.GetConverters());
+            var toolCallId = pendingContext.Get<string>("_frontendToolCall.toolCallId");
+
+            var secondTurn = await engineService.StartOrResumeConversationAndWait(
+                workflow.Id,
+                conversationId,
+                CreateAgUiResumeInput(CreateToolResultIncomingMessage("tool-message-1", toolCallId, """{"approved":true}"""))
+            );
+
+            Assert.Equal(RunStatus.Success, secondTurn.RunStatus);
+
+            var input = ContextObject.Deserialize(secondTurn.InputContext, jsonConverters.GetConverters());
+            var inputMessages = input.Get<ContextList>("agent.messages");
+            Assert.Single(inputMessages);
+            Assert.Equal("tool-message-1", input.Get<string>("agent.messages[0].id"));
+            Assert.Equal("tool", input.Get<string>("agent.messages[0].role"));
+            Assert.Equal(toolCallId, input.Get<string>("agent.messages[0].toolCallId"));
+            Assert.False(input.TryGet<string>("agent.latestUserMessage.content", out _));
+            Assert.True(input.TryGetObject("_frontendToolCall", out _));
+            Assert.False(input.TryGetObject("output.toolResult", out _));
+
+            var output = ContextObject.Deserialize(secondTurn.OutputContext, jsonConverters.GetConverters());
+            Assert.Equal("toolResult", output.Get<string>("output.route"));
+            Assert.False(output.TryGetObject("_frontendToolCall", out _));
+            Assert.True(output.Get<ContextObject>("output.toolResult").Get<bool>("approved"));
+
+            var chatHistory = output.Get<ContextList>("input.chat");
+            Assert.Equal(2, chatHistory.Count);
+            Assert.Equal(ChatRole.Assistant, Assert.IsType<ChatMessage>(chatHistory[0]).Role);
+            Assert.Equal(ChatRole.Tool, Assert.IsType<ChatMessage>(chatHistory[1]).Role);
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
     public async Task Frontend_tool_call_keeps_only_function_call_when_configured()
     {
         var workflow = CreateBranchingWorkflow(chatPersistenceMode: ToolCallChatPersistenceMode.FunctionCallOnly);
@@ -511,6 +573,17 @@ public sealed class FrontendToolCallNodeUnitTests
 
         resumeContext.Set("input.chat", mergedChat);
         return new ContextMergeResumeInput() { Context = resumeContext };
+    }
+
+    private static AgUiAgentResumeInput CreateAgUiResumeInput(params IncomingMessageSpec[] incomingMessages)
+    {
+        ContextObject agent = [];
+        ContextList agentMessages = [];
+        foreach (var incomingMessage in incomingMessages)
+            agentMessages.Add(incomingMessage.AgentMessage);
+
+        agent["messages"] = agentMessages;
+        return new AgUiAgentResumeInput() { Agent = agent };
     }
 
     private static IncomingMessageSpec CreateToolResultIncomingMessage(string messageId, string toolCallId, string content)

@@ -175,6 +175,9 @@ The AG-UI controller does not rebuild it from incoming AG-UI messages on every t
 On a new turn, SharpOMatic loads the stored workflow context from the previous checkpoint.
 If that context contains `input.chat`, it is reused.
 The incoming AG-UI message is exposed under `agent`, and a `ModelCall` usually appends it to `input.chat` by using `Prompt = "{{$agent.latestUserMessage.content}}"` and `ChatOutputPath = "input.chat"`.
+Each AG-UI turn uses the AG-UI-specific resume input and replaces the root `agent` context for that turn, so `latestUserMessage` and `latestToolResult` reflect only the latest incoming AG-UI message.
+Other workflow-owned context, including `input.chat`, continues from the previous checkpoint unless a workflow node writes a new value.
+Generic context-merge resume inputs still merge context recursively; the atomic `agent` replacement is specific to AG-UI resume handling.
 
 Incoming AG-UI stream-event echoes from prior model output are not appended back into `input.chat`.
 Incoming frontend tool results are also not appended by the controller; the waiting `Frontend Tool Call` node owns any optional chat persistence for that result.
@@ -182,7 +185,7 @@ Incoming frontend tool results are also not appended by the controller; the wait
 ### Workflow-owned writers
 
 `ModelCall` reads **Chat Input Path** to build the provider request, then writes **Chat Output Path** only after the model call has produced responses.
-When that output path is `input.chat`, the written list includes portable input chat, prompt text, image messages, assistant responses, and synthetic user messages for model tool results.
+When that output path is `input.chat`, the written list includes portable input chat, prompt text, image messages, assistant responses, and synthetic assistant messages for model tool results.
 If **Drop Tool Calls** is enabled on the model call, model tool calls and tool results are omitted from the written chat history.
 
 `Frontend Tool Call` and `Backend Tool Call` are the only non-model nodes that can write tool-call `ChatMessage` entries into `input.chat`.

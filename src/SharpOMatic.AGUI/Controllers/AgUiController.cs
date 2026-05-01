@@ -90,23 +90,11 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
             return await engineService.StartWorkflowRunAndNotify(workflowTarget.WorkflowId, rootContext);
         }
 
-        var repositoryService = HttpContext?.RequestServices?.GetService<IRepositoryService>();
-        if (repositoryService is null)
-        {
-            var resumeInput = new AgUiAgentResumeInput() { Agent = BuildAgentContext(request, latestMessageOnly: true) };
-            return await engineService.StartOrResumeConversationAndNotify(
-                workflowTarget.WorkflowId,
-                threadId,
-                resumeInput: resumeInput,
-                streamConversationId: threadId
-            );
-        }
-
-        var mergedContext = await BuildConversationContextAsync(request, threadId, repositoryService);
+        var resumeInput = new AgUiAgentResumeInput() { Agent = BuildAgentContext(request, latestMessageOnly: true) };
         return await engineService.StartOrResumeConversationAndNotify(
             workflowTarget.WorkflowId,
             threadId,
-            resumeInput: new ContextMergeResumeInput() { Context = mergedContext },
+            resumeInput: resumeInput,
             streamConversationId: threadId
         );
     }
@@ -149,17 +137,6 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         return new ResolvedWorkflowTarget(resolvedWorkflowId, workflow.IsConversationEnabled);
     }
 
-    private async Task<ContextObject> BuildConversationContextAsync(AgUiRunRequest request, string threadId, IRepositoryService repositoryService)
-    {
-        var checkpoint = await repositoryService.GetConversationCheckpoint(threadId);
-        var mergedContext = checkpoint is not null && !string.IsNullOrWhiteSpace(checkpoint.ContextJson)
-            ? ContextObject.Deserialize(checkpoint.ContextJson, HttpContext.RequestServices)
-            : new ContextObject();
-
-        ApplyAgUiContext(mergedContext, request, latestMessageOnly: true);
-        return mergedContext;
-    }
-
     private static ContextObject BuildBaseContext(AgUiRunRequest request)
     {
         var rootContext = new ContextObject();
@@ -188,8 +165,19 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         AddJsonProperty(agentPayload, "state", request.State);
         AddJsonProperty(agentPayload, "context", request.Context);
 
-        return ContextHelpers.FastDeserializeString(JsonSerializer.Serialize(agentPayload)) as ContextObject
+        var agent = ContextHelpers.FastDeserializeString(JsonSerializer.Serialize(agentPayload)) as ContextObject
             ?? throw new SharpOMaticException("AG-UI request payload could not be converted into workflow context.");
+
+        ApplyStateSyncContext(agent, request);
+        return agent;
+    }
+
+    private static void ApplyStateSyncContext(ContextObject agent, AgUiRunRequest request)
+    {
+        if (request.State.HasValue && request.State.Value.ValueKind is not JsonValueKind.Undefined and not JsonValueKind.Null)
+            agent.Set("_hidden.state", ContextHelpers.FastDeserializeString(request.State.Value.GetRawText()));
+        else
+            agent.RemovePath("_hidden.state");
     }
 
     private static ContextList ToContextList(IEnumerable<ChatMessage> messages)
