@@ -4,8 +4,7 @@
 
 ### Agent
 
-- Add node for templated output of text events with templated text
-- Add node for templated output of reasoning events with templated text
+- Add node for templated output of text/reasoning events with templated text
 
 - Endpoint for returning history of messages for existing conversation
   limit how many of the most recent are returned
@@ -18,6 +17,9 @@
 - Check two paths, the first has a FE tool call, other does not
 
 ### Others
+
+- Ensure template expansion is recursive
+- Add helper that takes a string and performs the context based/asset based expansion
 
 - Add view button to Runs and Conversation history and causes it to be loaded as the current data for the trace viewer.
 

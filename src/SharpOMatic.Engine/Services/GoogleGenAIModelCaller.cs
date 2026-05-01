@@ -1,7 +1,14 @@
 ﻿namespace SharpOMatic.Engine.Services;
 
-public class GoogleGenAIModelCaller : BaseModelCaller
+public class GoogleGenAIModelCaller(IEnumerable<IEngineNotification> engineNotifications) : BaseModelCaller
 {
+    private readonly IEnumerable<IEngineNotification> _engineNotifications = engineNotifications;
+
+    public GoogleGenAIModelCaller()
+        : this([])
+    {
+    }
+
     public override async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
         Model model,
         ModelConfig modelConfig,
@@ -134,6 +141,13 @@ public class GoogleGenAIModelCaller : BaseModelCaller
 
     protected virtual IChatClient GetChatClient(Model model, ModelConfig modelConfig, AuthenticationModeConfig authenticationModeConfig, Dictionary<string, string?> connectionFields)
     {
+        foreach (var notification in _engineNotifications)
+        {
+            var chatClient = notification.GoogleGenAIOverride(model, modelConfig, authenticationModeConfig, connectionFields);
+            if (chatClient is not null)
+                return chatClient;
+        }
+
         if (authenticationModeConfig.Id != "gen_ai")
             throw new SharpOMaticException($"Unrecognized authentication method of '{authenticationModeConfig.Id}'");
 

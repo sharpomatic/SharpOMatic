@@ -168,6 +168,7 @@ var runId = await engine.StartOrResumeConversationAndNotify(
 ## `IEngineNotification`
 
 `IEngineNotification` is used for workflow and evaluation completion plus connection overrides.
+All methods have default no-op implementations, so your notification class only needs to override the hooks it uses.
 For standard one-shot runs, `conversationId` is `null`.
 For conversation turns, `conversationId` is populated and `RunCompleted` can arrive with `RunStatus.Suspended` when the turn stops at a **Suspend** node.
 
@@ -217,8 +218,62 @@ public class EngineNotification(IServiceProvider serviceProvider) : IEngineNotif
             parameters["api_key"] = "mySecret";
         }
     }
+
+    public (ResponsesClient client, string modelName)? OpenAIResponseClientOverride(
+        Model model,
+        ModelConfig modelConfig,
+        AuthenticationModeConfig authenticationModeConfig,
+        Dictionary<string, string?> connectionFields)
+    {
+        if (authenticationModeConfig.Id != "api_key")
+            return null;
+
+        var client = serviceProvider.GetKeyedService<ResponsesClient>($"openai:{modelConfig.ConfigId}");
+        if (client is null)
+            return null;
+
+        var modelName = modelConfig.IsCustom && model.ParameterValues.TryGetValue("model_name", out var customModelName)
+            ? customModelName
+            : modelConfig.DisplayName;
+
+        return (client, modelName);
+    }
+
+    public (ResponsesClient client, string modelName)? AzureOpenAIResponseClientOverride(
+        Model model,
+        ModelConfig modelConfig,
+        AuthenticationModeConfig authenticationModeConfig,
+        Dictionary<string, string?> connectionFields)
+    {
+        if (authenticationModeConfig.Id != "api_key")
+            return null;
+
+        var client = serviceProvider.GetKeyedService<ResponsesClient>($"azure:{modelConfig.ConfigId}");
+        if (client is null || !model.ParameterValues.TryGetValue("deployment_name", out var deploymentName))
+            return null;
+
+        return (client, deploymentName);
+    }
+
+    public IChatClient? GoogleGenAIChatClientOverride(
+        Model model,
+        ModelConfig modelConfig,
+        AuthenticationModeConfig authenticationModeConfig,
+        Dictionary<string, string?> connectionFields)
+    {
+        if (authenticationModeConfig.Id != "gen_ai")
+            return null;
+
+        return serviceProvider.GetKeyedService<IChatClient>($"google:{modelConfig.ConfigId}");
+    }
 }
 ```
+
+`ConnectionOverride` can mutate connector authentication fields before the model caller creates a provider client.
+For OpenAI model calls, `OpenAIResponseClientOverride` provides a lower-level escape hatch: the first registered notification that returns a non-null `(ResponsesClient client, string modelName)` supplies the Responses client and model name for that call.
+For Azure OpenAI model calls, `AzureOpenAIResponseClientOverride` provides a lower-level escape hatch: the first registered notification that returns a non-null `(ResponsesClient client, string modelName)` supplies the Responses client and deployment/model name for that call.
+For Google model calls, `GoogleGenAIChatClientOverride` provides a lower-level escape hatch: the first registered notification that returns a non-null `IChatClient` supplies the chat client for that call.
+Return `null` from any lower-level override to use SharpOMatic's default client creation path.
 
 ## `IProgressService`
 

@@ -1,8 +1,15 @@
 ﻿#pragma warning disable OPENAI001
 namespace SharpOMatic.Engine.Services;
 
-public class AzureOpenAIModelCaller : OpenAIModelCaller
+public class AzureOpenAIModelCaller(IEnumerable<IEngineNotification> engineNotifications) : OpenAIModelCaller
 {
+    private readonly IEnumerable<IEngineNotification> _engineNotifications = engineNotifications;
+
+    public AzureOpenAIModelCaller()
+        : this([])
+    {
+    }
+
     public override (ResponsesClient client, string modelName) GetOpenAIResponseClient(
         Model model,
         ModelConfig modelConfig,
@@ -10,6 +17,13 @@ public class AzureOpenAIModelCaller : OpenAIModelCaller
         Dictionary<string, string?> connectionFields
     )
     {
+        foreach (var notification in _engineNotifications)
+        {
+            var responseClient = notification.AzureOpenAIOverride(model, modelConfig, authenticationModeConfig, connectionFields);
+            if (responseClient is not null)
+                return responseClient.Value;
+        }
+
         if (!connectionFields.TryGetValue("endpoint", out var endpoint))
             throw new SharpOMaticException("Connector endpoint not specified.");
 

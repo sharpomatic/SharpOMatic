@@ -1,8 +1,15 @@
 ﻿#pragma warning disable OPENAI001
 namespace SharpOMatic.Engine.Services;
 
-public class OpenAIModelCaller : BaseModelCaller
+public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotifications) : BaseModelCaller
 {
+    private readonly IEnumerable<IEngineNotification> _engineNotifications = engineNotifications;
+
+    public OpenAIModelCaller()
+        : this([])
+    {
+    }
+
     public override async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
         Model model,
         ModelConfig modelConfig,
@@ -48,6 +55,13 @@ public class OpenAIModelCaller : BaseModelCaller
         Dictionary<string, string?> connectionFields
     )
     {
+        foreach (var notification in _engineNotifications)
+        {
+            var responseClient = notification.OpenAIOverride(model, modelConfig, authenticationModeConfig, connectionFields);
+            if (responseClient is not null)
+                return responseClient.Value;
+        }
+
         var options = new OpenAIClientOptions();
         if (!connectionFields.TryGetValue("api_key", out var apiKey) || string.IsNullOrWhiteSpace(apiKey))
             throw new SharpOMaticException("Connector api key not specified.");
