@@ -37,7 +37,7 @@ internal static class ChatHistoryReplayHelper
                         break;
 
                     case FunctionResultContent functionResultContent when !dropToolCalls:
-                        toolResultMessages.Add(CreateToolResultUserMessage(functionResultContent, toolCallsById, anonymousToolCalls));
+                        toolResultMessages.Add(CreateToolResultAssistantMessage(functionResultContent, toolCallsById, anonymousToolCalls));
                         break;
                 }
             }
@@ -136,7 +136,7 @@ internal static class ChatHistoryReplayHelper
         anonymousToolCalls.Enqueue(functionCallContent);
     }
 
-    private static ChatMessage CreateToolResultUserMessage(
+    private static ChatMessage CreateToolResultAssistantMessage(
         FunctionResultContent functionResultContent,
         Dictionary<string, FunctionCallContent> toolCallsById,
         Queue<FunctionCallContent> anonymousToolCalls
@@ -150,7 +150,7 @@ internal static class ChatHistoryReplayHelper
             ? $"Result of calling tool {toolName} with no arguments = {resultText}"
             : $"Result of calling tool {toolName} with arguments {argumentsText} = {resultText}";
 
-        return new ChatMessage(ChatRole.User, [new TextContent(text)]);
+        return new ChatMessage(ChatRole.Assistant, [new TextContent(text)]);
     }
 
     private static FunctionCallContent? ResolveToolCall(

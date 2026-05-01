@@ -70,10 +70,20 @@ public sealed class FrontendToolCallNode(ThreadContext threadContext, FrontendTo
     {
         EnsureConversation();
 
-        if (input is not ContextMergeResumeInput contextMerge)
-            throw new SharpOMaticException($"Frontend Tool Call node cannot handle resume input type '{input.GetType().Name}'.");
+        switch (input)
+        {
+            case AgUiAgentResumeInput agUiAgent:
+                if (agUiAgent.Context is not null)
+                    ContextHelpers.OverwriteContexts(ThreadContext.NodeContext, agUiAgent.Context);
 
-        ContextHelpers.OverwriteContexts(ThreadContext.NodeContext, contextMerge.Context);
+                ThreadContext.NodeContext["agent"] = agUiAgent.Agent;
+                break;
+            case ContextMergeResumeInput contextMerge:
+                ContextHelpers.OverwriteContexts(ThreadContext.NodeContext, contextMerge.Context);
+                break;
+            default:
+                throw new SharpOMaticException($"Frontend Tool Call node cannot handle resume input type '{input.GetType().Name}'.");
+        }
 
         var pendingState = GetPendingState();
         try

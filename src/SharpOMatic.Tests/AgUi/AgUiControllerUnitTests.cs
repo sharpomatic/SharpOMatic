@@ -2092,21 +2092,17 @@ public sealed class AgUiControllerUnitTests
 
         await controller.Post(request);
 
-        var mergeInput = Assert.IsType<ContextMergeResumeInput>(capturedResumeInput);
-        Assert.Equal("Next prompt", mergeInput.Context.Get<string>("agent.latestUserMessage.content"));
-        var agentMessages = mergeInput.Context.Get<ContextList>("agent.messages");
+        var resumeInput = Assert.IsType<AgUiAgentResumeInput>(capturedResumeInput);
+        Assert.Equal("Next prompt", resumeInput.Agent.Get<string>("latestUserMessage.content"));
+        Assert.False(resumeInput.Agent.TryGet<ContextObject>("latestToolResult", out _));
+        var agentMessages = resumeInput.Agent.Get<ContextList>("messages");
         Assert.Single(agentMessages);
-        Assert.Equal("user-2", mergeInput.Context.Get<string>("agent.messages[0].id"));
-        Assert.Equal("Next prompt", mergeInput.Context.Get<string>("agent.messages[0].content"));
-
-        var chat = mergeInput.Context.Get<ContextList>("input.chat");
-        Assert.Equal(2, chat.Count);
-        Assert.Equal(ChatRole.Assistant, Assert.IsType<ChatMessage>(chat[0]).Role);
-        Assert.Equal(ChatRole.Tool, Assert.IsType<ChatMessage>(chat[1]).Role);
+        Assert.Equal("user-2", resumeInput.Agent.Get<string>("messages[0].id"));
+        Assert.Equal("Next prompt", resumeInput.Agent.Get<string>("messages[0].content"));
     }
 
     [Fact]
-    public async Task AgUi_controller_uses_context_merge_resume_input_for_conversation_workflows_and_keeps_latest_user_message_out_of_input_chat()
+    public async Task AgUi_controller_uses_agent_resume_input_for_conversation_workflows()
     {
         var engineRunId = Guid.NewGuid();
         var workflowId = Guid.NewGuid();
@@ -2190,16 +2186,11 @@ public sealed class AgUiControllerUnitTests
             Times.Never
         );
 
-        var mergeInput = Assert.IsType<ContextMergeResumeInput>(capturedResumeInput);
-        Assert.Equal(42, mergeInput.Context.Get<int>("existing.value"));
-        Assert.Equal("New prompt", mergeInput.Context.Get<string>("agent.latestUserMessage.content"));
-        Assert.Equal("assistant", mergeInput.Context.Get<string>("agent.state.mode"));
-        Assert.Equal("assistant", mergeInput.Context.Get<string>("agent._hidden.state.mode"));
-
-        var chat = mergeInput.Context.Get<ContextList>("input.chat");
-        Assert.Equal(2, chat.Count);
-        Assert.Equal("user-1", Assert.IsType<ChatMessage>(chat[0]).MessageId);
-        Assert.Equal("assistant-1", Assert.IsType<ChatMessage>(chat[1]).MessageId);
+        var resumeInput = Assert.IsType<AgUiAgentResumeInput>(capturedResumeInput);
+        Assert.Equal("New prompt", resumeInput.Agent.Get<string>("latestUserMessage.content"));
+        Assert.Equal("assistant", resumeInput.Agent.Get<string>("state.mode"));
+        Assert.Equal("assistant", resumeInput.Agent.Get<string>("_hidden.state.mode"));
+        Assert.Null(resumeInput.Context);
     }
 
     [Fact]
@@ -2284,11 +2275,8 @@ public sealed class AgUiControllerUnitTests
             Times.Once
         );
 
-        var mergeInput = Assert.IsType<ContextMergeResumeInput>(capturedResumeInput);
-        Assert.Equal("Repeated prompt", mergeInput.Context.Get<string>("agent.latestUserMessage.content"));
-        var chat = mergeInput.Context.Get<ContextList>("input.chat");
-        Assert.Single(chat);
-        Assert.Equal("user-1", Assert.IsType<ChatMessage>(chat[0]).MessageId);
+        var resumeInput = Assert.IsType<AgUiAgentResumeInput>(capturedResumeInput);
+        Assert.Equal("Repeated prompt", resumeInput.Agent.Get<string>("latestUserMessage.content"));
     }
 
     [Fact]

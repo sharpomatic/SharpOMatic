@@ -83,7 +83,7 @@ Stream events are generated from that transcript for UI display, but they are no
 
 When writing **Chat Output Path**, SharpOMatic removes reasoning and provider-specific tool content so later model calls can replay the history across different providers.
 Assistant text is stored as assistant messages.
-Tool results are stored as user messages such as `Result of calling tool lookup_weather with arguments {"city":"Sydney"} = Sunny`, or `Result of calling tool get_time with no arguments = Noon`.
+Tool results are stored as assistant messages such as `Result of calling tool lookup_weather with arguments {"city":"Sydney"} = Sunny`, or `Result of calling tool get_time with no arguments = Noon`.
 If **Drop Tool Calls** is enabled on the **Details** tab, model tool calls and tool results are omitted from **Chat Output Path** instead.
 The next model call receives only user and assistant messages from this stored history.
 
@@ -99,8 +99,8 @@ The next 3 are replies from the model.
 
 <img src="/img/modelcall-chat-output.png" alt="Output Messages" width="900" style={{ maxWidth: '100%', height: 'auto' }} />
 
-**message[3]** contains the outcome of the first tool call as a user message.<br/>
-**message[4]** contains the outcome of the second tool call as a user message.<br/>
+**message[3]** contains the outcome of the first tool call as an assistant message.<br/>
+**message[4]** contains the outcome of the second tool call as an assistant message.<br/>
 **message[5]** is the final text reply from the model with the requested description.
 
 ## Chat Bot

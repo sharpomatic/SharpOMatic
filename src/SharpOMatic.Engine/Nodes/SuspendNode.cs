@@ -15,6 +15,9 @@ public class SuspendNode(ThreadContext threadContext, SuspendNodeEntity node) : 
             case ContinueResumeInput:
                 break;
             case AgUiAgentResumeInput agUiAgent:
+                if (agUiAgent.Context is not null)
+                    ContextHelpers.OverwriteContexts(ThreadContext.NodeContext, agUiAgent.Context);
+
                 ThreadContext.NodeContext["agent"] = agUiAgent.Agent;
                 break;
             case ContextMergeResumeInput contextMerge:
