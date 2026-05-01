@@ -58,5 +58,6 @@ If one of the listed types is not appropriate, you can use a C# expression to re
 In the following example, the expression returns the current date and time.
 This works because the returned type **DateTimeOffset** is a scalar and all scalars can be persisted to and from JSON without additional work.
 Returning a class would require you to add an appropriate **JsonConverter** to the SharpOMatic setup during program setup.
+Default expressions have access to **Context**, **Assets**, and **Templates**, including `await Templates.ExpandAsync(...)` for expanding context and text asset markers.
 
 <img src="/img/edit_expression.png" alt="Expression value" width="900" style={{ maxWidth: '100%', height: 'auto' }} />

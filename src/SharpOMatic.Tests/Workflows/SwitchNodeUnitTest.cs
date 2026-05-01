@@ -106,6 +106,37 @@ public sealed class SwitchNodeUnitTest
     }
 
     [Fact]
+    public async Task Switch_can_route_using_template_expansion()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddSwitch(
+                "switch",
+                new WorkflowBuilder.SwitchChoice("left", "return await Templates.ExpandAsync(\"{{$route.template}}\") == \"left\";"),
+                new WorkflowBuilder.SwitchChoice("default", "")
+            )
+            .AddCode("left", "Context.Set<string>(\"result\", \"left\");")
+            .AddCode("default", "Context.Set<string>(\"result\", \"default\");")
+            .Connect("start", "switch")
+            .Connect("switch.left", "left")
+            .Connect("switch.default", "default")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set("route.template", "left");
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+
+        Assert.NotNull(run.OutputContext);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        Assert.Equal("left", outCtx.Get<string>("result"));
+    }
+
+    [Fact]
     public async Task Switch_matches_second()
     {
         var workflow = new WorkflowBuilder()

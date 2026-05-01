@@ -111,7 +111,7 @@ With AG-UI non-conversation runs, SharpOMatic creates `input.chat` from the inco
 For a conversation-enabled chat bot, let the workflow own `input.chat`.
 A common AG-UI setup is:
 
-- **Prompt**: `{{$agent.latestUserMessage.content}}`
+- **User**: `{{$agent.latestUserMessage.content}}`
 - **Chat Input Path**: `input.chat`
 - **Chat Output Path**: `input.chat`
 

@@ -2,6 +2,9 @@
 
 public static class ContextHelpers
 {
+    private const int MaxTemplateExpansionDepth = 10;
+    private static readonly System.Text.RegularExpressions.Regex ContextTemplateRegex = new(@"\{\{\s*(?:\$\s*)?(.*?)\s*\}\}", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static readonly System.Text.RegularExpressions.Regex AssetTemplateRegex = new(@"<<\s*(.*?)\s*>>", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static readonly JsonSerializerOptions ContextJsonOptions = new JsonSerializerOptions().BuildOptions();
     private static readonly JsonSerializerOptions AssetRefJsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -10,7 +13,8 @@ public static class ContextHelpers
         ContextObject context,
         ContextEntryEntity entry,
         IScriptOptionsService scriptOptionsService,
-        Guid runId
+        Guid runId,
+        string? conversationId = null
     )
     {
         object? entryValue = entry.EntryValue;
@@ -64,7 +68,8 @@ public static class ContextHelpers
                     {
                         Context = context,
                         ServiceProvider = serviceProvider,
-                        Assets = new AssetHelper(repositoryService, assetStore, runId),
+                        Assets = new AssetHelper(repositoryService, assetStore, runId, conversationId),
+                        Templates = new TemplateHelper(context, repositoryService, assetStore, runId, conversationId),
                     };
 
                     try
@@ -86,6 +91,13 @@ public static class ContextHelpers
                         StringBuilder sb = new();
                         sb.AppendLine($"Input entry '{entry.InputPath}' expression failed during execution.\n");
                         sb.Append(e2.Message);
+                        throw new SharpOMaticException(sb.ToString());
+                    }
+                    catch (Exception e3)
+                    {
+                        StringBuilder sb = new();
+                        sb.AppendLine($"Input entry '{entry.InputPath}' expression failed during execution.\n");
+                        sb.Append(e3.Message);
                         throw new SharpOMaticException(sb.ToString());
                     }
                 }
@@ -173,46 +185,166 @@ public static class ContextHelpers
 
     public static string SubstituteValues(string input, ContextObject context)
     {
+        return SubstituteValues(input, context, new TemplateExpansionState(), 0);
+    }
+
+    public static async Task<string> SubstituteValuesAsync(string input, ContextObject context, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId, string? conversationId = null)
+    {
+        return await SubstituteValuesAsync(input, context, repositoryService, assetStore, runId, conversationId, new TemplateExpansionState(), 0);
+    }
+
+    private static string SubstituteValues(string input, ContextObject context, TemplateExpansionState state, int depth)
+    {
         if (string.IsNullOrWhiteSpace(input))
             return input;
 
-        return System.Text.RegularExpressions.Regex.Replace(
+        EnsureTemplateExpansionDepth(depth);
+
+        return ContextTemplateRegex.Replace(
             input,
-            @"\{\{\s*(?:\$\s*)?(.*?)\s*\}\}",
             match =>
             {
                 var path = match.Groups[1].Value.Trim();
                 if (string.IsNullOrWhiteSpace(path))
                     return string.Empty;
 
-                if (ContextPathResolver.TryGetValue(context, path, false, false, out var value))
+                if (!ContextPathResolver.TryGetValue(context, path, false, false, out var value))
+                    return string.Empty;
+
+                if (value is string stringValue)
                 {
-                    return value switch
+                    if (!ContextTemplateRegex.IsMatch(stringValue))
+                        return stringValue;
+
+                    var key = BuildContextExpansionKey(path);
+                    state.Enter(key, $"Recursive context template expansion detected for '{path}'.");
+                    try
                     {
-                        null => string.Empty,
-                        ContextObject => JsonSerializer.Serialize(value, ContextJsonOptions),
-                        ContextList => JsonSerializer.Serialize(value, ContextJsonOptions),
-                        _ => value.ToString() ?? string.Empty,
-                    };
+                        return SubstituteValues(stringValue, context, state, depth + 1);
+                    }
+                    finally
+                    {
+                        state.Exit(key);
+                    }
                 }
 
-                return string.Empty;
+                return value switch
+                {
+                    null => string.Empty,
+                    ContextObject => JsonSerializer.Serialize(value, ContextJsonOptions),
+                    ContextList => JsonSerializer.Serialize(value, ContextJsonOptions),
+                    _ => value.ToString() ?? string.Empty,
+                };
             }
         );
     }
 
-    public static async Task<string> SubstituteValuesAsync(string input, ContextObject context, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId, string? conversationId = null)
-    {
-        var substituted = SubstituteValues(input, context);
-        return await SubstituteAssetValuesAsync(substituted, repositoryService, assetStore, runId, conversationId);
-    }
-
-    private static async Task<string> SubstituteAssetValuesAsync(string input, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId, string? conversationId)
+    private static async Task<string> SubstituteValuesAsync(
+        string input,
+        ContextObject context,
+        IRepositoryService repositoryService,
+        IAssetStore assetStore,
+        Guid? runId,
+        string? conversationId,
+        TemplateExpansionState state,
+        int depth
+    )
     {
         if (string.IsNullOrWhiteSpace(input))
             return input;
 
-        var matches = System.Text.RegularExpressions.Regex.Matches(input, @"<<\s*(.*?)\s*>>");
+        EnsureTemplateExpansionDepth(depth);
+
+        var substituted = await SubstituteContextValuesAsync(input, context, repositoryService, assetStore, runId, conversationId, state, depth);
+        return await SubstituteAssetValuesAsync(substituted, context, repositoryService, assetStore, runId, conversationId, state, depth);
+    }
+
+    private static async Task<string> SubstituteContextValuesAsync(
+        string input,
+        ContextObject context,
+        IRepositoryService repositoryService,
+        IAssetStore assetStore,
+        Guid? runId,
+        string? conversationId,
+        TemplateExpansionState state,
+        int depth
+    )
+    {
+        var matches = ContextTemplateRegex.Matches(input);
+        if (matches.Count == 0)
+            return input;
+
+        var sb = new StringBuilder(input.Length);
+        var lastIndex = 0;
+
+        foreach (System.Text.RegularExpressions.Match match in matches)
+        {
+            sb.Append(input, lastIndex, match.Index - lastIndex);
+
+            var path = match.Groups[1].Value.Trim();
+            if (!string.IsNullOrWhiteSpace(path) && ContextPathResolver.TryGetValue(context, path, false, false, out var value))
+                sb.Append(await ResolveContextReplacementAsync(path, value, context, repositoryService, assetStore, runId, conversationId, state, depth));
+
+            lastIndex = match.Index + match.Length;
+        }
+
+        sb.Append(input, lastIndex, input.Length - lastIndex);
+        return sb.ToString();
+    }
+
+    private static async Task<string> ResolveContextReplacementAsync(
+        string path,
+        object? value,
+        ContextObject context,
+        IRepositoryService repositoryService,
+        IAssetStore assetStore,
+        Guid? runId,
+        string? conversationId,
+        TemplateExpansionState state,
+        int depth
+    )
+    {
+        if (value is string stringValue)
+        {
+            if (!HasAnyTemplateMarkers(stringValue))
+                return stringValue;
+
+            var key = BuildContextExpansionKey(path);
+            state.Enter(key, $"Recursive context template expansion detected for '{path}'.");
+            try
+            {
+                return await SubstituteValuesAsync(stringValue, context, repositoryService, assetStore, runId, conversationId, state, depth + 1);
+            }
+            finally
+            {
+                state.Exit(key);
+            }
+        }
+
+        return value switch
+        {
+            null => string.Empty,
+            ContextObject => JsonSerializer.Serialize(value, ContextJsonOptions),
+            ContextList => JsonSerializer.Serialize(value, ContextJsonOptions),
+            _ => value.ToString() ?? string.Empty,
+        };
+    }
+
+    private static async Task<string> SubstituteAssetValuesAsync(
+        string input,
+        ContextObject context,
+        IRepositoryService repositoryService,
+        IAssetStore assetStore,
+        Guid? runId,
+        string? conversationId,
+        TemplateExpansionState state,
+        int depth
+    )
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return input;
+
+        var matches = AssetTemplateRegex.Matches(input);
         if (matches.Count == 0)
             return input;
 
@@ -224,7 +356,7 @@ public static class ContextHelpers
             sb.Append(input, lastIndex, match.Index - lastIndex);
 
             var assetName = match.Groups[1].Value.Trim();
-            var replacement = await ResolveAssetTextAsync(assetName, repositoryService, assetStore, runId, conversationId);
+            var replacement = await ResolveAssetTextAsync(assetName, context, repositoryService, assetStore, runId, conversationId, state, depth);
             sb.Append(replacement);
 
             lastIndex = match.Index + match.Length;
@@ -234,11 +366,53 @@ public static class ContextHelpers
         return sb.ToString();
     }
 
-    private static async Task<string> ResolveAssetTextAsync(string assetName, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId, string? conversationId)
+    private static async Task<string> ResolveAssetTextAsync(
+        string assetName,
+        ContextObject context,
+        IRepositoryService repositoryService,
+        IAssetStore assetStore,
+        Guid? runId,
+        string? conversationId,
+        TemplateExpansionState state,
+        int depth
+    )
     {
         if (string.IsNullOrWhiteSpace(assetName))
             return string.Empty;
 
+        var asset = await ResolveAssetAsync(assetName, repositoryService, runId, conversationId);
+
+        if (asset is null || !AssetMediaTypePolicy.IsTextLike(asset.MediaType))
+            return string.Empty;
+
+        var key = BuildAssetExpansionKey(asset.AssetId);
+        state.Enter(key, $"Recursive asset template expansion detected for '{asset.Name}'.");
+        try
+        {
+            await using var stream = await assetStore.OpenReadAsync(asset.StorageKey);
+            using var reader = new StreamReader(stream);
+            var content = await reader.ReadToEndAsync();
+            if (!HasAnyTemplateMarkers(content))
+                return content;
+
+            return await SubstituteValuesAsync(content, context, repositoryService, assetStore, runId, conversationId, state, depth + 1);
+        }
+        catch (SharpOMaticException)
+        {
+            throw;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+        finally
+        {
+            state.Exit(key);
+        }
+    }
+
+    private static async Task<Asset?> ResolveAssetAsync(string assetName, IRepositoryService repositoryService, Guid? runId, string? conversationId)
+    {
         var normalizedAssetName = assetName.Trim();
         Asset? asset = null;
 
@@ -254,18 +428,43 @@ public static class ContextHelpers
         if (asset is null)
             asset = await repositoryService.GetLibraryAssetByName(normalizedAssetName);
 
-        if (asset is null || !AssetMediaTypePolicy.IsTextLike(asset.MediaType))
-            return string.Empty;
+        return asset;
+    }
 
-        try
+    private static void EnsureTemplateExpansionDepth(int depth)
+    {
+        if (depth > MaxTemplateExpansionDepth)
+            throw new SharpOMaticException($"Template expansion exceeded the maximum depth of {MaxTemplateExpansionDepth}.");
+    }
+
+    private static bool HasAnyTemplateMarkers(string input)
+    {
+        return ContextTemplateRegex.IsMatch(input) || AssetTemplateRegex.IsMatch(input);
+    }
+
+    private static string BuildContextExpansionKey(string path)
+    {
+        return $"context:{path}";
+    }
+
+    private static string BuildAssetExpansionKey(Guid assetId)
+    {
+        return $"asset:{assetId:N}";
+    }
+
+    private sealed class TemplateExpansionState
+    {
+        private readonly HashSet<string> _activeKeys = new(StringComparer.Ordinal);
+
+        public void Enter(string key, string message)
         {
-            await using var stream = await assetStore.OpenReadAsync(asset.StorageKey);
-            using var reader = new StreamReader(stream);
-            return await reader.ReadToEndAsync();
+            if (!_activeKeys.Add(key))
+                throw new SharpOMaticException(message);
         }
-        catch
+
+        public void Exit(string key)
         {
-            return string.Empty;
+            _activeKeys.Remove(key);
         }
     }
 

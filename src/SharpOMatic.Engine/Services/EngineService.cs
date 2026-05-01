@@ -670,12 +670,14 @@ public class EngineService(
                             if (!string.IsNullOrWhiteSpace(columnData.StringValue))
                             {
                                 var options = scriptOptionsService.GetScriptOptions();
-                                    var globals = new ScriptCodeContext()
-                                    {
-                                        Context = [],
-                                        ServiceProvider = serviceProvider,
-                                        Assets = new AssetHelper(repository, assetStore, run.RunId),
-                                    };
+                                var expressionContext = new ContextObject();
+                                var globals = new ScriptCodeContext()
+                                {
+                                    Context = expressionContext,
+                                    ServiceProvider = serviceProvider,
+                                    Assets = new AssetHelper(repository, assetStore, run.RunId, run.ConversationId),
+                                    Templates = new TemplateHelper(expressionContext, repository, assetStore, run.RunId, run.ConversationId),
+                                };
 
                                 try
                                 {
@@ -697,6 +699,13 @@ public class EngineService(
                                     StringBuilder sb = new();
                                     sb.AppendLine($"Column '{column.Name}' for row '{rowName}' expression failed during execution.\n");
                                     sb.Append(e2.Message);
+                                    throw new SharpOMaticException(sb.ToString());
+                                }
+                                catch (Exception e3)
+                                {
+                                    StringBuilder sb = new();
+                                    sb.AppendLine($"Column '{column.Name}' for row '{rowName}' expression failed during execution.\n");
+                                    sb.Append(e3.Message);
                                     throw new SharpOMaticException(sb.ToString());
                                 }
                             }

@@ -55,6 +55,20 @@ var outputAsset = await Assets.AddAssetFromBytesAsync(
 Context.Set("output.asset", outputAsset);
 ```
 
+### Templates
+
+Use the **Templates** helper to expand the same `{{$path}}`, `{{path}}`, and `<<asset-name>>` markers used by Model Call text fields.
+String context values and text asset contents are expanded recursively.
+
+```csharp
+var prompt = await Templates.ExpandAsync("Summarize {{$input.topic}} using <<prompt-base.txt>>");
+Context.Set("output.prompt", prompt);
+```
+
+Template expansion is read-only.
+Missing context paths or missing assets insert nothing.
+Cycles and runaway recursive expansion fail the node execution.
+
 ### ImageHelper
 
 `ImageHelper` is a static helper type for common image operations such as annotating points, rectangles, and polygons, or extracting image regions.

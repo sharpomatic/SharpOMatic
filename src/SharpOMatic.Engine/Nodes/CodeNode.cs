@@ -13,6 +13,7 @@ public class CodeNode(ThreadContext threadContext, CodeNodeEntity node) : RunNod
                 Context = ThreadContext.NodeContext,
                 ServiceProvider = ProcessContext.ServiceScope.ServiceProvider,
                 Assets = new AssetHelper(ProcessContext.RepositoryService, ProcessContext.AssetStore, ProcessContext.Run.RunId, ProcessContext.Run.ConversationId),
+                Templates = new TemplateHelper(ThreadContext.NodeContext, ProcessContext.RepositoryService, ProcessContext.AssetStore, ProcessContext.Run.RunId, ProcessContext.Run.ConversationId),
                 Debug = new DebugInformationHelper(Trace, Informations),
                 Events = new StreamEventHelper(ProcessContext, ThreadContext.NodeContext),
             };

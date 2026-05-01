@@ -77,6 +77,57 @@ public sealed class ModelCallStreamingUnitTests
     }
 
     [Fact]
+    public async Task Model_call_resolves_recursive_context_and_asset_prompt_templates()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddModelCall("model")
+            .AddEnd()
+            .Connect("start", "model")
+            .Connect("model", "end")
+            .Build();
+
+        var model = CreateModel("openai");
+        ConfigureModelNode(workflow, "model", model.ModelId);
+        var modelNode = Assert.IsType<ModelCallNodeEntity>(workflow.Nodes.Single(n => n.Title == "model"));
+        modelNode.Prompt = "Prompt {{$input.template}}";
+
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddKeyedScoped<IModelCaller, PromptEventTestModelCaller>("openai"));
+
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "openai", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        var assetService = new AssetService(repositoryService, provider.GetRequiredService<IAssetStore>());
+        await assetService.CreateFromBytesAsync(Encoding.UTF8.GetBytes("for {{$input.topic}}"), "prompt-fragment.txt", "text/plain", AssetScope.Library);
+
+        var context = new ContextObject();
+        context.Set("input.template", "using <<prompt-fragment.txt>>");
+        context.Set("input.topic", "hello");
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, context);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.Equal("Prompt using for hello", streamEvents.Where(e => e.EventKind == StreamEventKind.TextContent).First().TextDelta);
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
     public async Task Model_call_can_disable_user_stream_events_without_affecting_model_prompt_or_output()
     {
         var workflow = new WorkflowBuilder()

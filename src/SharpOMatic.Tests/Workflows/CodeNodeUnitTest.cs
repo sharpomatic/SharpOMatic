@@ -137,6 +137,34 @@ public sealed class CodeNodeUnitTest
     }
 
     [Fact]
+    public async Task Code_templates_expand_context_and_text_assets()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", "var prompt = await Templates.ExpandAsync(\"Summarize {{$input.topic}} using <<prompt-base.txt>>\"); Context.Set(\"output.prompt\", prompt);")
+            .Connect("start", "code")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        var assetService = new AssetService(repositoryService, provider.GetRequiredService<IAssetStore>());
+        await assetService.CreateFromBytesAsync(Encoding.UTF8.GetBytes("base for {{$input.topic}}"), "prompt-base.txt", "text/plain", AssetScope.Library);
+
+        ContextObject ctx = [];
+        ctx.Set("input.topic", "templates");
+
+        var run = await RunWorkflowWithProvider(provider, ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        Assert.Equal("Summarize templates using base for templates", outCtx.Get<string>("output.prompt"));
+    }
+
+    [Fact]
     public async Task Code_call_into_project()
     {
         var workflow = new WorkflowBuilder().AddStart().AddCode("code", "Context.Set<int>(\"output.integer\", WorkflowRunner.Double(21));").Connect("start", "code").Build();
@@ -253,6 +281,26 @@ public sealed class CodeNodeUnitTest
     }
 
     [Fact]
+    public async Task Code_template_cycle_fails_during_execution()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddCode("code", "var prompt = await Templates.ExpandAsync(\"{{$template}}\"); Context.Set(\"output.prompt\", prompt);")
+            .Connect("start", "code")
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set("template", "{{$template}}");
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.Equal(RunStatus.Failed, run.RunStatus);
+        Assert.StartsWith("Code node failed during execution.", run.Error);
+        Assert.Contains("Recursive context template expansion detected", run.Error);
+    }
+
+    [Fact]
     public async Task Code_runtime_error_does_not_mutate_context()
     {
         var workflow = new WorkflowBuilder().AddStart().AddCode("code", "throw new System.InvalidOperationException(\"Boom\");").Connect("start", "code").Build();
@@ -269,5 +317,26 @@ public sealed class CodeNodeUnitTest
         var outCtx = ContextObject.Deserialize(run.OutputContext);
         Assert.Equal(5, outCtx.Get<int>("input.value"));
         Assert.Equal("Ada", outCtx.Get<string>("input.name"));
+    }
+
+    private static async Task<Run> RunWorkflowWithProvider(ServiceProvider provider, ContextObject ctx, WorkflowEntity workflow)
+    {
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engine = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engine.StartWorkflowRunAndWait(workflow.Id, ctx);
+            await Task.Delay(100);
+            return run;
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
     }
 }

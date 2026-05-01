@@ -138,6 +138,25 @@ public sealed class StartNodeUnitTest
     }
 
     [Fact]
+    public async Task Start_init_expression_can_use_template_expansion()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart("start", true, WorkflowBuilder.CreateExpressionInput("input.expr", true, "return await Templates.ExpandAsync(\"Hello {{$input.name}}\");"))
+            .Build();
+
+        ContextObject ctx = [];
+        ctx.Set("input.name", "Ada");
+
+        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+        var outCtx = ContextObject.Deserialize(run.OutputContext);
+        Assert.NotNull(outCtx);
+        Assert.Equal("Hello Ada", outCtx.Get<string>("input.expr"));
+    }
+
+    [Fact]
     public async Task Start_init_optional_invalid_bool_value()
     {
         var workflow = new WorkflowBuilder().AddStart("start", true, WorkflowBuilder.CreateInputEntry("input.boolean", true, ContextEntryType.Bool, "not-bool")).Build();

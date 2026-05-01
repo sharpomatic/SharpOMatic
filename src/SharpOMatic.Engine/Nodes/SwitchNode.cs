@@ -14,6 +14,7 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node) : Ru
             Context = ThreadContext.NodeContext,
             ServiceProvider = ProcessContext.ServiceScope.ServiceProvider,
             Assets = new AssetHelper(ProcessContext.RepositoryService, ProcessContext.AssetStore, ProcessContext.Run.RunId, ProcessContext.Run.ConversationId),
+            Templates = new TemplateHelper(ThreadContext.NodeContext, ProcessContext.RepositoryService, ProcessContext.AssetStore, ProcessContext.Run.RunId, ProcessContext.Run.ConversationId),
         };
 
         // Check each switch that has linked code
@@ -24,23 +25,11 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node) : Ru
             if (!string.IsNullOrWhiteSpace(switcher.Code))
             {
                 var options = ProcessContext.ScriptOptionsService.GetScriptOptions();
+                object? result;
 
                 try
                 {
-                    var result = await CSharpScript.EvaluateAsync(switcher.Code, options, globals, typeof(ScriptCodeContext));
-                    if (result is null)
-                        throw new SharpOMaticException($"Switch node entry '{switcher.Name}' returned null instead of a boolean value.");
-
-                    if (result is not bool)
-                        throw new SharpOMaticException($"Switch node entry '{switcher.Name}' return type '{result.GetType()}' instead of a boolean value.");
-
-                    if ((bool)result)
-                    {
-                        if (!IsOutputConnected(Node.Outputs[i]))
-                            continue;
-
-                        return NodeExecutionResult.Continue($"Switched to {switcher.Name}", [new NextNodeData(ThreadContext, WorkflowContext.ResolveOutput(Node.Outputs[i]))]);
-                    }
+                    result = await CSharpScript.EvaluateAsync(switcher.Code, options, globals, typeof(ScriptCodeContext));
                 }
                 catch (CompilationErrorException e1)
                 {
@@ -58,6 +47,27 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node) : Ru
                     sb.AppendLine($"Switch node entry '{switcher.Name}' failed during execution.\n");
                     sb.Append(e2.Message);
                     throw new SharpOMaticException(sb.ToString());
+                }
+                catch (Exception e3)
+                {
+                    StringBuilder sb = new();
+                    sb.AppendLine($"Switch node entry '{switcher.Name}' failed during execution.\n");
+                    sb.Append(e3.Message);
+                    throw new SharpOMaticException(sb.ToString());
+                }
+
+                if (result is null)
+                    throw new SharpOMaticException($"Switch node entry '{switcher.Name}' returned null instead of a boolean value.");
+
+                if (result is not bool)
+                    throw new SharpOMaticException($"Switch node entry '{switcher.Name}' return type '{result.GetType()}' instead of a boolean value.");
+
+                if ((bool)result)
+                {
+                    if (!IsOutputConnected(Node.Outputs[i]))
+                        continue;
+
+                    return NodeExecutionResult.Continue($"Switched to {switcher.Name}", [new NextNodeData(ThreadContext, WorkflowContext.ResolveOutput(Node.Outputs[i]))]);
                 }
             }
         }

@@ -149,7 +149,14 @@ public abstract class RunNode<T> : IRunNode
 
     protected Task<object?> EvaluateContextEntryValue(ContextEntryEntity entry)
     {
-        return ContextHelpers.ResolveContextEntryValue(ProcessContext.ServiceScope.ServiceProvider, ThreadContext.NodeContext, entry, ProcessContext.ScriptOptionsService, ProcessContext.Run.RunId);
+        return ContextHelpers.ResolveContextEntryValue(
+            ProcessContext.ServiceScope.ServiceProvider,
+            ThreadContext.NodeContext,
+            entry,
+            ProcessContext.ScriptOptionsService,
+            ProcessContext.Run.RunId,
+            ProcessContext.Run.ConversationId
+        );
     }
 
     protected Task<List<StreamEvent>> AppendStreamEvents(params StreamEventWrite[] events)

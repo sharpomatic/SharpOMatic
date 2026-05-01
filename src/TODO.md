@@ -18,14 +18,10 @@
 
 ### Others
 
-- Ensure template expansion is recursive
-- Add helper that takes a string and performs the context based/asset based expansion
-
 - Add view button to Runs and Conversation history and causes it to be loaded as the current data for the trace viewer.
 
 ### Model Calls
 
-- Ensure that parameter substituion recurses into the text that is replaced
 - Separate table to record each model call, time, tokens, error
 - Reference to owning workflow name, connector name, model name because...
 - Needs to be valid even when the connector/model has been deleted

@@ -12,7 +12,7 @@ They only suppress the selected categories of model-call stream events.
 
 ## Disable User Event
 
-Enable **Disable User Event** when you do not want the resolved **Prompt** to be stored as initial user text stream events.
+Enable **Disable User Event** when you do not want the resolved **User** content to be stored as initial user text stream events.
 
 When enabled, the following prompt lifecycle is suppressed:
 

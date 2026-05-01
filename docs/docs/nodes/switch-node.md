@@ -11,6 +11,7 @@ Each switch entry has a name and a boolean expression that determines whether it
 Expressions are evaluated in order.
 The first entry that returns **true** is selected and all remaining entries are skipped.
 Expressions have access to the workflow **Context** object during evaluation.
+They also have access to the **Assets** and **Templates** runtime helpers, so expressions can call `await Templates.ExpandAsync(...)` before deciding which branch to take.
 
 Each expression must return a **bool** value.
 If an expression returns **null** or a non-boolean type, the node fails with an error.
