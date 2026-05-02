@@ -154,6 +154,17 @@
                 <a
                   class="dropdown-item"
                   (click)="
+                    updateService.addEventTemplateNode(
+                      workflowService.workflow()
+                    )
+                  "
+                  ><i class="dropdown-icon bi bi-card-text"></i>Event Template</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
                     updateService.addSuspendNode(workflowService.workflow())
                   "
                   ><i class="dropdown-icon bi bi-pause-circle"></i>Suspend</a

@@ -144,6 +144,8 @@ These events are persisted to run or conversation stream history and can be cons
 await Events.AddTextMessageAsync(StreamMessageRole.Assistant, "message-1", "Hello from the workflow");
 ```
 
+For simple text or reasoning messages that come from a template, use the [Event Template node](./event-template-node.md) instead of writing code.
+
 Text stream helpers support `StreamMessageRole.User`, `Assistant`, `Developer`, `System`, and `Tool`.
 Visible reasoning uses the dedicated reasoning helpers rather than `AddTextMessageAsync`.
 

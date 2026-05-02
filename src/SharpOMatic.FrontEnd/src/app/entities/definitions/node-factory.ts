@@ -38,6 +38,10 @@ import {
   StateSyncNodeEntity,
   StateSyncNodeSnapshot,
 } from './state-sync-node.entity';
+import {
+  EventTemplateNodeEntity,
+  EventTemplateNodeSnapshot,
+} from './event-template-node.entity';
 
 export function nodeFromSnapshot(
   snapshot: NodeSnapshot,
@@ -86,5 +90,9 @@ export function nodeFromSnapshot(
       return ActivitySyncNodeEntity.fromSnapshot(snapshot as ActivitySyncNodeSnapshot);
     case NodeType.StateSync:
       return StateSyncNodeEntity.fromSnapshot(snapshot as StateSyncNodeSnapshot);
+    case NodeType.EventTemplate:
+      return EventTemplateNodeEntity.fromSnapshot(
+        snapshot as EventTemplateNodeSnapshot,
+      );
   }
 }

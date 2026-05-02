@@ -29,6 +29,7 @@ import { StepStartNodeEntity } from '../../../entities/definitions/step-start-no
 import { StepEndNodeEntity } from '../../../entities/definitions/step-end-node.entity';
 import { ActivitySyncNodeEntity } from '../../../entities/definitions/activity-sync-node.entity';
 import { StateSyncNodeEntity } from '../../../entities/definitions/state-sync-node.entity';
+import { EventTemplateNodeEntity } from '../../../entities/definitions/event-template-node.entity';
 
 @Injectable({
   providedIn: 'root',
@@ -181,6 +182,14 @@ export class DesignerUpdateService {
     workflow.nodes.update((nodes) => [
       ...nodes,
       StateSyncNodeEntity.create(top, left),
+    ]);
+  }
+
+  addEventTemplateNode(workflow: WorkflowEntity) {
+    const [top, left] = this.getAddLocation();
+    workflow.nodes.update((nodes) => [
+      ...nodes,
+      EventTemplateNodeEntity.create(top, left),
     ]);
   }
 

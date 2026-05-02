@@ -68,6 +68,8 @@ import { ActivitySyncNodeEntity } from '../../../entities/definitions/activity-s
 import { ActivitySyncNodeDialogComponent } from '../../../dialogs/activity-sync-node/activity-sync-node-dialog.component';
 import { StateSyncNodeEntity } from '../../../entities/definitions/state-sync-node.entity';
 import { StateSyncNodeDialogComponent } from '../../../dialogs/state-sync-node/state-sync-node-dialog.component';
+import { EventTemplateNodeEntity } from '../../../entities/definitions/event-template-node.entity';
+import { EventTemplateNodeDialogComponent } from '../../../dialogs/event-template-node/event-template-node-dialog.component';
 
 @Component({
   selector: 'app-designer',
@@ -408,6 +410,11 @@ export class DesignerComponent {
       });
     } else if (node instanceof StateSyncNodeEntity) {
       this.dialogService.open(StateSyncNodeDialogComponent, {
+        node,
+        nodeTraces,
+      });
+    } else if (node instanceof EventTemplateNodeEntity) {
+      this.dialogService.open(EventTemplateNodeDialogComponent, {
         node,
         nodeTraces,
       });

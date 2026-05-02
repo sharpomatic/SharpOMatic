@@ -1,0 +1,112 @@
+<div class="d-flex flex-column dialog-overlay bg-body-secondary">
+  <div class="d-flex flex-column dialog-content">
+    <div
+      class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1"
+    >
+      <h2 class="">
+        <i class="bi bi-card-text pe-3 icon-sm"></i>{{ node.title() }}
+      </h2>
+      <button class="btn btn-primary" (click)="onClose()">Close</button>
+    </div>
+    <div class="tab-shell">
+      <app-tab [tabs]="tabs" [(activeTabId)]="activeTabId"></app-tab>
+    </div>
+    <ng-template #detailsTab>
+      <div class="p-3 details">
+        <div class="mb-3 form-line">
+          <label for="event-template-title" class="form-label field-label"
+            >Title</label
+          >
+          <div class="flex-fill control-column title">
+            <input
+              type="text"
+              class="form-control w-100"
+              id="event-template-title"
+              [ngModel]="node.title()"
+              (ngModelChange)="node.title.set($event)"
+            />
+          </div>
+        </div>
+        <div class="mb-3 form-line">
+          <label for="event-template-output-mode" class="form-label field-label"
+            >Output Type</label
+          >
+          <div class="flex-fill control-column short">
+            <select
+              class="form-select w-100"
+              id="event-template-output-mode"
+              [ngModel]="node.outputMode()"
+              (ngModelChange)="node.outputMode.set($event)"
+            >
+              @for (option of outputModeOptions; track option.value) {
+                <option [ngValue]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+        </div>
+        @if (node.outputMode() === EventTemplateOutputMode.Text) {
+          <div class="mb-3 form-line">
+            <label for="event-template-text-role" class="form-label field-label"
+              >Text Role</label
+            >
+            <div class="flex-fill control-column short">
+              <select
+                class="form-select w-100"
+                id="event-template-text-role"
+                [ngModel]="node.textRole()"
+                (ngModelChange)="node.textRole.set($event)"
+              >
+                @for (option of textRoleOptions; track option.value) {
+                  <option [ngValue]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        }
+        <div class="mb-3 form-line">
+          <label for="event-template-silent" class="form-label field-label"
+            >Silent</label
+          >
+          <div class="flex-fill control-column short">
+            <div class="form-check mb-0">
+              <input
+                id="event-template-silent"
+                class="form-check-input"
+                type="checkbox"
+                [checked]="node.silent()"
+                (change)="node.silent.set($any($event.target).checked)"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="mb-3 form-line">
+          <label
+            for="event-template-template"
+            class="form-label field-label align-top"
+            >Template</label
+          >
+          <div class="flex-fill control-column extra-long">
+            <textarea
+              class="form-control w-100"
+              id="event-template-template"
+              rows="24"
+              [ngModel]="node.template()"
+              (ngModelChange)="node.template.set($event)"
+            ></textarea>
+          </div>
+        </div>
+      </div>
+    </ng-template>
+
+    <ng-template #inputsTab>
+      <div class="bg-body-tertiary p-3">
+        <app-context-viewer [contexts]="inputTraces"></app-context-viewer>
+      </div>
+    </ng-template>
+    <ng-template #outputsTab>
+      <div class="bg-body-tertiary p-3">
+        <app-context-viewer [contexts]="outputTraces"></app-context-viewer>
+      </div>
+    </ng-template>
+  </div>
+</div>
