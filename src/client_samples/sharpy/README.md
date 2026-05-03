@@ -6,6 +6,7 @@
 
 - Direct browser-to-AG-UI chat using `@copilotkit/react-core/v2`.
 - Passing the selected SharpOMatic `workflowId` through `forwardedProps.sharpomatic.workflowId` on every run.
+- Loading persisted AG-UI conversation history with the **Reload** button, which calls `POST /sharpomatic/api/agui/history` with `threadId` and `workflowId` in the JSON body.
 - Switching message forwarding behavior with `Send All Messages`:
   - enabled: sends the full local CopilotKit message history. This is used when calling a non-conversational workflow.
   - disabled: sends only new user messages and browser-executed tool results after the first request. Tool result messages that originated from backend AG-UI protocol events are not resent. This is used to call a conversation workflow which already records previous state.
@@ -63,4 +64,5 @@ npm run start
 - `agents__unsafe_dev_only` is intentionally used here because this is a direct browser sample for development and testing.
 - The default workflow ID is pre-filled in the sidebar and can be edited without rebuilding the app.
 - Keep the same thread ID to continue a conversation; use `New thread` to generate a new browser-side UUID.
+- For conversation workflows, use **Reload** to hydrate the chat from the AG-UI history endpoint before sending the next turn. The response envelope restores messages, state, and the final pending frontend confirmation tool when one exists. That restored confirmation is handled on the inline chat tool card. A `404` history response for a new thread is treated as an empty chat.
 - The sample expects the server to use the current AG-UI reasoning protocol. Emit `REASONING_*` events rather than deprecated `THINKING_*` events if reasoning content should appear in CopilotKit.

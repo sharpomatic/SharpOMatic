@@ -23,6 +23,7 @@ Sharpy helps you verify:
 - AG-UI text streaming renders in a browser client
 - stateless workflows receive the full message history when required
 - conversation-enabled workflows resume through a stable AG-UI `threadId`
+- conversation history reloads from the AG-UI `/history` POST endpoint when you select **Reload**
 - frontend tool calls can suspend a workflow and resume after the browser returns a tool result
 - step, activity, state, tool-call, and run-error events are translated into AG-UI output
 
@@ -96,6 +97,7 @@ Sharpy sends this value on each request as `forwardedProps.sharpomatic.workflowI
 This becomes the AG-UI `threadId`.
 For conversation-enabled workflows, SharpOMatic uses it as the conversation ID.
 Keep the same thread ID to continue a conversation, or select **New thread** to start over.
+Select **Reload** to load persisted AG-UI messages for the current thread and workflow.
 
 **Send All Messages**
 
@@ -169,6 +171,26 @@ Use these settings for a stateful workflow:
 In this mode, Sharpy sends only the new user message or browser tool result needed for the current turn.
 SharpOMatic loads the saved conversation context for the `(workflowId, threadId)` pair and exposes the latest incoming message under `agent`.
 The workflow owns durable chat history, usually by having the `ModelCall` node write back to `input.chat`.
+When you select **Reload**, Sharpy calls:
+
+```text
+POST /sharpomatic/api/agui/history
+```
+
+with:
+
+```json
+{
+  "threadId": "<thread-id>",
+  "workflowId": "<workflow-id>"
+}
+```
+
+The returned envelope applies `messages` to the chat, restores `state` on the CopilotKit agent, and seeds only the server-reported `pendingFrontendTools`.
+If the last restored message is an unresolved SharpOMatic frontend confirmation call, Sharpy renders that inline chat tool card as an actionable Yes/No card.
+Submitting that card adds a matching AG-UI `tool` message and runs the agent so the suspended workflow can resume.
+If the server returns `404` because the thread has not been created yet, Sharpy starts with an empty chat for that thread.
+Sharpy does not call this endpoint automatically when the page starts, refreshes, or the thread/workflow selection changes.
 
 Use **New thread** when you want to test a fresh conversation without reusing the saved state from an earlier run.
 
@@ -211,3 +233,8 @@ Use checked for non-conversation workflows and unchecked for conversation-enable
 
 Use **New thread** to generate a fresh thread ID.
 For conversation-enabled workflows, the thread ID is the SharpOMatic conversation ID, so reusing it continues the same saved conversation.
+
+**History does not reload after refresh**
+
+Confirm the workflow is conversation-enabled, that the same **Thread ID** and **Workflow ID** are selected, and then select **Reload**.
+The history endpoint returns `404` for missing workflows, missing threads, and workflow/thread mismatches.

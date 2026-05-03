@@ -170,6 +170,21 @@ public sealed class AgUiChatHistoryIntegrationTests
             var events = ReadSseEvents((MemoryStream)controller.HttpContext.Response.Body);
             Assert.Equal("RUN_STARTED", events[0].GetProperty("type").GetString());
             Assert.Equal("RUN_FINISHED", events[^1].GetProperty("type").GetString());
+
+            controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+            var historyResult = Assert.IsType<OkObjectResult>(
+                await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowId = workflow.Id.ToString() })
+            );
+            var historyEnvelope = ToJsonElement(historyResult.Value);
+            var historyMessages = historyEnvelope.GetProperty("messages");
+            Assert.Equal(JsonValueKind.Array, historyMessages.ValueKind);
+            Assert.Equal(2, historyMessages.GetArrayLength());
+            Assert.Equal("assistant", historyMessages[0].GetProperty("role").GetString());
+            Assert.Equal("reply-1", historyMessages[0].GetProperty("content").GetString());
+            Assert.Equal("assistant", historyMessages[1].GetProperty("role").GetString());
+            Assert.Equal("reply-2", historyMessages[1].GetProperty("content").GetString());
+            Assert.Equal(JsonValueKind.Null, historyEnvelope.GetProperty("state").ValueKind);
+            Assert.Equal(0, historyEnvelope.GetProperty("pendingFrontendTools").GetArrayLength());
         }
         finally
         {
@@ -569,6 +584,12 @@ public sealed class AgUiChatHistoryIntegrationTests
                 return document.RootElement.Clone();
             })
             .ToList();
+    }
+
+    private static JsonElement ToJsonElement(object? value)
+    {
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(value));
+        return document.RootElement.Clone();
     }
 
     private static async Task WaitForConversationToBeIdleAsync(IRepositoryService repositoryService, string conversationId)

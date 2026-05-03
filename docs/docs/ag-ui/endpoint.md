@@ -99,6 +99,58 @@ You can also use a workflow name:
 
 For compatibility, SharpOMatic also accepts `workflowId` or `workflowName` directly under `forwardedProps`, but the nested `sharpomatic` object is the preferred convention.
 
+## Conversation history POST
+
+The configured AG-UI endpoint also supports a JSON history `POST` request at the same path plus `/history`.
+Use it to restore a conversation-enabled AG-UI chat after a browser refresh or app restart:
+
+```text
+POST /sharpomatic/api/agui/history
+Content-Type: application/json
+```
+
+```json
+{
+  "threadId": "support-chat-001",
+  "workflowId": "11230021-5144-471a-8ec7-9b460354b745"
+}
+```
+
+or:
+
+```json
+{
+  "threadId": "support-chat-001",
+  "workflowName": "Support Chat"
+}
+```
+
+The response body is a history envelope:
+
+```json
+{
+  "messages": [],
+  "state": null,
+  "pendingFrontendTools": []
+}
+```
+
+`messages` is an AG-UI `Message[]` suitable for an AG-UI client's initial message array.
+`state` is the latest AG-UI state, restored from the saved conversation checkpoint when possible and otherwise reduced from visible state stream events.
+`pendingFrontendTools` contains at most one item: the final unresolved SharpOMatic frontend tool call, and only when the last restored AG-UI message is that frontend tool call.
+The selector rules are:
+
+- `threadId` is required and maps to the SharpOMatic conversation id
+- exactly one of `workflowId` or `workflowName` is required
+- unknown workflow id, unknown workflow name, unknown thread id, and workflow/thread mismatches return `404`
+- malformed selectors, invalid GUIDs, and ambiguous workflow names return `400`
+- non-conversation workflows return `{ "messages": [], "state": null, "pendingFrontendTools": [] }` because they do not have conversation stream history
+
+The returned messages are reduced from persisted visible stream events.
+Text, reasoning, tool-call/tool-result, and final activity messages are included.
+Step and custom stream events are ignored because AG-UI `initialMessages` accepts messages, not protocol event replay.
+Reasoning, tool-result, and activity message ids use the same `reason:`, `tool:`, and `activity:` prefixes as live SSE output.
+
 ## Execution modes
 
 SharpOMatic resolves the target workflow first and then chooses the execution mode automatically:

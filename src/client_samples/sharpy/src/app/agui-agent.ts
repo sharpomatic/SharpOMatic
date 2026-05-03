@@ -6,6 +6,14 @@ type ClientMessage = {
   id: string;
   role: string;
   toolCallId?: string;
+  toolCalls?: {
+    id: string;
+    type: "function";
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }[];
 };
 
 type AgentRefs = {
@@ -57,6 +65,52 @@ function isForwardableClientMessage(
   return message.role === "user" || isBrowserToolResult(message, browserToolCallIds);
 }
 
+function stripRestoredFrontendToolMetadata<T extends ClientMessage>(message: T): T {
+  if (message.role !== "assistant" || !message.toolCalls?.length) {
+    return message;
+  }
+
+  let changed = false;
+  const toolCalls = message.toolCalls.map((toolCall) => {
+    const sanitizedArguments = stripRestoredFrontendToolArgument(
+      toolCall.function.arguments,
+    );
+    if (sanitizedArguments === toolCall.function.arguments) {
+      return toolCall;
+    }
+
+    changed = true;
+    return {
+      ...toolCall,
+      function: {
+        ...toolCall.function,
+        arguments: sanitizedArguments,
+      },
+    };
+  });
+
+  return changed ? ({ ...message, toolCalls } as T) : message;
+}
+
+function stripRestoredFrontendToolArgument(argumentsJson: string) {
+  try {
+    const args = JSON.parse(argumentsJson) as unknown;
+    if (!args || typeof args !== "object" || Array.isArray(args)) {
+      return argumentsJson;
+    }
+
+    const objectArgs = args as Record<string, unknown>;
+    if (!("__sharpomaticRestoredFrontendTool" in objectArgs)) {
+      return argumentsJson;
+    }
+
+    const { __sharpomaticRestoredFrontendTool: _, ...sanitizedArgs } = objectArgs;
+    return JSON.stringify(sanitizedArgs);
+  } catch {
+    return argumentsJson;
+  }
+}
+
 export function createSharpyAgent({
   workflowIdRef,
   sendAllMessagesRef,
@@ -100,8 +154,8 @@ export function createSharpyAgent({
 
     return next.run({
       ...input,
-      state: SAMPLE_STATE,
-      messages: filteredMessages,
+      state: input.state ?? SAMPLE_STATE,
+      messages: filteredMessages.map(stripRestoredFrontendToolMetadata),
       forwardedProps: {
         ...(input.forwardedProps ?? {}),
         sharpomatic: {

@@ -27,15 +27,60 @@ Or override both the base path and the AG-UI child path:
 builder.Services.AddSharpOMaticAgUi("/banana", "/integrations/chat");
 ```
 
-The package adds `POST` on the combined path.
+The package adds the live `POST` endpoint on the combined path and a history `POST` endpoint at the same path plus `/history`.
 
 ## Request requirements
+
+For `POST` run requests:
 
 - `threadId` is required.
 - `forwardedProps` must contain exactly one of `workflowId` or `workflowName`.
 - `workflowName` must match exactly one workflow.
 
 The endpoint resolves the matching SharpOMatic workflow, chooses the correct execution mode, and streams SSE events translated from workflow stream events until the run completes, suspends, or fails.
+
+## Conversation history
+
+Use `POST <ag-ui-path>/history` to reload persisted AG-UI messages, state, and resumable frontend tool metadata for a conversation-enabled workflow:
+
+```json
+{
+  "threadId": "support-chat-001",
+  "workflowId": "11230021-5144-471a-8ec7-9b460354b745"
+}
+```
+
+or:
+
+```json
+{
+  "threadId": "support-chat-001",
+  "workflowName": "Support Chat"
+}
+```
+
+The response body is a history envelope:
+
+```json
+{
+  "messages": [],
+  "state": null,
+  "pendingFrontendTools": []
+}
+```
+
+`messages` is an AG-UI `Message[]` that can be supplied to an AG-UI client as initial messages.
+`state` is restored from the saved conversation checkpoint when available, otherwise from visible state stream events.
+`pendingFrontendTools` contains at most the last unresolved SharpOMatic frontend tool call when the final restored assistant message is that tool call.
+
+- `threadId` is required and maps to the SharpOMatic conversation id.
+- Specify exactly one of `workflowId` or `workflowName`.
+- Unknown workflow id, unknown workflow name, unknown thread id, and workflow/thread mismatches return `404`.
+- Malformed selectors, invalid GUIDs, and ambiguous workflow names return `400`.
+- Non-conversation workflows return `{ "messages": [], "state": null, "pendingFrontendTools": [] }` because they do not have conversation stream history.
+
+The history reducer uses the same protocol id conventions as live SSE output for reasoning, tool result, and activity messages.
+Step and custom stream events are not returned because AG-UI `initialMessages` accepts messages, not protocol events.
 
 ## SSE event mapping
 

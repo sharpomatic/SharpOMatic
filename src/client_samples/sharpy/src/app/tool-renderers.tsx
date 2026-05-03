@@ -10,25 +10,46 @@ export const areYouSureArgsSchema = z.object({
 
 export const getWeatherArgsSchema = z.any();
 
+export type RestoredFrontendToolCall = {
+  toolCallId: string;
+  toolName: string;
+  argumentsJson: string;
+  assistantMessageId: string;
+};
+
+type RestoredArgs = {
+  __sharpomaticRestoredFrontendTool?: RestoredFrontendToolCall;
+};
+
 type AreYouSureToolCallProps =
   | {
+      name: string;
       status: "inProgress";
-      args: Partial<z.infer<typeof areYouSureArgsSchema>>;
+      args: Partial<z.infer<typeof areYouSureArgsSchema>> & RestoredArgs;
       respond: undefined;
       result: undefined;
     }
   | {
+      name: string;
       status: "executing";
       args: z.infer<typeof areYouSureArgsSchema>;
       respond: (result: boolean) => Promise<void>;
       result: undefined;
     }
   | {
+      name: string;
       status: "complete";
       args: z.infer<typeof areYouSureArgsSchema>;
       respond: undefined;
       result: unknown;
     };
+
+type AreYouSureToolCallWithRestoreProps = AreYouSureToolCallProps & {
+  onRespondRestored?: (
+    tool: RestoredFrontendToolCall,
+    result: boolean,
+  ) => Promise<void>;
+};
 
 type WeatherToolCallProps =
   | {
@@ -56,18 +77,26 @@ function getBooleanResultLabel(result: unknown) {
   return String(result);
 }
 
-export function AreYouSureToolCall(props: AreYouSureToolCallProps) {
+export function AreYouSureToolCall(props: AreYouSureToolCallWithRestoreProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const restoredTool =
+    props.status === "inProgress"
+      ? props.args.__sharpomaticRestoredFrontendTool
+      : undefined;
 
   async function handleResponse(value: boolean) {
-    if (props.status !== "executing" || isSubmitting) {
+    if (isSubmitting) {
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      await props.respond(value);
+      if (props.status === "executing") {
+        await props.respond(value);
+      } else if (restoredTool && props.onRespondRestored) {
+        await props.onRespondRestored(restoredTool, value);
+      }
     } catch (error) {
       console.error("Failed to submit ask_a_question result.", error);
       setIsSubmitting(false);
@@ -75,6 +104,37 @@ export function AreYouSureToolCall(props: AreYouSureToolCallProps) {
   }
 
   if (props.status === "inProgress") {
+    if (restoredTool && props.onRespondRestored) {
+      const restoredArgs = parseRestoredToolArguments(restoredTool.argumentsJson);
+      const title = props.args.title ?? restoredArgs.title ?? props.name;
+      const message = props.args.message ?? restoredArgs.message ?? "";
+
+      return (
+        <div className="sampleToolCard toolConfirmCard">
+          <h3 className="toolConfirmTitle">{title}</h3>
+          <p className="toolConfirmMessage">{message}</p>
+          <div className="toolConfirmActions">
+            <button
+              className="toolConfirmButton toolConfirmButtonPrimary"
+              disabled={isSubmitting}
+              onClick={() => handleResponse(true)}
+              type="button"
+            >
+              Yes
+            </button>
+            <button
+              className="toolConfirmButton toolConfirmButtonSecondary"
+              disabled={isSubmitting}
+              onClick={() => handleResponse(false)}
+              type="button"
+            >
+              No
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="sampleToolCard toolConfirmCard">
         <p className="toolConfirmPending">
@@ -119,6 +179,23 @@ export function AreYouSureToolCall(props: AreYouSureToolCallProps) {
       )}
     </div>
   );
+}
+
+function parseRestoredToolArguments(argumentsJson: string) {
+  try {
+    const parsed = JSON.parse(argumentsJson) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const args = parsed as Record<string, unknown>;
+      return {
+        title: typeof args.title === "string" ? args.title : null,
+        message: typeof args.message === "string" ? args.message : null,
+      };
+    }
+  } catch {
+    return { title: null, message: null };
+  }
+
+  return { title: null, message: null };
 }
 
 function parseTemperatureResult(result: string) {

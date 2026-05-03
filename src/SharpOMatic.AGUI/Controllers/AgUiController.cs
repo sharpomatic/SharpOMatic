@@ -82,6 +82,47 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         }
     }
 
+    [HttpPost("history")]
+    public async Task<IActionResult> History([FromBody] AgUiHistoryRequest? request)
+    {
+        try
+        {
+            var normalizedThreadId = NormalizeRequiredThreadId(request?.ThreadId);
+            var repositoryService = HttpContext.RequestServices.GetRequiredService<IRepositoryService>();
+            var workflow = await ResolveHistoryWorkflowTarget(repositoryService, request?.WorkflowId, request?.WorkflowName);
+
+            if (!workflow.IsConversationEnabled)
+                return Ok(CreateEmptyHistoryResponse());
+
+            var conversation = await repositoryService.GetConversation(normalizedThreadId);
+            if (conversation is null || conversation.WorkflowId != workflow.Id)
+                return NotFound(new { message = "AG-UI conversation history was not found." });
+
+            var streamEvents = await repositoryService.GetConversationStreamEvents(normalizedThreadId);
+            var checkpoint = await repositoryService.GetConversationCheckpoint(normalizedThreadId);
+            var jsonConverterService = HttpContext.RequestServices.GetRequiredService<IJsonConverterService>();
+            return Ok(AgUiMessageHistoryBuilder.BuildEnvelope(streamEvents, checkpoint, jsonConverterService));
+        }
+        catch (AgUiNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (SharpOMaticException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    private static AgUiHistoryResponse CreateEmptyHistoryResponse()
+    {
+        return new AgUiHistoryResponse()
+        {
+            Messages = [],
+            State = null,
+            PendingFrontendTools = [],
+        };
+    }
+
     private async Task<Guid> StartAgUiRun(AgUiRunRequest request, string threadId, ResolvedWorkflowTarget workflowTarget)
     {
         if (!workflowTarget.IsConversationEnabled)
@@ -135,6 +176,53 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
 
         var workflow = await repositoryService.GetWorkflow(resolvedWorkflowId);
         return new ResolvedWorkflowTarget(resolvedWorkflowId, workflow.IsConversationEnabled);
+    }
+
+    private static string NormalizeRequiredThreadId(string? threadId)
+    {
+        if (string.IsNullOrWhiteSpace(threadId))
+            throw new SharpOMaticException("AG-UI threadId is required.");
+
+        var normalized = threadId.Trim();
+        if (normalized.Length > 256)
+            throw new SharpOMaticException("AG-UI threadId cannot be longer than 256 characters.");
+
+        return normalized;
+    }
+
+    private static async Task<WorkflowEntity> ResolveHistoryWorkflowTarget(IRepositoryService repositoryService, string? workflowId, string? workflowName)
+    {
+        workflowId = string.IsNullOrWhiteSpace(workflowId) ? null : workflowId.Trim();
+        workflowName = string.IsNullOrWhiteSpace(workflowName) ? null : workflowName.Trim();
+
+        if (string.IsNullOrWhiteSpace(workflowId) == string.IsNullOrWhiteSpace(workflowName))
+            throw new SharpOMaticException("Specify exactly one of workflowId or workflowName.");
+
+        if (!string.IsNullOrWhiteSpace(workflowId))
+        {
+            if (!Guid.TryParse(workflowId, out var parsedWorkflowId))
+                throw new SharpOMaticException("AG-UI workflowId must be a valid GUID.");
+
+            try
+            {
+                return await repositoryService.GetWorkflow(parsedWorkflowId);
+            }
+            catch (SharpOMaticException)
+            {
+                throw new AgUiNotFoundException("AG-UI workflow was not found.");
+            }
+        }
+
+        var summaries = await repositoryService.GetWorkflowSummaries();
+        var matches = summaries.Where(w => w.Name == workflowName).Take(2).ToList();
+
+        if (matches.Count == 0)
+            throw new AgUiNotFoundException("AG-UI workflow was not found.");
+
+        if (matches.Count > 1)
+            throw new SharpOMaticException("There is more than one matching workflow for this name.");
+
+        return await repositoryService.GetWorkflow(matches[0].Id);
     }
 
     private static ContextObject BuildBaseContext(AgUiRunRequest request)
@@ -794,4 +882,6 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
     }
 
     private sealed record ResolvedWorkflowTarget(Guid WorkflowId, bool IsConversationEnabled);
+
+    private sealed class AgUiNotFoundException(string message) : Exception(message);
 }

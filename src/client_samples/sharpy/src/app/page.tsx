@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CopilotChat,
   CopilotKitProvider,
+  type Message,
+  useAgent,
   useCopilotKit,
   useDefaultRenderTool,
   useHumanInTheLoop,
@@ -12,24 +14,158 @@ import {
 
 import { createSharpyAgent, nextThreadId } from "./agui-agent";
 import { activityRenderers, SharpyStepDividers } from "./activity-renderers";
-import { AGUI_URL, DEFAULT_WORKFLOW_ID } from "./config";
+import { AGUI_URL, DEFAULT_WORKFLOW_ID, SAMPLE_STATE } from "./config";
 import { SharpyDebugLogger } from "./debug-logger";
 import { SharpyRunErrorPanel } from "./run-error-panel";
 import {
   areYouSureArgsSchema,
   AreYouSureToolCall,
   getWeatherArgsSchema,
+  type RestoredFrontendToolCall,
   WeatherToolCall,
 } from "./tool-renderers";
 
+type HistoryReloadRequest = {
+  id: number;
+  threadId: string;
+  workflowId: string;
+};
+
+type PendingFrontendTool = {
+  toolCallId: string;
+  toolName: string;
+  argumentsJson: string;
+  assistantMessageId: string;
+};
+
+type HistoryEnvelope = {
+  messages: Message[];
+  state: unknown | null;
+  pendingFrontendTools: PendingFrontendTool[];
+};
+
 function SharpyChat({
   browserToolCallIdsByThreadRef,
+  historyReloadRequest,
+  sentMessageIdsByThreadRef,
   threadId,
 }: {
   browserToolCallIdsByThreadRef: React.RefObject<Map<string, Set<string>>>;
+  historyReloadRequest: HistoryReloadRequest | null;
+  sentMessageIdsByThreadRef: React.RefObject<Map<string, Set<string>>>;
   threadId: string;
 }) {
   const { copilotkit } = useCopilotKit();
+  const { agent } = useAgent({ agentId: "sharpy", threadId });
+
+  useEffect(() => {
+    if (!historyReloadRequest || historyReloadRequest.threadId !== threadId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadHistory() {
+      const trimmedWorkflowId = historyReloadRequest!.workflowId.trim();
+      const trimmedThreadId = historyReloadRequest!.threadId.trim();
+      if (!trimmedWorkflowId || !trimmedThreadId) {
+        agent.setMessages([]);
+        agent.setState(SAMPLE_STATE);
+        sentMessageIdsByThreadRef.current.set(historyReloadRequest!.threadId, new Set());
+        browserToolCallIdsByThreadRef.current.set(historyReloadRequest!.threadId, new Set());
+        return;
+      }
+
+      const historyUrl = new URL(
+        `${AGUI_URL.replace(/\/$/, "")}/history`,
+        window.location.href,
+      );
+
+      const response = await fetch(historyUrl, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          threadId: trimmedThreadId,
+          workflowId: trimmedWorkflowId,
+        }),
+      });
+      if (cancelled) {
+        return;
+      }
+
+      if (response.status === 404) {
+        agent.setMessages([]);
+        agent.setState(SAMPLE_STATE);
+        sentMessageIdsByThreadRef.current.set(historyReloadRequest!.threadId, new Set());
+        browserToolCallIdsByThreadRef.current.set(historyReloadRequest!.threadId, new Set());
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`History request failed with HTTP ${response.status}`);
+      }
+
+      const historyEnvelope = (await response.json()) as HistoryEnvelope;
+      if (cancelled) {
+        return;
+      }
+
+      const pendingTools = historyEnvelope.pendingFrontendTools ?? [];
+      const historyMessages = annotateRestoredPendingToolCalls(
+        historyEnvelope.messages,
+        pendingTools,
+      );
+
+      agent.setMessages(historyMessages);
+      agent.setState(historyEnvelope.state ?? SAMPLE_STATE);
+      sentMessageIdsByThreadRef.current.set(
+        historyReloadRequest!.threadId,
+        new Set(historyMessages.map((message) => message.id)),
+      );
+      browserToolCallIdsByThreadRef.current.set(
+        historyReloadRequest!.threadId,
+        collectPendingFrontendToolCallIds(pendingTools),
+      );
+    }
+
+    loadHistory().catch((error) => {
+      if (!cancelled) {
+        console.error("Failed to load AG-UI history", error);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    agent,
+    browserToolCallIdsByThreadRef,
+    historyReloadRequest,
+    sentMessageIdsByThreadRef,
+    threadId,
+  ]);
+
+  const submitRestoredToolResult = useCallback(
+    async (tool: PendingFrontendTool, result: boolean) => {
+      const browserToolCallIds =
+        browserToolCallIdsByThreadRef.current.get(threadId) ?? new Set<string>();
+      browserToolCallIds.add(tool.toolCallId);
+      browserToolCallIdsByThreadRef.current.set(threadId, browserToolCallIds);
+
+      agent.addMessage({
+        id: crypto.randomUUID(),
+        role: "tool",
+        toolCallId: tool.toolCallId,
+        content: JSON.stringify(result),
+      });
+
+      await copilotkit.runAgent({ agent });
+    },
+    [agent, browserToolCallIdsByThreadRef, copilotkit, threadId],
+  );
 
   useEffect(() => {
     return copilotkit.subscribe({
@@ -53,9 +189,14 @@ function SharpyChat({
       name: "ask_a_question",
       description: "Ask the user to confirm whether the backend should continue.",
       parameters: areYouSureArgsSchema,
-      render: (props) => <AreYouSureToolCall {...props} />,
+      render: (props) => (
+        <AreYouSureToolCall
+          {...props}
+          onRespondRestored={submitRestoredToolResult}
+        />
+      ),
     },
-    [],
+    [submitRestoredToolResult],
   );
 
   useRenderTool(
@@ -88,14 +229,100 @@ function SharpyChat({
   );
 }
 
+function collectPendingFrontendToolCallIds(
+  pendingTools: ReadonlyArray<PendingFrontendTool>,
+) {
+  return new Set(pendingTools.map((tool) => tool.toolCallId));
+}
+
+function annotateRestoredPendingToolCalls(
+  messages: ReadonlyArray<Message>,
+  pendingTools: ReadonlyArray<PendingFrontendTool>,
+) {
+  if (pendingTools.length === 0) {
+    return [...messages];
+  }
+
+  const pendingToolsById = new Map(
+    pendingTools.map((tool) => [tool.toolCallId, tool]),
+  );
+
+  return messages.map((message) => {
+    if (message.role !== "assistant" || !message.toolCalls?.length) {
+      return message;
+    }
+
+    const toolCalls = message.toolCalls.map((toolCall) => {
+      const pendingTool = pendingToolsById.get(toolCall.id);
+      if (!pendingTool || pendingTool.assistantMessageId !== message.id) {
+        return toolCall;
+      }
+
+      return {
+        ...toolCall,
+        function: {
+          ...toolCall.function,
+          arguments: annotateRestoredPendingToolArguments(
+            toolCall.function.arguments,
+            pendingTool,
+          ),
+        },
+      };
+    });
+
+    return { ...message, toolCalls };
+  });
+}
+
+function annotateRestoredPendingToolArguments(
+  argumentsJson: string,
+  pendingTool: PendingFrontendTool,
+) {
+  let args: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse(argumentsJson) as unknown;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      args = parsed as Record<string, unknown>;
+    }
+  } catch {
+    args = {};
+  }
+
+  return JSON.stringify({
+    ...args,
+    __sharpomaticRestoredFrontendTool: {
+      toolCallId: pendingTool.toolCallId,
+      toolName: pendingTool.toolName,
+      argumentsJson: pendingTool.argumentsJson,
+      assistantMessageId: pendingTool.assistantMessageId,
+    } satisfies RestoredFrontendToolCall,
+  });
+}
+
 export default function SharpyPage() {
   const [threadId, setThreadId] = useState("sharpy-demo-thread");
   const [workflowId, setWorkflowId] = useState(DEFAULT_WORKFLOW_ID);
   const [sendAllMessages, setSendAllMessages] = useState(true);
+  const [historyReloadRequest, setHistoryReloadRequest] =
+    useState<HistoryReloadRequest | null>(null);
   const workflowIdRef = useRef(workflowId);
   const sendAllMessagesRef = useRef(sendAllMessages);
+  const nextHistoryReloadRequestIdRef = useRef(0);
   const sentMessageIdsByThreadRef = useRef(new Map<string, Set<string>>());
   const browserToolCallIdsByThreadRef = useRef(new Map<string, Set<string>>());
+
+  function clearHistoryReloadRequest() {
+    setHistoryReloadRequest(null);
+  }
+
+  function requestHistoryReload() {
+    nextHistoryReloadRequestIdRef.current += 1;
+    setHistoryReloadRequest({
+      id: nextHistoryReloadRequestIdRef.current,
+      threadId,
+      workflowId,
+    });
+  }
 
   useEffect(() => {
     workflowIdRef.current = workflowId;
@@ -143,16 +370,29 @@ export default function SharpyPage() {
               <div className="threadControls">
                 <input
                   className="threadInput mono"
-                  onChange={(event) => setThreadId(event.target.value)}
+                  onChange={(event) => {
+                    clearHistoryReloadRequest();
+                    setThreadId(event.target.value);
+                  }}
                   value={threadId}
                 />
                 <div className="buttonRow">
                   <button
                     className="button buttonPrimary"
-                    onClick={() => setThreadId(nextThreadId())}
+                    onClick={() => {
+                      clearHistoryReloadRequest();
+                      setThreadId(nextThreadId());
+                    }}
                     type="button"
                   >
                     New thread
+                  </button>
+                  <button
+                    className="button"
+                    onClick={requestHistoryReload}
+                    type="button"
+                  >
+                    Reload
                   </button>
                 </div>
               </div>
@@ -162,7 +402,10 @@ export default function SharpyPage() {
               <p className="label">Workflow ID</p>
               <input
                 className="threadInput mono"
-                onChange={(event) => setWorkflowId(event.target.value)}
+                onChange={(event) => {
+                  clearHistoryReloadRequest();
+                  setWorkflowId(event.target.value);
+                }}
                 value={workflowId}
               />
             </section>
@@ -185,6 +428,8 @@ export default function SharpyPage() {
           <div className="chatWrap">
             <SharpyChat
               browserToolCallIdsByThreadRef={browserToolCallIdsByThreadRef}
+              historyReloadRequest={historyReloadRequest}
+              sentMessageIdsByThreadRef={sentMessageIdsByThreadRef}
               threadId={threadId}
             />
           </div>

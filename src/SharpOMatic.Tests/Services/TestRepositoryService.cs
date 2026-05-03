@@ -17,7 +17,22 @@ public sealed class TestRepositoryService : IRepositoryService
     private readonly ConcurrentDictionary<string, ModelConfig> _modelConfigs = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<Guid, Model> _models = new();
 
-    public Task<List<WorkflowSummary>> GetWorkflowSummaries() => throw new NotImplementedException();
+    public Task<List<WorkflowSummary>> GetWorkflowSummaries()
+    {
+        var summaries = _workflows.Values
+            .OrderBy(w => w.Name)
+            .Select(w => new WorkflowSummary()
+            {
+                Version = w.Version,
+                Id = w.Id,
+                Name = w.Name,
+                Description = w.Description,
+                IsConversationEnabled = w.IsConversationEnabled,
+            })
+            .ToList();
+
+        return Task.FromResult(summaries);
+    }
 
     public Task<int> GetWorkflowSummaryCount(string? search) => throw new NotImplementedException();
 
@@ -26,7 +41,7 @@ public sealed class TestRepositoryService : IRepositoryService
     public Task<WorkflowEntity> GetWorkflow(Guid workflowId)
     {
         if (!_workflows.TryGetValue(workflowId, out var workflowEntity))
-            throw new ApplicationException($"GetWorkflow failed for '{workflowId}'");
+            throw new SharpOMaticException($"GetWorkflow failed for '{workflowId}'");
 
         return Task.FromResult(workflowEntity);
     }

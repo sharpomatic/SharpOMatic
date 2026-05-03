@@ -4,7 +4,6 @@
 
 ### Agent
 
-- Endpoint for returning history of messages for existing conversation
   limit how many of the most recent are returned
 - Investigate the compacting down to a message snapshot.
 
