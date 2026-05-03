@@ -98,9 +98,24 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
             if (conversation is null || conversation.WorkflowId != workflow.Id)
                 return NotFound(new { message = "AG-UI conversation history was not found." });
 
-            var streamEvents = await repositoryService.GetConversationStreamEvents(normalizedThreadId);
             var checkpoint = await repositoryService.GetConversationCheckpoint(normalizedThreadId);
             var jsonConverterService = HttpContext.RequestServices.GetRequiredService<IJsonConverterService>();
+            var maxMessages = NormalizeMaxMessages(request?.MaxMessages);
+
+            if (maxMessages.HasValue)
+            {
+                return Ok(
+                    await AgUiMessageHistoryBuilder.BuildCappedEnvelope(
+                        normalizedThreadId,
+                        maxMessages.Value,
+                        repositoryService,
+                        checkpoint,
+                        jsonConverterService
+                    )
+                );
+            }
+
+            var streamEvents = await repositoryService.GetConversationStreamEvents(normalizedThreadId);
             return Ok(AgUiMessageHistoryBuilder.BuildEnvelope(streamEvents, checkpoint, jsonConverterService));
         }
         catch (AgUiNotFoundException ex)
@@ -111,6 +126,17 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         {
             return BadRequest(new { message = ex.Message });
         }
+    }
+
+    private static int? NormalizeMaxMessages(JsonElement? maxMessages)
+    {
+        if (!maxMessages.HasValue || maxMessages.Value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
+            return null;
+
+        if (maxMessages.Value.ValueKind != JsonValueKind.Number || !maxMessages.Value.TryGetInt32(out var value) || value <= 0)
+            return null;
+
+        return value;
     }
 
     private static AgUiHistoryResponse CreateEmptyHistoryResponse()

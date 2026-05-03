@@ -27,6 +27,7 @@ import {
 
 type HistoryReloadRequest = {
   id: number;
+  maxMessages?: number;
   threadId: string;
   workflowId: string;
 };
@@ -88,6 +89,9 @@ function SharpyChat({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          ...(historyReloadRequest!.maxMessages
+            ? { maxMessages: historyReloadRequest!.maxMessages }
+            : {}),
           threadId: trimmedThreadId,
           workflowId: trimmedWorkflowId,
         }),
@@ -302,6 +306,7 @@ function annotateRestoredPendingToolArguments(
 export default function SharpyPage() {
   const [threadId, setThreadId] = useState("sharpy-demo-thread");
   const [workflowId, setWorkflowId] = useState(DEFAULT_WORKFLOW_ID);
+  const [historyMaxMessages, setHistoryMaxMessages] = useState("");
   const [sendAllMessages, setSendAllMessages] = useState(true);
   const [historyReloadRequest, setHistoryReloadRequest] =
     useState<HistoryReloadRequest | null>(null);
@@ -317,8 +322,13 @@ export default function SharpyPage() {
 
   function requestHistoryReload() {
     nextHistoryReloadRequestIdRef.current += 1;
+    const parsedMaxMessages = Number(historyMaxMessages);
     setHistoryReloadRequest({
       id: nextHistoryReloadRequestIdRef.current,
+      maxMessages:
+        Number.isInteger(parsedMaxMessages) && parsedMaxMessages > 0
+          ? parsedMaxMessages
+          : undefined,
       threadId,
       workflowId,
     });
@@ -396,6 +406,22 @@ export default function SharpyPage() {
                   </button>
                 </div>
               </div>
+            </section>
+
+            <section className="metaBlock">
+              <p className="label">Messages to load</p>
+              <input
+                className="threadInput mono"
+                inputMode="numeric"
+                min="1"
+                onChange={(event) => {
+                  clearHistoryReloadRequest();
+                  setHistoryMaxMessages(event.target.value);
+                }}
+                placeholder="All"
+                type="number"
+                value={historyMaxMessages}
+              />
             </section>
 
             <section className="metaBlock">

@@ -11,6 +11,9 @@ public sealed class AgUiHistoryRequest
     [JsonPropertyName("workflowName")]
     public string? WorkflowName { get; set; }
 
+    [JsonPropertyName("maxMessages")]
+    public JsonElement? MaxMessages { get; set; }
+
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }

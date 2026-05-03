@@ -585,6 +585,76 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return await dbContext.StreamEvents.AsNoTracking().Where(e => e.ConversationId == conversationId && !e.HideFromReply).OrderBy(e => e.SequenceNumber).ThenBy(e => e.Created).ToListAsync();
     }
 
+    public async Task<List<StreamEvent>> GetConversationStreamEventTail(string conversationId, int? beforeSequenceNumber, int take)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        if (string.IsNullOrWhiteSpace(conversationId))
+            throw new SharpOMaticException("Conversation stream id cannot be empty.");
+
+        if (take <= 0)
+            return [];
+
+        var query = dbContext.StreamEvents.AsNoTracking().Where(e => e.ConversationId == conversationId && !e.HideFromReply);
+        if (beforeSequenceNumber.HasValue)
+            query = query.Where(e => e.SequenceNumber < beforeSequenceNumber.Value);
+
+        return await query.OrderByDescending(e => e.SequenceNumber).ThenByDescending(e => e.Created).Take(take).ToListAsync();
+    }
+
+    public async Task<List<StreamEvent>> GetConversationStreamEventsByMessageIds(string conversationId, List<string> messageIds)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        if (string.IsNullOrWhiteSpace(conversationId))
+            throw new SharpOMaticException("Conversation stream id cannot be empty.");
+
+        var ids = messageIds.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList();
+        if (ids.Count == 0)
+            return [];
+
+        return await dbContext.StreamEvents
+            .AsNoTracking()
+            .Where(e => e.ConversationId == conversationId && !e.HideFromReply && e.MessageId != null && ids.Contains(e.MessageId))
+            .OrderBy(e => e.SequenceNumber)
+            .ThenBy(e => e.Created)
+            .ToListAsync();
+    }
+
+    public async Task<List<StreamEvent>> GetConversationStreamEventsByToolCallIds(string conversationId, List<string> toolCallIds)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        if (string.IsNullOrWhiteSpace(conversationId))
+            throw new SharpOMaticException("Conversation stream id cannot be empty.");
+
+        var ids = toolCallIds.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList();
+        if (ids.Count == 0)
+            return [];
+
+        return await dbContext.StreamEvents
+            .AsNoTracking()
+            .Where(e => e.ConversationId == conversationId && !e.HideFromReply && e.ToolCallId != null && ids.Contains(e.ToolCallId))
+            .OrderBy(e => e.SequenceNumber)
+            .ThenBy(e => e.Created)
+            .ToListAsync();
+    }
+
+    public async Task<List<StreamEvent>> GetConversationStateStreamEvents(string conversationId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        if (string.IsNullOrWhiteSpace(conversationId))
+            throw new SharpOMaticException("Conversation stream id cannot be empty.");
+
+        return await dbContext.StreamEvents
+            .AsNoTracking()
+            .Where(e => e.ConversationId == conversationId && !e.HideFromReply && (e.EventKind == StreamEventKind.StateSnapshot || e.EventKind == StreamEventKind.StateDelta))
+            .OrderBy(e => e.SequenceNumber)
+            .ThenBy(e => e.Created)
+            .ToListAsync();
+    }
+
     // ------------------------------------------------
     // ConnectorConfig Operations
     // ------------------------------------------------

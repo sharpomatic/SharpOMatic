@@ -346,6 +346,69 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.FromResult(streamEvents);
     }
 
+    public Task<List<StreamEvent>> GetConversationStreamEventTail(string conversationId, int? beforeSequenceNumber, int take)
+    {
+        if (string.IsNullOrWhiteSpace(conversationId))
+            throw new SharpOMaticException("Conversation stream id cannot be empty.");
+
+        if (take <= 0)
+            return Task.FromResult<List<StreamEvent>>([]);
+
+        var streamEvents = _streamEvents.Values
+            .Where(e => e.ConversationId == conversationId && !e.HideFromReply)
+            .Where(e => !beforeSequenceNumber.HasValue || e.SequenceNumber < beforeSequenceNumber.Value)
+            .OrderByDescending(e => e.SequenceNumber)
+            .ThenByDescending(e => e.Created)
+            .Take(take)
+            .ToList();
+
+        return Task.FromResult(streamEvents);
+    }
+
+    public Task<List<StreamEvent>> GetConversationStreamEventsByMessageIds(string conversationId, List<string> messageIds)
+    {
+        if (string.IsNullOrWhiteSpace(conversationId))
+            throw new SharpOMaticException("Conversation stream id cannot be empty.");
+
+        var ids = messageIds.Where(id => !string.IsNullOrWhiteSpace(id)).ToHashSet(StringComparer.Ordinal);
+        var streamEvents = _streamEvents.Values
+            .Where(e => e.ConversationId == conversationId && !e.HideFromReply && e.MessageId is not null && ids.Contains(e.MessageId))
+            .OrderBy(e => e.SequenceNumber)
+            .ThenBy(e => e.Created)
+            .ToList();
+
+        return Task.FromResult(streamEvents);
+    }
+
+    public Task<List<StreamEvent>> GetConversationStreamEventsByToolCallIds(string conversationId, List<string> toolCallIds)
+    {
+        if (string.IsNullOrWhiteSpace(conversationId))
+            throw new SharpOMaticException("Conversation stream id cannot be empty.");
+
+        var ids = toolCallIds.Where(id => !string.IsNullOrWhiteSpace(id)).ToHashSet(StringComparer.Ordinal);
+        var streamEvents = _streamEvents.Values
+            .Where(e => e.ConversationId == conversationId && !e.HideFromReply && e.ToolCallId is not null && ids.Contains(e.ToolCallId))
+            .OrderBy(e => e.SequenceNumber)
+            .ThenBy(e => e.Created)
+            .ToList();
+
+        return Task.FromResult(streamEvents);
+    }
+
+    public Task<List<StreamEvent>> GetConversationStateStreamEvents(string conversationId)
+    {
+        if (string.IsNullOrWhiteSpace(conversationId))
+            throw new SharpOMaticException("Conversation stream id cannot be empty.");
+
+        var streamEvents = _streamEvents.Values
+            .Where(e => e.ConversationId == conversationId && !e.HideFromReply && e.EventKind is StreamEventKind.StateSnapshot or StreamEventKind.StateDelta)
+            .OrderBy(e => e.SequenceNumber)
+            .ThenBy(e => e.Created)
+            .ToList();
+
+        return Task.FromResult(streamEvents);
+    }
+
     public Task<List<ConnectorConfig>> GetConnectorConfigs() => Task.FromResult(_connectorConfigs.Values.OrderBy(c => c.DisplayName).ToList());
 
     public Task<ConnectorConfig?> GetConnectorConfig(string configId)

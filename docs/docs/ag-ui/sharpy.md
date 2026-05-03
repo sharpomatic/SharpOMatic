@@ -99,6 +99,11 @@ For conversation-enabled workflows, SharpOMatic uses it as the conversation ID.
 Keep the same thread ID to continue a conversation, or select **New thread** to start over.
 Select **Reload** to load persisted AG-UI messages for the current thread and workflow.
 
+**Messages to load**
+
+Leave this blank to reload all persisted AG-UI messages.
+Enter a positive integer before selecting **Reload** to send `maxMessages` to the history endpoint and restore only the most recent render-valid subset.
+
 **Send All Messages**
 
 This controls how much local chat history Sharpy sends to the endpoint.
@@ -182,11 +187,13 @@ with:
 ```json
 {
   "threadId": "<thread-id>",
-  "workflowId": "<workflow-id>"
+  "workflowId": "<workflow-id>",
+  "maxMessages": 10
 }
 ```
 
 The returned envelope applies `messages` to the chat, restores `state` on the CopilotKit agent, and seeds only the server-reported `pendingFrontendTools`.
+Sharpy omits `maxMessages` when **Messages to load** is blank or invalid.
 If the last restored message is an unresolved SharpOMatic frontend confirmation call, Sharpy renders that inline chat tool card as an actionable Yes/No card.
 Submitting that card adds a matching AG-UI `tool` message and runs the agent so the suspended workflow can resume.
 If the server returns `404` because the thread has not been created yet, Sharpy starts with an empty chat for that thread.

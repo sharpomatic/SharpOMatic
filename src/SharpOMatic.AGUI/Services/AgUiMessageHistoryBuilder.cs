@@ -27,6 +27,290 @@ internal static class AgUiMessageHistoryBuilder
         };
     }
 
+    public static async Task<AgUiHistoryResponse> BuildCappedEnvelope(
+        string conversationId,
+        int maxMessages,
+        IRepositoryService repositoryService,
+        ConversationCheckpoint? checkpoint,
+        IJsonConverterService jsonConverterService
+    )
+    {
+        var cappedMessages = await LoadCappedMessages(conversationId, maxMessages, repositoryService);
+        var state = TryGetCheckpointState(checkpoint, jsonConverterService);
+        if (state is null)
+            state = BuildState(await repositoryService.GetConversationStateStreamEvents(conversationId));
+
+        return new AgUiHistoryResponse()
+        {
+            Messages = cappedMessages,
+            State = state,
+            PendingFrontendTools = GetPendingFrontendTools(cappedMessages),
+        };
+    }
+
+    private static async Task<List<Dictionary<string, object?>>> LoadCappedMessages(string conversationId, int maxMessages, IRepositoryService repositoryService)
+    {
+        var pageSize = maxMessages > int.MaxValue / 10 ? int.MaxValue : Math.Max(maxMessages * 10, 100);
+        int? beforeSequenceNumber = null;
+        Dictionary<string, HistoryCandidate> candidates = [];
+
+        while (candidates.Count < maxMessages)
+        {
+            var page = await repositoryService.GetConversationStreamEventTail(conversationId, beforeSequenceNumber, pageSize);
+            if (page.Count == 0)
+                break;
+
+            foreach (var streamEvent in page)
+                AddHistoryCandidate(candidates, streamEvent);
+
+            beforeSequenceNumber = page.Min(e => e.SequenceNumber);
+        }
+
+        if (candidates.Count == 0)
+            return [];
+
+        var selectedCandidates = candidates.Values.OrderByDescending(c => c.LatestSequenceNumber).Take(maxMessages).ToList();
+        HashSet<string> messageIds = new(StringComparer.Ordinal);
+        HashSet<string> toolCallIds = new(StringComparer.Ordinal);
+        HashSet<string> allowedMessageIds = new(StringComparer.Ordinal);
+        HashSet<string> allowedToolCallIds = new(StringComparer.Ordinal);
+        HashSet<string> allowedToolResultCallIds = new(StringComparer.Ordinal);
+
+        foreach (var candidate in selectedCandidates)
+        {
+            AddIfNotEmpty(allowedMessageIds, candidate.ProtocolMessageId);
+
+            switch (candidate.Kind)
+            {
+                case HistoryCandidateKind.Text:
+                case HistoryCandidateKind.Reasoning:
+                case HistoryCandidateKind.Activity:
+                    AddIfNotEmpty(messageIds, candidate.MessageId);
+                    break;
+                case HistoryCandidateKind.AssistantToolCall:
+                    AddIfNotEmpty(toolCallIds, candidate.ToolCallId);
+                    AddIfNotEmpty(allowedToolCallIds, candidate.ToolCallId);
+                    break;
+                case HistoryCandidateKind.ToolResult:
+                    AddIfNotEmpty(messageIds, candidate.MessageId);
+                    AddIfNotEmpty(toolCallIds, candidate.ToolCallId);
+                    AddIfNotEmpty(allowedToolCallIds, candidate.ToolCallId);
+                    AddIfNotEmpty(allowedToolResultCallIds, candidate.ToolCallId);
+                    break;
+            }
+        }
+
+        var targetedEvents = await LoadTargetedEvents(conversationId, repositoryService, messageIds, toolCallIds);
+
+        var parentMessageIds = targetedEvents
+            .Where(e => e.EventKind == StreamEventKind.ToolCallStart && IsInSet(toolCallIds, GetToolCallId(e)) && !string.IsNullOrWhiteSpace(e.ParentMessageId))
+            .Select(e => e.ParentMessageId!)
+            .Where(parentMessageId => !messageIds.Contains(parentMessageId))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        foreach (var parentMessageId in parentMessageIds)
+        {
+            messageIds.Add(parentMessageId);
+            allowedMessageIds.Add(parentMessageId);
+        }
+
+        if (parentMessageIds.Count > 0)
+            targetedEvents = await LoadTargetedEvents(conversationId, repositoryService, messageIds, toolCallIds);
+
+        var knownToolCallIds = targetedEvents
+            .Where(e => e.EventKind == StreamEventKind.ToolCallStart)
+            .Select(GetToolCallId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var orderedEvents = targetedEvents
+            .GroupBy(e => e.StreamEventId)
+            .Select(g => g.First())
+            .OrderBy(e => e.SequenceNumber)
+            .ThenBy(e => e.Created)
+            .ToList();
+
+        var messages = BuildMessages(orderedEvents);
+        return FilterCappedMessages(messages, allowedMessageIds, allowedToolCallIds, allowedToolResultCallIds, knownToolCallIds);
+    }
+
+    private static async Task<List<StreamEvent>> LoadTargetedEvents(
+        string conversationId,
+        IRepositoryService repositoryService,
+        HashSet<string> messageIds,
+        HashSet<string> toolCallIds
+    )
+    {
+        var byMessageId = await repositoryService.GetConversationStreamEventsByMessageIds(conversationId, messageIds.ToList());
+        var byToolCallId = await repositoryService.GetConversationStreamEventsByToolCallIds(conversationId, toolCallIds.ToList());
+        return byMessageId.Concat(byToolCallId).ToList();
+    }
+
+    private static void AddHistoryCandidate(Dictionary<string, HistoryCandidate> candidates, StreamEvent streamEvent)
+    {
+        switch (streamEvent.EventKind)
+        {
+            case StreamEventKind.TextStart:
+            case StreamEventKind.TextContent:
+            case StreamEventKind.TextEnd:
+                AddMessageCandidate(candidates, streamEvent, HistoryCandidateKind.Text, streamEvent.MessageId, streamEvent.MessageId);
+                break;
+            case StreamEventKind.ReasoningStart:
+            case StreamEventKind.ReasoningMessageStart:
+            case StreamEventKind.ReasoningMessageContent:
+            case StreamEventKind.ReasoningMessageEnd:
+            case StreamEventKind.ReasoningEnd:
+                if (!string.IsNullOrWhiteSpace(streamEvent.MessageId))
+                    AddMessageCandidate(candidates, streamEvent, HistoryCandidateKind.Reasoning, streamEvent.MessageId, GetProtocolReasoningMessageId(streamEvent.MessageId));
+                break;
+            case StreamEventKind.ActivitySnapshot:
+            case StreamEventKind.ActivityDelta:
+                if (!string.IsNullOrWhiteSpace(streamEvent.MessageId))
+                    AddMessageCandidate(candidates, streamEvent, HistoryCandidateKind.Activity, streamEvent.MessageId, GetProtocolActivityMessageId(streamEvent.MessageId));
+                break;
+            case StreamEventKind.ToolCallStart:
+            case StreamEventKind.ToolCallArgs:
+            case StreamEventKind.ToolCallEnd:
+                AddToolCallCandidate(candidates, streamEvent);
+                break;
+            case StreamEventKind.ToolCallResult:
+                AddToolResultCandidate(candidates, streamEvent);
+                break;
+        }
+    }
+
+    private static void AddMessageCandidate(
+        Dictionary<string, HistoryCandidate> candidates,
+        StreamEvent streamEvent,
+        HistoryCandidateKind kind,
+        string? messageId,
+        string? protocolMessageId
+    )
+    {
+        if (string.IsNullOrWhiteSpace(messageId) || string.IsNullOrWhiteSpace(protocolMessageId))
+            return;
+
+        UpsertCandidate(
+            candidates,
+            $"{kind}:{protocolMessageId}",
+            kind,
+            messageId,
+            protocolMessageId,
+            toolCallId: null,
+            streamEvent.SequenceNumber
+        );
+    }
+
+    private static void AddToolCallCandidate(Dictionary<string, HistoryCandidate> candidates, StreamEvent streamEvent)
+    {
+        var toolCallId = GetToolCallId(streamEvent);
+        if (string.IsNullOrWhiteSpace(toolCallId))
+            return;
+
+        var assistantMessageId = string.IsNullOrWhiteSpace(streamEvent.ParentMessageId) ? toolCallId : streamEvent.ParentMessageId;
+        UpsertCandidate(
+            candidates,
+            $"{HistoryCandidateKind.AssistantToolCall}:{assistantMessageId}:{toolCallId}",
+            HistoryCandidateKind.AssistantToolCall,
+            messageId: null,
+            protocolMessageId: assistantMessageId,
+            toolCallId,
+            streamEvent.SequenceNumber
+        );
+    }
+
+    private static void AddToolResultCandidate(Dictionary<string, HistoryCandidate> candidates, StreamEvent streamEvent)
+    {
+        var toolCallId = GetToolCallId(streamEvent);
+        if (string.IsNullOrWhiteSpace(streamEvent.MessageId) || string.IsNullOrWhiteSpace(toolCallId))
+            return;
+
+        candidates[$"{HistoryCandidateKind.ToolResult}:{streamEvent.StreamEventId}"] = new HistoryCandidate(
+            Kind: HistoryCandidateKind.ToolResult,
+            MessageId: streamEvent.MessageId,
+            ProtocolMessageId: null,
+            ToolCallId: toolCallId,
+            LatestSequenceNumber: streamEvent.SequenceNumber
+        );
+    }
+
+    private static void UpsertCandidate(
+        Dictionary<string, HistoryCandidate> candidates,
+        string key,
+        HistoryCandidateKind kind,
+        string? messageId,
+        string? protocolMessageId,
+        string? toolCallId,
+        int sequenceNumber
+    )
+    {
+        if (candidates.TryGetValue(key, out var existing))
+        {
+            if (sequenceNumber > existing.LatestSequenceNumber)
+                candidates[key] = existing with { LatestSequenceNumber = sequenceNumber };
+
+            return;
+        }
+
+        candidates[key] = new HistoryCandidate(kind, messageId, protocolMessageId, toolCallId, sequenceNumber);
+    }
+
+    private static List<Dictionary<string, object?>> FilterCappedMessages(
+        List<Dictionary<string, object?>> messages,
+        HashSet<string> allowedMessageIds,
+        HashSet<string> allowedToolCallIds,
+        HashSet<string> allowedToolResultCallIds,
+        HashSet<string> knownToolCallIds
+    )
+    {
+        List<Dictionary<string, object?>> filteredMessages = [];
+
+        foreach (var message in messages)
+        {
+            var role = message.GetValueOrDefault("role") as string;
+            var messageId = message.GetValueOrDefault("id") as string;
+
+            if (role == "tool")
+            {
+                var toolCallId = message.GetValueOrDefault("toolCallId") as string;
+                if (IsInSet(allowedToolResultCallIds, toolCallId) && IsInSet(knownToolCallIds, toolCallId))
+                    filteredMessages.Add(message);
+
+                continue;
+            }
+
+            if (IsInSet(allowedMessageIds, messageId) || HasAllowedToolCall(message, allowedToolCallIds, knownToolCallIds))
+                filteredMessages.Add(message);
+        }
+
+        return filteredMessages;
+    }
+
+    private static bool HasAllowedToolCall(Dictionary<string, object?> message, HashSet<string> allowedToolCallIds, HashSet<string> knownToolCallIds)
+    {
+        if (message.GetValueOrDefault("toolCalls") is not List<Dictionary<string, object?>> toolCalls)
+            return false;
+
+        return toolCalls.Any(toolCall =>
+        {
+            var toolCallId = toolCall.GetValueOrDefault("id") as string;
+            return IsInSet(allowedToolCallIds, toolCallId) && IsInSet(knownToolCallIds, toolCallId);
+        });
+    }
+
+    private static bool IsInSet(HashSet<string> values, string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value) && values.Contains(value);
+    }
+
+    private static void AddIfNotEmpty(HashSet<string> values, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+            values.Add(value);
+    }
+
     private static List<Dictionary<string, object?>> BuildMessages(IEnumerable<StreamEvent> streamEvents)
     {
         List<Dictionary<string, object?>> messages = [];
@@ -545,4 +829,21 @@ internal static class AgUiMessageHistoryBuilder
             _ => "assistant",
         };
     }
+
+    private enum HistoryCandidateKind
+    {
+        Text,
+        Reasoning,
+        Activity,
+        AssistantToolCall,
+        ToolResult,
+    }
+
+    private sealed record HistoryCandidate(
+        HistoryCandidateKind Kind,
+        string? MessageId,
+        string? ProtocolMessageId,
+        string? ToolCallId,
+        int LatestSequenceNumber
+    );
 }

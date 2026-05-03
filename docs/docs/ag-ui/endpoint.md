@@ -112,7 +112,8 @@ Content-Type: application/json
 ```json
 {
   "threadId": "support-chat-001",
-  "workflowId": "11230021-5144-471a-8ec7-9b460354b745"
+  "workflowId": "11230021-5144-471a-8ec7-9b460354b745",
+  "maxMessages": 10
 }
 ```
 
@@ -142,6 +143,7 @@ The selector rules are:
 
 - `threadId` is required and maps to the SharpOMatic conversation id
 - exactly one of `workflowId` or `workflowName` is required
+- `maxMessages` is optional; a positive integer returns the most recent restored messages, while omitted, null, zero, negative, fractional, or non-number values keep the default unlimited history behavior
 - unknown workflow id, unknown workflow name, unknown thread id, and workflow/thread mismatches return `404`
 - malformed selectors, invalid GUIDs, and ambiguous workflow names return `400`
 - non-conversation workflows return `{ "messages": [], "state": null, "pendingFrontendTools": [] }` because they do not have conversation stream history
@@ -150,6 +152,9 @@ The returned messages are reduced from persisted visible stream events.
 Text, reasoning, tool-call/tool-result, and final activity messages are included.
 Step and custom stream events are ignored because AG-UI `initialMessages` accepts messages, not protocol event replay.
 Reasoning, tool-result, and activity message ids use the same `reason:`, `tool:`, and `activity:` prefixes as live SSE output.
+When `maxMessages` is used, SharpOMatic may return more messages than requested if older messages are required to keep the restored history renderable.
+For example, a selected tool result includes the assistant tool-call message it belongs to, and a selected activity delta is rebuilt from the matching activity snapshot plus later deltas before it is returned.
+The `state` value is not limited by `maxMessages`; it is still restored from the saved checkpoint when possible and otherwise from all visible state stream events.
 
 ## Execution modes
 

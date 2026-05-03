@@ -59,6 +59,10 @@ public interface IRepositoryService
     Task UpdateStreamEventsHideFromReply(List<Guid> streamEventIds, bool hideFromReply);
     Task<List<StreamEvent>> GetRunStreamEvents(Guid runId);
     Task<List<StreamEvent>> GetConversationStreamEvents(string conversationId);
+    Task<List<StreamEvent>> GetConversationStreamEventTail(string conversationId, int? beforeSequenceNumber, int take);
+    Task<List<StreamEvent>> GetConversationStreamEventsByMessageIds(string conversationId, List<string> messageIds);
+    Task<List<StreamEvent>> GetConversationStreamEventsByToolCallIds(string conversationId, List<string> toolCallIds);
+    Task<List<StreamEvent>> GetConversationStateStreamEvents(string conversationId);
 
     // ------------------------------------------------
     // ConnectorConfig Operations

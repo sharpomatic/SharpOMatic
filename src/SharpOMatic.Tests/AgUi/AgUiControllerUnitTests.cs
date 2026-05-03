@@ -2742,6 +2742,429 @@ public sealed class AgUiControllerUnitTests
         Assert.Equal(0, ToJsonElement(notLastResult.Value).GetProperty("pendingFrontendTools").GetArrayLength());
     }
 
+    [Fact]
+    public async Task AgUi_history_ignores_invalid_max_messages_values()
+    {
+        var workflowId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var created = DateTime.UtcNow;
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+        await repositoryService.UpsertConversation(CreateConversation("thread-1", workflowId, created));
+        await repositoryService.UpsertRun(CreateRun(runId, workflowId, "thread-1", created));
+        await repositoryService.AppendStreamEvents(
+            [
+                CreateStreamEvent(runId, workflowId, "thread-1", 1, StreamEventKind.TextStart, messageId: "assistant-1", role: StreamMessageRole.Assistant),
+                CreateStreamEvent(runId, workflowId, "thread-1", 2, StreamEventKind.TextContent, messageId: "assistant-1", textDelta: "first"),
+                CreateStreamEvent(runId, workflowId, "thread-1", 3, StreamEventKind.TextStart, messageId: "assistant-2", role: StreamMessageRole.Assistant),
+                CreateStreamEvent(runId, workflowId, "thread-1", 4, StreamEventKind.TextContent, messageId: "assistant-2", textDelta: "second"),
+            ]
+        );
+
+        foreach (var maxMessages in new[] { ParseJson("0"), ParseJson("-1"), ParseJson("\"10\""), ParseJson("1.5"), ParseJson("""{"take":1}""") })
+        {
+            var controller = new AgUiController(new Mock<IEngineService>().Object, new Mock<IAgUiRunEventBroker>().Object);
+            controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+            var result = Assert.IsType<OkObjectResult>(
+                await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowId = workflowId.ToString(), MaxMessages = maxMessages })
+            );
+            var messages = ToJsonElement(result.Value).GetProperty("messages");
+
+            Assert.Equal(2, messages.GetArrayLength());
+            Assert.Equal("assistant-1", messages[0].GetProperty("id").GetString());
+            Assert.Equal("assistant-2", messages[1].GetProperty("id").GetString());
+        }
+    }
+
+    [Fact]
+    public async Task AgUi_history_max_messages_returns_recent_messages()
+    {
+        var workflowId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var created = DateTime.UtcNow;
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+        await repositoryService.UpsertConversation(CreateConversation("thread-1", workflowId, created));
+        await repositoryService.UpsertRun(CreateRun(runId, workflowId, "thread-1", created));
+
+        List<StreamEvent> events = [];
+        var sequence = 1;
+        for (var index = 1; index <= 25; index += 1)
+        {
+            var messageId = $"assistant-{index}";
+            events.Add(CreateStreamEvent(runId, workflowId, "thread-1", sequence++, StreamEventKind.TextStart, messageId: messageId, role: StreamMessageRole.Assistant));
+            events.Add(CreateStreamEvent(runId, workflowId, "thread-1", sequence++, StreamEventKind.TextContent, messageId: messageId, textDelta: $"reply-{index}"));
+            events.Add(CreateStreamEvent(runId, workflowId, "thread-1", sequence++, StreamEventKind.TextEnd, messageId: messageId));
+        }
+
+        await repositoryService.AppendStreamEvents(events);
+
+        var controller = new AgUiController(new Mock<IEngineService>().Object, new Mock<IAgUiRunEventBroker>().Object);
+        controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowId = workflowId.ToString(), MaxMessages = ParseJson("2") })
+        );
+        var messages = ToJsonElement(result.Value).GetProperty("messages");
+
+        Assert.Equal(2, messages.GetArrayLength());
+        Assert.Equal("assistant-24", messages[0].GetProperty("id").GetString());
+        Assert.Equal("reply-24", messages[0].GetProperty("content").GetString());
+        Assert.Equal("assistant-25", messages[1].GetProperty("id").GetString());
+        Assert.Equal("reply-25", messages[1].GetProperty("content").GetString());
+    }
+
+    [Fact]
+    public async Task AgUi_history_max_messages_includes_tool_call_for_selected_tool_result()
+    {
+        var workflowId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var created = DateTime.UtcNow;
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+        await repositoryService.UpsertConversation(CreateConversation("thread-1", workflowId, created));
+        await repositoryService.UpsertRun(CreateRun(runId, workflowId, "thread-1", created));
+        await repositoryService.AppendStreamEvents(
+            [
+                CreateStreamEvent(runId, workflowId, "thread-1", 1, StreamEventKind.ToolCallStart, messageId: "call-1", toolCallId: "call-1", parentMessageId: "assistant-1", textDelta: "lookup_weather"),
+                CreateStreamEvent(runId, workflowId, "thread-1", 2, StreamEventKind.ToolCallArgs, messageId: "call-1", toolCallId: "call-1", textDelta: "{\"city\":\"Sydney\"}"),
+                CreateStreamEvent(runId, workflowId, "thread-1", 3, StreamEventKind.ToolCallEnd, messageId: "call-1", toolCallId: "call-1"),
+                CreateStreamEvent(runId, workflowId, "thread-1", 4, StreamEventKind.TextStart, messageId: "assistant-2", role: StreamMessageRole.Assistant),
+                CreateStreamEvent(runId, workflowId, "thread-1", 5, StreamEventKind.TextContent, messageId: "assistant-2", textDelta: "between"),
+                CreateStreamEvent(runId, workflowId, "thread-1", 6, StreamEventKind.ToolCallResult, messageId: "result-1", toolCallId: "call-1", textDelta: "Sunny"),
+            ]
+        );
+
+        var controller = new AgUiController(new Mock<IEngineService>().Object, new Mock<IAgUiRunEventBroker>().Object);
+        controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowId = workflowId.ToString(), MaxMessages = ParseJson("1") })
+        );
+        var messages = ToJsonElement(result.Value).GetProperty("messages");
+
+        Assert.Equal(2, messages.GetArrayLength());
+        Assert.Equal("assistant", messages[0].GetProperty("role").GetString());
+        Assert.Equal("call-1", messages[0].GetProperty("toolCalls")[0].GetProperty("id").GetString());
+        Assert.Equal("tool", messages[1].GetProperty("role").GetString());
+        Assert.Equal("call-1", messages[1].GetProperty("toolCallId").GetString());
+        Assert.Equal("Sunny", messages[1].GetProperty("content").GetString());
+    }
+
+    [Fact]
+    public async Task AgUi_history_max_messages_rebuilds_activity_from_snapshot_and_deltas()
+    {
+        var workflowId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var created = DateTime.UtcNow;
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+        await repositoryService.UpsertConversation(CreateConversation("thread-1", workflowId, created));
+        await repositoryService.UpsertRun(CreateRun(runId, workflowId, "thread-1", created));
+
+        List<StreamEvent> events =
+        [
+            CreateStreamEvent(runId, workflowId, "thread-1", 1, StreamEventKind.ActivitySnapshot, messageId: "plan-1", activityType: "plan", textDelta: "{\"steps\":[{\"status\":\"todo\"}]}"),
+        ];
+
+        for (var index = 2; index < 120; index += 1)
+            events.Add(CreateStreamEvent(runId, workflowId, "thread-1", index, StreamEventKind.TextContent, messageId: $"assistant-{index}", textDelta: $"old-{index}"));
+
+        events.Add(CreateStreamEvent(runId, workflowId, "thread-1", 120, StreamEventKind.ActivityDelta, messageId: "plan-1", activityType: "plan", textDelta: "[{\"op\":\"replace\",\"path\":\"/steps/0/status\",\"value\":\"done\"}]"));
+        await repositoryService.AppendStreamEvents(events);
+
+        var controller = new AgUiController(new Mock<IEngineService>().Object, new Mock<IAgUiRunEventBroker>().Object);
+        controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowId = workflowId.ToString(), MaxMessages = ParseJson("1") })
+        );
+        var messages = ToJsonElement(result.Value).GetProperty("messages");
+
+        var message = Assert.Single(messages.EnumerateArray());
+        Assert.Equal("activity:plan-1", message.GetProperty("id").GetString());
+        Assert.Equal("activity", message.GetProperty("role").GetString());
+        Assert.Equal("done", message.GetProperty("content").GetProperty("steps")[0].GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task AgUi_history_max_messages_returns_activity_snapshot_without_delta()
+    {
+        var workflowId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var created = DateTime.UtcNow;
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+        await repositoryService.UpsertConversation(CreateConversation("thread-1", workflowId, created));
+        await repositoryService.UpsertRun(CreateRun(runId, workflowId, "thread-1", created));
+        await repositoryService.AppendStreamEvents(
+            [
+                CreateStreamEvent(runId, workflowId, "thread-1", 1, StreamEventKind.ActivitySnapshot, messageId: "plan-1", activityType: "plan", textDelta: "{\"status\":\"todo\"}"),
+            ]
+        );
+
+        var controller = new AgUiController(new Mock<IEngineService>().Object, new Mock<IAgUiRunEventBroker>().Object);
+        controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowId = workflowId.ToString(), MaxMessages = ParseJson("1") })
+        );
+        var message = Assert.Single(ToJsonElement(result.Value).GetProperty("messages").EnumerateArray());
+
+        Assert.Equal("activity:plan-1", message.GetProperty("id").GetString());
+        Assert.Equal("todo", message.GetProperty("content").GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task AgUi_history_max_messages_omits_activity_delta_without_snapshot()
+    {
+        var workflowId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var created = DateTime.UtcNow;
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+        await repositoryService.UpsertConversation(CreateConversation("thread-1", workflowId, created));
+        await repositoryService.UpsertRun(CreateRun(runId, workflowId, "thread-1", created));
+        await repositoryService.AppendStreamEvents(
+            [
+                CreateStreamEvent(runId, workflowId, "thread-1", 1, StreamEventKind.ActivityDelta, messageId: "plan-1", activityType: "plan", textDelta: "[{\"op\":\"replace\",\"path\":\"/status\",\"value\":\"done\"}]"),
+            ]
+        );
+
+        var controller = new AgUiController(new Mock<IEngineService>().Object, new Mock<IAgUiRunEventBroker>().Object);
+        controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowId = workflowId.ToString(), MaxMessages = ParseJson("1") })
+        );
+
+        Assert.Empty(ToJsonElement(result.Value).GetProperty("messages").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task AgUi_history_max_messages_keeps_state_fallback_unlimited()
+    {
+        var workflowId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var created = DateTime.UtcNow;
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+        await repositoryService.UpsertConversation(CreateConversation("thread-1", workflowId, created));
+        await repositoryService.UpsertRun(CreateRun(runId, workflowId, "thread-1", created));
+        await repositoryService.AppendStreamEvents(
+            [
+                CreateStreamEvent(runId, workflowId, "thread-1", 1, StreamEventKind.StateSnapshot, textDelta: "{\"mode\":\"start\",\"count\":1}"),
+                CreateStreamEvent(runId, workflowId, "thread-1", 2, StreamEventKind.TextStart, messageId: "assistant-1", role: StreamMessageRole.Assistant),
+                CreateStreamEvent(runId, workflowId, "thread-1", 3, StreamEventKind.TextContent, messageId: "assistant-1", textDelta: "reply"),
+                CreateStreamEvent(runId, workflowId, "thread-1", 4, StreamEventKind.StateDelta, textDelta: "[{\"op\":\"replace\",\"path\":\"/mode\",\"value\":\"patched\"}]"),
+            ]
+        );
+
+        var controller = new AgUiController(new Mock<IEngineService>().Object, new Mock<IAgUiRunEventBroker>().Object);
+        controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowId = workflowId.ToString(), MaxMessages = ParseJson("1") })
+        );
+        var envelope = ToJsonElement(result.Value);
+
+        Assert.Equal("patched", envelope.GetProperty("state").GetProperty("mode").GetString());
+        Assert.Single(envelope.GetProperty("messages").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task AgUi_history_max_messages_returns_state_snapshot_without_delta()
+    {
+        var workflowId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var created = DateTime.UtcNow;
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+        await repositoryService.UpsertConversation(CreateConversation("thread-1", workflowId, created));
+        await repositoryService.UpsertRun(CreateRun(runId, workflowId, "thread-1", created));
+        await repositoryService.AppendStreamEvents(
+            [
+                CreateStreamEvent(runId, workflowId, "thread-1", 1, StreamEventKind.StateSnapshot, textDelta: "{\"mode\":\"snapshot\"}"),
+            ]
+        );
+
+        var controller = new AgUiController(new Mock<IEngineService>().Object, new Mock<IAgUiRunEventBroker>().Object);
+        controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowId = workflowId.ToString(), MaxMessages = ParseJson("1") })
+        );
+        var envelope = ToJsonElement(result.Value);
+
+        Assert.Equal("snapshot", envelope.GetProperty("state").GetProperty("mode").GetString());
+        Assert.Empty(envelope.GetProperty("messages").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task AgUi_history_max_messages_ignores_state_delta_without_snapshot()
+    {
+        var workflowId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var created = DateTime.UtcNow;
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+        await repositoryService.UpsertConversation(CreateConversation("thread-1", workflowId, created));
+        await repositoryService.UpsertRun(CreateRun(runId, workflowId, "thread-1", created));
+        await repositoryService.AppendStreamEvents(
+            [
+                CreateStreamEvent(runId, workflowId, "thread-1", 1, StreamEventKind.StateDelta, textDelta: "[{\"op\":\"add\",\"path\":\"/mode\",\"value\":\"delta\"}]"),
+            ]
+        );
+
+        var controller = new AgUiController(new Mock<IEngineService>().Object, new Mock<IAgUiRunEventBroker>().Object);
+        controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowId = workflowId.ToString(), MaxMessages = ParseJson("1") })
+        );
+        var envelope = ToJsonElement(result.Value);
+
+        Assert.Equal(JsonValueKind.Null, envelope.GetProperty("state").ValueKind);
+        Assert.Empty(envelope.GetProperty("messages").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task AgUi_history_max_messages_returns_null_state_without_state_events()
+    {
+        var workflowId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var created = DateTime.UtcNow;
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+        await repositoryService.UpsertConversation(CreateConversation("thread-1", workflowId, created));
+        await repositoryService.UpsertRun(CreateRun(runId, workflowId, "thread-1", created));
+        await repositoryService.AppendStreamEvents(
+            [
+                CreateStreamEvent(runId, workflowId, "thread-1", 1, StreamEventKind.TextStart, messageId: "assistant-1", role: StreamMessageRole.Assistant),
+                CreateStreamEvent(runId, workflowId, "thread-1", 2, StreamEventKind.TextContent, messageId: "assistant-1", textDelta: "reply"),
+            ]
+        );
+
+        var controller = new AgUiController(new Mock<IEngineService>().Object, new Mock<IAgUiRunEventBroker>().Object);
+        controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowId = workflowId.ToString(), MaxMessages = ParseJson("1") })
+        );
+        var envelope = ToJsonElement(result.Value);
+
+        Assert.Equal(JsonValueKind.Null, envelope.GetProperty("state").ValueKind);
+        Assert.Single(envelope.GetProperty("messages").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task AgUi_history_max_messages_returns_tool_call_without_tool_result()
+    {
+        var workflowId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var created = DateTime.UtcNow;
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+        await repositoryService.UpsertConversation(CreateConversation("thread-1", workflowId, created));
+        await repositoryService.UpsertRun(CreateRun(runId, workflowId, "thread-1", created));
+        await repositoryService.AppendStreamEvents(
+            [
+                CreateStreamEvent(runId, workflowId, "thread-1", 1, StreamEventKind.ToolCallStart, messageId: "call-1", toolCallId: "call-1", parentMessageId: "assistant-1", textDelta: "lookup_weather"),
+                CreateStreamEvent(runId, workflowId, "thread-1", 2, StreamEventKind.ToolCallArgs, messageId: "call-1", toolCallId: "call-1", textDelta: "{\"city\":\"Sydney\"}"),
+                CreateStreamEvent(runId, workflowId, "thread-1", 3, StreamEventKind.ToolCallEnd, messageId: "call-1", toolCallId: "call-1"),
+            ]
+        );
+
+        var controller = new AgUiController(new Mock<IEngineService>().Object, new Mock<IAgUiRunEventBroker>().Object);
+        controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowId = workflowId.ToString(), MaxMessages = ParseJson("1") })
+        );
+        var envelope = ToJsonElement(result.Value);
+        var message = Assert.Single(envelope.GetProperty("messages").EnumerateArray());
+
+        Assert.Equal("assistant", message.GetProperty("role").GetString());
+        Assert.Equal("call-1", message.GetProperty("toolCalls")[0].GetProperty("id").GetString());
+        Assert.Equal(0, envelope.GetProperty("pendingFrontendTools").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task AgUi_history_max_messages_omits_tool_result_without_matching_tool_call()
+    {
+        var workflowId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var created = DateTime.UtcNow;
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+        await repositoryService.UpsertConversation(CreateConversation("thread-1", workflowId, created));
+        await repositoryService.UpsertRun(CreateRun(runId, workflowId, "thread-1", created));
+        await repositoryService.AppendStreamEvents(
+            [
+                CreateStreamEvent(runId, workflowId, "thread-1", 1, StreamEventKind.ToolCallResult, messageId: "result-1", toolCallId: "missing-call", textDelta: "Sunny"),
+            ]
+        );
+
+        var controller = new AgUiController(new Mock<IEngineService>().Object, new Mock<IAgUiRunEventBroker>().Object);
+        controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowId = workflowId.ToString(), MaxMessages = ParseJson("1") })
+        );
+        var envelope = ToJsonElement(result.Value);
+
+        Assert.Empty(envelope.GetProperty("messages").EnumerateArray());
+        Assert.Equal(0, envelope.GetProperty("pendingFrontendTools").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task AgUi_history_max_messages_preserves_pending_frontend_tool()
+    {
+        var workflowId = Guid.NewGuid();
+        var runId = Guid.NewGuid();
+        var created = DateTime.UtcNow;
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+        await repositoryService.UpsertConversation(CreateConversation("thread-1", workflowId, created));
+        await repositoryService.UpsertRun(CreateRun(runId, workflowId, "thread-1", created));
+        await repositoryService.AppendStreamEvents(
+            [
+                CreateStreamEvent(runId, workflowId, "thread-1", 1, StreamEventKind.TextStart, messageId: "assistant-1", role: StreamMessageRole.Assistant),
+                CreateStreamEvent(runId, workflowId, "thread-1", 2, StreamEventKind.TextContent, messageId: "assistant-1", textDelta: "old"),
+                CreateStreamEvent(runId, workflowId, "thread-1", 3, StreamEventKind.ToolCallStart, messageId: "tool-1", toolCallId: "tool-1", parentMessageId: "frontend-tool-call:tool-1", textDelta: "ask_a_question"),
+                CreateStreamEvent(runId, workflowId, "thread-1", 4, StreamEventKind.ToolCallArgs, messageId: "tool-1", toolCallId: "tool-1", textDelta: "{\"title\":\"Continue\",\"message\":\"Proceed?\"}"),
+                CreateStreamEvent(runId, workflowId, "thread-1", 5, StreamEventKind.ToolCallEnd, messageId: "tool-1", toolCallId: "tool-1"),
+            ]
+        );
+
+        var controller = new AgUiController(new Mock<IEngineService>().Object, new Mock<IAgUiRunEventBroker>().Object);
+        controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowId = workflowId.ToString(), MaxMessages = ParseJson("1") })
+        );
+        var envelope = ToJsonElement(result.Value);
+        var pendingTool = Assert.Single(envelope.GetProperty("pendingFrontendTools").EnumerateArray());
+
+        Assert.Equal(1, envelope.GetProperty("messages").GetArrayLength());
+        Assert.Equal("tool-1", pendingTool.GetProperty("toolCallId").GetString());
+        Assert.Equal("frontend-tool-call:tool-1", pendingTool.GetProperty("assistantMessageId").GetString());
+    }
+
     private static async IAsyncEnumerable<AgUiRunUpdate> CreateUpdates(List<StreamEvent> streamEvents, Run run, Func<StreamEvent, bool>? isSilent = null)
     {
         yield return AgUiRunUpdate.ForStreamEvents(ToProgressItems(streamEvents, isSilent));
