@@ -216,6 +216,7 @@ export class TransferComponent implements OnInit {
       `Imported ${result.workflowsImported} workflows, ` +
       `${result.connectorsImported} connectors, ${result.modelsImported} models, ` +
       `${result.evaluationsImported} evaluations, ` +
+      `${result.evaluationRunsImported} evaluation runs, ` +
       `${result.assetsImported} assets.`;
     this.showInfoDialog('Import Complete', message);
   }

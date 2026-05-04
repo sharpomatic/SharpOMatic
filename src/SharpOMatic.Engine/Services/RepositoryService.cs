@@ -1147,6 +1147,91 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         };
     }
 
+    public async Task<TransferEvaluationPackage> GetEvalTransferPackage(Guid evalConfigId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var evalConfig = await (from m in dbContext.EvalConfigs where m.EvalConfigId == evalConfigId select m)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (evalConfig is null)
+            throw new SharpOMaticException($"EvalConfig '{evalConfigId}' cannot be found.");
+
+        var graders = await (from g in dbContext.EvalGraders.AsNoTracking() where g.EvalConfigId == evalConfigId orderby g.Order select g).ToListAsync();
+
+        var columns = await (from c in dbContext.EvalColumns.AsNoTracking() where c.EvalConfigId == evalConfigId orderby c.Order select c).ToListAsync();
+
+        var rows = await (from r in dbContext.EvalRows.AsNoTracking() where r.EvalConfigId == evalConfigId orderby r.Order select r).ToListAsync();
+
+        var data = await (
+            from d in dbContext.EvalData.AsNoTracking()
+            join r in dbContext.EvalRows.AsNoTracking() on d.EvalRowId equals r.EvalRowId
+            join c in dbContext.EvalColumns.AsNoTracking() on d.EvalColumnId equals c.EvalColumnId
+            where r.EvalConfigId == evalConfigId && c.EvalConfigId == evalConfigId
+            orderby r.Order, c.Order
+            select d
+        ).ToListAsync();
+
+        var runs = await dbContext
+            .EvalRuns
+            .AsNoTracking()
+            .Where(run => run.EvalConfigId == evalConfigId && run.Status != EvalRunStatus.Running)
+            .OrderBy(run => run.Order)
+            .ThenBy(run => run.Started)
+            .ThenBy(run => run.EvalRunId)
+            .ToListAsync();
+
+        var runIds = runs.Select(run => run.EvalRunId).ToList();
+
+        var runRows = runIds.Count == 0
+            ? new List<EvalRunRow>()
+            : await dbContext
+                .EvalRunRows
+                .AsNoTracking()
+                .Where(row => runIds.Contains(row.EvalRunId))
+                .OrderBy(row => row.EvalRunId)
+                .ThenBy(row => row.Order)
+                .ThenBy(row => row.EvalRunRowId)
+                .ToListAsync();
+
+        var runRowGraders = runIds.Count == 0
+            ? new List<EvalRunRowGrader>()
+            : await dbContext
+                .EvalRunRowGraders
+                .AsNoTracking()
+                .Where(grader => runIds.Contains(grader.EvalRunId))
+                .OrderBy(grader => grader.EvalRunId)
+                .ThenBy(grader => grader.EvalRunRowId)
+                .ThenBy(grader => grader.EvalGraderId)
+                .ThenBy(grader => grader.EvalRunRowGraderId)
+                .ToListAsync();
+
+        var runGraderSummaries = runIds.Count == 0
+            ? new List<EvalRunGraderSummary>()
+            : await dbContext
+                .EvalRunGraderSummaries
+                .AsNoTracking()
+                .Where(summary => runIds.Contains(summary.EvalRunId))
+                .OrderBy(summary => summary.EvalRunId)
+                .ThenBy(summary => summary.EvalGraderId)
+                .ThenBy(summary => summary.EvalRunGraderSummaryId)
+                .ToListAsync();
+
+        return new TransferEvaluationPackage
+        {
+            EvalConfig = evalConfig,
+            Graders = graders,
+            Columns = columns,
+            Rows = rows,
+            Data = data,
+            Runs = runs,
+            RunRows = runRows,
+            RunRowGraders = runRowGraders,
+            RunGraderSummaries = runGraderSummaries,
+        };
+    }
+
     public async Task UpsertEvalConfig(EvalConfig evalConfig)
     {
         using var dbContext = dbContextFactory.CreateDbContext();

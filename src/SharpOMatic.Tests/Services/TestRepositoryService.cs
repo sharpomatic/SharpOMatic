@@ -491,6 +491,8 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task<EvalConfigDetail> GetEvalConfigDetail(Guid evalConfigId) => throw new NotImplementedException();
 
+    public Task<TransferEvaluationPackage> GetEvalTransferPackage(Guid evalConfigId) => throw new NotImplementedException();
+
     public Task UpsertEvalConfig(EvalConfig evalConfig) => throw new NotImplementedException();
 
     public Task DeleteEvalConfig(Guid evalConfigId) => throw new NotImplementedException();

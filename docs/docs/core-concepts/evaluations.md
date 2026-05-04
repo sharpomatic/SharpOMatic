@@ -120,12 +120,14 @@ Evaluation transfer includes the full configuration:
 - EvalRows
 - EvalData
 
-Evaluation run result data is not transferred:
+Evaluation transfer also includes terminal run result data:
 
 - EvalRun
 - EvalRunRow
 - EvalRunRowGrader
 - EvalRunGraderSummary
+
+Runs that are still running at export time are skipped because they cannot be resumed in the target instance.
 
 ## Troubleshooting
 

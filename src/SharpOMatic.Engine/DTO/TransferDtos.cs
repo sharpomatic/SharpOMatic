@@ -18,9 +18,9 @@ public class TransferSelection
 
 public class TransferManifest
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
-    public int SchemaVersion { get; set; } = CurrentSchemaVersion;
+    public int SchemaVersion { get; set; } = 1;
     public DateTime CreatedUtc { get; set; }
     public bool IncludeSecrets { get; set; }
     public TransferCounts Counts { get; set; } = new();
@@ -34,8 +34,22 @@ public class TransferCounts
     public int Connectors { get; set; }
     public int Models { get; set; }
     public int Evaluations { get; set; }
+    public int EvaluationRuns { get; set; }
     public int Folders { get; set; }
     public int Assets { get; set; }
+}
+
+public class TransferEvaluationPackage
+{
+    public required EvalConfig EvalConfig { get; set; }
+    public required List<EvalGrader> Graders { get; set; }
+    public required List<EvalColumn> Columns { get; set; }
+    public required List<EvalRow> Rows { get; set; }
+    public required List<EvalData> Data { get; set; }
+    public required List<EvalRun> Runs { get; set; }
+    public required List<EvalRunRow> RunRows { get; set; }
+    public required List<EvalRunRowGrader> RunRowGraders { get; set; }
+    public required List<EvalRunGraderSummary> RunGraderSummaries { get; set; }
 }
 
 public class TransferFolderEntry
@@ -61,5 +75,6 @@ public class TransferImportResult
     public int ConnectorsImported { get; set; }
     public int ModelsImported { get; set; }
     public int EvaluationsImported { get; set; }
+    public int EvaluationRunsImported { get; set; }
     public int AssetsImported { get; set; }
 }

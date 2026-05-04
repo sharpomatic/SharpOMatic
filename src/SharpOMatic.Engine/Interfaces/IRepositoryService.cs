@@ -105,6 +105,7 @@ public interface IRepositoryService
     Task<List<EvalConfigSummary>> GetEvalConfigSummaries(string? search, EvalConfigSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task<EvalConfig> GetEvalConfig(Guid evalConfigId);
     Task<EvalConfigDetail> GetEvalConfigDetail(Guid evalConfigId);
+    Task<TransferEvaluationPackage> GetEvalTransferPackage(Guid evalConfigId);
     Task<int> GetEvalRunSummaryCount(Guid evalConfigId, string? search);
     Task<List<EvalRunSummary>> GetEvalRunSummaries(Guid evalConfigId, string? search, EvalRunSortField sortBy, SortDirection sortDirection, int skip, int take);
     Task UpsertEvalRunGraderSummaries(List<EvalRunGraderSummary> graderSummaries);

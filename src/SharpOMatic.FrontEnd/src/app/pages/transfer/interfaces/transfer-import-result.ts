@@ -3,5 +3,6 @@ export interface TransferImportResult {
   connectorsImported: number;
   modelsImported: number;
   evaluationsImported: number;
+  evaluationRunsImported: number;
   assetsImported: number;
 }

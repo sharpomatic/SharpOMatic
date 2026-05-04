@@ -4,7 +4,6 @@
 
 ### Agent
 
-  limit how many of the most recent are returned
 - Investigate the compacting down to a message snapshot.
 
 - Make the input.chat a detais defined path instead of being hardcoded.

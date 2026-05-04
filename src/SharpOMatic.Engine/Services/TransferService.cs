@@ -60,11 +60,16 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             }
         );
 
+        var evaluationPackages = new List<TransferEvaluationPackage>();
+        foreach (var evaluationId in evaluationIds)
+            evaluationPackages.Add(await repositoryService.GetEvalTransferPackage(evaluationId));
+
         var assets = await ResolveAssetsAsync(request.Assets);
         var folders = await ResolveFoldersAsync(request.Assets, assets);
 
         var manifest = new TransferManifest
         {
+            SchemaVersion = TransferManifest.CurrentSchemaVersion,
             CreatedUtc = DateTime.UtcNow,
             IncludeSecrets = request.IncludeSecrets,
             Counts = new TransferCounts
@@ -72,7 +77,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                 Workflows = workflowIds.Count,
                 Connectors = connectorIds.Count,
                 Models = modelIds.Count,
-                Evaluations = evaluationIds.Count,
+                Evaluations = evaluationPackages.Count,
+                EvaluationRuns = evaluationPackages.Sum(package => package.Runs.Count),
                 Folders = folders.Count,
                 Assets = assets.Count,
             },
@@ -123,11 +129,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             await WriteJsonEntryAsync(archive, BuildEntityEntryName(ModelDirectory, modelId), model, cancellationToken);
         }
 
-        foreach (var evaluationId in evaluationIds)
-        {
-            var evalConfigDetail = await repositoryService.GetEvalConfigDetail(evaluationId);
-            await WriteJsonEntryAsync(archive, BuildEntityEntryName(EvaluationDirectory, evaluationId), evalConfigDetail, cancellationToken);
-        }
+        foreach (var evaluationPackage in evaluationPackages)
+            await WriteJsonEntryAsync(archive, BuildEntityEntryName(EvaluationDirectory, evaluationPackage.EvalConfig.EvalConfigId), evaluationPackage, cancellationToken);
 
         foreach (var asset in assets)
         {
@@ -146,7 +149,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         var manifestEntry = archive.GetEntry(ManifestFileName) ?? throw new SharpOMaticException("Transfer manifest is missing.");
         var manifest = await ReadJsonEntryAsync<TransferManifest>(manifestEntry, cancellationToken);
 
-        if (manifest.SchemaVersion is not (1 or TransferManifest.CurrentSchemaVersion))
+        if (manifest.SchemaVersion is not (1 or 2 or TransferManifest.CurrentSchemaVersion))
             throw new SharpOMaticException($"Transfer manifest schema version {manifest.SchemaVersion} is not supported.");
 
         var connectorEntries = GetEntityEntries(archive, ConnectorDirectory);
@@ -185,17 +188,27 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
 
         foreach (var evaluationEntry in evaluationEntries)
         {
-            var evalConfigDetail = await ReadJsonEntryAsync<EvalConfigDetail>(evaluationEntry.Value, cancellationToken);
-            ValidateEvalConfigEntry(evaluationEntry.Key, evalConfigDetail, evaluationEntry.Value.FullName);
-            ValidateEvalConfigDetail(evalConfigDetail, evaluationEntry.Value.FullName);
+            var evalPackage = manifest.SchemaVersion >= 3
+                ? await ReadJsonEntryAsync<TransferEvaluationPackage>(evaluationEntry.Value, cancellationToken)
+                : CreateEvalPackage(await ReadJsonEntryAsync<EvalConfigDetail>(evaluationEntry.Value, cancellationToken));
 
-            var remapped = RemapEvalConfigDetail(evalConfigDetail);
+            ValidateEvalConfigEntry(evaluationEntry.Key, evalPackage.EvalConfig, evaluationEntry.Value.FullName);
+            ValidateEvalPackage(evalPackage, evaluationEntry.Value.FullName);
+
+            var remapped = RemapEvalPackage(evalPackage);
             await repositoryService.UpsertEvalConfig(remapped.EvalConfig);
             await repositoryService.UpsertEvalGraders(remapped.Graders);
             await repositoryService.UpsertEvalColumns(remapped.Columns);
             await repositoryService.UpsertEvalRows(remapped.Rows);
             await repositoryService.UpsertEvalData(remapped.Data);
+            foreach (var run in remapped.Runs)
+                await repositoryService.UpsertEvalRun(run);
+
+            await repositoryService.UpsertEvalRunRows(remapped.RunRows);
+            await repositoryService.UpsertEvalRunRowGraders(remapped.RunRowGraders);
+            await repositoryService.UpsertEvalRunGraderSummaries(remapped.RunGraderSummaries);
             result.EvaluationsImported++;
+            result.EvaluationRunsImported += remapped.Runs.Count;
         }
 
         var folderIdMap = new Dictionary<Guid, Guid>();
@@ -404,10 +417,10 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         return true;
     }
 
-    private static void ValidateEvalConfigEntry(Guid expectedEvalConfigId, EvalConfigDetail detail, string entryName)
+    private static void ValidateEvalConfigEntry(Guid expectedEvalConfigId, EvalConfig evalConfig, string entryName)
     {
-        if (detail.EvalConfig.EvalConfigId != expectedEvalConfigId)
-            throw new SharpOMaticException($"Evaluation entry '{entryName}' does not match payload EvalConfigId '{detail.EvalConfig.EvalConfigId}'.");
+        if (evalConfig.EvalConfigId != expectedEvalConfigId)
+            throw new SharpOMaticException($"Evaluation entry '{entryName}' does not match payload EvalConfigId '{evalConfig.EvalConfigId}'.");
     }
 
     private static void ValidateEvalConfigDetail(EvalConfigDetail detail, string entryName)
@@ -458,13 +471,103 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         }
     }
 
-    private static EvalConfigDetail RemapEvalConfigDetail(EvalConfigDetail source)
+    private static void ValidateEvalPackage(TransferEvaluationPackage package, string entryName)
+    {
+        var detail = new EvalConfigDetail
+        {
+            EvalConfig = package.EvalConfig,
+            Graders = package.Graders,
+            Columns = package.Columns,
+            Rows = package.Rows,
+            Data = package.Data,
+        };
+        ValidateEvalConfigDetail(detail, entryName);
+
+        var evalConfigId = package.EvalConfig.EvalConfigId;
+        var graderIds = package.Graders.Select(grader => grader.EvalGraderId).ToHashSet();
+        var rowIds = package.Rows.Select(row => row.EvalRowId).ToHashSet();
+        var runIds = new HashSet<Guid>();
+        var runRowIds = new HashSet<Guid>();
+        var runRowGraderIds = new HashSet<Guid>();
+        var runGraderSummaryIds = new HashSet<Guid>();
+
+        foreach (var run in package.Runs)
+        {
+            if (run.EvalConfigId != evalConfigId)
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains run '{run.EvalRunId}' with mismatched EvalConfigId.");
+
+            if (run.Status == EvalRunStatus.Running)
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains running run '{run.EvalRunId}'.");
+
+            if (!runIds.Add(run.EvalRunId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains duplicate run id '{run.EvalRunId}'.");
+        }
+
+        foreach (var runRow in package.RunRows)
+        {
+            if (!runRowIds.Add(runRow.EvalRunRowId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains duplicate run row id '{runRow.EvalRunRowId}'.");
+
+            if (!runIds.Contains(runRow.EvalRunId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains run row '{runRow.EvalRunRowId}' referencing missing run '{runRow.EvalRunId}'.");
+
+            if (!rowIds.Contains(runRow.EvalRowId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains run row '{runRow.EvalRunRowId}' referencing missing row '{runRow.EvalRowId}'.");
+        }
+
+        foreach (var runRowGrader in package.RunRowGraders)
+        {
+            if (!runRowGraderIds.Add(runRowGrader.EvalRunRowGraderId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains duplicate run row grader id '{runRowGrader.EvalRunRowGraderId}'.");
+
+            if (!runIds.Contains(runRowGrader.EvalRunId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains run row grader '{runRowGrader.EvalRunRowGraderId}' referencing missing run '{runRowGrader.EvalRunId}'.");
+
+            if (!runRowIds.Contains(runRowGrader.EvalRunRowId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains run row grader '{runRowGrader.EvalRunRowGraderId}' referencing missing run row '{runRowGrader.EvalRunRowId}'.");
+
+            if (!graderIds.Contains(runRowGrader.EvalGraderId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains run row grader '{runRowGrader.EvalRunRowGraderId}' referencing missing grader '{runRowGrader.EvalGraderId}'.");
+        }
+
+        foreach (var summary in package.RunGraderSummaries)
+        {
+            if (!runGraderSummaryIds.Add(summary.EvalRunGraderSummaryId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains duplicate run grader summary id '{summary.EvalRunGraderSummaryId}'.");
+
+            if (!runIds.Contains(summary.EvalRunId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains run grader summary '{summary.EvalRunGraderSummaryId}' referencing missing run '{summary.EvalRunId}'.");
+
+            if (!graderIds.Contains(summary.EvalGraderId))
+                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains run grader summary '{summary.EvalRunGraderSummaryId}' referencing missing grader '{summary.EvalGraderId}'.");
+        }
+    }
+
+    private static TransferEvaluationPackage CreateEvalPackage(EvalConfigDetail detail)
+    {
+        return new TransferEvaluationPackage
+        {
+            EvalConfig = detail.EvalConfig,
+            Graders = detail.Graders,
+            Columns = detail.Columns,
+            Rows = detail.Rows,
+            Data = detail.Data,
+            Runs = [],
+            RunRows = [],
+            RunRowGraders = [],
+            RunGraderSummaries = [],
+        };
+    }
+
+    private static TransferEvaluationPackage RemapEvalPackage(TransferEvaluationPackage source)
     {
         var targetEvalConfigId = Guid.NewGuid();
 
         var graderIdMap = source.Graders.ToDictionary(grader => grader.EvalGraderId, _ => Guid.NewGuid());
         var columnIdMap = source.Columns.ToDictionary(column => column.EvalColumnId, _ => Guid.NewGuid());
         var rowIdMap = source.Rows.ToDictionary(row => row.EvalRowId, _ => Guid.NewGuid());
+        var runIdMap = source.Runs.ToDictionary(run => run.EvalRunId, _ => Guid.NewGuid());
+        var runRowIdMap = source.RunRows.ToDictionary(row => row.EvalRunRowId, _ => Guid.NewGuid());
 
         var evalConfig = new EvalConfig
         {
@@ -525,13 +628,91 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             })
             .ToList();
 
-        return new EvalConfigDetail
+        var runs = source.Runs
+            .Select(run => new EvalRun
+            {
+                EvalRunId = runIdMap[run.EvalRunId],
+                EvalConfigId = targetEvalConfigId,
+                Name = run.Name,
+                Order = run.Order,
+                Started = run.Started,
+                Finished = run.Finished,
+                Status = run.Status,
+                Message = run.Message,
+                Error = run.Error,
+                CancelRequested = run.CancelRequested,
+                TotalRows = run.TotalRows,
+                CompletedRows = run.CompletedRows,
+                FailedRows = run.FailedRows,
+                AveragePassRate = run.AveragePassRate,
+                RunScoreMode = run.RunScoreMode,
+                Score = run.Score,
+            })
+            .ToList();
+
+        var runRows = source.RunRows
+            .Select(row => new EvalRunRow
+            {
+                EvalRunRowId = runRowIdMap[row.EvalRunRowId],
+                EvalRunId = runIdMap[row.EvalRunId],
+                EvalRowId = rowIdMap[row.EvalRowId],
+                Order = row.Order,
+                Started = row.Started,
+                Finished = row.Finished,
+                Status = row.Status,
+                Score = row.Score,
+                InputContext = row.InputContext,
+                OutputContext = row.OutputContext,
+                Error = row.Error,
+            })
+            .ToList();
+
+        var runRowGraders = source.RunRowGraders
+            .Select(grader => new EvalRunRowGrader
+            {
+                EvalRunRowGraderId = Guid.NewGuid(),
+                EvalRunRowId = runRowIdMap[grader.EvalRunRowId],
+                EvalGraderId = graderIdMap[grader.EvalGraderId],
+                EvalRunId = runIdMap[grader.EvalRunId],
+                Started = grader.Started,
+                Finished = grader.Finished,
+                Status = grader.Status,
+                Score = grader.Score,
+                InputContext = grader.InputContext,
+                OutputContext = grader.OutputContext,
+                Error = grader.Error,
+            })
+            .ToList();
+
+        var runGraderSummaries = source.RunGraderSummaries
+            .Select(summary => new EvalRunGraderSummary
+            {
+                EvalRunGraderSummaryId = Guid.NewGuid(),
+                EvalRunId = runIdMap[summary.EvalRunId],
+                EvalGraderId = graderIdMap[summary.EvalGraderId],
+                TotalCount = summary.TotalCount,
+                CompletedCount = summary.CompletedCount,
+                FailedCount = summary.FailedCount,
+                MinScore = summary.MinScore,
+                MaxScore = summary.MaxScore,
+                AverageScore = summary.AverageScore,
+                MedianScore = summary.MedianScore,
+                StandardDeviation = summary.StandardDeviation,
+                PassRate = summary.PassRate,
+            })
+            .ToList();
+
+        return new TransferEvaluationPackage
         {
             EvalConfig = evalConfig,
             Graders = graders,
             Columns = columns,
             Rows = rows,
             Data = data,
+            Runs = runs,
+            RunRows = runRows,
+            RunRowGraders = runRowGraders,
+            RunGraderSummaries = runGraderSummaries,
         };
     }
 
