@@ -6,7 +6,7 @@
 
 - Investigate the compacting down to a message snapshot.
 
-- Make the input.chat a detais defined path instead of being hardcoded.
+- Make the input.chat become agent.chat because only generated on stateless agents
 - Make the agents path details defined and not hard coded.
 
 - Check two paths outputing at the same time
