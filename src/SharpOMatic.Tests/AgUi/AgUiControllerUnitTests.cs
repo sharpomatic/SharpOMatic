@@ -2352,6 +2352,312 @@ public sealed class AgUiControllerUnitTests
     }
 
     [Fact]
+    public async Task AgUi_controller_allows_notifications_to_enrich_non_conversation_context()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+        ContextObject? capturedContext = null;
+        AgUiRunContextNotification? capturedNotification = null;
+
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: false));
+
+        engineService
+            .Setup(service => service.StartWorkflowRunAndNotify(
+                workflowId,
+                It.IsAny<ContextObject?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false
+            ))
+            .Callback<Guid, ContextObject?, ContextEntryListEntity?, bool>((_, context, _, _) => capturedContext = context)
+            .ReturnsAsync(engineRunId);
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                [],
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var notification = new DelegateAgUiNotification(runNotification =>
+        {
+            capturedNotification = runNotification;
+            runNotification.Context.Set("auth.userName", "Ada");
+            runNotification.Agent.Set("auth.permission", "workflow:run");
+            return Task.CompletedTask;
+        });
+
+        var controller = new AgUiController(engineService.Object, broker.Object, [notification]);
+        var httpContext = CreateHttpContext(provider);
+        httpContext.Request.Headers.Authorization = "Bearer token-123";
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = " thread-1 ",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        Assert.Same(request, capturedNotification!.Request);
+        Assert.Equal("Bearer token-123", capturedNotification.Headers["Authorization"].Single());
+        Assert.Equal("Bearer token-123", capturedNotification.Headers["authorization"].Single());
+        Assert.Equal("thread-1", capturedNotification.ThreadId);
+        Assert.Equal(workflowId, capturedNotification.WorkflowId);
+        Assert.False(capturedNotification.IsConversationEnabled);
+        Assert.Same(capturedContext, capturedNotification.Context);
+        Assert.Same(capturedContext!.Get<ContextObject>("agent"), capturedNotification.Agent);
+        Assert.Equal("Ada", capturedContext.Get<string>("auth.userName"));
+        Assert.Equal("workflow:run", capturedContext.Get<string>("agent.auth.permission"));
+    }
+
+    [Fact]
+    public async Task AgUi_controller_allows_notifications_to_enrich_conversation_resume_input()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+        NodeResumeInput? capturedResumeInput = null;
+        AgUiRunContextNotification? capturedNotification = null;
+
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .Callback<Guid, string, NodeResumeInput?, ContextEntryListEntity?, bool, string?>((_, _, resumeInput, _, _, _) => capturedResumeInput = resumeInput)
+            .ReturnsAsync(engineRunId);
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                [],
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var notification = new DelegateAgUiNotification(runNotification =>
+        {
+            capturedNotification = runNotification;
+            runNotification.Context.Set("auth.userName", "Grace");
+            runNotification.Agent.Set("auth.permission", "conversation:resume");
+            return Task.CompletedTask;
+        });
+
+        var controller = new AgUiController(engineService.Object, broker.Object, [notification]);
+        var httpContext = CreateHttpContext(provider);
+        httpContext.Request.Headers.Authorization = "Bearer conversation-token";
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        var request = new AgUiRunRequest()
+        {
+            ThreadId = "thread-1",
+            Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+            ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+        };
+
+        await controller.Post(request);
+
+        var resumeInput = Assert.IsType<AgUiAgentResumeInput>(capturedResumeInput);
+        Assert.Same(request, capturedNotification!.Request);
+        Assert.Equal("Bearer conversation-token", capturedNotification.Headers["Authorization"].Single());
+        Assert.True(capturedNotification.IsConversationEnabled);
+        Assert.Same(resumeInput.Context, capturedNotification.Context);
+        Assert.Same(resumeInput.Agent, capturedNotification.Agent);
+        Assert.Equal("Grace", resumeInput.Context!.Get<string>("auth.userName"));
+        Assert.Equal("conversation:resume", resumeInput.Agent.Get<string>("auth.permission"));
+    }
+
+    [Fact]
+    public async Task AgUi_controller_runs_multiple_notifications_in_order()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+        var order = new List<string>();
+        ContextObject? capturedContext = null;
+
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: false));
+
+        engineService
+            .Setup(service => service.StartWorkflowRunAndNotify(
+                workflowId,
+                It.IsAny<ContextObject?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false
+            ))
+            .Callback<Guid, ContextObject?, ContextEntryListEntity?, bool>((_, context, _, _) => capturedContext = context)
+            .ReturnsAsync(engineRunId);
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                [],
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var firstNotification = new DelegateAgUiNotification(notification =>
+        {
+            order.Add("first");
+            notification.Context.Set("auth.first", true);
+            return Task.CompletedTask;
+        });
+        var secondNotification = new DelegateAgUiNotification(notification =>
+        {
+            order.Add("second");
+            notification.Context.Set("auth.second", true);
+            return Task.CompletedTask;
+        });
+
+        var controller = new AgUiController(engineService.Object, broker.Object, [firstNotification, secondNotification]);
+        controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+        await controller.Post(
+            new AgUiRunRequest()
+            {
+                ThreadId = "thread-1",
+                Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+                ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+            }
+        );
+
+        Assert.Equal(["first", "second"], order);
+        Assert.True(capturedContext!.Get<bool>("auth.first"));
+        Assert.True(capturedContext.Get<bool>("auth.second"));
+    }
+
+    [Fact]
+    public async Task AgUi_controller_preserves_conversation_resume_behavior_without_notifications()
+    {
+        var engineRunId = Guid.NewGuid();
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+        NodeResumeInput? capturedResumeInput = null;
+
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: true));
+
+        engineService
+            .Setup(service => service.StartOrResumeConversationAndNotify(
+                workflowId,
+                "thread-1",
+                It.IsAny<NodeResumeInput?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                false,
+                "thread-1"
+            ))
+            .Callback<Guid, string, NodeResumeInput?, ContextEntryListEntity?, bool, string?>((_, _, resumeInput, _, _, _) => capturedResumeInput = resumeInput)
+            .ReturnsAsync(engineRunId);
+
+        broker
+            .Setup(service => service.Subscribe(engineRunId, It.IsAny<CancellationToken>()))
+            .Returns(CreateUpdates(
+                [],
+                new Run()
+                {
+                    RunId = engineRunId,
+                    WorkflowId = workflowId,
+                    Created = DateTime.UtcNow,
+                    RunStatus = RunStatus.Success,
+                }
+            ));
+
+        var controller = new AgUiController(engineService.Object, broker.Object, []);
+        controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
+
+        await controller.Post(
+            new AgUiRunRequest()
+            {
+                ThreadId = "thread-1",
+                Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+                ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+            }
+        );
+
+        var resumeInput = Assert.IsType<AgUiAgentResumeInput>(capturedResumeInput);
+        Assert.Null(resumeInput.Context);
+        Assert.Equal("Hello", resumeInput.Agent.Get<string>("latestUserMessage.content"));
+    }
+
+    [Fact]
+    public async Task AgUi_controller_returns_run_error_when_notification_rejects_request()
+    {
+        var workflowId = Guid.NewGuid();
+        var engineService = new Mock<IEngineService>();
+        var broker = new Mock<IAgUiRunEventBroker>();
+
+        using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(CreateWorkflow(workflowId, isConversationEnabled: false));
+
+        var notification = new DelegateAgUiNotification(_ => throw new SharpOMaticException("Bearer token is invalid."));
+        var controller = new AgUiController(engineService.Object, broker.Object, [notification]);
+        var httpContext = CreateHttpContext(provider);
+        controller.ControllerContext = new ControllerContext() { HttpContext = httpContext };
+
+        await controller.Post(
+            new AgUiRunRequest()
+            {
+                ThreadId = "thread-1",
+                RunId = "protocol-run-1",
+                Messages = ParseJson("""[{ "id": "user-1", "role": "user", "content": "Hello" }]"""),
+                ForwardedProps = ParseJson($$"""{"workflowId":"{{workflowId}}"}"""),
+            }
+        );
+
+        engineService.Verify(
+            service => service.StartWorkflowRunAndNotify(
+                It.IsAny<Guid>(),
+                It.IsAny<ContextObject?>(),
+                It.IsAny<ContextEntryListEntity?>(),
+                It.IsAny<bool>()
+            ),
+            Times.Never
+        );
+
+        var events = ReadSseEvents((MemoryStream)httpContext.Response.Body);
+        var errorEvent = Assert.Single(events);
+        Assert.Equal("RUN_ERROR", errorEvent.GetProperty("type").GetString());
+        Assert.Equal("Bearer token is invalid.", errorEvent.GetProperty("message").GetString());
+    }
+
+    [Fact]
     public async Task AgUi_history_returns_bad_request_for_malformed_queries()
     {
         var workflowId = Guid.NewGuid();
@@ -3163,6 +3469,14 @@ public sealed class AgUiControllerUnitTests
         Assert.Equal(1, envelope.GetProperty("messages").GetArrayLength());
         Assert.Equal("tool-1", pendingTool.GetProperty("toolCallId").GetString());
         Assert.Equal("frontend-tool-call:tool-1", pendingTool.GetProperty("assistantMessageId").GetString());
+    }
+
+    private sealed class DelegateAgUiNotification(Func<AgUiRunContextNotification, Task> onRunStarting) : IAgUiNotification
+    {
+        public Task OnRunStartingAsync(AgUiRunContextNotification notification)
+        {
+            return onRunStarting(notification);
+        }
     }
 
     private static async IAsyncEnumerable<AgUiRunUpdate> CreateUpdates(List<StreamEvent> streamEvents, Run run, Func<StreamEvent, bool>? isSilent = null)

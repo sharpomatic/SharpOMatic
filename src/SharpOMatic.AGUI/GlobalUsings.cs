@@ -5,6 +5,7 @@ global using Microsoft.AspNetCore.Mvc.ApplicationParts;
 global using Microsoft.Extensions.AI;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.DependencyInjection.Extensions;
+global using SharpOMatic.AGUI;
 global using SharpOMatic.AGUI.DTO;
 global using SharpOMatic.AGUI.Services;
 global using SharpOMatic.Engine.Contexts;

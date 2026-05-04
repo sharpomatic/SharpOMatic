@@ -39,6 +39,39 @@ For `POST` run requests:
 
 The endpoint resolves the matching SharpOMatic workflow, chooses the correct execution mode, and streams SSE events translated from workflow stream events until the run completes, suspends, or fails.
 
+## Request context enrichment
+
+Hosts can inspect each incoming AG-UI run request before the workflow starts by registering `IAgUiNotification`.
+This is the recommended place to read headers such as `Authorization`, validate a bearer token, and add derived user or permission data into workflow context.
+
+```csharp
+public sealed class MyAgUiNotification : IAgUiNotification
+{
+    public Task OnRunStartingAsync(AgUiRunContextNotification notification)
+    {
+        var authorization = notification.Headers.TryGetValue("Authorization", out var values)
+            ? values.FirstOrDefault()
+            : null;
+
+        // Validate the token with your application's auth service, then store derived values only.
+        notification.Context.Set("auth.userName", "Ada");
+        notification.Context.Set("auth.permissions", new[] { "workflow:run" });
+        notification.Agent.Set("auth.userName", "Ada");
+
+        return Task.CompletedTask;
+    }
+}
+
+builder.Services.AddScoped<IAgUiNotification, MyAgUiNotification>();
+```
+
+`AgUiRunContextNotification` provides the original `AgUiRunRequest`, a case-insensitive header snapshot, normalized `ThreadId`, resolved `WorkflowId`, whether the workflow is conversation-enabled, a mutable root context, and the mutable `agent` context.
+For conversation-enabled workflows, root context values are merged into the loaded conversation context and `agent` is replaced for the current turn.
+For non-conversation workflows, the same root context is passed directly to the workflow run.
+
+Avoid writing raw bearer tokens or other secrets into workflow context because context is stored with run and conversation history.
+Prefer storing derived claims such as user id, display name, tenant, roles, or permissions.
+
 ## Conversation history
 
 Use `POST <ag-ui-path>/history` to reload persisted AG-UI messages, state, and resumable frontend tool metadata for a conversation-enabled workflow:

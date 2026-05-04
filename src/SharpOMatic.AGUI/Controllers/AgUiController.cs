@@ -3,7 +3,11 @@ namespace SharpOMatic.AGUI.Controllers;
 
 [ApiController]
 [Route("agent/agui")]
-public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBroker broker) : ControllerBase
+public sealed class AgUiController(
+    IEngineService engineService,
+    IAgUiRunEventBroker broker,
+    IEnumerable<IAgUiNotification>? agUiNotifications = null
+) : ControllerBase
 {
     private const string ChatContextPath = "input.chat";
     private const string StateSyncContentPath = "agent._hidden.state";
@@ -154,16 +158,62 @@ public sealed class AgUiController(IEngineService engineService, IAgUiRunEventBr
         if (!workflowTarget.IsConversationEnabled)
         {
             var rootContext = BuildBaseContext(request);
+            var agent = rootContext.Get<ContextObject>("agent");
+            await NotifyRunStarting(request, threadId, workflowTarget, rootContext, agent);
             return await engineService.StartWorkflowRunAndNotify(workflowTarget.WorkflowId, rootContext);
         }
 
-        var resumeInput = new AgUiAgentResumeInput() { Agent = BuildAgentContext(request, latestMessageOnly: true) };
+        var agentContext = BuildAgentContext(request, latestMessageOnly: true);
+        ContextObject enrichmentContext = [];
+        await NotifyRunStarting(request, threadId, workflowTarget, enrichmentContext, agentContext);
+
+        var resumeInput = new AgUiAgentResumeInput()
+        {
+            Agent = agentContext,
+            Context = enrichmentContext.Count == 0 ? null : enrichmentContext,
+        };
+
         return await engineService.StartOrResumeConversationAndNotify(
             workflowTarget.WorkflowId,
             threadId,
             resumeInput: resumeInput,
             streamConversationId: threadId
         );
+    }
+
+    private async Task NotifyRunStarting(
+        AgUiRunRequest request,
+        string threadId,
+        ResolvedWorkflowTarget workflowTarget,
+        ContextObject context,
+        ContextObject agent
+    )
+    {
+        if (agUiNotifications is null)
+            return;
+
+        var notification = new AgUiRunContextNotification()
+        {
+            Request = request,
+            Headers = CreateHeaderSnapshot(HttpContext.Request.Headers),
+            ThreadId = threadId,
+            WorkflowId = workflowTarget.WorkflowId,
+            IsConversationEnabled = workflowTarget.IsConversationEnabled,
+            Context = context,
+            Agent = agent,
+        };
+
+        foreach (var agUiNotification in agUiNotifications)
+            await agUiNotification.OnRunStartingAsync(notification);
+    }
+
+    private static IReadOnlyDictionary<string, string[]> CreateHeaderSnapshot(IHeaderDictionary headers)
+    {
+        var snapshot = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+        foreach (var header in headers)
+            snapshot[header.Key] = header.Value.Select(value => value ?? string.Empty).ToArray();
+
+        return snapshot;
     }
 
     private async Task<ResolvedWorkflowTarget> ResolveWorkflowTarget(AgUiRunRequest request)

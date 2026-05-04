@@ -99,6 +99,49 @@ You can also use a workflow name:
 
 For compatibility, SharpOMatic also accepts `workflowId` or `workflowName` directly under `forwardedProps`, but the nested `sharpomatic` object is the preferred convention.
 
+## Request context enrichment
+
+Register `IAgUiNotification` when your host needs to inspect the incoming AG-UI request before the workflow starts.
+This hook can read headers and request data, validate a bearer token, and add derived values into workflow context.
+
+```csharp
+public sealed class MyAgUiNotification : IAgUiNotification
+{
+    public Task OnRunStartingAsync(AgUiRunContextNotification notification)
+    {
+        var authorization = notification.Headers.TryGetValue("Authorization", out var values)
+            ? values.FirstOrDefault()
+            : null;
+
+        // Validate the token with your application's auth service, then store derived values only.
+        notification.Context.Set("auth.userName", "Ada");
+        notification.Context.Set("auth.permissions", new[] { "workflow:run" });
+        notification.Agent.Set("auth.userName", "Ada");
+
+        return Task.CompletedTask;
+    }
+}
+
+builder.Services.AddScoped<IAgUiNotification, MyAgUiNotification>();
+```
+
+`AgUiRunContextNotification` includes:
+
+- `Request`: the original `AgUiRunRequest`
+- `Headers`: a case-insensitive snapshot of request headers
+- `ThreadId`: the normalized AG-UI thread id
+- `WorkflowId`: the resolved SharpOMatic workflow id
+- `IsConversationEnabled`: whether the target workflow uses conversation storage
+- `Context`: mutable root/additional workflow context
+- `Agent`: the mutable AG-UI `agent` context for the current request
+
+For non-conversation workflows, `Context` is the same root context passed to the workflow run and already contains `agent` and `input.chat`.
+For conversation-enabled workflows, `Context` is merged into the loaded conversation context before the current turn starts, while `Agent` replaces the root `agent` value for that turn.
+If a notification throws, SharpOMatic does not start the workflow and returns a `RUN_ERROR` SSE event.
+
+Do not write raw bearer tokens or other secrets into workflow context because context is stored with run and conversation history.
+Store derived claims instead, such as user id, display name, tenant, roles, or permissions.
+
 ## Conversation history POST
 
 The configured AG-UI endpoint also supports a JSON history `POST` request at the same path plus `/history`.

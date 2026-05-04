@@ -13,6 +13,7 @@ global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.AI;
 global using Microsoft.Extensions.Options;
 global using Moq;
+global using SharpOMatic.AGUI;
 global using SharpOMatic.AGUI.Controllers;
 global using SharpOMatic.AGUI.DTO;
 global using SharpOMatic.AGUI.Services;
