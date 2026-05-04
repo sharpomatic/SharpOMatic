@@ -155,12 +155,6 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<Guid?>("LastRunId")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("LeaseExpires")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("LeaseOwner")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
 

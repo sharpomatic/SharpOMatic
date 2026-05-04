@@ -24,6 +24,7 @@ When a workflow is conversation-enabled:
 - A completed conversation can start another turn from the **Start** node again, using the saved conversation context from the previous turn.
 - A suspended conversation resumes from the waiting continuation point instead of the **Start** node.
 - Each turn is still stored as a normal run with run history, traces, and assets.
+- SharpOMatic does not lock a conversation while a turn is running, so callers can start or resume the same conversation in parallel.
 
 ## Suspend And Resume
 
@@ -83,7 +84,7 @@ See [Running Workflows](../programmatic/run-workflow.md) for examples.
 ## Constraints
 
 - Only workflows marked as conversation-enabled can use conversation APIs.
-- A conversation can only run on one turn at a time.
+- Parallel turns for the same conversation are allowed. Applications that need stricter ordering should serialize calls before invoking SharpOMatic.
 - Suspended conversations cannot accept start input entries on resume.
 - Evaluations do not support conversation workflows because they cannot answer suspend events during row execution.
 

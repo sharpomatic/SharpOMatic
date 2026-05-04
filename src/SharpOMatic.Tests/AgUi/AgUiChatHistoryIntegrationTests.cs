@@ -597,13 +597,13 @@ public sealed class AgUiChatHistoryIntegrationTests
         for (var attempt = 0; attempt < 20; attempt += 1)
         {
             var conversation = await repositoryService.GetConversation(conversationId);
-            if (conversation is null || string.IsNullOrWhiteSpace(conversation.LeaseOwner))
+            if (conversation?.Status is ConversationStatus.Completed or ConversationStatus.Failed or ConversationStatus.Suspended)
                 return;
 
             await Task.Delay(25);
         }
 
-        throw new Xunit.Sdk.XunitException($"Conversation '{conversationId}' did not release its lease in time.");
+        throw new Xunit.Sdk.XunitException($"Conversation '{conversationId}' did not become idle in time.");
     }
 
     private sealed class AgUiCaptureModelCaller(AgUiChatCapture capture) : BaseModelCaller

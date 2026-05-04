@@ -9,8 +9,6 @@ public class EngineService(
     IJsonConverterService JsonConverterService
 ) : IEngineService
 {
-    private const int ConversationLeaseMinutes = 5;
-
     private static void ValidateWorkflowExecutionMode(WorkflowEntity workflow, bool allowConversation)
     {
         if (allowConversation)
@@ -127,7 +125,6 @@ public class EngineService(
         string? streamConversationId
     )
     {
-        var leaseOwner = Guid.NewGuid().ToString("N");
         resumeInput ??= new ContinueResumeInput();
         if (string.IsNullOrWhiteSpace(conversationId))
             throw new SharpOMaticException("Conversation id cannot be empty or whitespace.");
@@ -154,9 +151,6 @@ public class EngineService(
         {
             throw new SharpOMaticException("Conversation id does not belong to the requested workflow.");
         }
-
-        if (!await RepositoryService.TryAcquireConversationLease(conversationId, leaseOwner, DateTime.UtcNow.AddMinutes(ConversationLeaseMinutes)))
-            throw new SharpOMaticException("Conversation is already running.");
 
         conversation = await RepositoryService.GetConversation(conversationId) ?? conversation;
         var previousCheckpoint = await RepositoryService.GetConversationCheckpoint(conversationId);
@@ -191,7 +185,6 @@ public class EngineService(
                 previousCheckpoint,
                 resumeInput,
                 turnNumber,
-                leaseOwner,
                 streamConversationId,
                 DeserializeWorkflowSnapshots(previousCheckpoint?.WorkflowSnapshotsJson)
             );
@@ -226,7 +219,6 @@ public class EngineService(
         catch
         {
             serviceScope.Dispose();
-            await RepositoryService.ReleaseConversationLease(conversation.ConversationId, leaseOwner);
             throw;
         }
     }

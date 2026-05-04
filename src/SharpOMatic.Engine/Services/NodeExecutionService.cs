@@ -193,9 +193,6 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             });
         }
 
-        if (processContext.Conversation is not null && !string.IsNullOrWhiteSpace(processContext.ConversationLeaseOwner))
-            await processContext.RepositoryService.ReleaseConversationLease(processContext.Conversation.ConversationId, processContext.ConversationLeaseOwner);
-
         processContext.ServiceScope.Dispose();
     }
 

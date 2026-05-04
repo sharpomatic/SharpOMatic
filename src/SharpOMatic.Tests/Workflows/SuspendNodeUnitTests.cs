@@ -890,7 +890,7 @@ public sealed class SuspendNodeUnitTests
     }
 
     [Fact]
-    public async Task Conversation_running_lease_conflict_fails()
+    public async Task Conversation_start_allows_existing_conversation_to_continue_without_locking()
     {
         var workflow = new WorkflowBuilder().EnableConversations().AddStart().AddEnd().Connect("start", "end").Build();
         var conversationId = NewConversationId();
@@ -910,16 +910,14 @@ public sealed class SuspendNodeUnitTests
             }
         );
 
-        var leaseTaken = await repositoryService.TryAcquireConversationLease(conversationId, "lease-owner", DateTime.UtcNow.AddMinutes(5));
-        Assert.True(leaseTaken);
-
         await using var scope = provider.CreateAsyncScope();
         var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
 
-        var exception = await Assert.ThrowsAsync<SharpOMaticException>(() =>
-            engineService.StartOrResumeConversationAndWait(workflow.Id, conversationId)
-        );
-        Assert.Equal("Conversation is already running.", exception.Message);
+        var runId = await engineService.StartOrResumeConversationAndNotify(workflow.Id, conversationId);
+        Assert.NotEqual(Guid.Empty, runId);
+
+        var conversation = await repositoryService.GetConversation(conversationId);
+        Assert.Equal(ConversationStatus.Running, conversation?.Status);
     }
 
     [Fact]
@@ -953,8 +951,7 @@ public sealed class SuspendNodeUnitTests
 
         var conversation = await repositoryService.GetConversation(conversationId);
         Assert.NotNull(conversation);
-        Assert.Null(conversation!.LeaseOwner);
-        Assert.Null(conversation.LeaseExpires);
+        Assert.Equal(ConversationStatus.Suspended, conversation!.Status);
     }
 
     [Fact]

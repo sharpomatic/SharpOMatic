@@ -13,6 +13,4 @@ public class Conversation
     public int CurrentTurnNumber { get; set; }
     public Guid? LastRunId { get; set; }
     public string? LastError { get; set; }
-    public string? LeaseOwner { get; set; }
-    public DateTime? LeaseExpires { get; set; }
 }

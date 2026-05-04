@@ -1626,7 +1626,7 @@ public sealed class StreamEventUnitTests
         for (var attempt = 0; attempt < 20; attempt += 1)
         {
             var conversation = await repositoryService.GetConversation(conversationId);
-            if (conversation?.Status == expectedStatus && string.IsNullOrWhiteSpace(conversation.LeaseOwner))
+            if (conversation?.Status == expectedStatus)
                 return;
 
             await Task.Delay(25);
@@ -1634,7 +1634,6 @@ public sealed class StreamEventUnitTests
 
         var currentConversation = await repositoryService.GetConversation(conversationId);
         Assert.Equal(expectedStatus, currentConversation?.Status);
-        Assert.True(string.IsNullOrWhiteSpace(currentConversation?.LeaseOwner));
     }
 
     private sealed class CapturingProgressService : IProgressService

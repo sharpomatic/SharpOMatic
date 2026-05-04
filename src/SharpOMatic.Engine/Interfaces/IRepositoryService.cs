@@ -25,8 +25,6 @@ public interface IRepositoryService
     Task UpsertConversationCheckpoint(ConversationCheckpoint checkpoint);
     Task DeleteConversationCheckpoint(string conversationId);
     Task<List<Run>> GetConversationRuns(string conversationId, int skip = 0, int take = 0);
-    Task<bool> TryAcquireConversationLease(string conversationId, string leaseOwner, DateTime leaseExpiresUtc);
-    Task ReleaseConversationLease(string conversationId, string leaseOwner);
     Task PruneWorkflowConversations(Guid workflowId, int keepLatest);
 
     // ------------------------------------------------

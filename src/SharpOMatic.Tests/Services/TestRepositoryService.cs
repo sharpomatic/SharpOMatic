@@ -133,33 +133,6 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.FromResult(runs.ToList());
     }
 
-    public Task<bool> TryAcquireConversationLease(string conversationId, string leaseOwner, DateTime leaseExpiresUtc)
-    {
-        if (!_conversations.TryGetValue(conversationId, out var conversation))
-            return Task.FromResult(false);
-
-        var now = DateTime.UtcNow;
-        if (!string.IsNullOrWhiteSpace(conversation.LeaseOwner) && conversation.LeaseOwner != leaseOwner && conversation.LeaseExpires.HasValue && conversation.LeaseExpires.Value > now)
-            return Task.FromResult(false);
-
-        conversation.LeaseOwner = leaseOwner;
-        conversation.LeaseExpires = leaseExpiresUtc;
-        _conversations[conversationId] = conversation;
-        return Task.FromResult(true);
-    }
-
-    public Task ReleaseConversationLease(string conversationId, string leaseOwner)
-    {
-        if (_conversations.TryGetValue(conversationId, out var conversation) && conversation.LeaseOwner == leaseOwner)
-        {
-            conversation.LeaseOwner = null;
-            conversation.LeaseExpires = null;
-            _conversations[conversationId] = conversation;
-        }
-
-        return Task.CompletedTask;
-    }
-
     public Task PruneWorkflowConversations(Guid workflowId, int keepLatest)
     {
         var conversationsToDelete = _conversations.Values

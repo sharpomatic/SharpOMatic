@@ -159,12 +159,6 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<Guid?>("LastRunId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime?>("LeaseExpires")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("LeaseOwner")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("Status")
                         .HasColumnType("int");
 

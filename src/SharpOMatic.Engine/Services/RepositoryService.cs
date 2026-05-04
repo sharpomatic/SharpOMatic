@@ -322,40 +322,6 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return await query.ToListAsync();
     }
 
-    public async Task<bool> TryAcquireConversationLease(string conversationId, string leaseOwner, DateTime leaseExpiresUtc)
-    {
-        using var dbContext = dbContextFactory.CreateDbContext();
-        var entity = await dbContext.Conversations.FirstOrDefaultAsync(c => c.ConversationId == conversationId);
-        if (entity is null)
-            return false;
-
-        var now = DateTime.UtcNow;
-        if (!string.IsNullOrWhiteSpace(entity.LeaseOwner) && entity.LeaseOwner != leaseOwner && entity.LeaseExpires.HasValue && entity.LeaseExpires.Value > now)
-            return false;
-
-        entity.LeaseOwner = leaseOwner;
-        entity.LeaseExpires = leaseExpiresUtc;
-        entity.Updated = now;
-        await dbContext.SaveChangesAsync();
-        return true;
-    }
-
-    public async Task ReleaseConversationLease(string conversationId, string leaseOwner)
-    {
-        using var dbContext = dbContextFactory.CreateDbContext();
-        var entity = await dbContext.Conversations.FirstOrDefaultAsync(c => c.ConversationId == conversationId);
-        if (entity is null)
-            return;
-
-        if (entity.LeaseOwner != leaseOwner)
-            return;
-
-        entity.LeaseOwner = null;
-        entity.LeaseExpires = null;
-        entity.Updated = DateTime.UtcNow;
-        await dbContext.SaveChangesAsync();
-    }
-
     public async Task PruneWorkflowConversations(Guid workflowId, int keepLatest)
     {
         if (keepLatest < 0)

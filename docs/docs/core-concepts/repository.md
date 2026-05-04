@@ -14,7 +14,7 @@ The major types of data stored are:
 - **Runs**: store run status, timestamps, and serialized input/output context.
 - **Traces**: store per-node execution status, messages, and context snapshots.
 - **Informations**: store node-level information messages and structured data published during runs.
-- **Conversations**: store conversation status, checkpoints, turn numbers, lease information, last run references, and errors.
+- **Conversations**: store conversation status, checkpoints, turn numbers, last run references, and errors.
 - **Events**: store text, reasoning, tool-call, activity, state, step, and custom events emitted during runs and conversations.
 - **Evals**: store evaluation definitions, columns, rows, row data, graders, runs, run rows, grader results, and grader summaries.
 - **Metadata**: store predefined metadata for known connectors and models.

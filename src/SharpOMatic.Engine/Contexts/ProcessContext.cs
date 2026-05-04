@@ -27,7 +27,6 @@ public class ProcessContext : ExecutionContext
     public ConversationCheckpoint? Checkpoint { get; }
     public NodeResumeInput? ConversationResumeInput { get; }
     public int? ConversationTurnNumber { get; }
-    public string? ConversationLeaseOwner { get; }
     public string? StreamConversationId { get; }
     public PendingConversationSuspend? PendingConversationSuspend { get; private set; }
     public TaskCompletionSource<Run>? CompletionSource { get; }
@@ -46,7 +45,6 @@ public class ProcessContext : ExecutionContext
         ConversationCheckpoint? checkpoint = null,
         NodeResumeInput? conversationResumeInput = null,
         int? conversationTurnNumber = null,
-        string? conversationLeaseOwner = null,
         string? streamConversationId = null,
         IEnumerable<ConversationWorkflowSnapshot>? pinnedWorkflowSnapshots = null
     )
@@ -58,7 +56,6 @@ public class ProcessContext : ExecutionContext
         Checkpoint = checkpoint;
         ConversationResumeInput = conversationResumeInput;
         ConversationTurnNumber = conversationTurnNumber;
-        ConversationLeaseOwner = conversationLeaseOwner;
         StreamConversationId = NormalizeConversationId(streamConversationId);
         RepositoryService = serviceScope.ServiceProvider.GetRequiredService<IRepositoryService>();
         AssetStore = serviceScope.ServiceProvider.GetRequiredService<IAssetStore>();
