@@ -351,11 +351,15 @@ public abstract class BaseModelCaller : IModelCaller
                 List<AITool> tools = [];
                 foreach (var toolName in toolNames)
                 {
-                    var toolDelegate = processContext.ToolMethodRegistry.GetToolFromDisplayName(toolName.Trim());
-                    if (toolDelegate is null)
-                        throw new SharpOMaticException($"Tool '{toolName.Trim()}' not found, check it is specified in the AddToolMethods setup.");
+                    var normalizedToolName = toolName.Trim();
+                    if (string.IsNullOrWhiteSpace(normalizedToolName))
+                        continue;
 
-                    tools.Add(AIFunctionFactory.Create(toolDelegate, toolName));
+                    var toolDelegate = processContext.ToolMethodRegistry.GetToolFromDisplayName(normalizedToolName);
+                    if (toolDelegate is null)
+                        continue;
+
+                    tools.Add(AIFunctionFactory.Create(toolDelegate, normalizedToolName));
                 }
 
                 if (tools.Count > 0)
