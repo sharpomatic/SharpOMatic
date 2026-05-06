@@ -98,6 +98,21 @@
     <li class="nav-item w-100">
       <button
         class="nav-link w-100 d-flex"
+        routerLink="/metrics"
+        routerLinkActive="active"
+        #metricsLink="routerLinkActive"
+        [class.active]="metricsLink.isActive"
+        [class.link-body-emphasis]="!metricsLink.isActive"
+      >
+        <i class="bi bi-bar-chart-line" [class.me-3]="!isSidebarClosed"></i>
+        @if (!isSidebarClosed) {
+          <span>Metrics</span>
+        }
+      </button>
+    </li>
+    <li class="nav-item w-100">
+      <button
+        class="nav-link w-100 d-flex"
         routerLink="/transfer"
         routerLinkActive="active"
         #transferLink="routerLinkActive"

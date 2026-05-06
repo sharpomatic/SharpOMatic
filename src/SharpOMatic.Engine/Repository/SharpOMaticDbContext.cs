@@ -9,6 +9,7 @@ public class SharpOMaticDbContext : DbContext
     public DbSet<Trace> Traces { get; set; }
     public DbSet<Information> Informations { get; set; }
     public DbSet<StreamEvent> StreamEvents { get; set; }
+    public DbSet<ModelCallMetric> ModelCallMetrics { get; set; }
     public DbSet<Asset> Assets { get; set; }
     public DbSet<AssetFolder> AssetFolders { get; set; }
     public DbSet<ConnectorConfigMetadata> ConnectorConfigMetadata { get; set; }
@@ -103,5 +104,9 @@ public class SharpOMaticDbContext : DbContext
 
         // Cascade delete: Deleting an EvalGrader deletes its EvalRunGraderSummaries
         modelBuilder.Entity<EvalRunGraderSummary>().HasOne<EvalGrader>().WithMany().HasForeignKey(e => e.EvalGraderId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ModelCallMetric>().Property(e => e.InputCost).HasPrecision(18, 8);
+        modelBuilder.Entity<ModelCallMetric>().Property(e => e.OutputCost).HasPrecision(18, 8);
+        modelBuilder.Entity<ModelCallMetric>().Property(e => e.TotalCost).HasPrecision(18, 8);
     }
 }

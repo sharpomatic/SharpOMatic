@@ -608,7 +608,7 @@ public sealed class AgUiChatHistoryIntegrationTests
 
     private sealed class AgUiCaptureModelCaller(AgUiChatCapture capture) : BaseModelCaller
     {
-        public override async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public override async Task<ModelCallResult> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,

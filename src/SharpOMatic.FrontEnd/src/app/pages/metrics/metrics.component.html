@@ -1,0 +1,408 @@
+<div class="container-fluid p-0 metrics-page">
+  <div
+    class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary"
+  >
+    <h2><i class="bi bi-bar-chart-line pe-3 icon-sm"></i>Metrics</h2>
+    <div class="metrics-controls d-flex align-items-center gap-2">
+      <select
+        class="form-select form-select-sm"
+        [(ngModel)]="rangePreset"
+        (ngModelChange)="onRangePresetChange()"
+        aria-label="Date range"
+      >
+        <option value="24h">Last 24 hours</option>
+        <option value="7d">Last 7 days</option>
+        <option value="30d">Last 30 days</option>
+        <option value="custom">Custom</option>
+      </select>
+
+      @if (rangePreset === "custom") {
+        <input
+          type="datetime-local"
+          class="form-control form-control-sm metrics-date-input"
+          [(ngModel)]="start"
+          (change)="onCustomDateChange()"
+          aria-label="Start date"
+        />
+        <input
+          type="datetime-local"
+          class="form-control form-control-sm metrics-date-input"
+          [(ngModel)]="end"
+          (change)="onCustomDateChange()"
+          aria-label="End date"
+        />
+      }
+
+      <select
+        class="form-select form-select-sm"
+        [(ngModel)]="bucket"
+        (ngModelChange)="onBucketChange()"
+        aria-label="Time bucket"
+      >
+        <option [ngValue]="ModelCallMetricBucket.Hour">Hour</option>
+        <option [ngValue]="ModelCallMetricBucket.Day">Day</option>
+        <option [ngValue]="ModelCallMetricBucket.Week">Week</option>
+      </select>
+
+      <button
+        type="button"
+        class="btn btn-outline-secondary btn-sm"
+        (click)="refresh()"
+        title="Refresh"
+        aria-label="Refresh"
+      >
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+    </div>
+  </div>
+  <hr class="m-0" />
+
+  <div class="metrics-body bg-body-tertiary">
+    <app-tab
+      [tabs]="tabs"
+      [activeTabId]="activeTabId"
+      [preventOverflow]="true"
+      (activeTabIdChange)="onTabChange($event)"
+    ></app-tab>
+  </div>
+</div>
+
+<ng-template #metricsTab>
+  <div class="metrics-tab">
+    @if (activeScope !== ModelCallMetricScope.All) {
+      <aside class="metrics-master">
+        <div class="metrics-master-toolbar">
+          <div class="fw-semibold metrics-master-title">
+            {{ masterTitle() }}
+          </div>
+          <div class="input-group input-group-sm metrics-master-search">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input
+              type="search"
+              class="form-control"
+              placeholder="Search"
+              [(ngModel)]="masterSearch"
+              (input)="onMasterSearchChange()"
+            />
+          </div>
+        </div>
+
+        <div class="metrics-master-list list-group list-group-flush">
+          @for (item of dashboard?.masterItems ?? []; track item.key) {
+            <button
+              type="button"
+              class="list-group-item list-group-item-action metrics-master-item"
+              [class.active]="item.key === selectedKey()"
+              [attr.aria-current]="item.key === selectedKey() ? 'true' : null"
+              (click)="selectMasterItem(item)"
+            >
+              <span class="metrics-master-name">{{ item.name }}</span>
+              <span class="metrics-master-stats">
+                <span>{{ formatNumber(item.totalCalls) }} calls</span>
+                <span>{{ formatCost(item.totalCost) }}</span>
+                <span>{{ formatPercent(item.failureRate) }} failures</span>
+                <span>P95 {{ formatDuration(item.p95Duration) }}</span>
+              </span>
+            </button>
+          } @empty {
+            <div class="metrics-master-empty text-body-secondary">
+              No matching {{ masterTitle().toLowerCase() }}.
+            </div>
+          }
+        </div>
+      </aside>
+    }
+
+    <main class="metrics-main">
+      @if (isLoading && !dashboard) {
+        <div class="metrics-empty text-body-secondary">
+          <div class="spinner-border spinner-border-sm" role="status"></div>
+          <div>Loading metrics</div>
+        </div>
+      } @else if (!hasMetricData()) {
+        <div class="metrics-empty text-body-secondary">
+          <div class="empty-icon"><i class="bi bi-bar-chart-line"></i></div>
+          @if (activeScope === ModelCallMetricScope.All) {
+            <div class="empty-title">No model calls in this range</div>
+          } @else if (selectedKey()) {
+            <div class="empty-title">No model calls for this selection</div>
+          } @else {
+            <div class="empty-title">
+              Select {{ masterTitle().slice(0, -1).toLowerCase() }}
+            </div>
+          }
+        </div>
+      } @else {
+        @if (dashboard; as metrics) {
+          <div class="metrics-scroll">
+            @if (isLoading) {
+              <div class="metrics-loading-indicator text-body-secondary">
+                <span
+                  class="spinner-border spinner-border-sm"
+                  role="status"
+                ></span>
+                Refreshing
+              </div>
+            }
+
+            <section class="metrics-kpis">
+              <div class="metrics-kpi">
+                <span>Total Calls</span>
+                <strong>{{ formatNumber(metrics.totals.totalCalls) }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Total Cost</span>
+                <strong>{{ formatCost(metrics.totals.totalCost) }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Total Tokens</span>
+                <strong>{{ formatNumber(metrics.totals.totalTokens) }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Avg Duration</span>
+                <strong>{{
+                  formatDuration(metrics.totals.averageDuration)
+                }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>P95 Duration</span>
+                <strong>{{
+                  formatDuration(metrics.totals.p95Duration)
+                }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Failure Rate</span>
+                <strong>{{ formatPercent(metrics.totals.failureRate) }}</strong>
+              </div>
+            </section>
+
+            @if (metrics.totals.unpricedCalls > 0) {
+              <div class="alert alert-secondary py-2 small">
+                {{ formatNumber(metrics.totals.unpricedCalls) }} calls have no
+                pricing data and are excluded from cost totals.
+              </div>
+            }
+
+            <section class="metrics-charts">
+              <div class="metrics-panel">
+                <div class="metrics-panel-title">Calls over time</div>
+                <div class="metrics-chart"><canvas #callsCanvas></canvas></div>
+              </div>
+              <div class="metrics-panel">
+                <div class="metrics-panel-title">Cost over time</div>
+                <div class="metrics-chart"><canvas #costCanvas></canvas></div>
+              </div>
+              <div class="metrics-panel">
+                <div class="metrics-panel-title">Tokens over time</div>
+                <div class="metrics-chart"><canvas #tokensCanvas></canvas></div>
+              </div>
+              <div class="metrics-panel">
+                <div class="metrics-panel-title">Duration over time</div>
+                <div class="metrics-chart">
+                  <canvas #durationCanvas></canvas>
+                </div>
+              </div>
+            </section>
+
+            <section class="metrics-breakdowns">
+              @for (section of breakdownSections; track section.title) {
+                <div class="metrics-panel">
+                  <div class="metrics-panel-title">{{ section.title }}</div>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th class="text-end">Calls</th>
+                          <th class="text-end">Cost</th>
+                          <th class="text-end">Tokens</th>
+                          <th class="text-end">Failures</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (item of section.items; track item.key) {
+                          <tr>
+                            <td>{{ item.name }}</td>
+                            <td class="text-end">
+                              {{ formatNumber(item.totalCalls) }}
+                            </td>
+                            <td class="text-end">
+                              {{ formatCost(item.totalCost) }}
+                            </td>
+                            <td class="text-end">
+                              {{ formatNumber(item.totalTokens) }}
+                            </td>
+                            <td class="text-end">
+                              {{ formatPercent(item.failureRate) }}
+                            </td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="5" class="text-body-secondary">
+                              No breakdown data.
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              }
+            </section>
+
+            <section class="metrics-panel">
+              <div class="metrics-panel-title">Failures</div>
+              <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Message</th>
+                      <th>Type</th>
+                      <th class="text-end">Count</th>
+                      <th class="text-end">Workflows</th>
+                      <th class="text-end">Connectors</th>
+                      <th class="text-end">Models</th>
+                      <th>Last Seen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (
+                      failure of metrics.failures;
+                      track failure.errorType + failure.errorMessage
+                    ) {
+                      <tr>
+                        <td class="metrics-error-cell">
+                          {{ failure.errorMessage }}
+                        </td>
+                        <td class="metrics-error-cell">
+                          {{ failure.errorType }}
+                        </td>
+                        <td class="text-end">
+                          {{ formatNumber(failure.count) }}
+                        </td>
+                        <td class="text-end">
+                          {{ formatNumber(failure.workflowCount) }}
+                        </td>
+                        <td class="text-end">
+                          {{ formatNumber(failure.connectorCount) }}
+                        </td>
+                        <td class="text-end">
+                          {{ formatNumber(failure.modelCount) }}
+                        </td>
+                        <td>{{ formatDateTime(failure.lastSeen) }}</td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="7" class="text-body-secondary">
+                          No failures in this range.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="metrics-table-grid">
+              <div class="metrics-panel">
+                <div
+                  class="d-flex justify-content-between align-items-center gap-2"
+                >
+                  <div class="metrics-panel-title mb-0">Recent Calls</div>
+                  <div class="btn-group btn-group-sm">
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      [disabled]="recentPage <= 1"
+                      (click)="onRecentPageChange(recentPage - 1)"
+                      aria-label="Previous recent calls page"
+                    >
+                      <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      [disabled]="recentPage >= recentPageCount()"
+                      (click)="onRecentPageChange(recentPage + 1)"
+                      aria-label="Next recent calls page"
+                    >
+                      <i class="bi bi-chevron-right"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="text-body-secondary small mb-2">
+                  Page {{ recentPage }} of {{ recentPageCount() }}
+                </div>
+                <ng-container
+                  [ngTemplateOutlet]="callsTable"
+                  [ngTemplateOutletContext]="{ calls: metrics.recentCalls }"
+                ></ng-container>
+              </div>
+
+              <div class="metrics-panel">
+                <div class="metrics-panel-title">Slowest Calls</div>
+                <ng-container
+                  [ngTemplateOutlet]="callsTable"
+                  [ngTemplateOutletContext]="{ calls: metrics.slowestCalls }"
+                ></ng-container>
+              </div>
+            </section>
+          </div>
+        }
+      }
+    </main>
+  </div>
+</ng-template>
+
+<ng-template #callsTable let-calls="calls">
+  <div class="table-responsive">
+    <table
+      class="table table-sm table-hover align-middle mb-0 metrics-call-table"
+    >
+      <thead>
+        <tr>
+          <th>Created</th>
+          <th>Workflow</th>
+          <th>Node</th>
+          <th>Connector</th>
+          <th>Model</th>
+          <th class="text-end">Duration</th>
+          <th class="text-end">Tokens</th>
+          <th class="text-end">Cost</th>
+          <th>Status</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (call of calls; track call.id) {
+          <tr>
+            <td>{{ formatDateTime(call.created) }}</td>
+            <td>{{ call.workflowName }}</td>
+            <td>{{ call.nodeTitle }}</td>
+            <td>{{ displayConnector(call) }}</td>
+            <td>{{ displayModel(call) }}</td>
+            <td class="text-end">{{ formatDuration(call.duration) }}</td>
+            <td class="text-end">{{ formatNumber(call.totalTokens) }}</td>
+            <td class="text-end">
+              {{ call.totalCost === null ? "-" : formatCost(call.totalCost) }}
+            </td>
+            <td>
+              <span
+                class="badge"
+                [class.text-bg-success]="call.succeeded"
+                [class.text-bg-danger]="!call.succeeded"
+              >
+                {{ call.succeeded ? "Success" : "Failure" }}
+              </span>
+            </td>
+            <td class="metrics-error-cell">{{ call.errorMessage ?? "" }}</td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="10" class="text-body-secondary">No calls found.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</ng-template>

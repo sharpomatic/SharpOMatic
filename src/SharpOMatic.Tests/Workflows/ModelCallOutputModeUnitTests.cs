@@ -124,7 +124,7 @@ public sealed class ModelCallOutputModeUnitTests
             );
         }
 
-        public override Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public override Task<ModelCallResult> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -138,7 +138,7 @@ public sealed class ModelCallOutputModeUnitTests
             throw new NotSupportedException();
         }
 
-        protected override Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> CallAgent(
+        protected override Task<ModelCallResult> CallAgent(
             AIAgent agent,
             List<ChatMessage> chat,
             ChatOptions? chatOptions,
@@ -147,12 +147,12 @@ public sealed class ModelCallOutputModeUnitTests
         )
         {
             BatchCallCount += 1;
-            return Task.FromResult<(IList<ChatMessage>, IList<ChatMessage>, object?)>(
+            return Task.FromResult<ModelCallResult>(
                 (chat, new List<ChatMessage>(), string.Empty)
             );
         }
 
-        protected override Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> CallStreamingAgent(
+        protected override Task<ModelCallResult> CallStreamingAgent(
             AIAgent agent,
             List<ChatMessage> chat,
             ChatOptions? chatOptions,
@@ -162,7 +162,7 @@ public sealed class ModelCallOutputModeUnitTests
         )
         {
             StreamingCallCount += 1;
-            return Task.FromResult<(IList<ChatMessage>, IList<ChatMessage>, object?)>(
+            return Task.FromResult<ModelCallResult>(
                 (chat, new List<ChatMessage>(), string.Empty)
             );
         }

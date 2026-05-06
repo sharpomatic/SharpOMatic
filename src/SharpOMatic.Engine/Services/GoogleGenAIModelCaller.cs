@@ -9,7 +9,7 @@ public class GoogleGenAIModelCaller(IEnumerable<IEngineNotification> engineNotif
     {
     }
 
-    public override async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+    public override async Task<ModelCallResult> Call(
         Model model,
         ModelConfig modelConfig,
         Connector connector,
@@ -39,12 +39,22 @@ public class GoogleGenAIModelCaller(IEnumerable<IEngineNotification> engineNotif
 
         // Resolve the instructions and prompts as templates
         (var instructions, var prompt) = await ResolveInstructionsAndPrompt(chat, processContext, threadContext, node);
-        var chatClient = GetChatClient(model, modelConfig, authenticationModeConfig, connectionFields);
+        (var chatClient, var modelName) = GetChatClient(model, modelConfig, authenticationModeConfig, connectionFields);
 
         // Use the Microsoft Agent Framework by creating a chat client based agent
         var agent = new ChatClientAgent(chatClient, instructions: instructions, services: agentServiceProvider);
         await EmitPromptStreamEvents(processContext, prompt, node.DisableStreamUser);
-        return await CallConfiguredAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
+        var result = await CallConfiguredAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
+        return result.ProviderModelName is null
+            ? new ModelCallResult()
+            {
+                Chat = result.Chat,
+                Responses = result.Responses,
+                ResultValue = result.ResultValue,
+                Usage = result.Usage,
+                ProviderModelName = modelName,
+            }
+            : result;
     }
 
     protected virtual (AuthenticationModeConfig, Dictionary<string, string?>) GetAuthenticationFields(Connector connector, ConnectorConfig connectorConfig, ProcessContext processContext)
@@ -139,13 +149,13 @@ public class GoogleGenAIModelCaller(IEnumerable<IEngineNotification> engineNotif
         };
     }
 
-    protected virtual IChatClient GetChatClient(Model model, ModelConfig modelConfig, AuthenticationModeConfig authenticationModeConfig, Dictionary<string, string?> connectionFields)
+    protected virtual (IChatClient, string) GetChatClient(Model model, ModelConfig modelConfig, AuthenticationModeConfig authenticationModeConfig, Dictionary<string, string?> connectionFields)
     {
         foreach (var notification in _engineNotifications)
         {
             var chatClient = notification.GoogleGenAIOverride(model, modelConfig, authenticationModeConfig, connectionFields);
             if (chatClient is not null)
-                return chatClient;
+                return (chatClient, ResolveProviderModelName(model, modelConfig));
         }
 
         if (authenticationModeConfig.Id != "gen_ai")
@@ -165,6 +175,14 @@ public class GoogleGenAIModelCaller(IEnumerable<IEngineNotification> engineNotif
 
         var httpOptions = new Google.GenAI.Types.HttpOptions { Timeout = 300_000 };
         var client = new Client(apiKey: apiKey, httpOptions: httpOptions);
-        return client.AsIChatClient(modelName);
+        return (client.AsIChatClient(modelName), modelName);
+    }
+
+    private static string ResolveProviderModelName(Model model, ModelConfig modelConfig)
+    {
+        if (modelConfig.IsCustom && model.ParameterValues.TryGetValue("model_name", out var modelName) && !string.IsNullOrWhiteSpace(modelName))
+            return modelName;
+
+        return modelConfig.DisplayName;
     }
 }

@@ -10,6 +10,7 @@ public sealed class TestRepositoryService : IRepositoryService
     private readonly ConcurrentDictionary<Guid, Trace> _traces = new();
     private readonly ConcurrentDictionary<Guid, Information> _informations = new();
     private readonly ConcurrentDictionary<Guid, StreamEvent> _streamEvents = new();
+    private readonly ConcurrentDictionary<Guid, ModelCallMetric> _modelCallMetrics = new();
     private readonly ConcurrentDictionary<Guid, Asset> _assets = new();
     private readonly ConcurrentDictionary<Guid, AssetFolder> _assetFolders = new();
     private readonly ConcurrentDictionary<string, ConnectorConfig> _connectorConfigs = new(StringComparer.Ordinal);
@@ -380,6 +381,19 @@ public sealed class TestRepositoryService : IRepositoryService
             .ToList();
 
         return Task.FromResult(streamEvents);
+    }
+
+    public Task AppendModelCallMetric(ModelCallMetric metric)
+    {
+        _modelCallMetrics[metric.Id] = metric;
+        return Task.CompletedTask;
+    }
+
+    public Task<ModelCallMetricsDashboard> GetModelCallMetricsDashboard(ModelCallMetricsDashboardRequest request) => throw new NotImplementedException();
+
+    public List<ModelCallMetric> GetModelCallMetrics()
+    {
+        return _modelCallMetrics.Values.OrderBy(metric => metric.Created).ToList();
     }
 
     public Task<List<ConnectorConfig>> GetConnectorConfigs() => Task.FromResult(_connectorConfigs.Values.OrderBy(c => c.DisplayName).ToList());

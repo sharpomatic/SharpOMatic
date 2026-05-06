@@ -622,6 +622,329 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     }
 
     // ------------------------------------------------
+    // Model Call Metric Operations
+    // ------------------------------------------------
+    public async Task AppendModelCallMetric(ModelCallMetric metric)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        dbContext.ModelCallMetrics.Add(metric);
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task<ModelCallMetricsDashboard> GetModelCallMetricsDashboard(ModelCallMetricsDashboardRequest request)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var start = EnsureUtc(request.Start);
+        var end = EnsureUtc(request.End);
+        if (end <= start)
+            end = start.AddDays(1);
+
+        var recentSkip = Math.Max(0, request.RecentSkip);
+        var recentTake = request.RecentTake <= 0 ? 25 : Math.Min(request.RecentTake, 100);
+
+        var metricsInRange = await dbContext.ModelCallMetrics
+            .AsNoTracking()
+            .Where(metric => metric.Created >= start && metric.Created < end)
+            .ToListAsync();
+
+        var masterItems = request.Scope == ModelCallMetricScope.All
+            ? []
+            : BuildMetricMasterItems(metricsInRange, request.Scope, request.MasterSearch);
+
+        var selectedMetrics = ApplyMetricScope(metricsInRange, request.Scope, request.ScopeKey).ToList();
+        var scopeName = request.Scope == ModelCallMetricScope.All
+            ? null
+            : masterItems.FirstOrDefault(item => string.Equals(item.Key, request.ScopeKey, StringComparison.Ordinal))?.Name;
+
+        return new ModelCallMetricsDashboard(
+            start,
+            end,
+            request.Bucket,
+            request.Scope,
+            request.ScopeKey,
+            scopeName,
+            BuildMetricTotals(selectedMetrics),
+            masterItems,
+            BuildMetricTimeBuckets(selectedMetrics, start, end, request.Bucket),
+            BuildMetricBreakdown(selectedMetrics, metric => BuildMetricIdKey(metric.WorkflowId), metric => metric.WorkflowName),
+            BuildMetricBreakdown(selectedMetrics, metric => BuildMetricKey(metric.ConnectorId, metric.ConnectorName), GetMetricConnectorName),
+            BuildMetricBreakdown(selectedMetrics, metric => BuildMetricKey(metric.ModelId, GetMetricModelName(metric)), GetMetricModelName),
+            BuildMetricBreakdown(selectedMetrics, metric => BuildMetricIdKey(metric.NodeEntityId), metric => metric.NodeTitle),
+            BuildMetricFailures(selectedMetrics),
+            selectedMetrics
+                .OrderByDescending(metric => metric.Created)
+                .Skip(recentSkip)
+                .Take(recentTake)
+                .Select(ToMetricCallSummary)
+                .ToList(),
+            selectedMetrics.Count,
+            selectedMetrics
+                .OrderByDescending(metric => metric.Duration ?? -1)
+                .ThenByDescending(metric => metric.Created)
+                .Take(10)
+                .Select(ToMetricCallSummary)
+                .ToList()
+        );
+    }
+
+    private static List<ModelCallMetricMasterItem> BuildMetricMasterItems(List<ModelCallMetric> metrics, ModelCallMetricScope scope, string? search)
+    {
+        var groups = scope switch
+        {
+            ModelCallMetricScope.Workflow => metrics.GroupBy(metric => new MetricGroupKey(BuildMetricIdKey(metric.WorkflowId), metric.WorkflowName)),
+            ModelCallMetricScope.Connector => metrics.GroupBy(metric => new MetricGroupKey(BuildMetricKey(metric.ConnectorId, metric.ConnectorName), GetMetricConnectorName(metric))),
+            ModelCallMetricScope.Model => metrics.GroupBy(metric => new MetricGroupKey(BuildMetricKey(metric.ModelId, GetMetricModelName(metric)), GetMetricModelName(metric))),
+            _ => [],
+        };
+
+        var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        var items = groups
+            .Where(group => normalizedSearch is null || group.Key.Name.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase))
+            .Select(group =>
+            {
+                var groupMetrics = group.ToList();
+                var totals = BuildMetricTotals(groupMetrics);
+                return new ModelCallMetricMasterItem(
+                    group.Key.Key,
+                    group.Key.Name,
+                    totals.TotalCalls,
+                    totals.FailedCalls,
+                    totals.TotalCost,
+                    totals.TotalTokens,
+                    totals.AverageDuration,
+                    totals.P95Duration,
+                    totals.FailureRate
+                );
+            });
+
+        items = scope == ModelCallMetricScope.Connector
+            ? items.OrderByDescending(item => item.TotalCalls).ThenBy(item => item.Name)
+            : items.OrderByDescending(item => item.TotalCost).ThenByDescending(item => item.TotalCalls).ThenBy(item => item.Name);
+
+        return items.ToList();
+    }
+
+    private static IEnumerable<ModelCallMetric> ApplyMetricScope(List<ModelCallMetric> metrics, ModelCallMetricScope scope, string? scopeKey)
+    {
+        if (scope == ModelCallMetricScope.All || string.IsNullOrWhiteSpace(scopeKey))
+            return metrics;
+
+        return scope switch
+        {
+            ModelCallMetricScope.Workflow => metrics.Where(metric => MetricIdKeyMatches(scopeKey, metric.WorkflowId)),
+            ModelCallMetricScope.Connector => metrics.Where(metric => MetricKeyMatches(scopeKey, metric.ConnectorId, metric.ConnectorName)),
+            ModelCallMetricScope.Model => metrics.Where(metric => MetricKeyMatches(scopeKey, metric.ModelId, GetMetricModelName(metric))),
+            _ => metrics,
+        };
+    }
+
+    private static ModelCallMetricTotals BuildMetricTotals(List<ModelCallMetric> metrics)
+    {
+        var totalCalls = metrics.Count;
+        var failedCalls = metrics.Count(metric => !metric.Succeeded);
+        return new ModelCallMetricTotals(
+            totalCalls,
+            totalCalls - failedCalls,
+            failedCalls,
+            metrics.Sum(metric => metric.InputTokens ?? 0),
+            metrics.Sum(metric => metric.OutputTokens ?? 0),
+            metrics.Sum(metric => metric.TotalTokens ?? 0),
+            metrics.Sum(metric => metric.TotalCost ?? 0),
+            metrics.Count(metric => metric.TotalCost.HasValue),
+            metrics.Count(metric => !metric.TotalCost.HasValue),
+            AverageDuration(metrics),
+            PercentileDuration(metrics, 0.95),
+            totalCalls == 0 ? 0 : failedCalls / (double)totalCalls
+        );
+    }
+
+    private static List<ModelCallMetricTimeBucket> BuildMetricTimeBuckets(List<ModelCallMetric> metrics, DateTime start, DateTime end, ModelCallMetricBucket bucket)
+    {
+        var groups = metrics
+            .GroupBy(metric => GetMetricBucketStart(metric.Created, bucket))
+            .ToDictionary(group => group.Key, group => group.ToList());
+
+        var results = new List<ModelCallMetricTimeBucket>();
+        for (var bucketStart = GetMetricBucketStart(start, bucket); bucketStart < end; bucketStart = AddMetricBucket(bucketStart, bucket))
+        {
+            groups.TryGetValue(bucketStart, out var bucketMetrics);
+            bucketMetrics ??= [];
+            var totals = BuildMetricTotals(bucketMetrics);
+            results.Add(
+                new ModelCallMetricTimeBucket(
+                    bucketStart,
+                    totals.TotalCalls,
+                    totals.SuccessfulCalls,
+                    totals.FailedCalls,
+                    totals.InputTokens,
+                    totals.OutputTokens,
+                    totals.TotalTokens,
+                    totals.TotalCost,
+                    totals.PricedCalls,
+                    totals.UnpricedCalls,
+                    totals.AverageDuration,
+                    totals.P95Duration
+                )
+            );
+        }
+
+        return results;
+    }
+
+    private static List<ModelCallMetricBreakdownItem> BuildMetricBreakdown(List<ModelCallMetric> metrics, Func<ModelCallMetric, string> keySelector, Func<ModelCallMetric, string> nameSelector)
+    {
+        return metrics
+            .GroupBy(metric => new MetricGroupKey(keySelector(metric), nameSelector(metric)))
+            .Select(group =>
+            {
+                var groupMetrics = group.ToList();
+                var totals = BuildMetricTotals(groupMetrics);
+                return new ModelCallMetricBreakdownItem(
+                    group.Key.Key,
+                    group.Key.Name,
+                    totals.TotalCalls,
+                    totals.FailedCalls,
+                    totals.TotalCost,
+                    totals.TotalTokens,
+                    totals.AverageDuration,
+                    totals.P95Duration,
+                    totals.FailureRate
+                );
+            })
+            .OrderByDescending(item => item.TotalCost)
+            .ThenByDescending(item => item.TotalCalls)
+            .ThenBy(item => item.Name)
+            .Take(8)
+            .ToList();
+    }
+
+    private static List<ModelCallMetricFailureGroup> BuildMetricFailures(List<ModelCallMetric> metrics)
+    {
+        return metrics
+            .Where(metric => !metric.Succeeded)
+            .GroupBy(metric => new
+            {
+                ErrorType = string.IsNullOrWhiteSpace(metric.ErrorType) ? "Unknown" : metric.ErrorType,
+                ErrorMessage = string.IsNullOrWhiteSpace(metric.ErrorMessage) ? "Unknown failure" : metric.ErrorMessage,
+            })
+            .Select(group => new ModelCallMetricFailureGroup(
+                group.Key.ErrorType,
+                group.Key.ErrorMessage,
+                group.Count(),
+                group.Min(metric => metric.Created),
+                group.Max(metric => metric.Created),
+                group.Select(metric => metric.WorkflowId).Distinct().Count(),
+                group.Select(metric => BuildMetricKey(metric.ConnectorId, metric.ConnectorName)).Distinct(StringComparer.Ordinal).Count(),
+                group.Select(metric => BuildMetricKey(metric.ModelId, GetMetricModelName(metric))).Distinct(StringComparer.Ordinal).Count()
+            ))
+            .OrderByDescending(group => group.Count)
+            .ThenByDescending(group => group.LastSeen)
+            .Take(10)
+            .ToList();
+    }
+
+    private static ModelCallMetricCallSummary ToMetricCallSummary(ModelCallMetric metric)
+    {
+        return new ModelCallMetricCallSummary(
+            metric.Id,
+            metric.Created,
+            metric.WorkflowName,
+            metric.NodeTitle,
+            metric.ConnectorName,
+            GetMetricModelName(metric),
+            metric.Duration,
+            metric.InputTokens,
+            metric.OutputTokens,
+            metric.TotalTokens,
+            metric.TotalCost,
+            metric.Succeeded,
+            metric.ErrorType,
+            metric.ErrorMessage
+        );
+    }
+
+    private static double? AverageDuration(List<ModelCallMetric> metrics)
+    {
+        var durations = metrics.Where(metric => metric.Duration.HasValue).Select(metric => metric.Duration!.Value).ToList();
+        return durations.Count == 0 ? null : durations.Average();
+    }
+
+    private static long? PercentileDuration(List<ModelCallMetric> metrics, double percentile)
+    {
+        var durations = metrics.Where(metric => metric.Duration.HasValue).Select(metric => metric.Duration!.Value).OrderBy(duration => duration).ToList();
+        if (durations.Count == 0)
+            return null;
+
+        var index = (int)Math.Ceiling(durations.Count * percentile) - 1;
+        index = Math.Clamp(index, 0, durations.Count - 1);
+        return durations[index];
+    }
+
+    private static string BuildMetricIdKey(Guid id) => $"id:{id:D}";
+
+    private static string BuildMetricKey(Guid? id, string? name)
+    {
+        return id.HasValue ? BuildMetricIdKey(id.Value) : $"name:{GetMetricDisplayName(name, "Unknown")}";
+    }
+
+    private static bool MetricIdKeyMatches(string key, Guid id)
+    {
+        return string.Equals(key, BuildMetricIdKey(id), StringComparison.Ordinal);
+    }
+
+    private static bool MetricKeyMatches(string key, Guid? id, string? name)
+    {
+        return id.HasValue
+            ? MetricIdKeyMatches(key, id.Value)
+            : string.Equals(key, $"name:{GetMetricDisplayName(name, "Unknown")}", StringComparison.Ordinal);
+    }
+
+    private static string GetMetricConnectorName(ModelCallMetric metric) => GetMetricDisplayName(metric.ConnectorName, "No connector");
+
+    private static string GetMetricModelName(ModelCallMetric metric) => GetMetricDisplayName(metric.ModelName ?? metric.ProviderModelName, "No model");
+
+    private static string GetMetricDisplayName(string? value, string fallback) => string.IsNullOrWhiteSpace(value) ? fallback : value;
+
+    private static DateTime GetMetricBucketStart(DateTime value, ModelCallMetricBucket bucket)
+    {
+        value = EnsureUtc(value);
+        return bucket switch
+        {
+            ModelCallMetricBucket.Hour => new DateTime(value.Year, value.Month, value.Day, value.Hour, 0, 0, DateTimeKind.Utc),
+            ModelCallMetricBucket.Week => value.Date.AddDays(-GetDaysSinceMonday(value)),
+            _ => value.Date,
+        };
+    }
+
+    private static DateTime AddMetricBucket(DateTime value, ModelCallMetricBucket bucket)
+    {
+        return bucket switch
+        {
+            ModelCallMetricBucket.Hour => value.AddHours(1),
+            ModelCallMetricBucket.Week => value.AddDays(7),
+            _ => value.AddDays(1),
+        };
+    }
+
+    private static int GetDaysSinceMonday(DateTime value)
+    {
+        return ((int)value.DayOfWeek + 6) % 7;
+    }
+
+    private static DateTime EnsureUtc(DateTime value)
+    {
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
+        };
+    }
+
+    private readonly record struct MetricGroupKey(string Key, string Name);
+
+    // ------------------------------------------------
     // ConnectorConfig Operations
     // ------------------------------------------------
     public async Task<ConnectorConfig?> GetConnectorConfig(string configId)

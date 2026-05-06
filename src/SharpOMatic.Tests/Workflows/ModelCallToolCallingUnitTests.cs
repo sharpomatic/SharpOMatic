@@ -119,7 +119,7 @@ public sealed class ModelCallToolCallingUnitTests
             return SetupToolCalling(chatOptions, model, modelConfig, processContext, threadContext, node);
         }
 
-        public override Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public override Task<ModelCallResult> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,

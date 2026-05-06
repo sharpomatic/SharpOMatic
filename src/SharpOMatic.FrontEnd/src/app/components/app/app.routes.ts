@@ -11,6 +11,7 @@ import { EvaluationComponent } from '../../pages/evaluation/evaluation.component
 import { EvaluationRunComponent } from '../../pages/evaluation-run/evaluation-run.component';
 import { AssetsComponent } from '../../pages/assets/assets.component';
 import { TransferComponent } from '../../pages/transfer/transfer.component';
+import { MetricsComponent } from '../../pages/metrics/metrics.component';
 import { unsavedChangesGuard } from '../../helper/unsaved-changes.guard';
 
 export const routes: Routes = [
@@ -44,6 +45,7 @@ export const routes: Routes = [
   },
   { path: 'connectors', component: ConnectorsComponent },
   { path: 'assets', component: AssetsComponent },
+  { path: 'metrics', component: MetricsComponent },
   { path: 'transfer', component: TransferComponent },
   { path: 'settings', component: SettingsComponent },
 ];

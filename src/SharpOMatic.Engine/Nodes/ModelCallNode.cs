@@ -6,33 +6,130 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 {
     protected override async Task<NodeExecutionResult> RunInternal()
     {
-        // Validate and load the model and connector instances
-        (var model, var modelConfig, var connector, var connectorConfig) = await LoadModelAndConnector();
-        var progressSink = new ModelCallNodeProgressSink(ProcessContext, Trace, Informations, Node);
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var metric = CreateMetric();
+        metric.ModelId = Node.ModelId;
 
-        // Get the implementation for the specific connector config
-        var caller = ProcessContext.ServiceScope.ServiceProvider.GetKeyedService<IModelCaller>(connectorConfig.ConfigId);
-        if (caller is null)
-            throw new SharpOMaticException($"No implementation found for connector '{connectorConfig.ConfigId}'");
+        try
+        {
+            // Validate and load the model and connector instances
+            (var model, var modelConfig, var connector, var connectorConfig) = await LoadModelAndConnector(metric);
+            var progressSink = new ModelCallNodeProgressSink(ProcessContext, Trace, Informations, Node);
 
-        // Use specific implementation to perform call for us
-        (var chat, var responses, var resultValue) = await caller.Call(model, modelConfig, connector, connectorConfig, ProcessContext, ThreadContext, Node, progressSink);
+            // Get the implementation for the specific connector config
+            var caller = ProcessContext.ServiceScope.ServiceProvider.GetKeyedService<IModelCaller>(connectorConfig.ConfigId);
+            if (caller is null)
+                throw new SharpOMaticException($"No implementation found for connector '{connectorConfig.ConfigId}'");
 
-        if (!string.IsNullOrWhiteSpace(Node.TextOutputPath) && !ThreadContext.NodeContext.TrySet(Node.TextOutputPath, resultValue))
-            throw new SharpOMaticException($"Could not set '{Node.TextOutputPath}' into context.");
+            // Use specific implementation to perform call for us
+            var result = await caller.Call(model, modelConfig, connector, connectorConfig, ProcessContext, ThreadContext, Node, progressSink);
+            ApplyUsage(metric, result, modelConfig);
 
-        if (Node.BatchOutput)
-            WriteChatOutput(chat, responses);
+            if (!string.IsNullOrWhiteSpace(Node.TextOutputPath) && !ThreadContext.NodeContext.TrySet(Node.TextOutputPath, result.ResultValue))
+                throw new SharpOMaticException($"Could not set '{Node.TextOutputPath}' into context.");
 
-        await progressSink.ApplyBatchResponseFallbackAsync(responses);
-        await progressSink.CompleteAsync();
+            if (Node.BatchOutput)
+                WriteChatOutput(result.Chat, result.Responses);
 
-        if (!Node.BatchOutput)
-            WriteChatOutput(chat, responses);
+            await progressSink.ApplyBatchResponseFallbackAsync(result.Responses);
+            await progressSink.CompleteAsync();
 
-        await progressSink.PersistAsync();
+            if (!Node.BatchOutput)
+                WriteChatOutput(result.Chat, result.Responses);
 
-        return NodeExecutionResult.Continue($"{model.Name ?? "(empty)"}", ResolveOptionalSingleOutput(ThreadContext));
+            await progressSink.PersistAsync();
+
+            stopwatch.Stop();
+            metric.Duration = stopwatch.ElapsedMilliseconds;
+            metric.Succeeded = true;
+            await ProcessContext.RepositoryService.AppendModelCallMetric(metric);
+
+            return NodeExecutionResult.Continue($"{model.Name ?? "(empty)"}", ResolveOptionalSingleOutput(ThreadContext));
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            metric.Duration = stopwatch.ElapsedMilliseconds;
+            metric.Succeeded = false;
+            metric.ErrorMessage = ex.Message;
+            metric.ErrorType = ex.GetType().FullName;
+            await AppendFailureMetric(metric);
+            throw;
+        }
+    }
+
+    private ModelCallMetric CreateMetric()
+    {
+        return new ModelCallMetric()
+        {
+            Id = Guid.NewGuid(),
+            Created = DateTime.UtcNow,
+            Succeeded = false,
+            WorkflowId = WorkflowContext.Workflow.Id,
+            WorkflowName = WorkflowContext.Workflow.Name,
+            RunId = ProcessContext.Run.RunId,
+            ConversationId = ProcessContext.Run.ConversationId,
+            NodeEntityId = Node.Id,
+            NodeTitle = Node.Title,
+        };
+    }
+
+    private static void ApplyUsage(ModelCallMetric metric, ModelCallResult result, ModelConfig modelConfig)
+    {
+        metric.ProviderModelName = result.ProviderModelName;
+
+        if (result.Usage is null)
+            return;
+
+        metric.InputTokens = result.Usage.InputTokenCount;
+        metric.OutputTokens = result.Usage.OutputTokenCount;
+        metric.TotalTokens = result.Usage.TotalTokenCount;
+
+        var inputPrice = GetInformationDecimal(modelConfig, "InputPrice");
+        var outputPrice = GetInformationDecimal(modelConfig, "OutputPrice");
+
+        if (metric.InputTokens.HasValue && inputPrice.HasValue)
+            metric.InputCost = CalculateCost(metric.InputTokens.Value, inputPrice.Value);
+
+        if (metric.OutputTokens.HasValue && outputPrice.HasValue)
+            metric.OutputCost = CalculateCost(metric.OutputTokens.Value, outputPrice.Value);
+
+        if (metric.InputCost.HasValue || metric.OutputCost.HasValue)
+            metric.TotalCost = (metric.InputCost ?? 0) + (metric.OutputCost ?? 0);
+    }
+
+    private static decimal? GetInformationDecimal(ModelConfig modelConfig, string name)
+    {
+        var value = modelConfig.Information?.FirstOrDefault(item => string.Equals(item.Name, name, StringComparison.Ordinal))?.Value;
+        return value switch
+        {
+            null => null,
+            decimal decimalValue => decimalValue,
+            double doubleValue => (decimal)doubleValue,
+            float floatValue => (decimal)floatValue,
+            int intValue => intValue,
+            long longValue => longValue,
+            JsonElement element when element.ValueKind == JsonValueKind.Number && element.TryGetDecimal(out var decimalValue) => decimalValue,
+            JsonElement element when element.ValueKind == JsonValueKind.String && decimal.TryParse(element.GetString(), out var decimalValue) => decimalValue,
+            string stringValue when decimal.TryParse(stringValue, out var decimalValue) => decimalValue,
+            _ => null,
+        };
+    }
+
+    private static decimal CalculateCost(long tokens, decimal pricePerMillionTokens)
+    {
+        return tokens / 1_000_000m * pricePerMillionTokens;
+    }
+
+    private async Task AppendFailureMetric(ModelCallMetric metric)
+    {
+        try
+        {
+            await ProcessContext.RepositoryService.AppendModelCallMetric(metric);
+        }
+        catch
+        {
+        }
     }
 
     private void WriteChatOutput(IList<ChatMessage> chat, IList<ChatMessage> responses)
@@ -43,7 +140,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         }
     }
 
-    private async Task<(Model, ModelConfig, Connector, ConnectorConfig)> LoadModelAndConnector()
+    private async Task<(Model, ModelConfig, Connector, ConnectorConfig)> LoadModelAndConnector(ModelCallMetric metric)
     {
         if (Node.ModelId is null)
             throw new SharpOMaticException("No model selected");
@@ -52,20 +149,34 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         if (model is null)
             throw new SharpOMaticException("Cannot find model");
 
+        metric.ModelId = model.ModelId;
+        metric.ModelName = model.Name;
+
         if (model.ConnectorId is null)
             throw new SharpOMaticException("Model has no connector defined");
+
+        metric.ConnectorId = model.ConnectorId;
 
         var modelConfig = await ProcessContext.RepositoryService.GetModelConfig(model.ConfigId);
         if (modelConfig is null)
             throw new SharpOMaticException("Cannot find the model configuration");
 
+        metric.ModelConfigId = modelConfig.ConfigId;
+        metric.ModelConfigName = modelConfig.DisplayName;
+
         var connector = await ProcessContext.RepositoryService.GetConnector(model.ConnectorId.Value, false);
         if (connector is null)
             throw new SharpOMaticException("Cannot find the model connector");
 
+        metric.ConnectorId = connector.ConnectorId;
+        metric.ConnectorName = connector.Name;
+
         var connectorConfig = await ProcessContext.RepositoryService.GetConnectorConfig(connector.ConfigId);
         if (connectorConfig is null)
             throw new SharpOMaticException("Cannot find the connector configuration");
+
+        metric.ConnectorConfigId = connectorConfig.ConfigId;
+        metric.ConnectorConfigName = connectorConfig.DisplayName;
 
         return (model, modelConfig, connector, connectorConfig);
     }

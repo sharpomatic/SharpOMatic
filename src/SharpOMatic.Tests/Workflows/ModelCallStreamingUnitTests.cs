@@ -1407,7 +1407,7 @@ public sealed class ModelCallStreamingUnitTests
 
     private sealed class StreamingTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public async Task<ModelCallResult> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1451,7 +1451,7 @@ public sealed class ModelCallStreamingUnitTests
 
     private sealed class PromptEventTestModelCaller : BaseModelCaller
     {
-        public override async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public override async Task<ModelCallResult> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1476,7 +1476,7 @@ public sealed class ModelCallStreamingUnitTests
 
     private sealed class StreamingConversationReasoningTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public async Task<ModelCallResult> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1516,7 +1516,7 @@ public sealed class ModelCallStreamingUnitTests
 
     private sealed class GoogleStreamingTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public async Task<ModelCallResult> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1555,7 +1555,7 @@ public sealed class ModelCallStreamingUnitTests
 
     private sealed class BatchFallbackTestModelCaller : IModelCaller
     {
-        public Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public Task<ModelCallResult> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1580,13 +1580,13 @@ public sealed class ModelCallStreamingUnitTests
                 ),
             ];
 
-            return Task.FromResult(((IList<ChatMessage>)new List<ChatMessage>(), responses, (object?)"Batch reply"));
+            return Task.FromResult<ModelCallResult>(((IList<ChatMessage>)new List<ChatMessage>(), responses, (object?)"Batch reply"));
         }
     }
 
     private sealed class ReasoningThenToolCallTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public async Task<ModelCallResult> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1606,7 +1606,7 @@ public sealed class ModelCallStreamingUnitTests
 
     private sealed class TextThenToolCallTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public async Task<ModelCallResult> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1627,7 +1627,7 @@ public sealed class ModelCallStreamingUnitTests
 
     private sealed class AssistantTextOnlyTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public async Task<ModelCallResult> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1648,7 +1648,7 @@ public sealed class ModelCallStreamingUnitTests
 
     private sealed class WhitespaceAssistantTextTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public async Task<ModelCallResult> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1667,7 +1667,7 @@ public sealed class ModelCallStreamingUnitTests
 
     private sealed class EmptyReasoningAfterToolCallTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public async Task<ModelCallResult> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,
@@ -1688,7 +1688,7 @@ public sealed class ModelCallStreamingUnitTests
 
     private sealed class EmptyReasoningOnlyTestModelCaller : IModelCaller
     {
-        public async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+        public async Task<ModelCallResult> Call(
             Model model,
             ModelConfig modelConfig,
             Connector connector,

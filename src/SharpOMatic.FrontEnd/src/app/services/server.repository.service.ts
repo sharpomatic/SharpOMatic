@@ -81,6 +81,11 @@ import { EvalRunSummarySnapshot } from '../eval/definitions/eval-run-summary';
 import { EvalRunDetailSnapshot } from '../eval/definitions/eval-run-detail';
 import { EvalRunRowDetailSnapshot } from '../eval/definitions/eval-run-row-detail';
 import { WorkflowConversationPageResult } from '../pages/workflow/interfaces/workflow-conversation-page-result';
+import {
+  ModelCallMetricBucket,
+  ModelCallMetricScope,
+  ModelCallMetricsDashboard,
+} from '../pages/metrics/interfaces/model-call-metrics-dashboard';
 
 @Injectable({
   providedIn: 'root',
@@ -424,6 +429,45 @@ export class ServerRepositoryService {
         map((history) => this.normalizeConversationHistory(history)),
         catchError((error) => {
           this.notifyError('Loading conversation history', error);
+          return of(null);
+        }),
+      );
+  }
+
+  public getModelCallMetricsDashboard(
+    start: Date,
+    end: Date,
+    bucket: ModelCallMetricBucket,
+    scope: ModelCallMetricScope,
+    scopeKey: string | null,
+    masterSearch: string,
+    recentSkip: number,
+    recentTake: number,
+  ): Observable<ModelCallMetricsDashboard | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams()
+      .set('start', start.toISOString())
+      .set('end', end.toISOString())
+      .set('bucket', ModelCallMetricBucket[bucket])
+      .set('scope', ModelCallMetricScope[scope])
+      .set('recentSkip', recentSkip)
+      .set('recentTake', recentTake);
+
+    if (scopeKey) {
+      params = params.set('scopeKey', scopeKey);
+    }
+
+    if (masterSearch.trim().length > 0) {
+      params = params.set('masterSearch', masterSearch.trim());
+    }
+
+    return this.http
+      .get<ModelCallMetricsDashboard>(`${apiUrl}/api/metrics/model-calls`, {
+        params,
+      })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading model call metrics', error);
           return of(null);
         }),
       );

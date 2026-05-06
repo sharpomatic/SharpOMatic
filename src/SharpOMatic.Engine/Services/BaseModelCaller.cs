@@ -3,7 +3,7 @@ namespace SharpOMatic.Engine.Services;
 
 public abstract class BaseModelCaller : IModelCaller
 {
-    public abstract Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+    public abstract Task<ModelCallResult> Call(
         Model model,
         ModelConfig modelConfig,
         Connector connector,
@@ -14,7 +14,7 @@ public abstract class BaseModelCaller : IModelCaller
         IModelCallProgressSink progressSink
     );
 
-    protected virtual async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> CallAgent(
+    protected virtual async Task<ModelCallResult> CallAgent(
         AIAgent agent,
         List<ChatMessage> chat,
         ChatOptions? chatOptions,
@@ -24,10 +24,16 @@ public abstract class BaseModelCaller : IModelCaller
     {
         var response = await agent.RunAsync(chat, options: new ChatClientAgentRunOptions(chatOptions));
         var resultValue = ResponseToOutputValue(jsonOutput, response);
-        return (chat, response.Messages, resultValue);
+        return new ModelCallResult()
+        {
+            Chat = chat,
+            Responses = response.Messages,
+            ResultValue = resultValue,
+            Usage = response.Usage,
+        };
     }
 
-    protected virtual async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> CallStreamingAgent(
+    protected virtual async Task<ModelCallResult> CallStreamingAgent(
         AIAgent agent,
         List<ChatMessage> chat,
         ChatOptions? chatOptions,
@@ -127,10 +133,16 @@ public abstract class BaseModelCaller : IModelCaller
 
         var response = updates.ToAgentResponse();
         var resultValue = ResponseToOutputValue(jsonOutput, response);
-        return (chat, response.Messages, resultValue);
+        return new ModelCallResult()
+        {
+            Chat = chat,
+            Responses = response.Messages,
+            ResultValue = resultValue,
+            Usage = response.Usage,
+        };
     }
 
-    protected virtual Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> CallConfiguredAgent(
+    protected virtual Task<ModelCallResult> CallConfiguredAgent(
         AIAgent agent,
         List<ChatMessage> chat,
         ChatOptions? chatOptions,

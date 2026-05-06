@@ -17,7 +17,7 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("SharpOMatic")
-                .HasAnnotation("ProductVersion", "10.0.0");
+                .HasAnnotation("ProductVersion", "10.0.7");
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Asset", b =>
                 {
@@ -581,6 +581,113 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.HasIndex("TraceId", "Created");
 
                     b.ToTable("Informations", "SharpOMatic");
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.ModelCallMetric", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ConnectorConfigId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ConnectorConfigName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ConnectorId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ConnectorName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("Duration")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ErrorType")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("InputCost")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("InputTokens")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ModelConfigId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModelConfigName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ModelId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModelName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("NodeEntityId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NodeTitle")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("OutputCost")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("OutputTokens")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProviderModelName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal?>("TotalCost")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("TotalTokens")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("WorkflowId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WorkflowName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Created");
+
+                    b.HasIndex("ConnectorId", "Created");
+
+                    b.HasIndex("ConversationId", "Created");
+
+                    b.HasIndex("ModelId", "Created");
+
+                    b.HasIndex("Succeeded", "Created");
+
+                    b.HasIndex("WorkflowId", "Created");
+
+                    b.ToTable("ModelCallMetrics", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.ModelConfigMetadata", b =>
