@@ -18,13 +18,6 @@
 
 - Add view button to Runs and Conversation history and causes it to be loaded as the current data for the trace viewer.
 
-### Model Calls
-
-- Separate table to record each model call, time, tokens, error
-- Reference to owning workflow name, connector name, model name because...
-- Needs to be valid even when the connector/model has been deleted
-- Will be used for metrics/cost of model usage
-
 ### Upgrade
 
 - Move agent nuget to latest versions

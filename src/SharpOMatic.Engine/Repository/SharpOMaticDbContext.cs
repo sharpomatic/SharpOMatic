@@ -10,6 +10,7 @@ public class SharpOMaticDbContext : DbContext
     public DbSet<Information> Informations { get; set; }
     public DbSet<StreamEvent> StreamEvents { get; set; }
     public DbSet<ModelCallMetric> ModelCallMetrics { get; set; }
+    public DbSet<WorkflowRunMetric> WorkflowRunMetrics { get; set; }
     public DbSet<Asset> Assets { get; set; }
     public DbSet<AssetFolder> AssetFolders { get; set; }
     public DbSet<ConnectorConfigMetadata> ConnectorConfigMetadata { get; set; }
@@ -108,5 +109,6 @@ public class SharpOMaticDbContext : DbContext
         modelBuilder.Entity<ModelCallMetric>().Property(e => e.InputCost).HasPrecision(18, 8);
         modelBuilder.Entity<ModelCallMetric>().Property(e => e.OutputCost).HasPrecision(18, 8);
         modelBuilder.Entity<ModelCallMetric>().Property(e => e.TotalCost).HasPrecision(18, 8);
+        modelBuilder.Entity<WorkflowRunMetric>().Property(e => e.TotalModelCost).HasPrecision(18, 8);
     }
 }

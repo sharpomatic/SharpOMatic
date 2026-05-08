@@ -67,6 +67,8 @@ public interface IRepositoryService
     // ------------------------------------------------
     Task AppendModelCallMetric(ModelCallMetric metric);
     Task<ModelCallMetricsDashboard> GetModelCallMetricsDashboard(ModelCallMetricsDashboardRequest request);
+    Task AppendWorkflowRunMetric(WorkflowRunMetric metric);
+    Task<WorkflowRunMetricsDashboard> GetWorkflowRunMetricsDashboard(WorkflowRunMetricsDashboardRequest request);
 
     // ------------------------------------------------
     // ConnectorConfig Operations

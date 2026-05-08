@@ -23,7 +23,8 @@ public sealed record ModelCallMetricsDashboardRequest(
     string? ScopeKey,
     string? MasterSearch,
     int RecentSkip,
-    int RecentTake
+    int RecentTake,
+    bool AllTime = false
 );
 
 public sealed record ModelCallMetricsDashboard(

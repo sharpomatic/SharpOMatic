@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SharpOMatic.Engine.Repository;
@@ -11,9 +12,10 @@ using SharpOMatic.Engine.Repository;
 namespace SharpOMatic.Engine.SqlServer.Migrations
 {
     [DbContext(typeof(SharpOMaticDbContext))]
-    partial class SharpOMaticDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260508114150_WorkflowRunMetrics")]
+    partial class WorkflowRunMetrics
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

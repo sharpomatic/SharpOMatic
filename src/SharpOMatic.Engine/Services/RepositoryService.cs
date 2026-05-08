@@ -643,10 +643,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         var recentSkip = Math.Max(0, request.RecentSkip);
         var recentTake = request.RecentTake <= 0 ? 25 : Math.Min(request.RecentTake, 100);
 
-        var metricsInRange = await dbContext.ModelCallMetrics
-            .AsNoTracking()
-            .Where(metric => metric.Created >= start && metric.Created < end)
-            .ToListAsync();
+        var metricsQuery = dbContext.ModelCallMetrics.AsNoTracking();
+        if (!request.AllTime)
+            metricsQuery = metricsQuery.Where(metric => metric.Created >= start && metric.Created < end);
+
+        var metricsInRange = await metricsQuery.ToListAsync();
 
         var masterItems = request.Scope == ModelCallMetricScope.All
             ? []
@@ -657,16 +658,18 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             ? null
             : masterItems.FirstOrDefault(item => string.Equals(item.Key, request.ScopeKey, StringComparison.Ordinal))?.Name;
 
+        var dashboardRange = GetMetricDashboardRange(selectedMetrics, start, end, request.Bucket, request.AllTime);
+
         return new ModelCallMetricsDashboard(
-            start,
-            end,
+            dashboardRange.Start,
+            dashboardRange.End,
             request.Bucket,
             request.Scope,
             request.ScopeKey,
             scopeName,
             BuildMetricTotals(selectedMetrics),
             masterItems,
-            BuildMetricTimeBuckets(selectedMetrics, start, end, request.Bucket),
+            BuildMetricTimeBuckets(selectedMetrics, dashboardRange.Start, dashboardRange.End, request.Bucket),
             BuildMetricBreakdown(selectedMetrics, metric => BuildMetricIdKey(metric.WorkflowId), metric => metric.WorkflowName),
             BuildMetricBreakdown(selectedMetrics, metric => BuildMetricKey(metric.ConnectorId, metric.ConnectorName), GetMetricConnectorName),
             BuildMetricBreakdown(selectedMetrics, metric => BuildMetricKey(metric.ModelId, GetMetricModelName(metric)), GetMetricModelName),
@@ -686,6 +689,19 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 .Select(ToMetricCallSummary)
                 .ToList()
         );
+    }
+
+    private static (DateTime Start, DateTime End) GetMetricDashboardRange(List<ModelCallMetric> metrics, DateTime start, DateTime end, ModelCallMetricBucket bucket, bool allTime)
+    {
+        if (!allTime)
+            return (start, end);
+
+        if (metrics.Count == 0)
+            return (start, end);
+
+        var firstBucket = GetMetricBucketStart(metrics.Min(metric => metric.Created), bucket);
+        var lastBucket = GetMetricBucketStart(metrics.Max(metric => metric.Created), bucket);
+        return (firstBucket, AddMetricBucket(lastBucket, bucket));
     }
 
     private static List<ModelCallMetricMasterItem> BuildMetricMasterItems(List<ModelCallMetric> metrics, ModelCallMetricScope scope, string? search)
@@ -905,6 +921,351 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     private static string GetMetricModelName(ModelCallMetric metric) => GetMetricDisplayName(metric.ModelName ?? metric.ProviderModelName, "No model");
 
     private static string GetMetricDisplayName(string? value, string fallback) => string.IsNullOrWhiteSpace(value) ? fallback : value;
+
+    public async Task AppendWorkflowRunMetric(WorkflowRunMetric metric)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        if (await dbContext.WorkflowRunMetrics.AnyAsync(existing => existing.RunId == metric.RunId))
+            return;
+
+        var modelCallMetrics = await dbContext.ModelCallMetrics.AsNoTracking().Where(modelMetric => modelMetric.RunId == metric.RunId).ToListAsync();
+        metric.ModelCallCount = modelCallMetrics.Count;
+        metric.ModelCallFailureCount = modelCallMetrics.Count(modelMetric => !modelMetric.Succeeded);
+        metric.InputTokens = modelCallMetrics.Sum(modelMetric => modelMetric.InputTokens ?? 0);
+        metric.OutputTokens = modelCallMetrics.Sum(modelMetric => modelMetric.OutputTokens ?? 0);
+        metric.TotalTokens = modelCallMetrics.Sum(modelMetric => modelMetric.TotalTokens ?? 0);
+        metric.TotalModelCost = modelCallMetrics.Sum(modelMetric => modelMetric.TotalCost ?? 0);
+
+        dbContext.WorkflowRunMetrics.Add(metric);
+
+        try
+        {
+            await dbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            if (await dbContext.WorkflowRunMetrics.AsNoTracking().AnyAsync(existing => existing.RunId == metric.RunId))
+                return;
+
+            throw;
+        }
+    }
+
+    public async Task<WorkflowRunMetricsDashboard> GetWorkflowRunMetricsDashboard(WorkflowRunMetricsDashboardRequest request)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var start = EnsureUtc(request.Start);
+        var end = EnsureUtc(request.End);
+        if (end <= start)
+            end = start.AddDays(1);
+
+        var recentSkip = Math.Max(0, request.RecentSkip);
+        var recentTake = request.RecentTake <= 0 ? 25 : Math.Min(request.RecentTake, 100);
+
+        var metricsQuery = dbContext.WorkflowRunMetrics.AsNoTracking();
+        if (!request.AllTime)
+            metricsQuery = metricsQuery.Where(metric => metric.Created >= start && metric.Created < end);
+
+        var metricsInRange = await metricsQuery.ToListAsync();
+        var masterItems = request.Scope == WorkflowRunMetricScope.All
+            ? []
+            : BuildWorkflowRunMetricMasterItems(metricsInRange, request.Scope, request.MasterSearch);
+        var selectedMetrics = ApplyWorkflowRunMetricScope(metricsInRange, request.Scope, request.ScopeKey).ToList();
+        var scopeName = request.Scope == WorkflowRunMetricScope.All
+            ? null
+            : masterItems.FirstOrDefault(item => string.Equals(item.Key, request.ScopeKey, StringComparison.Ordinal))?.Name;
+        var dashboardRange = GetWorkflowRunMetricDashboardRange(selectedMetrics, start, end, request.Bucket, request.AllTime);
+
+        return new WorkflowRunMetricsDashboard(
+            dashboardRange.Start,
+            dashboardRange.End,
+            request.Bucket,
+            request.Scope,
+            request.ScopeKey,
+            scopeName,
+            BuildWorkflowRunMetricTotals(selectedMetrics),
+            masterItems,
+            BuildWorkflowRunMetricTimeBuckets(selectedMetrics, dashboardRange.Start, dashboardRange.End, request.Bucket),
+            BuildWorkflowRunMetricBreakdown(selectedMetrics),
+            BuildWorkflowRunMetricFailures(selectedMetrics),
+            selectedMetrics
+                .OrderByDescending(metric => metric.Created)
+                .Skip(recentSkip)
+                .Take(recentTake)
+                .Select(ToWorkflowRunMetricRunSummary)
+                .ToList(),
+            selectedMetrics.Count,
+            selectedMetrics
+                .OrderByDescending(metric => metric.Duration ?? -1)
+                .ThenByDescending(metric => metric.Created)
+                .Take(10)
+                .Select(ToWorkflowRunMetricRunSummary)
+                .ToList()
+        );
+    }
+
+    private static (DateTime Start, DateTime End) GetWorkflowRunMetricDashboardRange(List<WorkflowRunMetric> metrics, DateTime start, DateTime end, ModelCallMetricBucket bucket, bool allTime)
+    {
+        if (!allTime)
+            return (start, end);
+
+        if (metrics.Count == 0)
+            return (start, end);
+
+        var firstBucket = GetMetricBucketStart(metrics.Min(metric => metric.Created), bucket);
+        var lastBucket = GetMetricBucketStart(metrics.Max(metric => metric.Created), bucket);
+        return (firstBucket, AddMetricBucket(lastBucket, bucket));
+    }
+
+    private static List<WorkflowRunMetricMasterItem> BuildWorkflowRunMetricMasterItems(List<WorkflowRunMetric> metrics, WorkflowRunMetricScope scope, string? search)
+    {
+        var groups = scope switch
+        {
+            WorkflowRunMetricScope.Workflow => metrics.GroupBy(metric => new MetricGroupKey(BuildMetricIdKey(metric.WorkflowId), metric.WorkflowName)),
+            WorkflowRunMetricScope.Error => metrics
+                .Where(metric => metric.RunStatus == RunStatus.Failed)
+                .GroupBy(metric => new MetricGroupKey(BuildWorkflowRunErrorKey(metric), GetWorkflowRunErrorDisplayName(metric))),
+            _ => [],
+        };
+
+        var items = groups.Select(group =>
+            {
+                var groupMetrics = group.ToList();
+                var totals = BuildWorkflowRunMetricTotals(groupMetrics);
+                return new WorkflowRunMetricMasterItem(
+                    group.Key.Key,
+                    group.Key.Name,
+                    totals.TotalRuns,
+                    totals.SuccessfulRuns,
+                    totals.FailedRuns,
+                    totals.SuspendedRuns,
+                    totals.AverageDuration,
+                    totals.P95Duration,
+                    totals.FailureRate,
+                    totals.ModelCallCount,
+                    totals.ModelCallFailureCount,
+                    totals.TotalTokens,
+                    totals.TotalModelCost
+                );
+            })
+            .ToList();
+
+        if (!string.IsNullOrWhiteSpace(search))
+            items = items.Where(item => item.Name.Contains(search.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
+
+        return items
+            .OrderByDescending(item => item.FailedRuns)
+            .ThenByDescending(item => item.TotalRuns)
+            .ThenBy(item => item.Name)
+            .Take(100)
+            .ToList();
+    }
+
+    private static IEnumerable<WorkflowRunMetric> ApplyWorkflowRunMetricScope(List<WorkflowRunMetric> metrics, WorkflowRunMetricScope scope, string? scopeKey)
+    {
+        if (scope == WorkflowRunMetricScope.All)
+            return metrics;
+
+        if (string.IsNullOrWhiteSpace(scopeKey))
+            return [];
+
+        return scope switch
+        {
+            WorkflowRunMetricScope.Workflow => metrics.Where(metric => MetricIdKeyMatches(scopeKey, metric.WorkflowId)),
+            WorkflowRunMetricScope.Error => metrics.Where(metric => metric.RunStatus == RunStatus.Failed && string.Equals(BuildWorkflowRunErrorKey(metric), scopeKey, StringComparison.Ordinal)),
+            _ => metrics,
+        };
+    }
+
+    private static WorkflowRunMetricTotals BuildWorkflowRunMetricTotals(List<WorkflowRunMetric> metrics)
+    {
+        var totalRuns = metrics.Count;
+        var failedRuns = metrics.Count(metric => metric.RunStatus == RunStatus.Failed);
+        var successfulRuns = metrics.Count(metric => metric.RunStatus == RunStatus.Success);
+        var suspendedRuns = metrics.Count(metric => metric.RunStatus == RunStatus.Suspended);
+        return new WorkflowRunMetricTotals(
+            totalRuns,
+            successfulRuns,
+            failedRuns,
+            suspendedRuns,
+            AverageWorkflowRunDuration(metrics),
+            PercentileWorkflowRunDuration(metrics, 0.95),
+            totalRuns == 0 ? 0 : failedRuns / (double)totalRuns,
+            metrics.Sum(metric => metric.ModelCallCount),
+            metrics.Sum(metric => metric.ModelCallFailureCount),
+            metrics.Sum(metric => metric.InputTokens),
+            metrics.Sum(metric => metric.OutputTokens),
+            metrics.Sum(metric => metric.TotalTokens),
+            metrics.Sum(metric => metric.TotalModelCost)
+        );
+    }
+
+    private static List<WorkflowRunMetricTimeBucket> BuildWorkflowRunMetricTimeBuckets(List<WorkflowRunMetric> metrics, DateTime start, DateTime end, ModelCallMetricBucket bucket)
+    {
+        var groups = metrics
+            .GroupBy(metric => GetMetricBucketStart(metric.Created, bucket))
+            .ToDictionary(group => group.Key, group => group.ToList());
+
+        var results = new List<WorkflowRunMetricTimeBucket>();
+        for (var bucketStart = GetMetricBucketStart(start, bucket); bucketStart < end; bucketStart = AddMetricBucket(bucketStart, bucket))
+        {
+            groups.TryGetValue(bucketStart, out var bucketMetrics);
+            bucketMetrics ??= [];
+            var totals = BuildWorkflowRunMetricTotals(bucketMetrics);
+            results.Add(
+                new WorkflowRunMetricTimeBucket(
+                    bucketStart,
+                    totals.TotalRuns,
+                    totals.SuccessfulRuns,
+                    totals.FailedRuns,
+                    totals.SuspendedRuns,
+                    totals.AverageDuration,
+                    totals.P95Duration,
+                    totals.ModelCallCount,
+                    totals.ModelCallFailureCount,
+                    totals.InputTokens,
+                    totals.OutputTokens,
+                    totals.TotalTokens,
+                    totals.TotalModelCost
+                )
+            );
+        }
+
+        return results;
+    }
+
+    private static List<WorkflowRunMetricBreakdownItem> BuildWorkflowRunMetricBreakdown(List<WorkflowRunMetric> metrics)
+    {
+        return metrics
+            .GroupBy(metric => new MetricGroupKey(BuildMetricIdKey(metric.WorkflowId), metric.WorkflowName))
+            .Select(group =>
+            {
+                var groupMetrics = group.ToList();
+                var totals = BuildWorkflowRunMetricTotals(groupMetrics);
+                return new WorkflowRunMetricBreakdownItem(
+                    group.Key.Key,
+                    group.Key.Name,
+                    totals.TotalRuns,
+                    totals.SuccessfulRuns,
+                    totals.FailedRuns,
+                    totals.SuspendedRuns,
+                    totals.AverageDuration,
+                    totals.P95Duration,
+                    totals.FailureRate,
+                    totals.ModelCallCount,
+                    totals.ModelCallFailureCount,
+                    totals.TotalTokens,
+                    totals.TotalModelCost
+                );
+            })
+            .OrderByDescending(item => item.TotalRuns)
+            .ThenByDescending(item => item.TotalModelCost)
+            .ThenBy(item => item.Name)
+            .Take(8)
+            .ToList();
+    }
+
+    private static List<WorkflowRunMetricFailureGroup> BuildWorkflowRunMetricFailures(List<WorkflowRunMetric> metrics)
+    {
+        return metrics
+            .Where(metric => metric.RunStatus == RunStatus.Failed)
+            .GroupBy(metric => new
+            {
+                ErrorType = string.IsNullOrWhiteSpace(metric.ErrorType) ? "Unknown" : metric.ErrorType,
+                ErrorMessage = string.IsNullOrWhiteSpace(metric.ErrorMessage) ? "Unknown failure" : metric.ErrorMessage,
+                metric.FailedNodeEntityId,
+                FailedNodeTitle = string.IsNullOrWhiteSpace(metric.FailedNodeTitle) ? "Unknown node" : metric.FailedNodeTitle,
+                metric.FailedNodeType,
+            })
+            .Select(group => new WorkflowRunMetricFailureGroup(
+                group.Key.ErrorType,
+                group.Key.ErrorMessage,
+                group.Key.FailedNodeEntityId,
+                group.Key.FailedNodeTitle,
+                group.Key.FailedNodeType,
+                group.Count(),
+                group.Min(metric => metric.Created),
+                group.Max(metric => metric.Created),
+                group.Select(metric => metric.WorkflowId).Distinct().Count()
+            ))
+            .OrderByDescending(group => group.Count)
+            .ThenByDescending(group => group.LastSeen)
+            .Take(10)
+            .ToList();
+    }
+
+    private static string GetWorkflowRunErrorDisplayName(WorkflowRunMetric metric)
+    {
+        var message = string.IsNullOrWhiteSpace(metric.ErrorMessage) ? "Unknown failure" : metric.ErrorMessage;
+        if (string.IsNullOrWhiteSpace(metric.FailedNodeTitle))
+            return message;
+
+        return $"{message} ({metric.FailedNodeTitle})";
+    }
+
+    private static string BuildWorkflowRunErrorKey(WorkflowRunMetric metric)
+    {
+        var parts = new[]
+        {
+            string.IsNullOrWhiteSpace(metric.ErrorType) ? "Unknown" : metric.ErrorType,
+            string.IsNullOrWhiteSpace(metric.ErrorMessage) ? "Unknown failure" : metric.ErrorMessage,
+            metric.FailedNodeEntityId?.ToString("D") ?? string.Empty,
+            string.IsNullOrWhiteSpace(metric.FailedNodeTitle) ? "Unknown node" : metric.FailedNodeTitle,
+            metric.FailedNodeType?.ToString() ?? string.Empty,
+        };
+
+        return $"error:{Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(parts)))}";
+    }
+
+    private static WorkflowRunMetricRunSummary ToWorkflowRunMetricRunSummary(WorkflowRunMetric metric)
+    {
+        return new WorkflowRunMetricRunSummary(
+            metric.Id,
+            metric.RunId,
+            metric.Created,
+            metric.Started,
+            metric.Finished,
+            metric.Duration,
+            metric.WorkflowId,
+            metric.WorkflowName,
+            metric.WorkflowVersion,
+            metric.Succeeded,
+            metric.RunStatus,
+            metric.ErrorType,
+            metric.ErrorMessage,
+            metric.FailedNodeEntityId,
+            metric.FailedNodeTitle,
+            metric.FailedNodeType,
+            metric.ConversationId,
+            metric.TurnNumber,
+            metric.IsConversationRun,
+            metric.ModelCallCount,
+            metric.ModelCallFailureCount,
+            metric.InputTokens,
+            metric.OutputTokens,
+            metric.TotalTokens,
+            metric.TotalModelCost
+        );
+    }
+
+    private static double? AverageWorkflowRunDuration(List<WorkflowRunMetric> metrics)
+    {
+        var durations = metrics.Where(metric => metric.Duration.HasValue).Select(metric => metric.Duration!.Value).ToList();
+        return durations.Count == 0 ? null : durations.Average();
+    }
+
+    private static long? PercentileWorkflowRunDuration(List<WorkflowRunMetric> metrics, double percentile)
+    {
+        var durations = metrics.Where(metric => metric.Duration.HasValue).Select(metric => metric.Duration!.Value).OrderBy(duration => duration).ToList();
+        if (durations.Count == 0)
+            return null;
+
+        var index = (int)Math.Ceiling(durations.Count * percentile) - 1;
+        index = Math.Clamp(index, 0, durations.Count - 1);
+        return durations[index];
+    }
 
     private static DateTime GetMetricBucketStart(DateTime value, ModelCallMetricBucket bucket)
     {

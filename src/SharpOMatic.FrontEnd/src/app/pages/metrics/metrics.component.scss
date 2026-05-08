@@ -39,8 +39,11 @@
 
 .metrics-master {
   display: flex;
-  flex: 0 0 290px;
+  flex: 0 0 360px;
   flex-direction: column;
+  width: 360px;
+  min-width: 360px;
+  max-width: 360px;
   min-height: 0;
   border-right: 1px solid var(--bs-border-color);
 }
@@ -72,31 +75,30 @@
 }
 
 .metrics-master-item {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
   border-right: 0;
   border-left: 0;
   border-radius: 0;
   text-align: left;
-
-  &.active .metrics-master-stats {
-    color: rgba(255, 255, 255, 0.85);
-  }
 }
 
 .metrics-master-name {
-  display: block;
+  min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.metrics-master-stats {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px 8px;
-  margin-top: 4px;
-  color: var(--bs-secondary-color);
-  font-size: 0.8rem;
+.metrics-master-rate {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .metrics-master-empty {
@@ -148,9 +150,13 @@
 
 .metrics-kpis {
   display: grid;
-  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.metrics-model-summary {
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
 }
 
 .metrics-kpi,
@@ -207,6 +213,10 @@
   margin-bottom: 12px;
 }
 
+.metrics-breakdowns-single {
+  grid-template-columns: 1fr;
+}
+
 .metrics-table-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -216,6 +226,10 @@
 
 .metrics-call-table {
   min-width: 980px;
+}
+
+.metrics-run-table {
+  min-width: 1120px;
 }
 
 .metrics-error-cell {
@@ -239,6 +253,7 @@
 
 @media (max-width: 1100px) {
   .metrics-kpis,
+  .metrics-model-summary,
   .metrics-charts,
   .metrics-breakdowns {
     grid-template-columns: repeat(2, minmax(180px, 1fr));
@@ -252,12 +267,16 @@
 
   .metrics-master {
     flex: 0 0 auto;
+    width: auto;
+    min-width: 0;
+    max-width: none;
     max-height: 260px;
     border-right: 0;
     border-bottom: 1px solid var(--bs-border-color);
   }
 
   .metrics-kpis,
+  .metrics-model-summary,
   .metrics-charts,
   .metrics-breakdowns {
     grid-template-columns: 1fr;

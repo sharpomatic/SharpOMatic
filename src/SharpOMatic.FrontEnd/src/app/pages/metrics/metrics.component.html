@@ -2,7 +2,27 @@
   <div
     class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary"
   >
-    <h2><i class="bi bi-bar-chart-line pe-3 icon-sm"></i>Metrics</h2>
+    <div class="d-flex align-items-center gap-3">
+      <h2><i class="bi bi-bar-chart-line pe-3 icon-sm"></i>Metrics</h2>
+      <div class="btn-group btn-group-sm" role="group" aria-label="Metric view">
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          [class.active]="metricsView === 'model-calls'"
+          (click)="onMetricsViewChange('model-calls')"
+        >
+          Model Calls
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          [class.active]="metricsView === 'workflow-runs'"
+          (click)="onMetricsViewChange('workflow-runs')"
+        >
+          Workflow Runs
+        </button>
+      </div>
+    </div>
     <div class="metrics-controls d-flex align-items-center gap-2">
       <select
         class="form-select form-select-sm"
@@ -13,6 +33,9 @@
         <option value="24h">Last 24 hours</option>
         <option value="7d">Last 7 days</option>
         <option value="30d">Last 30 days</option>
+        <option value="90d">Last 90 days</option>
+        <option value="1y">Last 1 year</option>
+        <option value="all">All time</option>
         <option value="custom">Custom</option>
       </select>
 
@@ -58,12 +81,21 @@
   <hr class="m-0" />
 
   <div class="metrics-body bg-body-tertiary">
-    <app-tab
-      [tabs]="tabs"
-      [activeTabId]="activeTabId"
-      [preventOverflow]="true"
-      (activeTabIdChange)="onTabChange($event)"
-    ></app-tab>
+    @if (metricsView === "model-calls") {
+      <app-tab
+        [tabs]="tabs"
+        [activeTabId]="activeTabId"
+        [preventOverflow]="true"
+        (activeTabIdChange)="onTabChange($event)"
+      ></app-tab>
+    } @else {
+      <app-tab
+        [tabs]="workflowTabs"
+        [activeTabId]="activeWorkflowTabId"
+        [preventOverflow]="true"
+        (activeTabIdChange)="onWorkflowTabChange($event)"
+      ></app-tab>
+    }
   </div>
 </div>
 
@@ -97,11 +129,8 @@
               (click)="selectMasterItem(item)"
             >
               <span class="metrics-master-name">{{ item.name }}</span>
-              <span class="metrics-master-stats">
-                <span>{{ formatNumber(item.totalCalls) }} calls</span>
-                <span>{{ formatCost(item.totalCost) }}</span>
-                <span>{{ formatPercent(item.failureRate) }} failures</span>
-                <span>P95 {{ formatDuration(item.p95Duration) }}</span>
+              <span class="metrics-master-rate" title="Failure rate">
+                {{ formatPercent(item.failureRate) }}
               </span>
             </button>
           } @empty {
@@ -354,6 +383,311 @@
   </div>
 </ng-template>
 
+<ng-template #workflowRunsTab>
+  <div class="metrics-tab">
+    @if (activeWorkflowScope !== WorkflowRunMetricScope.All) {
+      <aside class="metrics-master">
+        <div class="metrics-master-toolbar">
+          <div class="fw-semibold metrics-master-title">
+            {{ workflowMasterTitle() }}
+          </div>
+          <div class="input-group input-group-sm metrics-master-search">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input
+              type="search"
+              class="form-control"
+              placeholder="Search"
+              [(ngModel)]="masterSearch"
+              (input)="onMasterSearchChange()"
+            />
+          </div>
+        </div>
+
+        <div class="metrics-master-list list-group list-group-flush">
+          @for (item of workflowDashboard?.masterItems ?? []; track item.key) {
+            <button
+              type="button"
+              class="list-group-item list-group-item-action metrics-master-item"
+              [class.active]="item.key === selectedWorkflowKey()"
+              [attr.aria-current]="
+                item.key === selectedWorkflowKey() ? 'true' : null
+              "
+              (click)="selectWorkflowMasterItem(item)"
+            >
+              <span class="metrics-master-name">{{ item.name }}</span>
+              <span class="metrics-master-rate" title="Failure rate">
+                {{ formatPercent(item.failureRate) }}
+              </span>
+            </button>
+          } @empty {
+            <div class="metrics-master-empty text-body-secondary">
+              No matching {{ workflowMasterTitle().toLowerCase() }}.
+            </div>
+          }
+        </div>
+      </aside>
+    }
+
+    <main class="metrics-main">
+    @if (isLoading && !workflowDashboard) {
+      <div class="metrics-empty text-body-secondary">
+        <div class="spinner-border spinner-border-sm" role="status"></div>
+        <div>Loading workflow run metrics</div>
+      </div>
+    } @else if (!hasWorkflowMetricData()) {
+        <div class="metrics-empty text-body-secondary">
+          <div class="empty-icon"><i class="bi bi-bar-chart-line"></i></div>
+          @if (activeWorkflowScope === WorkflowRunMetricScope.All) {
+            <div class="empty-title">No workflow runs in this range</div>
+          } @else if (selectedWorkflowKey()) {
+            <div class="empty-title">No workflow runs for this selection</div>
+          } @else {
+            <div class="empty-title">
+              Select {{ workflowMasterTitle().slice(0, -1).toLowerCase() }}
+            </div>
+          }
+      </div>
+    } @else {
+      @if (workflowDashboard; as metrics) {
+        <div class="metrics-scroll">
+          @if (isLoading) {
+            <div class="metrics-loading-indicator text-body-secondary">
+              <span class="spinner-border spinner-border-sm" role="status"></span>
+              Refreshing
+            </div>
+          }
+
+          <section class="metrics-kpis">
+            <div class="metrics-kpi">
+              <span>Total Runs</span>
+              <strong>{{ formatNumber(metrics.totals.totalRuns) }}</strong>
+            </div>
+            <div class="metrics-kpi">
+              <span>Successes</span>
+              <strong>{{ formatNumber(metrics.totals.successfulRuns) }}</strong>
+            </div>
+            <div class="metrics-kpi">
+              <span>Failures</span>
+              <strong>{{ formatNumber(metrics.totals.failedRuns) }}</strong>
+            </div>
+            <div class="metrics-kpi">
+              <span>Suspended</span>
+              <strong>{{ formatNumber(metrics.totals.suspendedRuns) }}</strong>
+            </div>
+            <div class="metrics-kpi">
+              <span>Avg Duration</span>
+              <strong>{{
+                formatDuration(metrics.totals.averageDuration)
+              }}</strong>
+            </div>
+            <div class="metrics-kpi">
+              <span>P95 Duration</span>
+              <strong>{{ formatDuration(metrics.totals.p95Duration) }}</strong>
+            </div>
+            <div class="metrics-kpi">
+              <span>Failure Rate</span>
+              <strong>{{ formatPercent(metrics.totals.failureRate) }}</strong>
+            </div>
+          </section>
+
+          <section class="metrics-kpis metrics-model-summary">
+            <div class="metrics-kpi">
+              <span>Model Calls</span>
+              <strong>{{ formatNumber(metrics.totals.modelCallCount) }}</strong>
+            </div>
+            <div class="metrics-kpi">
+              <span>Model Failures</span>
+              <strong>{{
+                formatNumber(metrics.totals.modelCallFailureCount)
+              }}</strong>
+            </div>
+            <div class="metrics-kpi">
+              <span>Total Tokens</span>
+              <strong>{{ formatNumber(metrics.totals.totalTokens) }}</strong>
+            </div>
+            <div class="metrics-kpi">
+              <span>Model Cost</span>
+              <strong>{{ formatCost(metrics.totals.totalModelCost) }}</strong>
+            </div>
+          </section>
+
+          <section class="metrics-charts">
+            <div class="metrics-panel">
+              <div class="metrics-panel-title">Runs over time</div>
+              <div class="metrics-chart">
+                <canvas #workflowRunsCanvas></canvas>
+              </div>
+            </div>
+            <div class="metrics-panel">
+              <div class="metrics-panel-title">Cost over time</div>
+              <div class="metrics-chart">
+                <canvas #workflowCostCanvas></canvas>
+              </div>
+            </div>
+            <div class="metrics-panel">
+              <div class="metrics-panel-title">Tokens over time</div>
+              <div class="metrics-chart">
+                <canvas #workflowTokensCanvas></canvas>
+              </div>
+            </div>
+            <div class="metrics-panel">
+              <div class="metrics-panel-title">Duration over time</div>
+              <div class="metrics-chart">
+                <canvas #workflowDurationCanvas></canvas>
+              </div>
+            </div>
+          </section>
+
+          <section class="metrics-breakdowns metrics-breakdowns-single">
+            <div class="metrics-panel">
+              <div class="metrics-panel-title">Top Workflows</div>
+              <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th class="text-end">Runs</th>
+                      <th class="text-end">Failures</th>
+                      <th class="text-end">Suspended</th>
+                      <th class="text-end">P95</th>
+                      <th class="text-end">Tokens</th>
+                      <th class="text-end">Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of metrics.workflowBreakdown; track item.key) {
+                      <tr>
+                        <td>{{ item.name }}</td>
+                        <td class="text-end">
+                          {{ formatNumber(item.totalRuns) }}
+                        </td>
+                        <td class="text-end">
+                          {{ formatNumber(item.failedRuns) }}
+                        </td>
+                        <td class="text-end">
+                          {{ formatNumber(item.suspendedRuns) }}
+                        </td>
+                        <td class="text-end">
+                          {{ formatDuration(item.p95Duration) }}
+                        </td>
+                        <td class="text-end">
+                          {{ formatNumber(item.totalTokens) }}
+                        </td>
+                        <td class="text-end">
+                          {{ formatCost(item.totalModelCost) }}
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="7" class="text-body-secondary">
+                          No workflow data.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section class="metrics-panel">
+            <div class="metrics-panel-title">Failures</div>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Message</th>
+                    <th>Type</th>
+                    <th>Node</th>
+                    <th class="text-end">Count</th>
+                    <th class="text-end">Workflows</th>
+                    <th>Last Seen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (
+                    failure of metrics.failures;
+                    track failure.errorType +
+                      failure.errorMessage +
+                      failure.failedNodeTitle
+                  ) {
+                    <tr>
+                      <td class="metrics-error-cell">
+                        {{ failure.errorMessage }}
+                      </td>
+                      <td class="metrics-error-cell">{{ failure.errorType }}</td>
+                      <td class="metrics-error-cell">
+                        {{ failure.failedNodeTitle }}
+                      </td>
+                      <td class="text-end">
+                        {{ formatNumber(failure.count) }}
+                      </td>
+                      <td class="text-end">
+                        {{ formatNumber(failure.workflowCount) }}
+                      </td>
+                      <td>{{ formatDateTime(failure.lastSeen) }}</td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="6" class="text-body-secondary">
+                        No failures in this range.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="metrics-table-grid">
+            <div class="metrics-panel">
+              <div class="d-flex justify-content-between align-items-center gap-2">
+                <div class="metrics-panel-title mb-0">Recent Runs</div>
+                <div class="btn-group btn-group-sm">
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary"
+                    [disabled]="recentPage <= 1"
+                    (click)="onRecentPageChange(recentPage - 1)"
+                    aria-label="Previous recent runs page"
+                  >
+                    <i class="bi bi-chevron-left"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary"
+                    [disabled]="recentPage >= workflowRecentPageCount()"
+                    (click)="onRecentPageChange(recentPage + 1)"
+                    aria-label="Next recent runs page"
+                  >
+                    <i class="bi bi-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="text-body-secondary small mb-2">
+                Page {{ recentPage }} of {{ workflowRecentPageCount() }}
+              </div>
+              <ng-container
+                [ngTemplateOutlet]="workflowRunsTable"
+                [ngTemplateOutletContext]="{ runs: metrics.recentRuns }"
+              ></ng-container>
+            </div>
+
+            <div class="metrics-panel">
+              <div class="metrics-panel-title">Slowest Runs</div>
+              <ng-container
+                [ngTemplateOutlet]="workflowRunsTable"
+                [ngTemplateOutletContext]="{ runs: metrics.slowestRuns }"
+              ></ng-container>
+            </div>
+          </section>
+        </div>
+      }
+    }
+    </main>
+  </div>
+</ng-template>
+
 <ng-template #callsTable let-calls="calls">
   <div class="table-responsive">
     <table
@@ -400,6 +734,62 @@
         } @empty {
           <tr>
             <td colspan="10" class="text-body-secondary">No calls found.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</ng-template>
+
+<ng-template #workflowRunsTable let-runs="runs">
+  <div class="table-responsive">
+    <table
+      class="table table-sm table-hover align-middle mb-0 metrics-run-table"
+    >
+      <thead>
+        <tr>
+          <th>Started</th>
+          <th>Workflow</th>
+          <th class="text-end">Duration</th>
+          <th>Status</th>
+          <th class="text-end">Model Calls</th>
+          <th class="text-end">Tokens</th>
+          <th class="text-end">Cost</th>
+          <th>Conversation</th>
+          <th>Error Node</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (run of runs; track run.id) {
+          <tr>
+            <td>{{ formatDateTime(run.started) }}</td>
+            <td>{{ run.workflowName }}</td>
+            <td class="text-end">{{ formatDuration(run.duration) }}</td>
+            <td>
+              <span
+                class="badge"
+                [class.text-bg-success]="run.runStatus === RunStatus.Success"
+                [class.text-bg-danger]="run.runStatus === RunStatus.Failed"
+                [class.text-bg-warning]="run.runStatus === RunStatus.Suspended"
+              >
+                {{ runStatusLabel(run.runStatus) }}
+              </span>
+            </td>
+            <td class="text-end">{{ formatNumber(run.modelCallCount) }}</td>
+            <td class="text-end">{{ formatNumber(run.totalTokens) }}</td>
+            <td class="text-end">{{ formatCost(run.totalModelCost) }}</td>
+            <td>
+              @if (run.isConversationRun) {
+                Turn {{ run.turnNumber ?? "-" }}
+              }
+            </td>
+            <td class="metrics-error-cell">{{ displayWorkflowRunNode(run) }}</td>
+            <td class="metrics-error-cell">{{ run.errorMessage ?? "" }}</td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="10" class="text-body-secondary">No runs found.</td>
           </tr>
         }
       </tbody>

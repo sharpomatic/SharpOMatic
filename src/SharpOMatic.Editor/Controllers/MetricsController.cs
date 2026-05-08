@@ -14,7 +14,8 @@ public class MetricsController : ControllerBase
         [FromQuery] string? scopeKey = null,
         [FromQuery] string? masterSearch = null,
         [FromQuery] int recentSkip = 0,
-        [FromQuery] int recentTake = 25
+        [FromQuery] int recentTake = 25,
+        [FromQuery] bool allTime = false
     )
     {
         var normalizedEnd = EnsureUtc(end ?? DateTime.UtcNow);
@@ -29,10 +30,44 @@ public class MetricsController : ControllerBase
             string.IsNullOrWhiteSpace(scopeKey) ? null : scopeKey.Trim(),
             string.IsNullOrWhiteSpace(masterSearch) ? null : masterSearch.Trim(),
             recentSkip,
-            recentTake
+            recentTake,
+            allTime
         );
 
         return repositoryService.GetModelCallMetricsDashboard(request);
+    }
+
+    [HttpGet("workflow-runs")]
+    public Task<WorkflowRunMetricsDashboard> GetWorkflowRunMetrics(
+        IRepositoryService repositoryService,
+        [FromQuery] DateTime? start = null,
+        [FromQuery] DateTime? end = null,
+        [FromQuery] ModelCallMetricBucket? bucket = null,
+        [FromQuery] WorkflowRunMetricScope scope = WorkflowRunMetricScope.All,
+        [FromQuery] string? scopeKey = null,
+        [FromQuery] string? masterSearch = null,
+        [FromQuery] int recentSkip = 0,
+        [FromQuery] int recentTake = 25,
+        [FromQuery] bool allTime = false
+    )
+    {
+        var normalizedEnd = EnsureUtc(end ?? DateTime.UtcNow);
+        var normalizedStart = EnsureUtc(start ?? normalizedEnd.AddDays(-7));
+        var normalizedBucket = bucket ?? GetDefaultBucket(normalizedStart, normalizedEnd);
+
+        var request = new WorkflowRunMetricsDashboardRequest(
+            normalizedStart,
+            normalizedEnd,
+            normalizedBucket,
+            scope,
+            string.IsNullOrWhiteSpace(scopeKey) ? null : scopeKey.Trim(),
+            string.IsNullOrWhiteSpace(masterSearch) ? null : masterSearch.Trim(),
+            recentSkip,
+            recentTake,
+            allTime
+        );
+
+        return repositoryService.GetWorkflowRunMetricsDashboard(request);
     }
 
     private static ModelCallMetricBucket GetDefaultBucket(DateTime start, DateTime end)

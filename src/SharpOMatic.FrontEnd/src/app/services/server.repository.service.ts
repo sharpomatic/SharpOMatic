@@ -86,6 +86,10 @@ import {
   ModelCallMetricScope,
   ModelCallMetricsDashboard,
 } from '../pages/metrics/interfaces/model-call-metrics-dashboard';
+import {
+  WorkflowRunMetricScope,
+  WorkflowRunMetricsDashboard,
+} from '../pages/metrics/interfaces/workflow-run-metrics-dashboard';
 
 @Injectable({
   providedIn: 'root',
@@ -435,23 +439,28 @@ export class ServerRepositoryService {
   }
 
   public getModelCallMetricsDashboard(
-    start: Date,
-    end: Date,
+    start: Date | null,
+    end: Date | null,
     bucket: ModelCallMetricBucket,
     scope: ModelCallMetricScope,
     scopeKey: string | null,
     masterSearch: string,
     recentSkip: number,
     recentTake: number,
+    allTime = false,
   ): Observable<ModelCallMetricsDashboard | null> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams()
-      .set('start', start.toISOString())
-      .set('end', end.toISOString())
       .set('bucket', ModelCallMetricBucket[bucket])
       .set('scope', ModelCallMetricScope[scope])
       .set('recentSkip', recentSkip)
-      .set('recentTake', recentTake);
+      .set('recentTake', recentTake)
+      .set('allTime', allTime);
+
+    if (!allTime && start && end) {
+      params = params.set('start', start.toISOString());
+      params = params.set('end', end.toISOString());
+    }
 
     if (scopeKey) {
       params = params.set('scopeKey', scopeKey);
@@ -468,6 +477,50 @@ export class ServerRepositoryService {
       .pipe(
         catchError((error) => {
           this.notifyError('Loading model call metrics', error);
+          return of(null);
+        }),
+      );
+  }
+
+  public getWorkflowRunMetricsDashboard(
+    start: Date | null,
+    end: Date | null,
+    bucket: ModelCallMetricBucket,
+    scope: WorkflowRunMetricScope,
+    scopeKey: string | null,
+    masterSearch: string,
+    recentSkip: number,
+    recentTake: number,
+    allTime = false,
+  ): Observable<WorkflowRunMetricsDashboard | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams()
+      .set('bucket', ModelCallMetricBucket[bucket])
+      .set('scope', WorkflowRunMetricScope[scope])
+      .set('recentSkip', recentSkip)
+      .set('recentTake', recentTake)
+      .set('allTime', allTime);
+
+    if (!allTime && start && end) {
+      params = params.set('start', start.toISOString());
+      params = params.set('end', end.toISOString());
+    }
+
+    if (scopeKey) {
+      params = params.set('scopeKey', scopeKey);
+    }
+
+    if (masterSearch.trim().length > 0) {
+      params = params.set('masterSearch', masterSearch.trim());
+    }
+
+    return this.http
+      .get<WorkflowRunMetricsDashboard>(`${apiUrl}/api/metrics/workflow-runs`, {
+        params,
+      })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading workflow run metrics', error);
           return of(null);
         }),
       );
