@@ -4,6 +4,8 @@
 
 ### Agent
 
+- Try using a gosub with suspend inside to see if it resumes
+
 - Investigate the compacting down to a message snapshot.
 
 - Make the input.chat become agent.chat because only generated on stateless agents
