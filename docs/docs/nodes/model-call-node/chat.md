@@ -106,7 +106,12 @@ The next 3 are replies from the model.
 ## Chat Bot
 
 For a non-conversation chat bot, send the full chat history on every run and use **Chat Input Path** to read it.
-With AG-UI non-conversation runs, SharpOMatic creates `input.chat` from the incoming AG-UI `messages` array for that run.
+With AG-UI non-conversation runs, SharpOMatic creates `agent.chat` from the incoming AG-UI `messages` array for that run.
+A common AG-UI setup is:
+
+- **User**: `{{$agent.latestUserMessage.content}}`
+- **Chat Input Path**: `agent.chat`
+- **Chat Output Path**: `agent.chat`
 
 For a conversation-enabled chat bot, let the workflow own `input.chat`.
 A common AG-UI setup is:

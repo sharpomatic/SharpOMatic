@@ -14,6 +14,7 @@ Use this sample when you want to understand the minimum setup for a model-backed
 
 - A **Start** node connected directly to a **ModelCall** node.
 - Using `{{$agent.latestUserMessage.content}}` as the model prompt.
+- Reading prior AG-UI messages from `agent.chat` through the model node's **Chat Input Path**.
 - Producing text output from a non-conversation workflow.
 
 ## How it works
@@ -21,6 +22,7 @@ Use this sample when you want to understand the minimum setup for a model-backed
 The workflow starts, passes the latest user message into the **ModelCall** node, and lets the configured model generate a text response.
 Because conversation mode is disabled, the workflow does not keep prior turns as state.
 Therefore, the client must send the entire message history on each call so the model call has that history.
+The AG-UI endpoint rebuilds that prior message history at `agent.chat` for the current run.
 
 ## Setup notes
 

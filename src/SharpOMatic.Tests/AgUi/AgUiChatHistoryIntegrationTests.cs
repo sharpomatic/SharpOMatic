@@ -487,7 +487,7 @@ public sealed class AgUiChatHistoryIntegrationTests
         var node = Assert.IsType<ModelCallNodeEntity>(definition.Nodes.Single(n => n.Title == "model"));
         node.ModelId = modelId;
         node.Prompt = prompt;
-        node.ChatInputPath = "input.chat";
+        node.ChatInputPath = isConversationEnabled ? "input.chat" : "agent.chat";
         node.ChatOutputPath = isConversationEnabled ? "input.chat" : string.Empty;
         node.TextOutputPath = "output.text";
         return definition;

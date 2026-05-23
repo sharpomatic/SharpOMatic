@@ -1816,7 +1816,7 @@ public sealed class AgUiControllerUnitTests
     }
 
     [Fact]
-    public async Task AgUi_controller_starts_normal_workflow_run_for_non_conversation_workflows_and_populates_input_chat()
+    public async Task AgUi_controller_starts_normal_workflow_run_for_non_conversation_workflows_and_populates_agent_chat()
     {
         var engineRunId = Guid.NewGuid();
         var workflowId = Guid.NewGuid();
@@ -1920,24 +1920,24 @@ public sealed class AgUiControllerUnitTests
         Assert.Equal("assistant", capturedContext.Get<string>("agent._hidden.state.mode"));
         Assert.Equal("ctx-1", capturedContext.Get<string>("agent.context[0].id"));
 
-        var inputChat = capturedContext.Get<ContextList>("input.chat");
-        Assert.Equal(5, inputChat.Count);
+        var agentChat = capturedContext.Get<ContextList>("agent.chat");
+        Assert.Equal(5, agentChat.Count);
 
-        var systemMessage = Assert.IsType<ChatMessage>(inputChat[0]);
+        var systemMessage = Assert.IsType<ChatMessage>(agentChat[0]);
         Assert.Equal(ChatRole.System, systemMessage.Role);
         Assert.Equal("system-1", systemMessage.MessageId);
         Assert.Equal("System prompt", Assert.IsType<TextContent>(systemMessage.Contents.Single()).Text);
 
-        var developerMessage = Assert.IsType<ChatMessage>(inputChat[1]);
+        var developerMessage = Assert.IsType<ChatMessage>(agentChat[1]);
         Assert.Equal(ChatRole.System, developerMessage.Role);
         Assert.Equal("planner", developerMessage.AuthorName);
         Assert.Equal("Developer prompt", Assert.IsType<TextContent>(developerMessage.Contents.Single()).Text);
 
-        var userMessage = Assert.IsType<ChatMessage>(inputChat[2]);
+        var userMessage = Assert.IsType<ChatMessage>(agentChat[2]);
         Assert.Equal(ChatRole.User, userMessage.Role);
         Assert.Equal("Hello", Assert.IsType<TextContent>(userMessage.Contents.Single()).Text);
 
-        var assistantMessage = Assert.IsType<ChatMessage>(inputChat[3]);
+        var assistantMessage = Assert.IsType<ChatMessage>(agentChat[3]);
         Assert.Equal(ChatRole.Assistant, assistantMessage.Role);
         Assert.Equal(2, assistantMessage.Contents.Count);
         Assert.Equal("Calling tool", Assert.IsType<TextContent>(assistantMessage.Contents[0]).Text);
@@ -1948,7 +1948,7 @@ public sealed class AgUiControllerUnitTests
         Assert.NotNull(functionCall.Arguments);
         Assert.Equal("Sydney", functionCall.Arguments["city"]?.ToString());
 
-        var toolMessage = Assert.IsType<ChatMessage>(inputChat[4]);
+        var toolMessage = Assert.IsType<ChatMessage>(agentChat[4]);
         Assert.Equal(ChatRole.Tool, toolMessage.Role);
         var functionResult = Assert.IsType<FunctionResultContent>(toolMessage.Contents.Single());
         Assert.Equal("call-1", functionResult.CallId);
@@ -1956,7 +1956,7 @@ public sealed class AgUiControllerUnitTests
     }
 
     [Fact]
-    public async Task AgUi_controller_keeps_latest_user_message_out_of_input_chat_for_non_conversation_workflows()
+    public async Task AgUi_controller_keeps_latest_user_message_out_of_agent_chat_for_non_conversation_workflows()
     {
         var engineRunId = Guid.NewGuid();
         var workflowId = Guid.NewGuid();
@@ -2006,7 +2006,7 @@ public sealed class AgUiControllerUnitTests
 
         Assert.NotNull(capturedContext);
         Assert.Equal("Current prompt", capturedContext!.Get<string>("agent.latestUserMessage.content"));
-        Assert.Empty(capturedContext.Get<ContextList>("input.chat"));
+        Assert.Empty(capturedContext.Get<ContextList>("agent.chat"));
     }
 
     [Fact]

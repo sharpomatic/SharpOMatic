@@ -159,7 +159,7 @@ Use these settings for a stateless workflow:
 - **Thread ID** can stay at the default value or be changed for client-side organization.
 
 In this mode, Sharpy sends the full local message history on every request.
-SharpOMatic rebuilds `input.chat` from those incoming AG-UI messages for the current run.
+SharpOMatic rebuilds `agent.chat` from those incoming AG-UI messages for the current run.
 The workflow should normally use `{{$agent.latestUserMessage.content}}` as the current prompt.
 
 This is the right setting for samples such as **AG-UI: Stateless simple chatbot**.

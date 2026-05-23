@@ -9,7 +9,7 @@ public sealed class AgUiController(
     IEnumerable<IAgUiNotification>? agUiNotifications = null
 ) : ControllerBase
 {
-    private const string ChatContextPath = "input.chat";
+    private const string ChatContextPath = "agent.chat";
     private const string StateSyncContentPath = "agent._hidden.state";
 
     [HttpPost]

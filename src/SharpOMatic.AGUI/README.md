@@ -178,7 +178,7 @@ SharpOMatic resolves the target workflow first:
 For non-conversation workflows:
 
 - the client must send the full AG-UI message history on every call
-- SharpOMatic rebuilds `input.chat` from that history for the current run, except for the latest user text message exposed as `agent.latestUserMessage`
+- SharpOMatic rebuilds `agent.chat` from that history for the current run, except for the latest user text message exposed as `agent.latestUserMessage`
 - `threadId` remains protocol metadata only
 
 For conversation-enabled workflows:
@@ -195,6 +195,7 @@ The controller maps selected request data into workflow context under `agent`:
 - `agent.latestUserMessage`: the final item in `messages`, but only when that item is a user text message
 - `agent.latestToolResult`: the final item in `messages`, but only when that item is a tool result message. Its `content` stays as the original string, and if that string is non-empty JSON then SharpOMatic also stores the parsed payload in `agent.latestToolResult.value`.
 - `agent.messages`: for non-conversation workflows, the full incoming AG-UI `messages` array; for conversation-enabled workflows, only the latest incoming message
+- `agent.chat`: for non-conversation workflows, provider-neutral `ChatMessage` history rebuilt from the incoming `messages` array for the current run
 - `agent.state`: the incoming AG-UI `state` value
 - `agent.context`: the incoming AG-UI `context` value
 - `agent._hidden.state`: a hidden deep copy of the incoming AG-UI `state`, used as the baseline for `AddStateSyncAsync()` and the `State Sync` node
@@ -203,13 +204,13 @@ These values are passed through as structured JSON-compatible data, not as a sin
 On each AG-UI start or resume, SharpOMatic updates the `agent` object.
 If the workflow context already contains `agent`, the incoming AG-UI `agent` object replaces it entirely.
 
-For non-conversation workflows, the controller converts supported AG-UI messages into provider-neutral `ChatMessage` entries at `input.chat` for the current run.
+For non-conversation workflows, the controller converts supported AG-UI messages into provider-neutral `ChatMessage` entries at `agent.chat` for the current run.
 For conversation workflows, `input.chat` is canonical model history owned by workflow nodes.
 Use it as the recommended source for `ModelCall.ChatInputPath`, and set `ModelCall.ChatOutputPath` to `input.chat` when model responses should be replayed across turns.
 
-The components that can create or change `input.chat` are:
+The components that can create or change chat history are:
 
-- the AG-UI controller, only for non-conversation workflows, from the incoming `messages` array
+- the AG-UI controller, only for non-conversation workflows, from the incoming `messages` array into `agent.chat`
 - the **Model Call** node, when **Chat Output Path** is set, usually to `input.chat`
 - the **Frontend Tool Call** node, only when **Chat Persistence** is not `None`
 - the **Backend Tool Call** node, only when **Chat Persistence** is not `None`
@@ -218,7 +219,7 @@ The AG-UI controller does not append incoming user text or frontend tool results
 Incoming user text is stored as silent stream history for conversation turns, but it is not a `ChatMessage`.
 Frontend tool results are persisted by the **Frontend Tool Call** node according to its chat persistence setting, which defaults to `None` for new frontend tool-call nodes.
 
-Supported `input.chat` conversion in this version:
+Supported `agent.chat` conversion in this version:
 
 - `system` -> `ChatRole.System`
 - `developer` -> `ChatRole.System`

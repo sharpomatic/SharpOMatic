@@ -29,8 +29,29 @@ export class SamplesService {
 
   private loadSampleNames(): void {
     this.serverRepository.getSampleWorkflowNames().subscribe((names) => {
-      const sorted = [...names].sort((a, b) => a.localeCompare(b));
+      const sorted = [...names].sort(compareSampleNames);
       this._sampleNames.set(sorted);
     });
   }
+}
+
+function compareSampleNames(a: string, b: string): number {
+  const groupComparison = sampleGroup(a) - sampleGroup(b);
+  if (groupComparison !== 0) {
+    return groupComparison;
+  }
+
+  return a.localeCompare(b);
+}
+
+function sampleGroup(name: string): number {
+  if (name.startsWith('Basic')) {
+    return 0;
+  }
+
+  if (name.startsWith('AG-UI')) {
+    return 1;
+  }
+
+  return 2;
 }
