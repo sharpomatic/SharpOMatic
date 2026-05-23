@@ -1,11 +1,11 @@
 ---
-title: Stream
+title: AG-UI
 sidebar_position: 5
 ---
 
-The **Stream** tab controls which live stream events the **ModelCall** node emits while it is running.
+The **AG-UI** tab controls which live stream events the **ModelCall** node emits while it is running.
 When the node has a resolved prompt, it first emits that prompt as a user text message immediately before calling the provider.
-These prompt events are stored in the workflow run **Stream** tab, but are marked silent so they are not sent as live AG-UI events.
+These prompt events are stored in the workflow run **AG-UI** tab, but are marked silent so they are not sent as live AG-UI events.
 
 The settings on this tab do not change the model request, final context output, chat output, tool execution, or trace information.
 They only suppress the selected categories of model-call stream events.
@@ -69,7 +69,7 @@ Assistant text information is still recorded for the trace viewer.
 Some providers return a completed response instead of incremental streaming updates.
 SharpOMatic can replay those returned messages into stream events so the run stream still shows assistant text, reasoning, and tool activity.
 
-The Stream tab settings apply to those replayed events as well.
+The AG-UI tab settings apply to those replayed events as well.
 For example, if **Disable Assistant Text Events** is enabled, replayed assistant text events are not emitted even when the final text output is still written to context.
 
 ## Scope

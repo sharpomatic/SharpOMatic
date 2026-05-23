@@ -88,7 +88,7 @@ export class ConversationViewerDialogComponent implements OnInit {
       { id: 'output', title: 'Output', content: this.outputTab },
       { id: 'assets', title: 'Assets', content: this.assetsTab },
       { id: 'trace', title: 'Trace', content: this.traceTab },
-      { id: 'stream', title: 'Stream', content: this.streamTab },
+      { id: 'stream', title: 'AG-UI', content: this.streamTab },
     ];
 
     this.conversationProperties = this.buildConversationProperties();

@@ -171,9 +171,9 @@
         } @else if (turns.length === 0) {
           <div class="empty-state text-body-secondary">
             <div class="empty-icon"><i class="bi bi-chat-left-text"></i></div>
-            <div class="empty-title">No conversation stream</div>
+            <div class="empty-title">No conversation AG-UI events</div>
             <div class="empty-subtitle">
-              This conversation has not emitted any stream events yet.
+              This conversation has not emitted any AG-UI events yet.
             </div>
           </div>
         } @else {
@@ -187,7 +187,7 @@
                 </div>
                 @if (turn.streamEvents.length === 0) {
                   <div class="small text-body-secondary section-empty-state">
-                    No stream events for this turn.
+                    No AG-UI events for this turn.
                   </div>
                 } @else {
                   <app-stream-viewer

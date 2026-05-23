@@ -403,7 +403,7 @@ The SSE request ends when the underlying workflow run finishes, suspends, or fai
 
 AG-UI clients already know about the incoming user message they just submitted.
 When a conversation turn includes `agent.latestUserMessage`, SharpOMatic exposes that value in workflow context but does not automatically store it as user text stream events.
-Model Call nodes store their resolved prompt as silent user text stream events immediately before the provider call unless **Disable User Event** is enabled on the node's **Stream** tab.
+Model Call nodes store their resolved prompt as silent user text stream events immediately before the provider call unless **Disable User Event** is enabled on the node's **AG-UI** tab.
 If a workflow needs to store the incoming user text without a model call, add it explicitly from a **Code** node:
 
 ```csharp

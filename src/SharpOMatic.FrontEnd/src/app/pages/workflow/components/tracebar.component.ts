@@ -462,7 +462,7 @@ export class TracebarComponent implements OnInit, OnDestroy {
     tabs.push(
       { id: 'assets', title: 'Assets', content: this.assetsTab },
       { id: 'trace', title: 'Trace', content: this.traceTab },
-      { id: 'stream', title: 'Stream', content: this.streamTab },
+      { id: 'stream', title: 'AG-UI', content: this.streamTab },
     );
 
     this.tabs = tabs;

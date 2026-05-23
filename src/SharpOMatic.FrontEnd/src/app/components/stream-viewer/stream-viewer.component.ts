@@ -40,45 +40,45 @@ export class StreamViewerComponent {
   public getEventKindLabel(kind: StreamEventKind): string {
     switch (kind) {
       case StreamEventKind.TextStart:
-        return 'Text Start';
+        return 'TEXT_MESSAGE_START';
       case StreamEventKind.TextContent:
-        return 'Text Content';
+        return 'TEXT_MESSAGE_CONTENT';
       case StreamEventKind.TextEnd:
-        return 'Text End';
+        return 'TEXT_MESSAGE_END';
       case StreamEventKind.ReasoningStart:
-        return 'Reasoning Start';
+        return 'REASONING_START';
       case StreamEventKind.ReasoningMessageStart:
-        return 'Reasoning Msg Start';
+        return 'REASONING_MESSAGE_START';
       case StreamEventKind.ReasoningMessageContent:
-        return 'Reasoning Msg Content';
+        return 'REASONING_MESSAGE_CONTENT';
       case StreamEventKind.ReasoningMessageEnd:
-        return 'Reasoning Msg End';
+        return 'REASONING_MESSAGE_END';
       case StreamEventKind.ReasoningEnd:
-        return 'Reasoning End';
+        return 'REASONING_END';
       case StreamEventKind.ToolCallStart:
-        return 'Tool Call Start';
+        return 'TOOL_CALL_START';
       case StreamEventKind.ToolCallArgs:
-        return 'Tool Call Args';
+        return 'TOOL_CALL_ARGS';
       case StreamEventKind.ToolCallEnd:
-        return 'Tool Call End';
+        return 'TOOL_CALL_END';
       case StreamEventKind.ToolCallResult:
-        return 'Tool Call Result';
+        return 'TOOL_CALL_RESULT';
       case StreamEventKind.ActivitySnapshot:
-        return 'Activity Snapshot';
+        return 'ACTIVITY_SNAPSHOT';
       case StreamEventKind.ActivityDelta:
-        return 'Activity Delta';
+        return 'ACTIVITY_DELTA';
       case StreamEventKind.StepStart:
-        return 'Step Start';
+        return 'STEP_STARTED';
       case StreamEventKind.StepEnd:
-        return 'Step End';
+        return 'STEP_FINISHED';
       case StreamEventKind.StateSnapshot:
-        return 'State Snapshot';
+        return 'STATE_SNAPSHOT';
       case StreamEventKind.StateDelta:
-        return 'State Delta';
+        return 'STATE_DELTA';
       case StreamEventKind.Custom:
-        return 'Custom';
+        return 'CUSTOM';
       default:
-        return 'Unknown';
+        return 'UNKNOWN';
     }
   }
 

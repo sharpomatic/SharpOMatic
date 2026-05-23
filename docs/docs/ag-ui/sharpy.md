@@ -210,7 +210,7 @@ When testing a workflow over AG-UI, check both Sharpy and the SharpOMatic editor
 - Sharpy should show streamed assistant text as the workflow emits output.
 - The editor should show a new run for non-conversation workflows.
 - The editor should show conversation history for conversation-enabled workflows.
-- The workflow **Stream** tab should contain the events that were translated into AG-UI output.
+- The workflow **AG-UI** tab should contain the events that were translated into AG-UI output.
 - Frontend tool-call samples should pause in the workflow and resume after the browser returns the tool result.
 - Changing **Thread ID** should start a separate conversation for conversation-enabled workflows.
 
