@@ -300,10 +300,16 @@
                       track failure.errorType + failure.errorMessage
                     ) {
                       <tr>
-                        <td class="metrics-error-cell">
+                        <td
+                          class="metrics-error-cell"
+                          [attr.title]="failure.errorMessage || null"
+                        >
                           {{ failure.errorMessage }}
                         </td>
-                        <td class="metrics-error-cell">
+                        <td
+                          class="metrics-error-cell"
+                          [attr.title]="failure.errorType || null"
+                        >
                           {{ failure.errorType }}
                         </td>
                         <td class="text-end">
@@ -612,11 +618,22 @@
                       failure.failedNodeTitle
                   ) {
                     <tr>
-                      <td class="metrics-error-cell">
+                      <td
+                        class="metrics-error-cell"
+                        [attr.title]="failure.errorMessage || null"
+                      >
                         {{ failure.errorMessage }}
                       </td>
-                      <td class="metrics-error-cell">{{ failure.errorType }}</td>
-                      <td class="metrics-error-cell">
+                      <td
+                        class="metrics-error-cell"
+                        [attr.title]="failure.errorType || null"
+                      >
+                        {{ failure.errorType }}
+                      </td>
+                      <td
+                        class="metrics-error-cell"
+                        [attr.title]="failure.failedNodeTitle || null"
+                      >
                         {{ failure.failedNodeTitle }}
                       </td>
                       <td class="text-end">
@@ -729,7 +746,12 @@
                 {{ call.succeeded ? "Success" : "Failure" }}
               </span>
             </td>
-            <td class="metrics-error-cell">{{ call.errorMessage ?? "" }}</td>
+            <td
+              class="metrics-error-cell"
+              [attr.title]="call.errorMessage || null"
+            >
+              {{ call.errorMessage ?? "" }}
+            </td>
           </tr>
         } @empty {
           <tr>
@@ -784,8 +806,18 @@
                 Turn {{ run.turnNumber ?? "-" }}
               }
             </td>
-            <td class="metrics-error-cell">{{ displayWorkflowRunNode(run) }}</td>
-            <td class="metrics-error-cell">{{ run.errorMessage ?? "" }}</td>
+            <td
+              class="metrics-error-cell"
+              [attr.title]="displayWorkflowRunNode(run) || null"
+            >
+              {{ displayWorkflowRunNode(run) }}
+            </td>
+            <td
+              class="metrics-error-cell"
+              [attr.title]="run.errorMessage || null"
+            >
+              {{ run.errorMessage ?? "" }}
+            </td>
           </tr>
         } @empty {
           <tr>
