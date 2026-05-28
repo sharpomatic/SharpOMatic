@@ -46,7 +46,6 @@ import {
 export function nodeFromSnapshot(
   snapshot: NodeSnapshot,
 ): NodeEntity<NodeSnapshot> {
-  debugger;
   switch (snapshot.nodeType) {
     case NodeType.Start:
       return StartNodeEntity.fromSnapshot(snapshot as StartNodeSnapshot);
