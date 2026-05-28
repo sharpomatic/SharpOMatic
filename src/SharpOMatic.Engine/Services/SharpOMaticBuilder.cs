@@ -65,7 +65,7 @@ public class SharpOMaticBuilder
     )
     {
         return AddRepository(
-            optionsAction,
+            (_, options) => optionsAction(options),
             dbOptionsAction
         );
     }

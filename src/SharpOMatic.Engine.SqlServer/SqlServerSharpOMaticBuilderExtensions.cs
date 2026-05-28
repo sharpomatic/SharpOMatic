@@ -22,6 +22,7 @@ public static class SqlServerSharpOMaticBuilderExtensions
                     sqlServerOptions =>
                     {
                         sqlServerOptions.MigrationsAssembly(typeof(SqlServerSharpOMaticBuilderExtensions).Assembly.FullName);
+                        sqlServerOptions.MigrationsHistoryTable(SharpOMaticDbContext.MigrationHistoryTableName, SharpOMaticDbContext.DbSchema);
                         sqlServerOptionsAction?.Invoke(sqlServerOptions);
                     }
                 );

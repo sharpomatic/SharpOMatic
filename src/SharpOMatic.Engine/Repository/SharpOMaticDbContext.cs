@@ -2,6 +2,10 @@
 
 public class SharpOMaticDbContext : DbContext
 {
+    public const string DbSchema = "SharpOMatic";
+    public const string MigrationHistoryTableName = "__EFMigrationsHistory";
+
+
     public DbSet<Workflow> Workflows { get; set; }
     public DbSet<Conversation> Conversations { get; set; }
     public DbSet<ConversationCheckpoint> ConversationCheckpoints { get; set; }
@@ -41,7 +45,7 @@ public class SharpOMaticDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        modelBuilder.HasDefaultSchema("SharpOMatic");
+        modelBuilder.HasDefaultSchema(DbSchema);
 
         // Cascade delete: Deleting a Workflow deletes its Runs
         modelBuilder.Entity<Run>().HasOne<Workflow>().WithMany().HasForeignKey(r => r.WorkflowId).OnDelete(DeleteBehavior.Cascade);
