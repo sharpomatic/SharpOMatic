@@ -112,6 +112,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         await DeleteAssetStorageForRuns(runIds);
 
+        // Assets.ConversationId is NoAction; delete conversation-scoped assets (RunId=null) before the workflow cascade reaches Conversations
+        var conversationIds = await dbContext.Conversations.Where(c => c.WorkflowId == workflowId).Select(c => c.ConversationId).ToListAsync();
+        await DeleteAssetStorageForConversations(conversationIds);
+        await dbContext.Assets.Where(a => a.ConversationId != null && conversationIds.Contains(a.ConversationId) && a.RunId == null).ExecuteDeleteAsync();
+
         dbContext.Remove(workflow);
         await dbContext.SaveChangesAsync();
     }
@@ -341,6 +346,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             return;
 
         await DeleteAssetStorageForConversations(conversationsToDelete);
+
+        // Runs.ConversationId and Assets.ConversationId are NoAction; delete children before Conversations
+        await dbContext.Runs.Where(r => r.ConversationId != null && conversationsToDelete.Contains(r.ConversationId)).ExecuteDeleteAsync();
+        // Run delete above cascades Assets by RunId; now remove any remaining conversation-scoped assets (RunId = null)
+        await dbContext.Assets.Where(a => a.ConversationId != null && conversationsToDelete.Contains(a.ConversationId)).ExecuteDeleteAsync();
 
         await dbContext.Conversations.Where(c => conversationsToDelete.Contains(c.ConversationId)).ExecuteDeleteAsync();
     }

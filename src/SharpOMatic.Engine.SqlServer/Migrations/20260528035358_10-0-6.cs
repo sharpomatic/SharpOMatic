@@ -1,10 +1,12 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace SharpOMatic.Engine.SqlServer.Migrations
 {
     /// <inheritdoc />
-    public partial class _1002 : Migration
+    public partial class _1006 : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -65,7 +67,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     WorkflowId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    MaxParallel = table.Column<int>(type: "int", nullable: false)
+                    MaxParallel = table.Column<int>(type: "int", nullable: false),
+                    RowScoreMode = table.Column<int>(type: "int", nullable: false),
+                    RunScoreMode = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -88,6 +92,44 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Informations", x => x.InformationId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ModelCallMetrics",
+                schema: "SharpOMatic",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Created = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Duration = table.Column<long>(type: "bigint", nullable: true),
+                    Succeeded = table.Column<bool>(type: "bit", nullable: false),
+                    ErrorMessage = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ErrorType = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    WorkflowId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    WorkflowName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    RunId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ConversationId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    NodeEntityId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    NodeTitle = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ConnectorId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    ConnectorName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ConnectorConfigId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ConnectorConfigName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ModelId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    ModelName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ModelConfigId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ModelConfigName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ProviderModelName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    InputTokens = table.Column<long>(type: "bigint", nullable: true),
+                    OutputTokens = table.Column<long>(type: "bigint", nullable: true),
+                    TotalTokens = table.Column<long>(type: "bigint", nullable: true),
+                    InputCost = table.Column<decimal>(type: "decimal(18,8)", precision: 18, scale: 8, nullable: true),
+                    OutputCost = table.Column<decimal>(type: "decimal(18,8)", precision: 18, scale: 8, nullable: true),
+                    TotalCost = table.Column<decimal>(type: "decimal(18,8)", precision: 18, scale: 8, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ModelCallMetrics", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -141,6 +183,42 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "WorkflowRunMetrics",
+                schema: "SharpOMatic",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Created = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Started = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Finished = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Duration = table.Column<long>(type: "bigint", nullable: true),
+                    RunId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    WorkflowId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    WorkflowName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    WorkflowVersion = table.Column<int>(type: "int", nullable: false),
+                    Succeeded = table.Column<bool>(type: "bit", nullable: false),
+                    RunStatus = table.Column<int>(type: "int", nullable: false),
+                    ErrorType = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ErrorMessage = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    FailedNodeEntityId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    FailedNodeTitle = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    FailedNodeType = table.Column<int>(type: "int", nullable: true),
+                    ConversationId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    TurnNumber = table.Column<int>(type: "int", nullable: true),
+                    IsConversationRun = table.Column<bool>(type: "bit", nullable: false),
+                    ModelCallCount = table.Column<int>(type: "int", nullable: false),
+                    ModelCallFailureCount = table.Column<int>(type: "int", nullable: false),
+                    InputTokens = table.Column<long>(type: "bigint", nullable: false),
+                    OutputTokens = table.Column<long>(type: "bigint", nullable: false),
+                    TotalTokens = table.Column<long>(type: "bigint", nullable: false),
+                    TotalModelCost = table.Column<decimal>(type: "decimal(18,8)", precision: 18, scale: 8, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WorkflowRunMetrics", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Workflows",
                 schema: "SharpOMatic",
                 columns: table => new
@@ -150,7 +228,8 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     Named = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Nodes = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Connections = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Connections = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsConversationEnabled = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -192,7 +271,8 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     WorkflowId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     Order = table.Column<int>(type: "int", nullable: false),
                     Label = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    PassThreshold = table.Column<double>(type: "float", nullable: false)
+                    PassThreshold = table.Column<double>(type: "float", nullable: false),
+                    IncludeInScore = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -245,7 +325,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     TotalRows = table.Column<int>(type: "int", nullable: false),
                     CompletedRows = table.Column<int>(type: "int", nullable: false),
                     FailedRows = table.Column<int>(type: "int", nullable: false),
-                    AveragePassRate = table.Column<double>(type: "float", nullable: true)
+                    AveragePassRate = table.Column<double>(type: "float", nullable: true),
+                    RunScoreMode = table.Column<int>(type: "int", nullable: false),
+                    Score = table.Column<double>(type: "float", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -260,28 +342,24 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Runs",
+                name: "Conversations",
                 schema: "SharpOMatic",
                 columns: table => new
                 {
-                    RunId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ConversationId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
                     WorkflowId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
                     Created = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    RunStatus = table.Column<int>(type: "int", nullable: false),
-                    Started = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    Stopped = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    InputEntries = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    InputContext = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    OutputContext = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CustomData = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Message = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Error = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    Updated = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CurrentTurnNumber = table.Column<int>(type: "int", nullable: false),
+                    LastRunId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    LastError = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Runs", x => x.RunId);
+                    table.PrimaryKey("PK_Conversations", x => x.ConversationId);
                     table.ForeignKey(
-                        name: "FK_Runs_Workflows_WorkflowId",
+                        name: "FK_Conversations_Workflows_WorkflowId",
                         column: x => x.WorkflowId,
                         principalSchema: "SharpOMatic",
                         principalTable: "Workflows",
@@ -310,8 +388,7 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         column: x => x.EvalColumnId,
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalColumns",
-                        principalColumn: "EvalColumnId",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "EvalColumnId");
                     table.ForeignKey(
                         name: "FK_EvalData_EvalRows_EvalRowId",
                         column: x => x.EvalRowId,
@@ -347,8 +424,7 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         column: x => x.EvalGraderId,
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalGraders",
-                        principalColumn: "EvalGraderId",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "EvalGraderId");
                     table.ForeignKey(
                         name: "FK_EvalRunGraderSummaries_EvalRuns_EvalRunId",
                         column: x => x.EvalRunId,
@@ -370,6 +446,7 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     Started = table.Column<DateTime>(type: "datetime2", nullable: false),
                     Finished = table.Column<DateTime>(type: "datetime2", nullable: true),
                     Status = table.Column<int>(type: "int", nullable: false),
+                    Score = table.Column<double>(type: "float", nullable: true),
                     InputContext = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     OutputContext = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Error = table.Column<string>(type: "nvarchar(max)", nullable: true)
@@ -382,8 +459,7 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         column: x => x.EvalRowId,
                         principalSchema: "SharpOMatic",
                         principalTable: "EvalRows",
-                        principalColumn: "EvalRowId",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "EvalRowId");
                     table.ForeignKey(
                         name: "FK_EvalRunRows_EvalRuns_EvalRunId",
                         column: x => x.EvalRunId,
@@ -394,12 +470,114 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ConversationCheckpoints",
+                schema: "SharpOMatic",
+                columns: table => new
+                {
+                    ConversationId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    ResumeMode = table.Column<int>(type: "int", nullable: false),
+                    ResumeNodeId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    ContextJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ResumeStateJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    WorkflowSnapshotsJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    GosubStackJson = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CheckpointCreated = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    SourceRunId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ConversationCheckpoints", x => x.ConversationId);
+                    table.ForeignKey(
+                        name: "FK_ConversationCheckpoints_Conversations_ConversationId",
+                        column: x => x.ConversationId,
+                        principalSchema: "SharpOMatic",
+                        principalTable: "Conversations",
+                        principalColumn: "ConversationId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Runs",
+                schema: "SharpOMatic",
+                columns: table => new
+                {
+                    RunId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    WorkflowId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ConversationId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    TurnNumber = table.Column<int>(type: "int", nullable: true),
+                    Created = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    RunStatus = table.Column<int>(type: "int", nullable: false),
+                    NeedsEditorEvents = table.Column<bool>(type: "bit", nullable: false),
+                    Started = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Stopped = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    InputEntries = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    InputContext = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    OutputContext = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CustomData = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Message = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Error = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Runs", x => x.RunId);
+                    table.ForeignKey(
+                        name: "FK_Runs_Conversations_ConversationId",
+                        column: x => x.ConversationId,
+                        principalSchema: "SharpOMatic",
+                        principalTable: "Conversations",
+                        principalColumn: "ConversationId");
+                    table.ForeignKey(
+                        name: "FK_Runs_Workflows_WorkflowId",
+                        column: x => x.WorkflowId,
+                        principalSchema: "SharpOMatic",
+                        principalTable: "Workflows",
+                        principalColumn: "WorkflowId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "EvalRunRowGraders",
+                schema: "SharpOMatic",
+                columns: table => new
+                {
+                    EvalRunRowGraderId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    EvalRunRowId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    EvalGraderId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    EvalRunId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Started = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Finished = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    Score = table.Column<double>(type: "float", nullable: true),
+                    InputContext = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    OutputContext = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Error = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EvalRunRowGraders", x => x.EvalRunRowGraderId);
+                    table.ForeignKey(
+                        name: "FK_EvalRunRowGraders_EvalGraders_EvalGraderId",
+                        column: x => x.EvalGraderId,
+                        principalSchema: "SharpOMatic",
+                        principalTable: "EvalGraders",
+                        principalColumn: "EvalGraderId");
+                    table.ForeignKey(
+                        name: "FK_EvalRunRowGraders_EvalRunRows_EvalRunRowId",
+                        column: x => x.EvalRunRowId,
+                        principalSchema: "SharpOMatic",
+                        principalTable: "EvalRunRows",
+                        principalColumn: "EvalRunRowId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Assets",
                 schema: "SharpOMatic",
                 columns: table => new
                 {
                     AssetId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     RunId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    ConversationId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     FolderId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     Name = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Scope = table.Column<int>(type: "int", nullable: false),
@@ -419,7 +597,47 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         principalColumn: "FolderId",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
+                        name: "FK_Assets_Conversations_ConversationId",
+                        column: x => x.ConversationId,
+                        principalSchema: "SharpOMatic",
+                        principalTable: "Conversations",
+                        principalColumn: "ConversationId");
+                    table.ForeignKey(
                         name: "FK_Assets_Runs_RunId",
+                        column: x => x.RunId,
+                        principalSchema: "SharpOMatic",
+                        principalTable: "Runs",
+                        principalColumn: "RunId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "StreamEvents",
+                schema: "SharpOMatic",
+                columns: table => new
+                {
+                    StreamEventId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    RunId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    WorkflowId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ConversationId = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    SequenceNumber = table.Column<int>(type: "int", nullable: false),
+                    Created = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EventKind = table.Column<int>(type: "int", nullable: false),
+                    MessageId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    MessageRole = table.Column<int>(type: "int", nullable: true),
+                    ActivityType = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Replace = table.Column<bool>(type: "bit", nullable: true),
+                    TextDelta = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ToolCallId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ParentMessageId = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Metadata = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    HideFromReply = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StreamEvents", x => x.StreamEventId);
+                    table.ForeignKey(
+                        name: "FK_StreamEvents_Runs_RunId",
                         column: x => x.RunId,
                         principalSchema: "SharpOMatic",
                         principalTable: "Runs",
@@ -461,48 +679,18 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "EvalRunRowGraders",
-                schema: "SharpOMatic",
-                columns: table => new
-                {
-                    EvalRunRowGraderId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    EvalRunRowId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    EvalGraderId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    EvalRunId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Started = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Finished = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    Status = table.Column<int>(type: "int", nullable: false),
-                    Score = table.Column<double>(type: "float", nullable: true),
-                    InputContext = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    OutputContext = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Error = table.Column<string>(type: "nvarchar(max)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_EvalRunRowGraders", x => x.EvalRunRowGraderId);
-                    table.ForeignKey(
-                        name: "FK_EvalRunRowGraders_EvalGraders_EvalGraderId",
-                        column: x => x.EvalGraderId,
-                        principalSchema: "SharpOMatic",
-                        principalTable: "EvalGraders",
-                        principalColumn: "EvalGraderId",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_EvalRunRowGraders_EvalRunRows_EvalRunRowId",
-                        column: x => x.EvalRunRowId,
-                        principalSchema: "SharpOMatic",
-                        principalTable: "EvalRunRows",
-                        principalColumn: "EvalRunRowId",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
             migrationBuilder.CreateIndex(
                 name: "IX_AssetFolders_Name",
                 schema: "SharpOMatic",
                 table: "AssetFolders",
                 column: "Name",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Assets_ConversationId",
+                schema: "SharpOMatic",
+                table: "Assets",
+                column: "ConversationId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Assets_FolderId",
@@ -533,6 +721,12 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                 schema: "SharpOMatic",
                 table: "Assets",
                 columns: new[] { "Scope", "FolderId", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Conversations_WorkflowId",
+                schema: "SharpOMatic",
+                table: "Conversations",
+                column: "WorkflowId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_EvalColumns_EvalConfigId",
@@ -614,6 +808,48 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                 columns: new[] { "TraceId", "Created" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_ModelCallMetrics_ConnectorId_Created",
+                schema: "SharpOMatic",
+                table: "ModelCallMetrics",
+                columns: new[] { "ConnectorId", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModelCallMetrics_ConversationId_Created",
+                schema: "SharpOMatic",
+                table: "ModelCallMetrics",
+                columns: new[] { "ConversationId", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModelCallMetrics_Created",
+                schema: "SharpOMatic",
+                table: "ModelCallMetrics",
+                column: "Created");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModelCallMetrics_ModelId_Created",
+                schema: "SharpOMatic",
+                table: "ModelCallMetrics",
+                columns: new[] { "ModelId", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModelCallMetrics_Succeeded_Created",
+                schema: "SharpOMatic",
+                table: "ModelCallMetrics",
+                columns: new[] { "Succeeded", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModelCallMetrics_WorkflowId_Created",
+                schema: "SharpOMatic",
+                table: "ModelCallMetrics",
+                columns: new[] { "WorkflowId", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Runs_ConversationId",
+                schema: "SharpOMatic",
+                table: "Runs",
+                column: "ConversationId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Runs_WorkflowId_Created",
                 schema: "SharpOMatic",
                 table: "Runs",
@@ -626,10 +862,66 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                 columns: new[] { "WorkflowId", "RunStatus" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_StreamEvents_ConversationId_SequenceNumber",
+                schema: "SharpOMatic",
+                table: "StreamEvents",
+                columns: new[] { "ConversationId", "SequenceNumber" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StreamEvents_RunId_SequenceNumber",
+                schema: "SharpOMatic",
+                table: "StreamEvents",
+                columns: new[] { "RunId", "SequenceNumber" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StreamEvents_WorkflowId_Created",
+                schema: "SharpOMatic",
+                table: "StreamEvents",
+                columns: new[] { "WorkflowId", "Created" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Traces_RunId_Created",
                 schema: "SharpOMatic",
                 table: "Traces",
                 columns: new[] { "RunId", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkflowRunMetrics_ConversationId_Created",
+                schema: "SharpOMatic",
+                table: "WorkflowRunMetrics",
+                columns: new[] { "ConversationId", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkflowRunMetrics_Created",
+                schema: "SharpOMatic",
+                table: "WorkflowRunMetrics",
+                column: "Created");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkflowRunMetrics_RunId",
+                schema: "SharpOMatic",
+                table: "WorkflowRunMetrics",
+                column: "RunId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkflowRunMetrics_RunStatus_Created",
+                schema: "SharpOMatic",
+                table: "WorkflowRunMetrics",
+                columns: new[] { "RunStatus", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkflowRunMetrics_Succeeded_Created",
+                schema: "SharpOMatic",
+                table: "WorkflowRunMetrics",
+                columns: new[] { "Succeeded", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkflowRunMetrics_WorkflowId_Created",
+                schema: "SharpOMatic",
+                table: "WorkflowRunMetrics",
+                columns: new[] { "WorkflowId", "Created" });
         }
 
         /// <inheritdoc />
@@ -645,6 +937,10 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
             migrationBuilder.DropTable(
                 name: "ConnectorMetadata",
+                schema: "SharpOMatic");
+
+            migrationBuilder.DropTable(
+                name: "ConversationCheckpoints",
                 schema: "SharpOMatic");
 
             migrationBuilder.DropTable(
@@ -664,6 +960,10 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                 schema: "SharpOMatic");
 
             migrationBuilder.DropTable(
+                name: "ModelCallMetrics",
+                schema: "SharpOMatic");
+
+            migrationBuilder.DropTable(
                 name: "ModelConfigMetadata",
                 schema: "SharpOMatic");
 
@@ -676,7 +976,15 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                 schema: "SharpOMatic");
 
             migrationBuilder.DropTable(
+                name: "StreamEvents",
+                schema: "SharpOMatic");
+
+            migrationBuilder.DropTable(
                 name: "Traces",
+                schema: "SharpOMatic");
+
+            migrationBuilder.DropTable(
+                name: "WorkflowRunMetrics",
                 schema: "SharpOMatic");
 
             migrationBuilder.DropTable(
@@ -708,11 +1016,15 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                 schema: "SharpOMatic");
 
             migrationBuilder.DropTable(
-                name: "Workflows",
+                name: "Conversations",
                 schema: "SharpOMatic");
 
             migrationBuilder.DropTable(
                 name: "EvalConfigs",
+                schema: "SharpOMatic");
+
+            migrationBuilder.DropTable(
+                name: "Workflows",
                 schema: "SharpOMatic");
         }
     }

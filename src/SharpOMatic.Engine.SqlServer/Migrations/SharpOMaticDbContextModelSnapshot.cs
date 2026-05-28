@@ -1094,7 +1094,7 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.HasOne("SharpOMatic.Engine.Repository.Conversation", null)
                         .WithMany()
                         .HasForeignKey("ConversationId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("SharpOMatic.Engine.Repository.AssetFolder", null)
                         .WithMany()
@@ -1139,7 +1139,7 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.HasOne("SharpOMatic.Engine.Repository.EvalColumn", null)
                         .WithMany()
                         .HasForeignKey("EvalColumnId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("SharpOMatic.Engine.Repository.EvalRow", null)
@@ -1181,7 +1181,7 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.HasOne("SharpOMatic.Engine.Repository.EvalGrader", null)
                         .WithMany()
                         .HasForeignKey("EvalGraderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("SharpOMatic.Engine.Repository.EvalRun", null)
@@ -1196,7 +1196,7 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.HasOne("SharpOMatic.Engine.Repository.EvalRow", null)
                         .WithMany()
                         .HasForeignKey("EvalRowId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("SharpOMatic.Engine.Repository.EvalRun", null)
@@ -1211,7 +1211,7 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.HasOne("SharpOMatic.Engine.Repository.EvalGrader", null)
                         .WithMany()
                         .HasForeignKey("EvalGraderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("SharpOMatic.Engine.Repository.EvalRunRow", null)
@@ -1226,7 +1226,7 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.HasOne("SharpOMatic.Engine.Repository.Conversation", null)
                         .WithMany()
                         .HasForeignKey("ConversationId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("SharpOMatic.Engine.Repository.Workflow", null)
                         .WithMany()
