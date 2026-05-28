@@ -1,4 +1,3 @@
-
 namespace SharpOMatic.Engine.Services;
 
 public class SharpOMaticBuilder
@@ -66,7 +65,7 @@ public class SharpOMaticBuilder
     )
     {
         return AddRepository(
-            optionsAction is null ? null : (_, options) => optionsAction(options),
+            optionsAction,
             dbOptionsAction
         );
     }
