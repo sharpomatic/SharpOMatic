@@ -81,6 +81,15 @@ import { EvalRunSummarySnapshot } from '../eval/definitions/eval-run-summary';
 import { EvalRunDetailSnapshot } from '../eval/definitions/eval-run-detail';
 import { EvalRunRowDetailSnapshot } from '../eval/definitions/eval-run-row-detail';
 import { WorkflowConversationPageResult } from '../pages/workflow/interfaces/workflow-conversation-page-result';
+import {
+  ModelCallMetricBucket,
+  ModelCallMetricScope,
+  ModelCallMetricsDashboard,
+} from '../pages/metrics/interfaces/model-call-metrics-dashboard';
+import {
+  WorkflowRunMetricScope,
+  WorkflowRunMetricsDashboard,
+} from '../pages/metrics/interfaces/workflow-run-metrics-dashboard';
 
 @Injectable({
   providedIn: 'root',
@@ -424,6 +433,94 @@ export class ServerRepositoryService {
         map((history) => this.normalizeConversationHistory(history)),
         catchError((error) => {
           this.notifyError('Loading conversation history', error);
+          return of(null);
+        }),
+      );
+  }
+
+  public getModelCallMetricsDashboard(
+    start: Date | null,
+    end: Date | null,
+    bucket: ModelCallMetricBucket,
+    scope: ModelCallMetricScope,
+    scopeKey: string | null,
+    masterSearch: string,
+    recentSkip: number,
+    recentTake: number,
+    allTime = false,
+  ): Observable<ModelCallMetricsDashboard | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams()
+      .set('bucket', ModelCallMetricBucket[bucket])
+      .set('scope', ModelCallMetricScope[scope])
+      .set('recentSkip', recentSkip)
+      .set('recentTake', recentTake)
+      .set('allTime', allTime);
+
+    if (!allTime && start && end) {
+      params = params.set('start', start.toISOString());
+      params = params.set('end', end.toISOString());
+    }
+
+    if (scopeKey) {
+      params = params.set('scopeKey', scopeKey);
+    }
+
+    if (masterSearch.trim().length > 0) {
+      params = params.set('masterSearch', masterSearch.trim());
+    }
+
+    return this.http
+      .get<ModelCallMetricsDashboard>(`${apiUrl}/api/metrics/model-calls`, {
+        params,
+      })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading model call metrics', error);
+          return of(null);
+        }),
+      );
+  }
+
+  public getWorkflowRunMetricsDashboard(
+    start: Date | null,
+    end: Date | null,
+    bucket: ModelCallMetricBucket,
+    scope: WorkflowRunMetricScope,
+    scopeKey: string | null,
+    masterSearch: string,
+    recentSkip: number,
+    recentTake: number,
+    allTime = false,
+  ): Observable<WorkflowRunMetricsDashboard | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams()
+      .set('bucket', ModelCallMetricBucket[bucket])
+      .set('scope', WorkflowRunMetricScope[scope])
+      .set('recentSkip', recentSkip)
+      .set('recentTake', recentTake)
+      .set('allTime', allTime);
+
+    if (!allTime && start && end) {
+      params = params.set('start', start.toISOString());
+      params = params.set('end', end.toISOString());
+    }
+
+    if (scopeKey) {
+      params = params.set('scopeKey', scopeKey);
+    }
+
+    if (masterSearch.trim().length > 0) {
+      params = params.set('masterSearch', masterSearch.trim());
+    }
+
+    return this.http
+      .get<WorkflowRunMetricsDashboard>(`${apiUrl}/api/metrics/workflow-runs`, {
+        params,
+      })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading workflow run metrics', error);
           return of(null);
         }),
       );

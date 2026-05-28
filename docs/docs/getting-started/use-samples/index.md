@@ -12,6 +12,8 @@ To test AG-UI samples over the browser protocol, use the [Sharpy client sample](
 
 ## Choose a sample
 
+The **Samples** menu lists `Basic` samples first, then `AG-UI` samples, then any other samples.
+
 | Sample | Description |
 | --- | --- |
 | [Basic: Switching paths logic](./switching-paths-logic.md) | Uses the **Switch** node to run different paths. |

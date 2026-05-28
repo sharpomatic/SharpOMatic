@@ -63,6 +63,14 @@ public interface IRepositoryService
     Task<List<StreamEvent>> GetConversationStateStreamEvents(string conversationId);
 
     // ------------------------------------------------
+    // Model Call Metric Operations
+    // ------------------------------------------------
+    Task AppendModelCallMetric(ModelCallMetric metric);
+    Task<ModelCallMetricsDashboard> GetModelCallMetricsDashboard(ModelCallMetricsDashboardRequest request);
+    Task AppendWorkflowRunMetric(WorkflowRunMetric metric);
+    Task<WorkflowRunMetricsDashboard> GetWorkflowRunMetricsDashboard(WorkflowRunMetricsDashboardRequest request);
+
+    // ------------------------------------------------
     // ConnectorConfig Operations
     // ------------------------------------------------
     Task<List<ConnectorConfig>> GetConnectorConfigs();

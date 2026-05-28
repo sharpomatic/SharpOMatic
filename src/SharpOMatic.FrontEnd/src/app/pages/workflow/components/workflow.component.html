@@ -31,14 +31,14 @@
                   class="dropdown-item"
                   [class.disabled]="hasStartNode()"
                   (click)="onAddStartNode($event)"
-                  ><i class="dropdown-icon bi bi-chevron-bar-left"></i>Start</a
+                  ><i class="dropdown-icon bi bi-chevron-bar-left"></i>Basic: Start</a
                 >
               </li>
               <li>
                 <a
                   class="dropdown-item"
                   (click)="updateService.addEndNode(workflowService.workflow())"
-                  ><i class="dropdown-icon bi bi-chevron-bar-right"></i>End</a
+                  ><i class="dropdown-icon bi bi-chevron-bar-right"></i>Basic: End</a
                 >
               </li>
               <li>
@@ -47,25 +47,7 @@
                   (click)="
                     updateService.addEditNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-pencil"></i>Edit</a
-                >
-              </li>
-              <li>
-                <a
-                  class="dropdown-item"
-                  (click)="
-                    updateService.addCodeNode(workflowService.workflow())
-                  "
-                  ><i class="dropdown-icon bi bi-filetype-cs"></i>Code</a
-                >
-              </li>
-              <li>
-                <a
-                  class="dropdown-item"
-                  (click)="
-                    updateService.addModelCallNode(workflowService.workflow())
-                  "
-                  ><i class="dropdown-icon bi bi-chat-text"></i>Model Call</a
+                  ><i class="dropdown-icon bi bi-pencil"></i>Basic: Edit</a
                 >
               </li>
               <li>
@@ -74,7 +56,16 @@
                   (click)="
                     updateService.addSwitchNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-option"></i>Switch</a
+                  ><i class="dropdown-icon bi bi-option"></i>Basic: Switch</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addBatchNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-layers"></i>Basic: Batch</a
                 >
               </li>
               <li>
@@ -83,7 +74,7 @@
                   (click)="
                     updateService.addFanInNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-box-arrow-in-right"></i>Fan
+                  ><i class="dropdown-icon bi bi-box-arrow-in-right"></i>Basic: Fan
                   In</a
                 >
               </li>
@@ -93,16 +84,25 @@
                   (click)="
                     updateService.addFanOutNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-box-arrow-right"></i>Fan Out</a
+                  ><i class="dropdown-icon bi bi-box-arrow-right"></i>Basic: Fan Out</a
                 >
               </li>
               <li>
                 <a
                   class="dropdown-item"
                   (click)="
-                    updateService.addBatchNode(workflowService.workflow())
+                    updateService.addCodeNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-layers"></i>Batch</a
+                  ><i class="dropdown-icon bi bi-filetype-cs"></i>Basic: Code</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addModelCallNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-chat-text"></i>Basic: Model Call</a
                 >
               </li>
               <li>
@@ -111,54 +111,7 @@
                   (click)="
                     updateService.addGosubNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-diagram-3"></i>Gosub</a
-                >
-              </li>
-              <li>
-                <a
-                  class="dropdown-item"
-                  (click)="
-                    updateService.addStepStartNode(workflowService.workflow())
-                  "
-                  ><i class="dropdown-icon bi bi-play-circle"></i>Step Start</a
-                >
-              </li>
-              <li>
-                <a
-                  class="dropdown-item"
-                  (click)="
-                    updateService.addStepEndNode(workflowService.workflow())
-                  "
-                  ><i class="dropdown-icon bi bi-stop-circle"></i>Step End</a
-                >
-              </li>
-              <li>
-                <a
-                  class="dropdown-item"
-                  (click)="
-                    updateService.addActivitySyncNode(workflowService.workflow())
-                  "
-                  ><i class="dropdown-icon bi bi-arrow-repeat"></i>Activity Sync</a
-                >
-              </li>
-              <li>
-                <a
-                  class="dropdown-item"
-                  (click)="
-                    updateService.addStateSyncNode(workflowService.workflow())
-                  "
-                  ><i class="dropdown-icon bi bi-arrow-repeat"></i>State Sync</a
-                >
-              </li>
-              <li>
-                <a
-                  class="dropdown-item"
-                  (click)="
-                    updateService.addEventTemplateNode(
-                      workflowService.workflow()
-                    )
-                  "
-                  ><i class="dropdown-icon bi bi-card-text"></i>Event Template</a
+                  ><i class="dropdown-icon bi bi-diagram-3"></i>Basic: Gosub</a
                 >
               </li>
               <li>
@@ -167,7 +120,7 @@
                   (click)="
                     updateService.addSuspendNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-pause-circle"></i>Suspend</a
+                  ><i class="dropdown-icon bi bi-pause-circle"></i>Basic: Suspend</a
                 >
               </li>
               <li>
@@ -178,7 +131,7 @@
                       workflowService.workflow()
                     )
                   "
-                  ><i class="dropdown-icon bi bi-hand-index"></i>FE Tool Call</a
+                  ><i class="dropdown-icon bi bi-hand-index"></i>AG-UI: FE Tool Call</a
                 >
               </li>
               <li>
@@ -189,7 +142,54 @@
                       workflowService.workflow()
                     )
                   "
-                  ><i class="dropdown-icon bi bi-server"></i>BE Tool Call</a
+                  ><i class="dropdown-icon bi bi-server"></i>AG-UI: BE Tool Call</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addEventTemplateNode(
+                      workflowService.workflow()
+                    )
+                  "
+                  ><i class="dropdown-icon bi bi-card-text"></i>AG-UI: Event Template</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addActivitySyncNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-arrow-repeat"></i>AG-UI: Activity Sync</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addStateSyncNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-arrow-repeat"></i>AG-UI: State Sync</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addStepStartNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-play-circle"></i>AG-UI: Step Start</a
+                >
+              </li>
+              <li>
+                <a
+                  class="dropdown-item"
+                  (click)="
+                    updateService.addStepEndNode(workflowService.workflow())
+                  "
+                  ><i class="dropdown-icon bi bi-stop-circle"></i>AG-UI: Step End</a
                 >
               </li>
             </ul>

@@ -60,10 +60,24 @@ public class SharpOMaticBuilder
 
     public SharpOMaticBuilder AddScriptOptions(Assembly[] assemblies, string[] imports) => AddScriptOptions((IEnumerable<Assembly>)assemblies, (IEnumerable<string>)imports);
 
-    public SharpOMaticBuilder AddRepository(Action<DbContextOptionsBuilder> optionsAction, Action<SharpOMaticDbOptions>? dbOptionsAction = null)
+    public SharpOMaticBuilder AddRepository(
+        Action<DbContextOptionsBuilder> optionsAction,
+        Action<SharpOMaticDbOptions>? dbOptionsAction = null
+    )
+    {
+        return AddRepository(
+            optionsAction is null ? null : (_, options) => optionsAction(options),
+            dbOptionsAction
+        );
+    }
+
+    public SharpOMaticBuilder AddRepository(
+        Action<IServiceProvider, DbContextOptionsBuilder> optionsAction,
+        Action<SharpOMaticDbOptions>? dbOptionsAction = null
+    )
     {
         if (optionsAction is null)
-            optionsAction = (_) => { };
+            optionsAction = (_, _) => { };
 
         Services.RemoveAll<IDbContextFactory<SharpOMaticDbContext>>();
         Services.RemoveAll<DbContextOptions<SharpOMaticDbContext>>();

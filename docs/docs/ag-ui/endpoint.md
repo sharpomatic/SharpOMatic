@@ -135,7 +135,7 @@ builder.Services.AddScoped<IAgUiNotification, MyAgUiNotification>();
 - `Context`: mutable root/additional workflow context
 - `Agent`: the mutable AG-UI `agent` context for the current request
 
-For non-conversation workflows, `Context` is the same root context passed to the workflow run and already contains `agent` and `input.chat`.
+For non-conversation workflows, `Context` is the same root context passed to the workflow run and already contains `agent`, including `agent.chat`.
 For conversation-enabled workflows, `Context` is merged into the loaded conversation context before the current turn starts, while `Agent` replaces the root `agent` value for that turn.
 If a notification throws, SharpOMatic does not start the workflow and returns a `RUN_ERROR` SSE event.
 
@@ -209,7 +209,7 @@ SharpOMatic resolves the target workflow first and then chooses the execution mo
 For non-conversation workflows:
 
 - the AG-UI client must send the full message history on every request
-- SharpOMatic rebuilds `input.chat` from that incoming history for the current run only, excluding the latest user text message when it is exposed as `agent.latestUserMessage`
+- SharpOMatic rebuilds `agent.chat` from that incoming history for the current run only, excluding the latest user text message when it is exposed as `agent.latestUserMessage`
 - `threadId` remains required AG-UI metadata, but it does not create a SharpOMatic conversation
 
 For conversation-enabled workflows:
@@ -231,6 +231,7 @@ Instead it maps a focused subset into `agent`:
 - `agent.latestUserMessage`: the final item in `messages`, but only when that item is a user text message
 - `agent.latestToolResult`: the final item in `messages`, but only when that item is a tool result message. Its `content` stays as the original string, and if that string is non-empty JSON then SharpOMatic also stores the parsed payload in `agent.latestToolResult.value`.
 - `agent.messages`: for non-conversation workflows, the full incoming `messages` array; for conversation-enabled workflows, only the latest incoming message
+- `agent.chat`: for non-conversation workflows, provider-neutral `ChatMessage` history rebuilt from the incoming `messages` array for the current run
 - `agent.state`: the incoming AG-UI `state`
 - `agent.context`: the incoming AG-UI `context`
 - `agent._hidden.state`: a hidden deep copy of the incoming AG-UI `state`, used as the baseline for `AddStateSyncAsync()` and the `State Sync` node
@@ -240,11 +241,17 @@ For example, `agent.state` remains an object or array tree inside SharpOMatic co
 On each AG-UI start or resume, SharpOMatic updates `agent`.
 If `agent` already exists in workflow context, the incoming AG-UI `agent` object replaces it entirely.
 
-## input.chat behavior
+## ChatMessage history behavior
 
 `input.chat` is the conventional context path for provider-neutral `ChatMessage` history used by `ModelCall` nodes.
 It is not a transcript mirror of every AG-UI event.
-Use these settings when a workflow should pass that history into a model:
+For non-conversation AG-UI workflows, the controller writes rebuilt incoming history to `agent.chat` so AG-UI request data stays under `agent`.
+Use these settings when a non-conversation workflow should pass that history into a model:
+
+- `ChatInputPath = "agent.chat"`
+- `ChatOutputPath = "agent.chat"` when the rest of the current stateless run should see the model request and response transcript
+
+Use these settings when a conversation-enabled workflow should pass durable workflow-owned history into a model:
 
 - `ChatInputPath = "input.chat"`
 - `ChatOutputPath = "input.chat"` for conversation-enabled workflows that want the model request and response to become the next turn's replay history
@@ -252,7 +259,7 @@ Use these settings when a workflow should pass that history into a model:
 ### Non-conversation workflows
 
 For non-conversation workflows, the AG-UI client must send the full relevant message history on every request.
-The controller creates `input.chat` from that incoming history before the workflow starts.
+The controller creates `agent.chat` from that incoming history before the workflow starts.
 
 Supported conversion rules:
 
@@ -262,9 +269,9 @@ Supported conversion rules:
 - `assistant` messages with string `content`, `toolCalls`, or both -> `ChatRole.Assistant`
 - `tool` results with string `content` and `toolCallId` -> `ChatRole.Tool`
 
-The latest user text message is deliberately kept out of `input.chat`.
+The latest user text message is deliberately kept out of `agent.chat`.
 Use `{{$agent.latestUserMessage.content}}` as the current model prompt instead.
-If a `ModelCall` node also writes `ChatOutputPath = "input.chat"`, the model call output becomes the `input.chat` value for the rest of that run.
+If a `ModelCall` node also writes `ChatOutputPath = "agent.chat"`, the model call output becomes the `agent.chat` value for the rest of that run.
 Because the run is stateless, the next AG-UI request starts from the next incoming `messages` array again.
 
 ### Conversation workflows
@@ -304,8 +311,8 @@ Those stream events are separate from chat persistence.
 - assistant `toolCalls` must be a JSON array
 - each assistant tool call must contain a `function` object with a non-empty `name`
 - assistant tool call `function.arguments` must be a JSON string that decodes to a JSON object
-- assistant messages with neither non-empty string `content` nor any tool calls are skipped rather than added to `input.chat`
-- AG-UI `reasoning` and `activity` messages are ignored when building `input.chat`
+- assistant messages with neither non-empty string `content` nor any tool calls are skipped rather than added to `agent.chat`
+- AG-UI `reasoning` and `activity` messages are ignored when building `agent.chat`
 - unsupported roles are rejected with `RUN_ERROR`
 - multimodal or other non-string message `content` is rejected with `RUN_ERROR`
 
@@ -403,7 +410,7 @@ The SSE request ends when the underlying workflow run finishes, suspends, or fai
 
 AG-UI clients already know about the incoming user message they just submitted.
 When a conversation turn includes `agent.latestUserMessage`, SharpOMatic exposes that value in workflow context but does not automatically store it as user text stream events.
-Model Call nodes store their resolved prompt as silent user text stream events immediately before the provider call unless **Disable User Event** is enabled on the node's **Stream** tab.
+Model Call nodes store their resolved prompt as silent user text stream events immediately before the provider call unless **Disable User Event** is enabled on the node's **AG-UI** tab.
 If a workflow needs to store the incoming user text without a model call, add it explicitly from a **Code** node:
 
 ```csharp

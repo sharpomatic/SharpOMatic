@@ -556,7 +556,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
 
     newTabs.push(
       { id: 'chat', title: 'Chat', content: this.chatTab },
-      { id: 'stream', title: 'Stream', content: this.streamTab },
+      { id: 'stream', title: 'AG-UI', content: this.streamTab },
     );
 
     newTabs.push(

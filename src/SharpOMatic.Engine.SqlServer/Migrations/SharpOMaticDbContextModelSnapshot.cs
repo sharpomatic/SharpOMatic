@@ -18,7 +18,7 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("SharpOMatic")
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -587,6 +587,113 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.ToTable("Informations", "SharpOMatic");
                 });
 
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.ModelCallMetric", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ConnectorConfigId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ConnectorConfigName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("ConnectorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ConnectorName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("Duration")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ErrorType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("InputCost")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<long?>("InputTokens")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ModelConfigId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ModelConfigName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("ModelId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ModelName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("NodeEntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NodeTitle")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("OutputCost")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<long?>("OutputTokens")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ProviderModelName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("TotalCost")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<long?>("TotalTokens")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("WorkflowId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("WorkflowName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Created");
+
+                    b.HasIndex("ConnectorId", "Created");
+
+                    b.HasIndex("ConversationId", "Created");
+
+                    b.HasIndex("ModelId", "Created");
+
+                    b.HasIndex("Succeeded", "Created");
+
+                    b.HasIndex("WorkflowId", "Created");
+
+                    b.ToTable("ModelCallMetrics", "SharpOMatic");
+                });
+
             modelBuilder.Entity("SharpOMatic.Engine.Repository.ModelConfigMetadata", b =>
                 {
                     b.Property<string>("ConfigId")
@@ -881,6 +988,105 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.HasKey("WorkflowId");
 
                     b.ToTable("Workflows", "SharpOMatic");
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.WorkflowRunMetric", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ConversationId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("Duration")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ErrorType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("FailedNodeEntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FailedNodeTitle")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("FailedNodeType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Finished")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("InputTokens")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsConversationRun")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ModelCallCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ModelCallFailureCount")
+                        .HasColumnType("int");
+
+                    b.Property<long>("OutputTokens")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("RunStatus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("Started")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("TotalModelCost")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<long>("TotalTokens")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("TurnNumber")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("WorkflowId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("WorkflowName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("WorkflowVersion")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Created");
+
+                    b.HasIndex("RunId")
+                        .IsUnique();
+
+                    b.HasIndex("ConversationId", "Created");
+
+                    b.HasIndex("RunStatus", "Created");
+
+                    b.HasIndex("Succeeded", "Created");
+
+                    b.HasIndex("WorkflowId", "Created");
+
+                    b.ToTable("WorkflowRunMetrics", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Asset", b =>

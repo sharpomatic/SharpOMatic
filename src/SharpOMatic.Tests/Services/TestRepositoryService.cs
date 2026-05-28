@@ -10,6 +10,8 @@ public sealed class TestRepositoryService : IRepositoryService
     private readonly ConcurrentDictionary<Guid, Trace> _traces = new();
     private readonly ConcurrentDictionary<Guid, Information> _informations = new();
     private readonly ConcurrentDictionary<Guid, StreamEvent> _streamEvents = new();
+    private readonly ConcurrentDictionary<Guid, ModelCallMetric> _modelCallMetrics = new();
+    private readonly ConcurrentDictionary<Guid, WorkflowRunMetric> _workflowRunMetrics = new();
     private readonly ConcurrentDictionary<Guid, Asset> _assets = new();
     private readonly ConcurrentDictionary<Guid, AssetFolder> _assetFolders = new();
     private readonly ConcurrentDictionary<string, ConnectorConfig> _connectorConfigs = new(StringComparer.Ordinal);
@@ -380,6 +382,43 @@ public sealed class TestRepositoryService : IRepositoryService
             .ToList();
 
         return Task.FromResult(streamEvents);
+    }
+
+    public Task AppendModelCallMetric(ModelCallMetric metric)
+    {
+        _modelCallMetrics[metric.Id] = metric;
+        return Task.CompletedTask;
+    }
+
+    public Task<ModelCallMetricsDashboard> GetModelCallMetricsDashboard(ModelCallMetricsDashboardRequest request) => throw new NotImplementedException();
+
+    public Task AppendWorkflowRunMetric(WorkflowRunMetric metric)
+    {
+        var modelCallMetrics = _modelCallMetrics.Values.Where(modelMetric => modelMetric.RunId == metric.RunId).ToList();
+        metric.ModelCallCount = modelCallMetrics.Count;
+        metric.ModelCallFailureCount = modelCallMetrics.Count(modelMetric => !modelMetric.Succeeded);
+        metric.InputTokens = modelCallMetrics.Sum(modelMetric => modelMetric.InputTokens ?? 0);
+        metric.OutputTokens = modelCallMetrics.Sum(modelMetric => modelMetric.OutputTokens ?? 0);
+        metric.TotalTokens = modelCallMetrics.Sum(modelMetric => modelMetric.TotalTokens ?? 0);
+        metric.TotalModelCost = modelCallMetrics.Sum(modelMetric => modelMetric.TotalCost ?? 0);
+
+        if (_workflowRunMetrics.Values.Any(existing => existing.RunId == metric.RunId))
+            return Task.CompletedTask;
+
+        _workflowRunMetrics[metric.Id] = metric;
+        return Task.CompletedTask;
+    }
+
+    public Task<WorkflowRunMetricsDashboard> GetWorkflowRunMetricsDashboard(WorkflowRunMetricsDashboardRequest request) => throw new NotImplementedException();
+
+    public List<WorkflowRunMetric> GetWorkflowRunMetrics()
+    {
+        return _workflowRunMetrics.Values.OrderBy(metric => metric.Created).ToList();
+    }
+
+    public List<ModelCallMetric> GetModelCallMetrics()
+    {
+        return _modelCallMetrics.Values.OrderBy(metric => metric.Created).ToList();
     }
 
     public Task<List<ConnectorConfig>> GetConnectorConfigs() => Task.FromResult(_connectorConfigs.Values.OrderBy(c => c.DisplayName).ToList());

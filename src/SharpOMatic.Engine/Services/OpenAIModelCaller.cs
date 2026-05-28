@@ -10,7 +10,7 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
     {
     }
 
-    public override async Task<(IList<ChatMessage> chat, IList<ChatMessage> responses, object? resultValue)> Call(
+    public override async Task<ModelCallResult> Call(
         Model model,
         ModelConfig modelConfig,
         Connector connector,
@@ -45,7 +45,17 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
         // Use the Microsoft Agent Framework by creating an agent from the responses AI client, then run the agent call
         var agent = agentClient.AsAIAgent(modelName, instructions: instructions, services: agentServiceProvider);
         await EmitPromptStreamEvents(processContext, prompt, node.DisableStreamUser);
-        return await CallConfiguredAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
+        var result = await CallConfiguredAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
+        return result.ProviderModelName is null
+            ? new ModelCallResult()
+            {
+                Chat = result.Chat,
+                Responses = result.Responses,
+                ResultValue = result.ResultValue,
+                Usage = result.Usage,
+                ProviderModelName = modelName,
+            }
+            : result;
     }
 
     public virtual (ResponsesClient client, string modelName) GetOpenAIResponseClient(

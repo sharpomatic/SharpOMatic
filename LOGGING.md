@@ -1,68 +1,43 @@
-# Logging Design
+# Model Call Logging
 
-## Model Call Metrics
+SharpOMatic records one `ModelCallMetric` row for each model call node execution. Rows are appended for successful calls and for failures, including failures that happen before the provider call starts.
 
-SharpOMatic should log every model call attempt to an append-only Engine database table. The initial goal is to support analysis of model usage by workflow, node, connector, model, conversation, success/failure, duration, tokens, and cost.
+The table stores snapshot values instead of foreign-key relationships so historical metrics still make sense after workflows, nodes, connectors, or models are renamed or deleted.
 
-The metrics table must not use foreign keys to workflows, runs, nodes, connectors, or models. Metrics need to remain available even if the original workflow, run, node, connector, or model is deleted later. For that reason, the table stores both identifiers and snapshot names where useful.
+## Stored Fields
 
-Prompt text, instructions, resolved prompt content, and prompt hashes are not stored.
-
-## Table
-
-The table should be represented by a `ModelCallMetric` entity.
-
-| Field | Type | Reason |
+| Field | Type | Purpose |
 | --- | --- | --- |
-| `Id` | `Guid` | Primary key for the metric row. |
-| `Created` | `DateTime` UTC | When the model call attempt was logged; used for time-series analytics. |
-| `Duration` | `long?` | Call duration in milliseconds; nullable if unavailable. |
-| `Succeeded` | `bool` | Fast success/failure filtering. |
-| `ErrorMessage` | `string?` | User-facing failure analysis. Nullable for success. |
-| `ErrorType` | `string?` | Exception or provider category for grouping failures. |
-| `WorkflowId` | `Guid` | Stable workflow grouping key, with no foreign key. |
-| `WorkflowName` | `string` | Snapshot label retained after workflow deletion or rename. |
-| `RunId` | `Guid` | Correlates to a run while it exists, with no foreign key. |
-| `ConversationId` | `string?` | Groups model usage by conversation when applicable. |
-| `NodeEntityId` | `Guid` | Stable node key inside the workflow snapshot, with no foreign key. |
-| `NodeTitle` | `string` | Snapshot label retained after node deletion or rename. |
-| `ConnectorId` | `Guid?` | User connector instance key, nullable if loading fails early. |
-| `ConnectorName` | `string?` | Snapshot connector label. |
-| `ConnectorConfigId` | `string?` | Provider/config type such as `openai`, `azure_openai`, or `google`. |
-| `ConnectorConfigName` | `string?` | Display label for provider/config grouping. |
-| `ModelId` | `Guid?` | User model instance key, nullable if no model was selected or found. |
-| `ModelName` | `string?` | Snapshot user model label. |
-| `ModelConfigId` | `string?` | Metadata model config key. |
-| `ModelConfigName` | `string?` | Display name such as `gpt-5.2`. |
-| `ProviderModelName` | `string?` | Actual provider model or deployment name used, important for custom models. |
-| `InputTokens` | `long?` | Prompt/input usage; nullable when unavailable. |
-| `OutputTokens` | `long?` | Generated-token usage. |
-| `TotalTokens` | `long?` | Convenience total for dashboards and sorting. |
-| `InputCost` | `decimal?` | Calculated input cost at run time. |
-| `OutputCost` | `decimal?` | Calculated output cost at run time. |
-| `TotalCost` | `decimal?` | Calculated total cost for reporting without repricing old calls. |
+| `Id` | `Guid` | Unique metric row identifier. |
+| `Created` | `DateTime` | UTC time the model call metric was created. Used for time-series charts and date filtering. |
+| `Duration` | `long?` | Elapsed call duration in milliseconds. Used for average and P95 latency metrics. |
+| `Succeeded` | `bool` | Separates successful calls from failures. |
+| `ErrorMessage` | `string?` | Failure message shown in metrics failure tables. |
+| `ErrorType` | `string?` | Exception type used to group failures. |
+| `WorkflowId` | `Guid` | Workflow snapshot key for grouping. Not a foreign key. |
+| `WorkflowName` | `string` | Workflow display name at execution time. |
+| `RunId` | `Guid` | Run snapshot key for tracing a call back to a run. Not a foreign key. |
+| `ConversationId` | `string?` | Conversation id when the call happened in a conversation workflow. |
+| `NodeEntityId` | `Guid` | Node snapshot key for grouping calls by workflow node. Not a foreign key. |
+| `NodeTitle` | `string` | Node display title at execution time. |
+| `ConnectorId` | `Guid?` | Connector snapshot key when resolved. Not a foreign key. |
+| `ConnectorName` | `string?` | Connector display name at execution time. |
+| `ConnectorConfigId` | `string?` | Connector provider/config id. |
+| `ConnectorConfigName` | `string?` | Connector provider/config display name. |
+| `ModelId` | `Guid?` | Model snapshot key when resolved. Not a foreign key. |
+| `ModelName` | `string?` | Model display name at execution time. |
+| `ModelConfigId` | `string?` | Model config id. |
+| `ModelConfigName` | `string?` | Model config display name. |
+| `ProviderModelName` | `string?` | Provider model name returned by the model caller. |
+| `InputTokens` | `long?` | Provider-reported input token count. |
+| `OutputTokens` | `long?` | Provider-reported output token count. |
+| `TotalTokens` | `long?` | Provider-reported total token count. |
+| `InputCost` | `decimal?` | Calculated input cost when model pricing metadata is available. |
+| `OutputCost` | `decimal?` | Calculated output cost when model pricing metadata is available. |
+| `TotalCost` | `decimal?` | Calculated total cost when pricing metadata is available. |
 
-## Implementation Notes
+## Metrics Page
 
-- Add `ModelCallMetric` to the Engine repository model and expose it through `SharpOMaticDbContext`.
-- Do not configure `HasOne(...)` relationships for this entity.
-- Add indexes for common analytics:
-  - `(Created)`
-  - `(WorkflowId, Created)`
-  - `(ConnectorId, Created)`
-  - `(ModelId, Created)`
-  - `(ConversationId, Created)`
-  - `(Succeeded, Created)`
-- Calculate costs at call time from the current model metadata pricing, but store only the calculated cost values.
-- Store rows for both successful and failed model calls.
-- If a failure occurs before connector or model metadata is loaded, persist whatever identifiers and names are available.
-- Use explicit decimal precision in migrations for cost fields.
+The editor exposes a Metrics page with All, Workflows, Connectors, and Models tabs. Each tab shows total calls, cost, tokens, latency, failures, time-series charts, breakdown tables, grouped failures, recent calls, and slowest calls.
 
-## Test Scenarios
-
-- A successful model call creates one metric row with workflow, node, connector, and model snapshots.
-- A successful model call records duration, token usage, and calculated costs when provider usage is available.
-- A failed model call creates one metric row with `Succeeded = false` and error fields populated.
-- Deleting workflow, run, connector, or model records does not delete model call metrics.
-- Provider calls without token usage still create rows with null token and cost fields.
-- Cost fields remain the run-time calculated values even if model metadata pricing changes later.
+Scoped tabs use a master-detail list. The list is grouped by the snapshot id when one exists and uses the stored snapshot name for display, so deleted or renamed objects remain visible in historical metrics.

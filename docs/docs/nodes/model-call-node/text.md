@@ -7,7 +7,7 @@ If the model supports text input or text output, this tab is available.
 
 On the **Details** tab, **Use Batch Output** appears after the model-specific custom fields, followed by **Drop Tool Calls**.
 **Drop Tool Calls** prevents model tool-call results from being carried into **Chat Output Path** as synthetic assistant messages.
-The model-call dialog also has a [**Stream** tab](./stream.md), positioned after **Chat**, where you can disable assistant text, reasoning, or tool-call stream events for that node.
+The model-call dialog also has an [**AG-UI** tab](./stream.md), positioned after **Chat**, where you can disable assistant text, reasoning, or tool-call stream events for that node.
 
 - **Text Output Path** defaults to **output.text** and is the context path that receives text output from a successful model call.
 If the same path is written by later model-call nodes, the later value overwrites the earlier value at that exact path.
@@ -17,10 +17,10 @@ You can leave this field blank to ignore the output. Text output is still genera
 - **User** (Mandatory) user-level prompt for the call.
 
 When you use an OpenAI, Azure OpenAI, or Google model, runtime output is now incremental.
-Immediately before the provider call, the resolved **User** content is stored as silent user text stream events unless **Disable User Event** is enabled on the **Stream** tab.
+Immediately before the provider call, the resolved **User** content is stored as silent user text stream events unless **Disable User Event** is enabled on the **AG-UI** tab.
 Assistant text is streamed during execution, visible reasoning is emitted as reasoning stream events, and tool calls are emitted as tool-call stream events.
 Assistant, reasoning, and tool-call trace entries are also updated while the node is still running.
-If you disable one of those categories in the **Stream** tab, only the matching stream events are suppressed. Final outputs and assistant/reasoning/tool trace entries are still produced.
+If you disable one of those categories in the **AG-UI** tab, only the matching stream events are suppressed. Final outputs and assistant/reasoning/tool trace entries are still produced.
 
 <img src="/img/modelcall-text.png" alt="Text Settings" width="800" style={{ maxWidth: '100%', height: 'auto' }} />
 

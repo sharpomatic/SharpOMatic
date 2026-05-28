@@ -138,11 +138,11 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         }
         catch (Exception ex)
         {
-            await RunCompleted(threadContext, RunStatus.Failed, "Failed", ex.Message);
+            await RunCompleted(threadContext, RunStatus.Failed, "Failed", ex.Message, ex, node);
         }
     }
 
-    private async Task RunCompleted(ThreadContext threadContext, RunStatus runStatus, string message, string? error = "")
+    private async Task RunCompleted(ThreadContext threadContext, RunStatus runStatus, string message, string? error = "", Exception? exception = null, NodeEntity? failedNode = null)
     {
         var processContext = threadContext.ProcessContext;
 
@@ -166,6 +166,8 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
                 processContext.Run.OutputContext = null;
                 runStatus = RunStatus.Failed;
                 error = ex.Message;
+                exception = ex;
+                failedNode ??= ResolveFailedNode(threadContext);
             }
         }
 
@@ -173,6 +175,8 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         await processContext.RunUpdated();
 
         processContext.CompletionSource?.TrySetResult(processContext.Run);
+
+        await AppendWorkflowRunMetric(processContext, threadContext, exception, failedNode);
 
         await PruneExecutionHistory(processContext);
 
@@ -194,6 +198,58 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         }
 
         processContext.ServiceScope.Dispose();
+    }
+
+    private static async Task AppendWorkflowRunMetric(ProcessContext processContext, ThreadContext threadContext, Exception? exception, NodeEntity? failedNode)
+    {
+        try
+        {
+            var run = processContext.Run;
+            var workflow = await processContext.RepositoryService.GetWorkflow(run.WorkflowId);
+            if (run.RunStatus == RunStatus.Failed)
+                failedNode ??= ResolveFailedNode(threadContext);
+            else
+                failedNode = null;
+            var started = run.Started ?? run.Created;
+            var finished = run.Stopped ?? DateTime.Now;
+
+            await processContext.RepositoryService.AppendWorkflowRunMetric(
+                new WorkflowRunMetric()
+                {
+                    Id = Guid.NewGuid(),
+                    Created = DateTime.UtcNow,
+                    Started = started,
+                    Finished = finished,
+                    Duration = Math.Max(0, (long)(finished - started).TotalMilliseconds),
+                    RunId = run.RunId,
+                    WorkflowId = run.WorkflowId,
+                    WorkflowName = workflow.Name,
+                    WorkflowVersion = workflow.Version,
+                    Succeeded = run.RunStatus == RunStatus.Success,
+                    RunStatus = run.RunStatus,
+                    ErrorType = exception?.GetType().FullName,
+                    ErrorMessage = string.IsNullOrWhiteSpace(run.Error) ? null : run.Error,
+                    FailedNodeEntityId = failedNode?.Id,
+                    FailedNodeTitle = failedNode?.Title,
+                    FailedNodeType = failedNode?.NodeType,
+                    ConversationId = run.ConversationId,
+                    TurnNumber = run.TurnNumber,
+                    IsConversationRun = !string.IsNullOrWhiteSpace(run.ConversationId),
+                }
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to append workflow run metric for run '{processContext.Run.RunId}': {ex.Message}");
+        }
+    }
+
+    private static NodeEntity? ResolveFailedNode(ThreadContext threadContext)
+    {
+        if (threadContext.NodeId == Guid.Empty)
+            return null;
+
+        return threadContext.WorkflowContext.Workflow.Nodes.FirstOrDefault(node => node.Id == threadContext.NodeId);
     }
 
     private Task<NodeExecutionResult> RunNode(NextNodeData nextNode)

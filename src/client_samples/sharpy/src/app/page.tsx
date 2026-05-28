@@ -307,7 +307,7 @@ export default function SharpyPage() {
   const [threadId, setThreadId] = useState("sharpy-demo-thread");
   const [workflowId, setWorkflowId] = useState(DEFAULT_WORKFLOW_ID);
   const [historyMaxMessages, setHistoryMaxMessages] = useState("");
-  const [sendAllMessages, setSendAllMessages] = useState(true);
+  const [sendAllMessages, setSendAllMessages] = useState(false);
   const [historyReloadRequest, setHistoryReloadRequest] =
     useState<HistoryReloadRequest | null>(null);
   const workflowIdRef = useRef(workflowId);

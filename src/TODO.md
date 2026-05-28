@@ -4,11 +4,10 @@
 
 ### Agent
 
+- Try using a gosub with suspend inside to see if it resumes
+
 - Investigate the compacting down to a message snapshot.
-
-- Make the input.chat become agent.chat because only generated on stateless agents
 - Make the agents path details defined and not hard coded.
-
 - Check two paths outputing at the same time
 - Check two paths, the first has a FE tool call, other does not
 
@@ -17,13 +16,6 @@
 ### Others
 
 - Add view button to Runs and Conversation history and causes it to be loaded as the current data for the trace viewer.
-
-### Model Calls
-
-- Separate table to record each model call, time, tokens, error
-- Reference to owning workflow name, connector name, model name because...
-- Needs to be valid even when the connector/model has been deleted
-- Will be used for metrics/cost of model usage
 
 ### Upgrade
 
