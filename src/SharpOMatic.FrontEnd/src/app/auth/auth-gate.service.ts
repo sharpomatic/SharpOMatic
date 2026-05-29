@@ -1,7 +1,11 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { AuthTokenService } from './auth-token.service';
 
-export type AuthGateState = 'checking' | 'authorized' | 'unauthorized';
+export type AuthGateState =
+  | 'checking'
+  | 'authorized'
+  | 'unauthorized'
+  | 'forbidden';
 
 @Injectable({
   providedIn: 'root',
@@ -19,8 +23,7 @@ export class AuthGateService {
     }
 
     try {
-      const token = await this.authTokenService.getRawToken();
-      this.stateSignal.set(token ? 'authorized' : 'unauthorized');
+      this.stateSignal.set(await this.authTokenService.getAccessState());
     } catch {
       this.stateSignal.set('unauthorized');
     }

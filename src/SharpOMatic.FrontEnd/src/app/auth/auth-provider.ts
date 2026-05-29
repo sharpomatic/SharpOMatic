@@ -1,3 +1,8 @@
+export type SharpOMaticAuthAccessState =
+  | 'authorized'
+  | 'unauthorized'
+  | 'forbidden';
+
 export interface SharpOMaticAuthProvider {
   required?: boolean;
   getBearerToken?: () =>
@@ -5,6 +10,9 @@ export interface SharpOMaticAuthProvider {
     | string
     | null
     | undefined;
+  getAccessState?: () =>
+    | Promise<SharpOMaticAuthAccessState>
+    | SharpOMaticAuthAccessState;
   onUnauthorized?: () => void | Promise<void>;
 }
 

@@ -24,6 +24,24 @@
       </div>
     </section>
   }
+  @case ("forbidden") {
+    <section class="auth-screen bg-body-tertiary">
+      <div class="auth-message">
+        <h1>Buildxact support access required</h1>
+        <p>
+          This editor is only available to Buildxact support users. Sign in with
+          a support account, then open the editor again.
+        </p>
+        <button
+          class="btn btn-primary"
+          type="button"
+          (click)="returnToSignIn()"
+        >
+          Return to sign in
+        </button>
+      </div>
+    </section>
+  }
   @default {
     <!-- Left Column -->
     <div

@@ -1,6 +1,5 @@
-import './auth-provider';
-
 import { Injectable } from '@angular/core';
+import { SharpOMaticAuthAccessState } from './auth-provider';
 
 @Injectable({
   providedIn: 'root',
@@ -18,6 +17,16 @@ export class AuthTokenService {
   async getRawToken(): Promise<string> {
     const token = await window.sharpomaticAuth?.getBearerToken?.();
     return this.normalizeToken(token);
+  }
+
+  async getAccessState(): Promise<SharpOMaticAuthAccessState> {
+    const accessState = await window.sharpomaticAuth?.getAccessState?.();
+    if (accessState) {
+      return accessState;
+    }
+
+    const token = await this.getRawToken();
+    return token ? 'authorized' : 'unauthorized';
   }
 
   async onUnauthorized(): Promise<void> {
