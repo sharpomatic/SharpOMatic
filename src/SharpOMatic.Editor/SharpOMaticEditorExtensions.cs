@@ -2,6 +2,7 @@ namespace SharpOMatic.Editor;
 
 public static class SharpOMaticEditorExtensions
 {
+    private const string DefaultBaseHref = "<base href=\"./\">";
     private const string EditorChildPath = "/editor";
     private const string NotificationsChildPath = "/notifications";
 
@@ -39,7 +40,7 @@ public static class SharpOMaticEditorExtensions
         var notificationPath = SharpOMaticControllerFeatureSetup.CombineBasePath(normalizedBasePath, NotificationsChildPath);
 
         var fileProvider = new ManifestEmbeddedFileProvider(typeof(SharpOMaticEditorExtensions).Assembly, "wwwroot");
-        var indexHtml = LoadIndexHtml(fileProvider);
+        var indexHtml = LoadIndexHtml(fileProvider, editorPath);
 
         app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider, RequestPath = editorPath });
 
@@ -58,19 +59,11 @@ public static class SharpOMaticEditorExtensions
             return context.Response.WriteAsync(indexHtml);
         });
 
-        // Redirect the no-trailing-slash URL to the trailing-slash version using a relative
-        // Location so the browser resolves it against its actual (possibly proxy-prefixed) URL.
-        var editorChildName = EditorChildPath.TrimStart('/');
-        app.MapGet(basePath, context =>
-        {
-            context.Response.Redirect($"{editorChildName}/", permanent: false);
-            return Task.CompletedTask;
-        });
-
+        app.MapFallback(basePath, fallbackTask);
         app.MapFallback($"{basePath}/{{*path:nonfile}}", fallbackTask);
     }
 
-    private static string LoadIndexHtml(IFileProvider fileProvider)
+    private static string LoadIndexHtml(IFileProvider fileProvider, string basePath)
     {
         var fileInfo = fileProvider.GetFileInfo("index.html");
         if (!fileInfo.Exists)
@@ -80,7 +73,24 @@ public static class SharpOMaticEditorExtensions
 
         using var stream = fileInfo.CreateReadStream();
         using var reader = new StreamReader(stream, Encoding.UTF8, true);
-        return reader.ReadToEnd();
+        var html = reader.ReadToEnd();
+
+        // Inject a runtime script that computes <base href> from window.location.pathname
+        // so the correct absolute editor root is used regardless of proxy prefix, trailing
+        // slash, or Angular sub-route depth.
+        var escapedBasePath = basePath.Replace("'", "\\'");
+        var baseScript =
+            $"<script>(function(){{var b=document.head.querySelector('base')||document.createElement('base');var p=window.location.pathname;var m='{escapedBasePath}';var i=p.indexOf(m);b.href=(i>=0?p.substring(0,i+m.length):p)+'/';if(!b.parentNode)document.head.insertBefore(b,document.head.firstChild);}})();</script>";
+
+        if (html.Contains(DefaultBaseHref, StringComparison.OrdinalIgnoreCase))
+            return html.Replace(DefaultBaseHref, baseScript, StringComparison.OrdinalIgnoreCase);
+
+        var headClose = "</head>";
+        var index = html.IndexOf(headClose, StringComparison.OrdinalIgnoreCase);
+        if (index < 0)
+            return html;
+
+        return html.Insert(index, baseScript + Environment.NewLine);
     }
 
     private static string ResolveBasePath(WebApplication app, string? basePath)
