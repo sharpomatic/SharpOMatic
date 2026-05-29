@@ -33,3 +33,27 @@
 .toast-container {
   z-index: 1080;
 }
+
+.auth-screen {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+  padding: 24px;
+}
+
+.auth-message {
+  max-width: 420px;
+  text-align: center;
+
+  h1 {
+    font-size: 22px;
+    margin-bottom: 12px;
+  }
+
+  p {
+    color: var(--bs-secondary-color);
+    margin-bottom: 20px;
+  }
+}

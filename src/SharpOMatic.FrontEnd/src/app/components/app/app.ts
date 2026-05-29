@@ -4,6 +4,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { BsModalService, BsModalRef } from 'ngx-bootstrap/modal';
 import { NotConnectedDialogComponent } from '../../dialogs/not-connected/not-connected-dialog.component';
 import { ToastService } from '../../services/toast.service';
+import { AuthGateService } from '../../auth/auth-gate.service';
 
 @Component({
   selector: 'app-root',
@@ -16,6 +17,8 @@ import { ToastService } from '../../services/toast.service';
 export class App implements OnInit, OnDestroy {
   private readonly modalService = inject(BsModalService);
   protected readonly toastService = inject(ToastService);
+  protected readonly authGateService = inject(AuthGateService);
+  protected readonly authState = this.authGateService.state;
   private modalRef?: BsModalRef;
 
   isSidebarClosed = false;
@@ -28,6 +31,11 @@ export class App implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     document.documentElement.setAttribute('data-bs-theme', 'dark');
+    void this.authGateService.initialize();
+  }
+
+  returnToSignIn(): void {
+    void this.authGateService.returnToSignIn();
   }
 
   private openNotConnectedDialog(): void {

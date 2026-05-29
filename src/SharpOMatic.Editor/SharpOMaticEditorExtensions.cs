@@ -6,9 +6,18 @@ public static class SharpOMaticEditorExtensions
     private const string EditorChildPath = "/editor";
     private const string NotificationsChildPath = "/notifications";
 
-    public static IServiceCollection AddSharpOMaticEditor(this IServiceCollection services, string basePath = SharpOMaticControllerFeatureSetup.DefaultBasePath)
+    public static IServiceCollection AddSharpOMaticEditor(
+        this IServiceCollection services,
+        string basePath = SharpOMaticControllerFeatureSetup.DefaultBasePath,
+        Action<SharpOMaticEditorOptions>? configureOptions = null
+    )
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        var editorOptions = new SharpOMaticEditorOptions();
+        configureOptions?.Invoke(editorOptions);
+        services.RemoveAll<SharpOMaticEditorOptions>();
+        services.AddSingleton(editorOptions);
 
         var mvcBuilder = services.AddControllers();
         SharpOMaticControllerFeatureSetup.EnsureApplicationPart(mvcBuilder, typeof(SharpOMaticEditorExtensions).Assembly);
@@ -40,7 +49,8 @@ public static class SharpOMaticEditorExtensions
         var notificationPath = SharpOMaticControllerFeatureSetup.CombineBasePath(normalizedBasePath, NotificationsChildPath);
 
         var fileProvider = new ManifestEmbeddedFileProvider(typeof(SharpOMaticEditorExtensions).Assembly, "wwwroot");
-        var indexHtml = LoadIndexHtml(fileProvider, editorPath);
+        var options = app.Services.GetService<SharpOMaticEditorOptions>() ?? new SharpOMaticEditorOptions();
+        var indexHtml = LoadIndexHtml(fileProvider, editorPath, options);
 
         app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider, RequestPath = editorPath });
 
@@ -63,7 +73,7 @@ public static class SharpOMaticEditorExtensions
         app.MapFallback($"{basePath}/{{*path:nonfile}}", fallbackTask);
     }
 
-    private static string LoadIndexHtml(IFileProvider fileProvider, string basePath)
+    private static string LoadIndexHtml(IFileProvider fileProvider, string basePath, SharpOMaticEditorOptions options)
     {
         var fileInfo = fileProvider.GetFileInfo("index.html");
         if (!fileInfo.Exists)
@@ -81,16 +91,18 @@ public static class SharpOMaticEditorExtensions
         var escapedBasePath = basePath.Replace("'", "\\'");
         var baseScript =
             $"<script>(function(){{var b=document.head.querySelector('base')||document.createElement('base');var p=window.location.pathname;var m='{escapedBasePath}';var i=p.indexOf(m);b.href=(i>=0?p.substring(0,i+m.length):p)+'/';if(!b.parentNode)document.head.insertBefore(b,document.head.firstChild);}})();</script>";
+        var headScript = string.IsNullOrWhiteSpace(options.HeadScriptHtml) ? string.Empty : options.HeadScriptHtml + Environment.NewLine;
+        var scripts = headScript + baseScript;
 
         if (html.Contains(DefaultBaseHref, StringComparison.OrdinalIgnoreCase))
-            return html.Replace(DefaultBaseHref, baseScript, StringComparison.OrdinalIgnoreCase);
+            return html.Replace(DefaultBaseHref, scripts, StringComparison.OrdinalIgnoreCase);
 
         var headClose = "</head>";
         var index = html.IndexOf(headClose, StringComparison.OrdinalIgnoreCase);
         if (index < 0)
             return html;
 
-        return html.Insert(index, baseScript + Environment.NewLine);
+        return html.Insert(index, scripts + Environment.NewLine);
     }
 
     private static string ResolveBasePath(WebApplication app, string? basePath)

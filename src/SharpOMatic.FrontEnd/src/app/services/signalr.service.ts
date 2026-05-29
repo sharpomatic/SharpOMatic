@@ -2,12 +2,14 @@
 import { effect, inject, Injectable, signal } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
 import { SettingsService } from './settings.service';
+import { AuthTokenService } from '../auth/auth-token.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class SignalrService {
   private readonly settingsService = inject(SettingsService);
+  private readonly authTokenService = inject(AuthTokenService);
   private hubConnection?: signalR.HubConnection;
   private readonly _isConnected = signal(false);
   public readonly isConnected = this._isConnected.asReadonly();
@@ -24,12 +26,25 @@ export class SignalrService {
     });
   }
 
-  public startConnection = () => {
+  public startConnection = (): void => {
     const apiUrl = this.currentApiUrl ?? this.settingsService.apiUrl();
+    void this.startConnectionAsync(apiUrl);
+  };
+
+  private async startConnectionAsync(apiUrl: string): Promise<void> {
+    if (this.authTokenService.isAuthRequired()) {
+      const token = await this.authTokenService.getRawToken();
+      if (!token) {
+        this._isConnected.set(false);
+        return;
+      }
+    }
+
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(`${apiUrl}/notifications`, {
         skipNegotiation: true,
         transport: signalR.HttpTransportType.WebSockets,
+        accessTokenFactory: () => this.fetchBearerToken(),
       })
       .build();
 
@@ -39,7 +54,7 @@ export class SignalrService {
         this._isConnected.set(true);
       })
       .catch((err) => console.log('Error while starting connection: ' + err));
-  };
+  }
 
   public stopConnection = (): Promise<void> => {
     if (!this.hubConnection) {
@@ -80,5 +95,9 @@ export class SignalrService {
     if (this.hubConnection) {
       this.hubConnection.off(eventName, eventHandler);
     }
+  }
+
+  private fetchBearerToken(): Promise<string> {
+    return this.authTokenService.getRawToken();
   }
 }
