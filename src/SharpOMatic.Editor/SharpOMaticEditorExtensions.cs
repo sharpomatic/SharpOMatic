@@ -2,7 +2,6 @@ namespace SharpOMatic.Editor;
 
 public static class SharpOMaticEditorExtensions
 {
-    private const string DefaultBaseHref = "<base href=\"/\">";
     private const string EditorChildPath = "/editor";
     private const string NotificationsChildPath = "/notifications";
 
@@ -40,7 +39,7 @@ public static class SharpOMaticEditorExtensions
         var notificationPath = SharpOMaticControllerFeatureSetup.CombineBasePath(normalizedBasePath, NotificationsChildPath);
 
         var fileProvider = new ManifestEmbeddedFileProvider(typeof(SharpOMaticEditorExtensions).Assembly, "wwwroot");
-        var indexHtml = LoadIndexHtml(fileProvider, editorPath);
+        var indexHtml = LoadIndexHtml(fileProvider);
 
         app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider, RequestPath = editorPath });
 
@@ -59,11 +58,19 @@ public static class SharpOMaticEditorExtensions
             return context.Response.WriteAsync(indexHtml);
         });
 
-        app.MapFallback(basePath, fallbackTask);
+        // Redirect the no-trailing-slash URL to the trailing-slash version using a relative
+        // Location so the browser resolves it against its actual (possibly proxy-prefixed) URL.
+        var editorChildName = EditorChildPath.TrimStart('/');
+        app.MapGet(basePath, context =>
+        {
+            context.Response.Redirect($"{editorChildName}/", permanent: false);
+            return Task.CompletedTask;
+        });
+
         app.MapFallback($"{basePath}/{{*path:nonfile}}", fallbackTask);
     }
 
-    private static string LoadIndexHtml(IFileProvider fileProvider, string basePath)
+    private static string LoadIndexHtml(IFileProvider fileProvider)
     {
         var fileInfo = fileProvider.GetFileInfo("index.html");
         if (!fileInfo.Exists)
@@ -73,19 +80,7 @@ public static class SharpOMaticEditorExtensions
 
         using var stream = fileInfo.CreateReadStream();
         using var reader = new StreamReader(stream, Encoding.UTF8, true);
-        var html = reader.ReadToEnd();
-
-        var normalizedBase = basePath.EndsWith("/", StringComparison.Ordinal) ? basePath : basePath + "/";
-        if (html.Contains(DefaultBaseHref, StringComparison.OrdinalIgnoreCase))
-            return html.Replace(DefaultBaseHref, $"<base href=\"{normalizedBase}\">", StringComparison.OrdinalIgnoreCase);
-
-        var headClose = "</head>";
-        var index = html.IndexOf(headClose, StringComparison.OrdinalIgnoreCase);
-        if (index < 0)
-            return html;
-
-        var baseTag = $"<base href=\"{normalizedBase}\">{Environment.NewLine}";
-        return html.Insert(index, baseTag);
+        return reader.ReadToEnd();
     }
 
     private static string ResolveBasePath(WebApplication app, string? basePath)
