@@ -11,7 +11,7 @@ import { API_URL } from '../components/app/app.tokens';
   providedIn: 'root',
 })
 export class SettingsService {
-  private readonly storageKey = 'apiUrl';
+  private readonly storageKey = `apiUrl_${window.location.origin}`;
   private readonly defaultApiUrl = inject(API_URL);
   private readonly apiUrlSignal: WritableSignal<string>;
   readonly apiUrlState: Signal<string>;
