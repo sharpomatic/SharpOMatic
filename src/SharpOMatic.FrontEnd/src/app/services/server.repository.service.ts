@@ -1506,13 +1506,26 @@ export class ServerRepositoryService {
     return `${apiUrl}/api/assets/${encodeURIComponent(assetId)}/content`;
   }
 
-  public importTransfer(file: File): Observable<TransferImportResult> {
+  public importTransferZip(file: File): Observable<TransferImportResult> {
     const apiUrl = this.settingsService.apiUrl();
     const formData = new FormData();
     formData.append('file', file);
 
     return this.http.post<TransferImportResult>(
-      `${apiUrl}/api/transfer/import`,
+      `${apiUrl}/api/transfer/import/zip`,
+      formData,
+    );
+  }
+
+  public importTransferFiles(files: File[]): Observable<TransferImportResult> {
+    const apiUrl = this.settingsService.apiUrl();
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+
+    return this.http.post<TransferImportResult>(
+      `${apiUrl}/api/transfer/import/files`,
       formData,
     );
   }

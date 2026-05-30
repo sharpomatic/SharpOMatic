@@ -1,15 +1,19 @@
-
 namespace SharpOMatic.Engine.Services;
 
 public class TransferService(IRepositoryService repositoryService, IAssetStore assetStore) : ITransferService
 {
-    private const string ManifestFileName = "manifest.json";
     private const string WorkflowDirectory = "workflows";
     private const string ConnectorDirectory = "connectors";
     private const string ModelDirectory = "models";
     private const string EvaluationDirectory = "evaluations";
     private const string AssetDirectory = "assets";
     private const string JsonExtension = ".json";
+
+    private const string WorkflowType = "workflow";
+    private const string ConnectorType = "connector";
+    private const string ModelType = "model";
+    private const string EvaluationType = "evaluation";
+    private const string AssetType = "asset";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { Converters = { new NodeEntityConverter() } };
 
@@ -65,50 +69,21 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             evaluationPackages.Add(await repositoryService.GetEvalTransferPackage(evaluationId));
 
         var assets = await ResolveAssetsAsync(request.Assets);
-        var folders = await ResolveFoldersAsync(request.Assets, assets);
-
-        var manifest = new TransferManifest
-        {
-            SchemaVersion = TransferManifest.CurrentSchemaVersion,
-            CreatedUtc = DateTime.UtcNow,
-            IncludeSecrets = request.IncludeSecrets,
-            Counts = new TransferCounts
-            {
-                Workflows = workflowIds.Count,
-                Connectors = connectorIds.Count,
-                Models = modelIds.Count,
-                Evaluations = evaluationPackages.Count,
-                EvaluationRuns = evaluationPackages.Sum(package => package.Runs.Count),
-                Folders = folders.Count,
-                Assets = assets.Count,
-            },
-            Folders = [.. folders
-                .Select(folder => new TransferFolderEntry
-                {
-                    FolderId = folder.FolderId,
-                    Name = folder.Name,
-                    Created = folder.Created,
-                })],
-            Assets = [.. assets
-                .Select(asset => new TransferAssetEntry
-                {
-                    AssetId = asset.AssetId,
-                    FolderId = asset.FolderId,
-                    Name = asset.Name,
-                    MediaType = asset.MediaType,
-                    SizeBytes = asset.SizeBytes,
-                    Created = asset.Created,
-                })],
-        };
+        var exportedUtc = DateTime.UtcNow;
 
         using var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true);
-
-        await WriteJsonEntryAsync(archive, ManifestFileName, manifest, cancellationToken);
 
         foreach (var workflowId in workflowIds)
         {
             var workflow = await repositoryService.GetWorkflow(workflowId);
-            await WriteJsonEntryAsync(archive, BuildEntityEntryName(WorkflowDirectory, workflowId), workflow, cancellationToken);
+            await WriteEnvelopeEntryAsync(
+                archive,
+                BuildJsonEntryName(WorkflowDirectory, workflow.Name, workflow.Id),
+                WorkflowType,
+                workflow,
+                exportedUtc,
+                cancellationToken
+            );
         }
 
         foreach (var connectorId in connectorIds)
@@ -117,7 +92,14 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             if (!request.IncludeSecrets)
                 await StripConnectorSecrets(connector);
 
-            await WriteJsonEntryAsync(archive, BuildEntityEntryName(ConnectorDirectory, connectorId), connector, cancellationToken);
+            await WriteEnvelopeEntryAsync(
+                archive,
+                BuildJsonEntryName(ConnectorDirectory, connector.Name, connector.ConnectorId),
+                ConnectorType,
+                connector,
+                exportedUtc,
+                cancellationToken
+            );
         }
 
         foreach (var modelId in modelIds)
@@ -126,169 +108,256 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             if (!request.IncludeSecrets)
                 await StripModelSecrets(model);
 
-            await WriteJsonEntryAsync(archive, BuildEntityEntryName(ModelDirectory, modelId), model, cancellationToken);
+            await WriteEnvelopeEntryAsync(
+                archive,
+                BuildJsonEntryName(ModelDirectory, model.Name, model.ModelId),
+                ModelType,
+                model,
+                exportedUtc,
+                cancellationToken
+            );
         }
 
         foreach (var evaluationPackage in evaluationPackages)
-            await WriteJsonEntryAsync(archive, BuildEntityEntryName(EvaluationDirectory, evaluationPackage.EvalConfig.EvalConfigId), evaluationPackage, cancellationToken);
+        {
+            await WriteEnvelopeEntryAsync(
+                archive,
+                BuildJsonEntryName(EvaluationDirectory, evaluationPackage.EvalConfig.Name, evaluationPackage.EvalConfig.EvalConfigId),
+                EvaluationType,
+                evaluationPackage,
+                exportedUtc,
+                cancellationToken
+            );
+        }
 
         foreach (var asset in assets)
         {
-            var entry = archive.CreateEntry(BuildAssetEntryName(asset.AssetId), CompressionLevel.Optimal);
-            await using var entryStream = entry.Open();
+            var folderName = asset.FolderId.HasValue
+                ? (await repositoryService.GetAssetFolder(asset.FolderId.Value)).Name
+                : null;
+
             await using var assetStream = await assetStore.OpenReadAsync(asset.StorageKey, cancellationToken);
-            await assetStream.CopyToAsync(entryStream, cancellationToken);
+            using var memory = new MemoryStream();
+            await assetStream.CopyToAsync(memory, cancellationToken);
+
+            var payload = new TransferAssetPayload
+            {
+                AssetId = asset.AssetId,
+                FolderName = folderName,
+                Name = asset.Name,
+                MediaType = asset.MediaType,
+                Created = asset.Created,
+                SizeBytes = asset.SizeBytes,
+                ContentBase64 = Convert.ToBase64String(memory.ToArray()),
+            };
+
+            await WriteEnvelopeEntryAsync(
+                archive,
+                BuildJsonEntryName(AssetDirectory, asset.Name, asset.AssetId),
+                AssetType,
+                payload,
+                exportedUtc,
+                cancellationToken
+            );
         }
     }
 
-    public async Task<TransferImportResult> ImportAsync(Stream input, CancellationToken cancellationToken = default)
+    public async Task<TransferImportBatchResult> ImportZipAsync(Stream input, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(input);
 
+        var batchResult = new TransferImportBatchResult();
         using var archive = new ZipArchive(input, ZipArchiveMode.Read, leaveOpen: true);
-        var manifestEntry = archive.GetEntry(ManifestFileName) ?? throw new SharpOMaticException("Transfer manifest is missing.");
-        var manifest = await ReadJsonEntryAsync<TransferManifest>(manifestEntry, cancellationToken);
 
-        if (manifest.SchemaVersion is not (1 or 2 or TransferManifest.CurrentSchemaVersion))
-            throw new SharpOMaticException($"Transfer manifest schema version {manifest.SchemaVersion} is not supported.");
-
-        var connectorEntries = GetEntityEntries(archive, ConnectorDirectory);
-        var modelEntries = GetEntityEntries(archive, ModelDirectory);
-        var workflowEntries = GetEntityEntries(archive, WorkflowDirectory);
-        var evaluationEntries = GetEntityEntries(archive, EvaluationDirectory);
-
-        var result = new TransferImportResult();
-
-        foreach (var entry in connectorEntries.Values)
+        foreach (var entry in archive.Entries)
         {
-            var connector = await ReadJsonEntryAsync<Connector>(entry, cancellationToken);
-            if (!manifest.IncludeSecrets)
-                await MergeConnectorSecrets(connector);
+            var entryName = entry.FullName.Replace('\\', '/');
+            if (!IsJsonEntry(entryName))
+                continue;
 
-            await repositoryService.UpsertConnector(connector, hideSecrets: false);
-            result.ConnectorsImported++;
+            batchResult.FilesProcessed++;
+            await using var entryStream = entry.Open();
+            await TryImportFileAsync(entryName, entryStream, batchResult, cancellationToken);
         }
 
-        foreach (var entry in modelEntries.Values)
-        {
-            var model = await ReadJsonEntryAsync<Model>(entry, cancellationToken);
-            if (!manifest.IncludeSecrets)
-                await MergeModelSecrets(model);
+        return batchResult;
+    }
 
-            await repositoryService.UpsertModel(model);
-            result.ModelsImported++;
+    public async Task<TransferImportBatchResult> ImportFilesAsync(IEnumerable<TransferImportFile> files, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(files);
+
+        var batchResult = new TransferImportBatchResult();
+        foreach (var file in files)
+        {
+            batchResult.FilesProcessed++;
+            await TryImportFileAsync(file.Name, file.Stream, batchResult, cancellationToken);
         }
 
-        foreach (var entry in workflowEntries.Values)
+        return batchResult;
+    }
+
+    public async Task<TransferImportResult> ImportJsonAsync(Stream input, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        return await ImportEnvelopeAsync(input, "request body", cancellationToken);
+    }
+
+    private async Task TryImportFileAsync(string fileName, Stream input, TransferImportBatchResult batchResult, CancellationToken cancellationToken)
+    {
+        try
         {
-            var workflow = await ReadJsonEntryAsync<WorkflowEntity>(entry, cancellationToken);
-            await repositoryService.UpsertWorkflow(workflow);
-            result.WorkflowsImported++;
+            var result = await ImportEnvelopeAsync(input, fileName, cancellationToken);
+            AddCounts(batchResult.Result, result);
+            batchResult.FilesImported++;
         }
-
-        foreach (var evaluationEntry in evaluationEntries)
+        catch (Exception exception) when (IsImportFileFailure(exception))
         {
-            var evalPackage = manifest.SchemaVersion >= 3
-                ? await ReadJsonEntryAsync<TransferEvaluationPackage>(evaluationEntry.Value, cancellationToken)
-                : CreateEvalPackage(await ReadJsonEntryAsync<EvalConfigDetail>(evaluationEntry.Value, cancellationToken));
-
-            ValidateEvalConfigEntry(evaluationEntry.Key, evalPackage.EvalConfig, evaluationEntry.Value.FullName);
-            ValidateEvalPackage(evalPackage, evaluationEntry.Value.FullName);
-
-            var remapped = RemapEvalPackage(evalPackage);
-            await repositoryService.UpsertEvalConfig(remapped.EvalConfig);
-            await repositoryService.UpsertEvalGraders(remapped.Graders);
-            await repositoryService.UpsertEvalColumns(remapped.Columns);
-            await repositoryService.UpsertEvalRows(remapped.Rows);
-            await repositoryService.UpsertEvalData(remapped.Data);
-            foreach (var run in remapped.Runs)
-                await repositoryService.UpsertEvalRun(run);
-
-            await repositoryService.UpsertEvalRunRows(remapped.RunRows);
-            await repositoryService.UpsertEvalRunRowGraders(remapped.RunRowGraders);
-            await repositoryService.UpsertEvalRunGraderSummaries(remapped.RunGraderSummaries);
-            result.EvaluationsImported++;
-            result.EvaluationRunsImported += remapped.Runs.Count;
+            batchResult.FilesFailed++;
         }
+    }
 
-        var folderIdMap = new Dictionary<Guid, Guid>();
-        if (manifest.SchemaVersion >= 2)
+    private async Task<TransferImportResult> ImportEnvelopeAsync(Stream input, string sourceName, CancellationToken cancellationToken)
+    {
+        var envelope = await JsonSerializer.DeserializeAsync<TransferEnvelope>(input, JsonOptions, cancellationToken);
+        if (envelope is null)
+            throw new SharpOMaticException($"Transfer file '{sourceName}' is invalid.");
+
+        if (envelope.SchemaVersion != TransferEnvelope.CurrentSchemaVersion)
+            throw new SharpOMaticException($"Transfer file '{sourceName}' uses unsupported schema version '{envelope.SchemaVersion}'.");
+
+        if (string.IsNullOrWhiteSpace(envelope.Type))
+            throw new SharpOMaticException($"Transfer file '{sourceName}' is missing a type.");
+
+        if (envelope.Payload.ValueKind != JsonValueKind.Object)
+            throw new SharpOMaticException($"Transfer file '{sourceName}' is missing a payload.");
+
+        return envelope.Type.Trim().ToLowerInvariant() switch
         {
-            foreach (var folderEntry in manifest.Folders ?? [])
+            WorkflowType => await ImportWorkflowAsync(DeserializePayload<WorkflowEntity>(envelope, sourceName)),
+            ConnectorType => await ImportConnectorAsync(DeserializePayload<Connector>(envelope, sourceName)),
+            ModelType => await ImportModelAsync(DeserializePayload<Model>(envelope, sourceName)),
+            EvaluationType => await ImportEvaluationAsync(DeserializePayload<TransferEvaluationPackage>(envelope, sourceName), sourceName),
+            AssetType => await ImportAssetAsync(DeserializePayload<TransferAssetPayload>(envelope, sourceName), sourceName, cancellationToken),
+            _ => throw new SharpOMaticException($"Transfer file '{sourceName}' contains unsupported type '{envelope.Type}'."),
+        };
+    }
+
+    private static T DeserializePayload<T>(TransferEnvelope envelope, string sourceName)
+    {
+        var payload = JsonSerializer.Deserialize<T>(envelope.Payload.GetRawText(), JsonOptions);
+        return payload is null ? throw new SharpOMaticException($"Transfer file '{sourceName}' has an invalid payload.") : payload;
+    }
+
+    private async Task<TransferImportResult> ImportWorkflowAsync(WorkflowEntity workflow)
+    {
+        await repositoryService.UpsertWorkflow(workflow);
+        return new TransferImportResult { WorkflowsImported = 1 };
+    }
+
+    private async Task<TransferImportResult> ImportConnectorAsync(Connector connector)
+    {
+        await MergeConnectorSecrets(connector);
+        await repositoryService.UpsertConnector(connector, hideSecrets: false);
+        return new TransferImportResult { ConnectorsImported = 1 };
+    }
+
+    private async Task<TransferImportResult> ImportModelAsync(Model model)
+    {
+        await MergeModelSecrets(model);
+        await repositoryService.UpsertModel(model);
+        return new TransferImportResult { ModelsImported = 1 };
+    }
+
+    private async Task<TransferImportResult> ImportEvaluationAsync(TransferEvaluationPackage package, string sourceName)
+    {
+        ValidateEvalPackage(package, sourceName);
+
+        var remapped = RemapEvalPackage(package);
+        await repositoryService.UpsertEvalConfig(remapped.EvalConfig);
+        await repositoryService.UpsertEvalGraders(remapped.Graders);
+        await repositoryService.UpsertEvalColumns(remapped.Columns);
+        await repositoryService.UpsertEvalRows(remapped.Rows);
+        await repositoryService.UpsertEvalData(remapped.Data);
+        foreach (var run in remapped.Runs)
+            await repositoryService.UpsertEvalRun(run);
+
+        await repositoryService.UpsertEvalRunRows(remapped.RunRows);
+        await repositoryService.UpsertEvalRunRowGraders(remapped.RunRowGraders);
+        await repositoryService.UpsertEvalRunGraderSummaries(remapped.RunGraderSummaries);
+
+        return new TransferImportResult
+        {
+            EvaluationsImported = 1,
+            EvaluationRunsImported = remapped.Runs.Count,
+        };
+    }
+
+    private async Task<TransferImportResult> ImportAssetAsync(TransferAssetPayload payload, string sourceName, CancellationToken cancellationToken)
+    {
+        if (payload.AssetId == Guid.Empty)
+            throw new SharpOMaticException($"Transfer file '{sourceName}' has an invalid asset id.");
+
+        if (string.IsNullOrWhiteSpace(payload.Name))
+            throw new SharpOMaticException($"Transfer file '{sourceName}' has an invalid asset name.");
+
+        var folderName = payload.FolderName?.Trim();
+        if (string.IsNullOrWhiteSpace(folderName))
+            folderName = null;
+
+        if (folderName?.Contains('/', StringComparison.Ordinal) == true || folderName?.Contains('\\', StringComparison.Ordinal) == true)
+            throw new SharpOMaticException($"Transfer file '{sourceName}' has an invalid asset folder name.");
+
+        Guid? folderId = null;
+        if (folderName is not null)
+        {
+            var folder = await repositoryService.GetAssetFolderByName(folderName);
+            if (folder is null)
             {
-                if (string.IsNullOrWhiteSpace(folderEntry.Name))
-                    throw new SharpOMaticException($"Folder '{folderEntry.FolderId}' has an invalid name.");
-
-                var normalizedName = folderEntry.Name.Trim();
-                if (normalizedName.Contains('/', StringComparison.Ordinal) || normalizedName.Contains('\\', StringComparison.Ordinal))
-                    throw new SharpOMaticException($"Folder '{folderEntry.FolderId}' has an invalid name.");
-
-                var byId = await TryGetFolder(folderEntry.FolderId);
-                if (byId is not null)
+                folder = new AssetFolder
                 {
-                    var updated = new AssetFolder { FolderId = byId.FolderId, Name = normalizedName, Created = byId.Created };
-                    await repositoryService.UpsertAssetFolder(updated);
-                    folderIdMap[folderEntry.FolderId] = byId.FolderId;
-                    continue;
-                }
-
-                var byName = await repositoryService.GetAssetFolderByName(normalizedName);
-                if (byName is not null)
-                {
-                    folderIdMap[folderEntry.FolderId] = byName.FolderId;
-                    continue;
-                }
-
-                var created = new AssetFolder
-                {
-                    FolderId = folderEntry.FolderId,
-                    Name = normalizedName,
-                    Created = folderEntry.Created == default ? DateTime.Now : folderEntry.Created,
+                    FolderId = Guid.NewGuid(),
+                    Name = folderName,
+                    Created = DateTime.UtcNow,
                 };
-                await repositoryService.UpsertAssetFolder(created);
-                folderIdMap[folderEntry.FolderId] = created.FolderId;
+                await repositoryService.UpsertAssetFolder(folder);
             }
+
+            folderId = folder.FolderId;
         }
 
-        foreach (var assetEntry in manifest.Assets ?? [])
+        byte[] content;
+        try
         {
-            var zipEntry = archive.GetEntry(BuildAssetEntryName(assetEntry.AssetId)) ?? throw new SharpOMaticException($"Asset '{assetEntry.AssetId}' is missing from the transfer package.");
-
-            Guid? folderId = null;
-            if (manifest.SchemaVersion >= 2 && assetEntry.FolderId.HasValue)
-            {
-                if (!folderIdMap.TryGetValue(assetEntry.FolderId.Value, out var mappedFolderId))
-                    throw new SharpOMaticException($"Asset '{assetEntry.AssetId}' references missing folder '{assetEntry.FolderId.Value}'.");
-
-                folderId = mappedFolderId;
-            }
-
-            var storageKey = AssetStorageKey.ForLibrary(assetEntry.AssetId, folderId);
-            await using (var assetStream = zipEntry.Open())
-            {
-                await assetStore.SaveAsync(storageKey, assetStream, cancellationToken);
-            }
-
-            var sizeBytes = zipEntry.Length > 0 ? zipEntry.Length : assetEntry.SizeBytes;
-            var asset = new Asset
-            {
-                AssetId = assetEntry.AssetId,
-                RunId = null,
-                ConversationId = null,
-                FolderId = folderId,
-                Name = assetEntry.Name,
-                Scope = AssetScope.Library,
-                Created = assetEntry.Created,
-                MediaType = assetEntry.MediaType,
-                SizeBytes = sizeBytes,
-                StorageKey = storageKey,
-            };
-
-            await repositoryService.UpsertAsset(asset);
-            result.AssetsImported++;
+            content = Convert.FromBase64String(payload.ContentBase64);
+        }
+        catch (FormatException exception)
+        {
+            throw new SharpOMaticException($"Transfer file '{sourceName}' has invalid asset content: {exception.Message}");
         }
 
-        return result;
+        var storageKey = AssetStorageKey.ForLibrary(payload.AssetId, folderId);
+        await using (var stream = new MemoryStream(content, writable: false))
+        {
+            await assetStore.SaveAsync(storageKey, stream, cancellationToken);
+        }
+
+        var asset = new Asset
+        {
+            AssetId = payload.AssetId,
+            RunId = null,
+            ConversationId = null,
+            FolderId = folderId,
+            Name = payload.Name.Trim(),
+            Scope = AssetScope.Library,
+            Created = payload.Created == default ? DateTime.UtcNow : payload.Created,
+            MediaType = payload.MediaType,
+            SizeBytes = content.LongLength,
+            StorageKey = storageKey,
+        };
+
+        await repositoryService.UpsertAsset(asset);
+        return new TransferImportResult { AssetsImported = 1 };
     }
 
     private async Task<List<Asset>> ResolveAssetsAsync(TransferSelection? selection)
@@ -314,34 +383,6 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         return assets;
     }
 
-    private async Task<List<AssetFolder>> ResolveFoldersAsync(TransferSelection? selection, List<Asset> selectedAssets)
-    {
-        if (selection is null)
-            return [];
-
-        if (selection.All)
-            return await repositoryService.GetAssetFolders(null, SortDirection.Ascending, 0, 0);
-
-        var folderIds = selectedAssets.Where(asset => asset.FolderId.HasValue).Select(asset => asset.FolderId!.Value).Distinct().ToList();
-        var folders = new List<AssetFolder>();
-        foreach (var folderId in folderIds)
-            folders.Add(await repositoryService.GetAssetFolder(folderId));
-
-        return folders;
-    }
-
-    private async Task<AssetFolder?> TryGetFolder(Guid folderId)
-    {
-        try
-        {
-            return await repositoryService.GetAssetFolder(folderId);
-        }
-        catch (SharpOMaticException)
-        {
-            return null;
-        }
-    }
-
     private static async Task<List<Guid>> ResolveSelectionAsync(TransferSelection? selection, Func<Task<IEnumerable<Guid>>> resolveAllIds)
     {
         if (selection is null)
@@ -353,54 +394,89 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         return [.. (selection.Ids ?? []).Distinct()];
     }
 
-    private static string BuildEntityEntryName(string directory, Guid id) => $"{directory}/{id:D}{JsonExtension}";
-
-    private static string BuildAssetEntryName(Guid id) => $"{AssetDirectory}/{id:D}";
-
-    private static async Task WriteJsonEntryAsync<T>(ZipArchive archive, string entryName, T payload, CancellationToken cancellationToken)
+    private static async Task WriteEnvelopeEntryAsync<T>(
+        ZipArchive archive,
+        string entryName,
+        string type,
+        T payload,
+        DateTime exportedUtc,
+        CancellationToken cancellationToken)
     {
+        var envelope = new TransferEnvelope<T>
+        {
+            Type = type,
+            ExportedUtc = exportedUtc,
+            Payload = payload,
+        };
+
         var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
         await using var entryStream = entry.Open();
-        await JsonSerializer.SerializeAsync(entryStream, payload, JsonOptions, cancellationToken);
+        await JsonSerializer.SerializeAsync(entryStream, envelope, JsonOptions, cancellationToken);
     }
 
-    private static async Task<T> ReadJsonEntryAsync<T>(ZipArchiveEntry entry, CancellationToken cancellationToken)
+    private static string BuildJsonEntryName(string directory, string name, Guid id)
     {
-        await using var entryStream = entry.Open();
-        var payload = await JsonSerializer.DeserializeAsync<T>(entryStream, JsonOptions, cancellationToken);
-        return payload is null ? throw new SharpOMaticException($"Entry '{entry.FullName}' is invalid.") : payload;
+        var safeName = SanitizeFileName(name);
+        return $"{directory}/{safeName}_{id:D}{JsonExtension}";
     }
 
-    private static Dictionary<Guid, ZipArchiveEntry> GetEntityEntries(ZipArchive archive, string directory)
+    private static string SanitizeFileName(string name)
     {
-        var entries = new Dictionary<Guid, ZipArchiveEntry>();
-        var prefix = $"{directory}/";
-
-        foreach (var entry in archive.Entries)
+        var builder = new StringBuilder();
+        var previousUnderscore = false;
+        foreach (var character in name.Trim())
         {
-            var name = entry.FullName.Replace('\\', '/');
-            if (!IsSafeEntryName(name) || !name.StartsWith(prefix, StringComparison.Ordinal))
-                continue;
+            var replacement = IsUnsafeFileNameCharacter(character) ? '_' : character;
+            if (replacement == '_')
+            {
+                if (previousUnderscore)
+                    continue;
 
-            if (name.EndsWith('/'))
-                continue;
+                previousUnderscore = true;
+            }
+            else
+            {
+                previousUnderscore = false;
+            }
 
-            var fileName = name[prefix.Length..];
-            if (fileName.Contains('/', StringComparison.Ordinal))
-                continue;
-
-            if (!fileName.EndsWith(JsonExtension, StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            var idText = fileName[..^JsonExtension.Length];
-            if (!Guid.TryParse(idText, out var id))
-                continue;
-
-            if (!entries.TryAdd(id, entry))
-                throw new SharpOMaticException($"Duplicate entry '{name}' was found.");
+            builder.Append(replacement);
+            if (builder.Length >= 80)
+                break;
         }
 
-        return entries;
+        var safeName = builder.ToString().Trim(' ', '.', '_');
+        if (string.IsNullOrWhiteSpace(safeName) || IsReservedWindowsFileName(safeName))
+            return "item";
+
+        return safeName;
+    }
+
+    private static bool IsUnsafeFileNameCharacter(char character)
+    {
+        return char.IsControl(character) || character is '<' or '>' or ':' or '"' or '/' or '\\' or '|' or '?' or '*';
+    }
+
+    private static bool IsReservedWindowsFileName(string fileName)
+    {
+        var name = fileName.Split('.')[0];
+        if (name.Equals("CON", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("PRN", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("AUX", StringComparison.OrdinalIgnoreCase) ||
+            name.Equals("NUL", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (name.Length == 4 && (name.StartsWith("COM", StringComparison.OrdinalIgnoreCase) || name.StartsWith("LPT", StringComparison.OrdinalIgnoreCase)))
+            return name[3] is >= '1' and <= '9';
+
+        return false;
+    }
+
+    private static bool IsJsonEntry(string fullName)
+    {
+        if (!IsSafeEntryName(fullName) || fullName.EndsWith('/'))
+            return false;
+
+        return fullName.EndsWith(JsonExtension, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsSafeEntryName(string fullName)
@@ -417,10 +493,19 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         return true;
     }
 
-    private static void ValidateEvalConfigEntry(Guid expectedEvalConfigId, EvalConfig evalConfig, string entryName)
+    private static bool IsImportFileFailure(Exception exception)
     {
-        if (evalConfig.EvalConfigId != expectedEvalConfigId)
-            throw new SharpOMaticException($"Evaluation entry '{entryName}' does not match payload EvalConfigId '{evalConfig.EvalConfigId}'.");
+        return exception is SharpOMaticException or JsonException or FormatException or NotSupportedException or InvalidOperationException;
+    }
+
+    private static void AddCounts(TransferImportResult target, TransferImportResult source)
+    {
+        target.WorkflowsImported += source.WorkflowsImported;
+        target.ConnectorsImported += source.ConnectorsImported;
+        target.ModelsImported += source.ModelsImported;
+        target.EvaluationsImported += source.EvaluationsImported;
+        target.EvaluationRunsImported += source.EvaluationRunsImported;
+        target.AssetsImported += source.AssetsImported;
     }
 
     private static void ValidateEvalConfigDetail(EvalConfigDetail detail, string entryName)
@@ -541,22 +626,6 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             if (!graderIds.Contains(summary.EvalGraderId))
                 throw new SharpOMaticException($"Evaluation entry '{entryName}' contains run grader summary '{summary.EvalRunGraderSummaryId}' referencing missing grader '{summary.EvalGraderId}'.");
         }
-    }
-
-    private static TransferEvaluationPackage CreateEvalPackage(EvalConfigDetail detail)
-    {
-        return new TransferEvaluationPackage
-        {
-            EvalConfig = detail.EvalConfig,
-            Graders = detail.Graders,
-            Columns = detail.Columns,
-            Rows = detail.Rows,
-            Data = detail.Data,
-            Runs = [],
-            RunRows = [],
-            RunRowGraders = [],
-            RunGraderSummaries = [],
-        };
     }
 
     private static TransferEvaluationPackage RemapEvalPackage(TransferEvaluationPackage source)

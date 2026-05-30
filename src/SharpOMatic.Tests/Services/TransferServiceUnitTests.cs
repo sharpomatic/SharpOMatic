@@ -45,24 +45,20 @@ public sealed class TransferServiceUnitTests
 
         output.Position = 0;
         using var archive = new ZipArchive(output, ZipArchiveMode.Read, leaveOpen: true);
-        var manifest = ReadJsonEntry<TransferManifest>(archive, "manifest.json");
-        var exportedWorkflow = ReadJsonEntry<WorkflowEntity>(archive, $"workflows/{workflow.Id:D}.json");
-        var exportedConnector = ReadJsonEntry<Connector>(archive, $"connectors/{connector.ConnectorId:D}.json");
-        var exportedModel = ReadJsonEntry<Model>(archive, $"models/{model.ModelId:D}.json");
+        var exportedWorkflow = ReadEnvelopePayload<WorkflowEntity>(archive, "workflows/", "workflow");
+        var exportedConnector = ReadEnvelopePayload<Connector>(archive, "connectors/", "connector");
+        var exportedModel = ReadEnvelopePayload<Model>(archive, "models/", "model");
+        var exportedAsset = ReadEnvelopePayload<TransferAssetPayload>(archive, "assets/", "asset");
 
-        Assert.Equal(1, manifest.Counts.Workflows);
-        Assert.Equal(1, manifest.Counts.Connectors);
-        Assert.Equal(1, manifest.Counts.Models);
-        Assert.Equal(1, manifest.Counts.Folders);
-        Assert.Equal(1, manifest.Counts.Assets);
-        Assert.Equal(folder.FolderId, manifest.Folders.Single().FolderId);
-        Assert.Equal(asset.AssetId, manifest.Assets.Single().AssetId);
+        Assert.Null(archive.GetEntry("manifest.json"));
         Assert.Equal(workflow.Id, exportedWorkflow.Id);
         Assert.False(exportedConnector.FieldValues.ContainsKey("apiKey"));
         Assert.Equal("east", exportedConnector.FieldValues["region"]);
         Assert.False(exportedModel.ParameterValues.ContainsKey("deploymentKey"));
         Assert.Equal("fast", exportedModel.ParameterValues["mode"]);
-        Assert.Equal(assetBytes, ReadEntryBytes(archive, $"assets/{asset.AssetId:D}"));
+        Assert.Equal(asset.AssetId, exportedAsset.AssetId);
+        Assert.Equal(folder.Name, exportedAsset.FolderName);
+        Assert.Equal(assetBytes, Convert.FromBase64String(exportedAsset.ContentBase64));
     }
 
     [Fact]
@@ -78,32 +74,26 @@ public sealed class TransferServiceUnitTests
         model.ParameterValues.Remove("deploymentKey");
 
         await using var input = CreateTransferArchive(
-            new TransferManifest
-            {
-                SchemaVersion = TransferManifest.CurrentSchemaVersion,
-                CreatedUtc = DateTime.UtcNow,
-                IncludeSecrets = false,
-                Counts = new TransferCounts { Workflows = 1, Connectors = 1, Models = 1, Folders = 1, Assets = 1 },
-                Folders = [new TransferFolderEntry { FolderId = folder.FolderId, Name = folder.Name, Created = folder.Created }],
-                Assets =
-                [
-                    new TransferAssetEntry
-                    {
-                        AssetId = asset.AssetId,
-                        FolderId = folder.FolderId,
-                        Name = asset.Name,
-                        MediaType = asset.MediaType,
-                        SizeBytes = asset.SizeBytes,
-                        Created = asset.Created,
-                    },
-                ],
-            },
             archive =>
             {
-                WriteJsonEntry(archive, $"workflows/{workflow.Id:D}.json", workflow);
-                WriteJsonEntry(archive, $"connectors/{connector.ConnectorId:D}.json", connector);
-                WriteJsonEntry(archive, $"models/{model.ModelId:D}.json", model);
-                WriteBytesEntry(archive, $"assets/{asset.AssetId:D}", assetBytes);
+                WriteEnvelopeEntry(archive, "misc/workflow.json", "workflow", workflow);
+                WriteEnvelopeEntry(archive, "connectors/connector.json", "connector", connector);
+                WriteEnvelopeEntry(archive, "models/model.json", "model", model);
+                WriteEnvelopeEntry(
+                    archive,
+                    "assets/asset.json",
+                    "asset",
+                    new TransferAssetPayload
+                    {
+                        AssetId = asset.AssetId,
+                        FolderName = folder.Name,
+                        Name = asset.Name,
+                        MediaType = asset.MediaType,
+                        Created = asset.Created,
+                        SizeBytes = asset.SizeBytes,
+                        ContentBase64 = Convert.ToBase64String(assetBytes),
+                    }
+                );
             }
         );
 
@@ -119,7 +109,6 @@ public sealed class TransferServiceUnitTests
         repository.Setup(service => service.GetConnector(connector.ConnectorId, false)).ReturnsAsync(CreateConnector(secretValue: "existing-connector-secret"));
         repository.Setup(service => service.GetModelConfig(model.ConfigId)).ReturnsAsync(CreateModelConfig(model.ConfigId));
         repository.Setup(service => service.GetModel(model.ModelId, false)).ReturnsAsync(CreateModel(connector.ConnectorId, secretValue: "existing-model-secret"));
-        repository.Setup(service => service.GetAssetFolder(folder.FolderId)).ThrowsAsync(new SharpOMaticException("Missing folder."));
         repository.Setup(service => service.GetAssetFolderByName(folder.Name)).ReturnsAsync((AssetFolder?)null);
         repository.Setup(service => service.UpsertWorkflow(It.IsAny<WorkflowEntity>())).Callback<WorkflowEntity>(item => importedWorkflow = item).Returns(Task.CompletedTask);
         repository.Setup(service => service.UpsertConnector(It.IsAny<Connector>(), false)).Callback<Connector, bool>((item, _) => importedConnector = item).Returns(Task.CompletedTask);
@@ -139,8 +128,11 @@ public sealed class TransferServiceUnitTests
             .Returns(Task.CompletedTask);
 
         var transferService = new TransferService(repository.Object, assetStore.Object);
-        var result = await transferService.ImportAsync(input);
+        var batch = await transferService.ImportZipAsync(input);
+        var result = batch.Result;
 
+        Assert.Equal(4, batch.FilesImported);
+        Assert.Equal(0, batch.FilesFailed);
         Assert.Equal(1, result.WorkflowsImported);
         Assert.Equal(1, result.ConnectorsImported);
         Assert.Equal(1, result.ModelsImported);
@@ -148,10 +140,10 @@ public sealed class TransferServiceUnitTests
         Assert.Equal(workflow.Id, importedWorkflow?.Id);
         Assert.Equal("existing-connector-secret", importedConnector?.FieldValues["apiKey"]);
         Assert.Equal("existing-model-secret", importedModel?.ParameterValues["deploymentKey"]);
-        Assert.Equal(folder.FolderId, importedFolder?.FolderId);
+        Assert.Equal(folder.Name, importedFolder?.Name);
         Assert.Equal(asset.AssetId, importedAsset?.AssetId);
-        Assert.Equal(folder.FolderId, importedAsset?.FolderId);
-        Assert.Equal(AssetStorageKey.ForLibrary(asset.AssetId, folder.FolderId), importedAsset?.StorageKey);
+        Assert.Equal(importedFolder?.FolderId, importedAsset?.FolderId);
+        Assert.Equal(AssetStorageKey.ForLibrary(asset.AssetId, importedFolder?.FolderId), importedAsset?.StorageKey);
         Assert.Equal(assetBytes, savedAssetBytes);
     }
 
@@ -175,12 +167,10 @@ public sealed class TransferServiceUnitTests
 
         output.Position = 0;
         using var archive = new ZipArchive(output, ZipArchiveMode.Read, leaveOpen: true);
-        var manifest = ReadJsonEntry<TransferManifest>(archive, "manifest.json");
-        var exportedPackage = ReadJsonEntry<TransferEvaluationPackage>(archive, $"evaluations/{package.EvalConfig.EvalConfigId:D}.json");
+        var envelope = ReadEnvelope<TransferEvaluationPackage>(archive, "evaluations/", "evaluation");
+        var exportedPackage = envelope.Payload;
 
-        Assert.Equal(3, manifest.SchemaVersion);
-        Assert.Equal(1, manifest.Counts.Evaluations);
-        Assert.Equal(1, manifest.Counts.EvaluationRuns);
+        Assert.Equal(TransferEnvelope.CurrentSchemaVersion, envelope.SchemaVersion);
         Assert.Equal(package.Runs.Single().EvalRunId, exportedPackage.Runs.Single().EvalRunId);
         Assert.Equal(package.RunRows.Single().EvalRunRowId, exportedPackage.RunRows.Single().EvalRunRowId);
         Assert.Equal(package.RunRowGraders.Single().EvalRunRowGraderId, exportedPackage.RunRowGraders.Single().EvalRunRowGraderId);
@@ -270,7 +260,7 @@ public sealed class TransferServiceUnitTests
     public async Task Import_remaps_evaluation_runs_and_preserves_result_values()
     {
         var package = CreateTransferPackage();
-        await using var input = CreateTransferArchive(3, package);
+        await using var input = CreateTransferArchive(archive => WriteEnvelopeEntry(archive, "nested/evaluation.json", "evaluation", package));
 
         EvalConfig? importedConfig = null;
         var importedGraders = new List<EvalGrader>();
@@ -291,8 +281,11 @@ public sealed class TransferServiceUnitTests
         );
 
         var transferService = new TransferService(repository.Object, Mock.Of<IAssetStore>());
-        var result = await transferService.ImportAsync(input);
+        var batch = await transferService.ImportZipAsync(input);
+        var result = batch.Result;
 
+        Assert.Equal(1, batch.FilesImported);
+        Assert.Equal(0, batch.FilesFailed);
         Assert.Equal(1, result.EvaluationsImported);
         Assert.Equal(1, result.EvaluationRunsImported);
         Assert.NotNull(importedConfig);
@@ -313,43 +306,57 @@ public sealed class TransferServiceUnitTests
         Assert.Equal(package.RunGraderSummaries.Single().PassRate, importedSummaries.Single().PassRate);
     }
 
-    [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    public async Task Import_legacy_evaluation_entries_remain_definition_only(int schemaVersion)
+    [Fact]
+    public async Task Import_json_imports_single_envelope()
     {
-        var package = CreateTransferPackage();
-        var detail = new EvalConfigDetail
-        {
-            EvalConfig = package.EvalConfig,
-            Graders = package.Graders,
-            Columns = package.Columns,
-            Rows = package.Rows,
-            Data = package.Data,
-        };
-        await using var input = CreateTransferArchive(schemaVersion, detail);
+        var workflow = CreateWorkflow();
+        await using var input = CreateEnvelopeStream("workflow", workflow);
 
-        var importedRuns = new List<EvalRun>();
-        var repository = CreateImportRepository(runs: run => importedRuns.Add(run));
+        WorkflowEntity? importedWorkflow = null;
+        var repository = new Mock<IRepositoryService>();
+        repository.Setup(service => service.UpsertWorkflow(It.IsAny<WorkflowEntity>())).Callback<WorkflowEntity>(item => importedWorkflow = item).Returns(Task.CompletedTask);
         var transferService = new TransferService(repository.Object, Mock.Of<IAssetStore>());
-        var result = await transferService.ImportAsync(input);
+        var result = await transferService.ImportJsonAsync(input);
 
-        Assert.Equal(1, result.EvaluationsImported);
-        Assert.Equal(0, result.EvaluationRunsImported);
-        Assert.Empty(importedRuns);
+        Assert.Equal(1, result.WorkflowsImported);
+        Assert.Equal(workflow.Id, importedWorkflow?.Id);
     }
 
     [Fact]
-    public async Task Import_rejects_evaluation_package_with_mismatched_run_relationships()
+    public async Task Import_files_partially_imports_valid_files_and_counts_failures()
+    {
+        var workflow = CreateWorkflow();
+        await using var valid = CreateEnvelopeStream("workflow", workflow);
+        await using var invalid = new MemoryStream(Encoding.UTF8.GetBytes("{\"type\":\"unknown\",\"schemaVersion\":1,\"payload\":{}}"));
+
+        var repository = new Mock<IRepositoryService>();
+        repository.Setup(service => service.UpsertWorkflow(It.IsAny<WorkflowEntity>())).Returns(Task.CompletedTask);
+        var transferService = new TransferService(repository.Object, Mock.Of<IAssetStore>());
+
+        var result = await transferService.ImportFilesAsync(
+            [
+                new TransferImportFile { Name = "workflow.json", Stream = valid },
+                new TransferImportFile { Name = "bad.json", Stream = invalid },
+            ]
+        );
+
+        Assert.Equal(2, result.FilesProcessed);
+        Assert.Equal(1, result.FilesImported);
+        Assert.Equal(1, result.FilesFailed);
+        Assert.Equal(1, result.Result.WorkflowsImported);
+    }
+
+    [Fact]
+    public async Task Import_json_rejects_evaluation_package_with_mismatched_run_relationships()
     {
         var package = CreateTransferPackage();
         package.RunRows.Single().EvalRunId = Guid.NewGuid();
-        await using var input = CreateTransferArchive(3, package);
+        await using var input = CreateEnvelopeStream("evaluation", package);
 
         var repository = CreateImportRepository();
         var transferService = new TransferService(repository.Object, Mock.Of<IAssetStore>());
 
-        var exception = await Assert.ThrowsAsync<SharpOMaticException>(() => transferService.ImportAsync(input));
+        var exception = await Assert.ThrowsAsync<SharpOMaticException>(() => transferService.ImportJsonAsync(input));
         Assert.Contains("referencing missing run", exception.Message);
     }
 
@@ -515,46 +522,45 @@ public sealed class TransferServiceUnitTests
         };
     }
 
-    private static MemoryStream CreateTransferArchive<T>(int schemaVersion, T evaluationPayload)
+    private static MemoryStream CreateEnvelopeStream<T>(string type, T payload)
+    {
+        var output = new MemoryStream();
+        WriteEnvelope(output, type, payload);
+        output.Position = 0;
+        return output;
+    }
+
+    private static MemoryStream CreateTransferArchive(Action<ZipArchive> writeEntries)
     {
         var output = new MemoryStream();
         using (var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
         {
-            var evalConfigId = evaluationPayload switch
-            {
-                TransferEvaluationPackage package => package.EvalConfig.EvalConfigId,
-                EvalConfigDetail detail => detail.EvalConfig.EvalConfigId,
-                _ => throw new InvalidOperationException("Unsupported evaluation payload."),
-            };
-
-            WriteJsonEntry(
-                archive,
-                "manifest.json",
-                new TransferManifest
-                {
-                    SchemaVersion = schemaVersion,
-                    CreatedUtc = DateTime.UtcNow,
-                    Counts = new TransferCounts { Evaluations = 1 },
-                }
-            );
-            WriteJsonEntry(archive, $"evaluations/{evalConfigId:D}.json", evaluationPayload);
+            writeEntries(archive);
         }
 
         output.Position = 0;
         return output;
     }
 
-    private static MemoryStream CreateTransferArchive(TransferManifest manifest, Action<ZipArchive> writeEntries)
+    private static void WriteEnvelopeEntry<T>(ZipArchive archive, string entryName, string type, T payload)
     {
-        var output = new MemoryStream();
-        using (var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
-        {
-            WriteJsonEntry(archive, "manifest.json", manifest);
-            writeEntries(archive);
-        }
+        var entry = archive.CreateEntry(entryName);
+        using var stream = entry.Open();
+        WriteEnvelope(stream, type, payload);
+    }
 
-        output.Position = 0;
-        return output;
+    private static void WriteEnvelope<T>(Stream stream, string type, T payload)
+    {
+        JsonSerializer.Serialize(
+            stream,
+            new TransferEnvelope<T>
+            {
+                Type = type,
+                ExportedUtc = DateTime.UtcNow,
+                Payload = payload,
+            },
+            JsonOptions
+        );
     }
 
     private static WorkflowEntity CreateWorkflow()
@@ -693,34 +699,19 @@ public sealed class TransferServiceUnitTests
         };
     }
 
-    private static void WriteJsonEntry<T>(ZipArchive archive, string entryName, T payload)
+    private static TransferEnvelope<T> ReadEnvelope<T>(ZipArchive archive, string directory, string expectedType)
     {
-        var entry = archive.CreateEntry(entryName);
+        var entry = archive.Entries.Single(item => item.FullName.StartsWith(directory, StringComparison.Ordinal) && item.FullName.EndsWith(".json", StringComparison.OrdinalIgnoreCase));
         using var stream = entry.Open();
-        JsonSerializer.Serialize(stream, payload, JsonOptions);
+        var envelope = JsonSerializer.Deserialize<TransferEnvelope<T>>(stream, JsonOptions) ?? throw new InvalidOperationException($"Entry '{entry.FullName}' is invalid.");
+        Assert.Equal(expectedType, envelope.Type);
+        Assert.Equal(TransferEnvelope.CurrentSchemaVersion, envelope.SchemaVersion);
+        return envelope;
     }
 
-    private static void WriteBytesEntry(ZipArchive archive, string entryName, byte[] payload)
+    private static T ReadEnvelopePayload<T>(ZipArchive archive, string directory, string expectedType)
     {
-        var entry = archive.CreateEntry(entryName);
-        using var stream = entry.Open();
-        stream.Write(payload);
-    }
-
-    private static T ReadJsonEntry<T>(ZipArchive archive, string entryName)
-    {
-        var entry = archive.GetEntry(entryName) ?? throw new InvalidOperationException($"Entry '{entryName}' was not found.");
-        using var stream = entry.Open();
-        return JsonSerializer.Deserialize<T>(stream, JsonOptions) ?? throw new InvalidOperationException($"Entry '{entryName}' is invalid.");
-    }
-
-    private static byte[] ReadEntryBytes(ZipArchive archive, string entryName)
-    {
-        var entry = archive.GetEntry(entryName) ?? throw new InvalidOperationException($"Entry '{entryName}' was not found.");
-        using var stream = entry.Open();
-        using var memory = new MemoryStream();
-        stream.CopyTo(memory);
-        return memory.ToArray();
+        return ReadEnvelope<T>(archive, directory, expectedType).Payload;
     }
 
     private sealed class TestDbContextFactory(DbContextOptions<SharpOMaticDbContext> options) : IDbContextFactory<SharpOMaticDbContext>

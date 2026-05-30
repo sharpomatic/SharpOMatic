@@ -15,14 +15,15 @@
   <div class="transfer-panel p-3">
     <h5 class="mb-2">Import a transfer package</h5>
     <p class="text-body-secondary mb-3">
-      Import workflows, connectors, models, evaluations, and assets from a transfer package.
+      Import workflows, connectors, models, evaluations, and assets from a transfer package or JSON transfer files.
     </p>
     <div class="d-flex align-items-center gap-2 flex-wrap">
       <input
         #importInput
         type="file"
         class="d-none"
-        accept=".zip"
+        accept=".zip,.json,application/zip,application/json"
+        multiple
         (change)="onImportFileSelected($event)"
       />
       <button
@@ -31,7 +32,7 @@
         [disabled]="isImporting"
         (click)="triggerImport(importInput)"
       >
-        {{ isImporting ? "Importing..." : "Choose Zip" }}
+        {{ isImporting ? "Importing..." : "Choose Files" }}
       </button>
       @if (selectedFileName) {
         <span class="text-body-secondary small">{{ selectedFileName }}</span>
