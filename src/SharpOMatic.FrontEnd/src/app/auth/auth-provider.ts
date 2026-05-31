@@ -3,6 +3,13 @@ export type SharpOMaticAuthAccessState =
   | 'unauthorized'
   | 'forbidden';
 
+export interface SharpOMaticAuthMessages {
+  unauthorizedTitle?: string;
+  unauthorizedBody?: string;
+  forbiddenTitle?: string;
+  forbiddenBody?: string;
+}
+
 export interface SharpOMaticAuthProvider {
   required?: boolean;
   getBearerToken?: () =>
@@ -14,6 +21,7 @@ export interface SharpOMaticAuthProvider {
     | Promise<SharpOMaticAuthAccessState>
     | SharpOMaticAuthAccessState;
   onUnauthorized?: () => void | Promise<void>;
+  messages?: SharpOMaticAuthMessages;
 }
 
 declare global {

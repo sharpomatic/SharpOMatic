@@ -19,6 +19,18 @@ export class App implements OnInit, OnDestroy {
   protected readonly toastService = inject(ToastService);
   protected readonly authGateService = inject(AuthGateService);
   protected readonly authState = this.authGateService.state;
+  protected readonly authMessages = {
+    unauthorizedTitle:
+      window.sharpomaticAuth?.messages?.unauthorizedTitle ?? 'Sign-in required',
+    unauthorizedBody:
+      window.sharpomaticAuth?.messages?.unauthorizedBody ??
+      'This editor requires an active session. Please sign in and try again.',
+    forbiddenTitle:
+      window.sharpomaticAuth?.messages?.forbiddenTitle ?? 'Access restricted',
+    forbiddenBody:
+      window.sharpomaticAuth?.messages?.forbiddenBody ??
+      'This editor is only available to authorised users.',
+  };
   private modalRef?: BsModalRef;
 
   isSidebarClosed = false;
