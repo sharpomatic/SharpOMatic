@@ -13,6 +13,10 @@
 
 - Investigate a subagent invoked via a tool call
 
+### AI Foundry
+
+- Allow calling an AI Foundry Agent
+
 ### Others
 
 - Add view button to Runs and Conversation history and causes it to be loaded as the current data for the trace viewer.
@@ -20,10 +24,6 @@
 ### Upgrade
 
 - Move agent nuget to latest versions
-
-### Engine
-
-- Integrate use of LSP/OmniSharp for full intellisense in code nodes
 
 ### Connectors
 

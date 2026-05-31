@@ -16,29 +16,6 @@ public class TransferSelection
     public List<Guid> Ids { get; set; } = [];
 }
 
-public class TransferManifest
-{
-    public const int CurrentSchemaVersion = 3;
-
-    public int SchemaVersion { get; set; } = 1;
-    public DateTime CreatedUtc { get; set; }
-    public bool IncludeSecrets { get; set; }
-    public TransferCounts Counts { get; set; } = new();
-    public List<TransferFolderEntry> Folders { get; set; } = [];
-    public List<TransferAssetEntry> Assets { get; set; } = [];
-}
-
-public class TransferCounts
-{
-    public int Workflows { get; set; }
-    public int Connectors { get; set; }
-    public int Models { get; set; }
-    public int Evaluations { get; set; }
-    public int EvaluationRuns { get; set; }
-    public int Folders { get; set; }
-    public int Assets { get; set; }
-}
-
 public class TransferEvaluationPackage
 {
     public required EvalConfig EvalConfig { get; set; }
@@ -52,23 +29,6 @@ public class TransferEvaluationPackage
     public required List<EvalRunGraderSummary> RunGraderSummaries { get; set; }
 }
 
-public class TransferFolderEntry
-{
-    public Guid FolderId { get; set; }
-    public string Name { get; set; } = "";
-    public DateTime Created { get; set; }
-}
-
-public class TransferAssetEntry
-{
-    public Guid AssetId { get; set; }
-    public Guid? FolderId { get; set; }
-    public string Name { get; set; } = "";
-    public string MediaType { get; set; } = "";
-    public long SizeBytes { get; set; }
-    public DateTime Created { get; set; }
-}
-
 public class TransferImportResult
 {
     public int WorkflowsImported { get; set; }
@@ -77,4 +37,47 @@ public class TransferImportResult
     public int EvaluationsImported { get; set; }
     public int EvaluationRunsImported { get; set; }
     public int AssetsImported { get; set; }
+}
+
+public class TransferEnvelope
+{
+    public const int CurrentSchemaVersion = 1;
+
+    public int SchemaVersion { get; set; }
+    public string Type { get; set; } = "";
+    public DateTime ExportedUtc { get; set; }
+    public JsonElement Payload { get; set; }
+}
+
+public class TransferEnvelope<T>
+{
+    public int SchemaVersion { get; set; } = TransferEnvelope.CurrentSchemaVersion;
+    public required string Type { get; set; }
+    public DateTime ExportedUtc { get; set; }
+    public required T Payload { get; set; }
+}
+
+public class TransferAssetPayload
+{
+    public required Guid AssetId { get; set; }
+    public string? FolderName { get; set; }
+    public required string Name { get; set; }
+    public required string MediaType { get; set; }
+    public required DateTime Created { get; set; }
+    public required long SizeBytes { get; set; }
+    public required string ContentBase64 { get; set; }
+}
+
+public class TransferImportFile
+{
+    public required string Name { get; set; }
+    public required Stream Stream { get; set; }
+}
+
+public class TransferImportBatchResult
+{
+    public TransferImportResult Result { get; set; } = new();
+    public int FilesProcessed { get; set; }
+    public int FilesImported { get; set; }
+    public int FilesFailed { get; set; }
 }

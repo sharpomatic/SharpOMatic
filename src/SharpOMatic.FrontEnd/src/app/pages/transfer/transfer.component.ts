@@ -180,15 +180,37 @@ export class TransferComponent implements OnInit {
 
   onImportFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement | null;
-    const file = input?.files?.[0];
-    if (!file || this.isImporting) {
+    const files = Array.from(input?.files ?? []);
+    if (files.length === 0 || this.isImporting) {
       if (input) {
         input.value = '';
       }
       return;
     }
 
-    this.selectedFileName = file.name;
+    const zipFiles = files.filter((file) =>
+      file.name.toLowerCase().endsWith('.zip'),
+    );
+    const jsonFiles = files.filter((file) =>
+      file.name.toLowerCase().endsWith('.json'),
+    );
+
+    if (
+      zipFiles.length > 1 ||
+      (zipFiles.length === 1 && files.length > 1) ||
+      jsonFiles.length !== files.length
+    ) {
+      if (input) {
+        input.value = '';
+      }
+      this.showImportFailure(
+        'Choose one .zip package or one or more .json transfer files.',
+      );
+      return;
+    }
+
+    this.selectedFileName =
+      files.length === 1 ? files[0].name : `${files.length} files selected`;
     this.isImporting = true;
 
     const resetInput = () => {
@@ -197,7 +219,12 @@ export class TransferComponent implements OnInit {
       }
     };
 
-    this.serverRepository.importTransfer(file).subscribe({
+    const importRequest =
+      zipFiles.length === 1
+        ? this.serverRepository.importTransferZip(zipFiles[0])
+        : this.serverRepository.importTransferFiles(jsonFiles);
+
+    importRequest.subscribe({
       next: (result) => {
         this.isImporting = false;
         resetInput();
@@ -222,6 +249,11 @@ export class TransferComponent implements OnInit {
   }
 
   private showImportFailure(error: unknown): void {
+    if (typeof error === 'string') {
+      this.showInfoDialog('Import Failed', error);
+      return;
+    }
+
     const detail = this.toastService.extractErrorDetail(error);
     const message = detail ? `Import failed: ${detail}` : 'Import failed.';
     this.showInfoDialog('Import Failed', message);
