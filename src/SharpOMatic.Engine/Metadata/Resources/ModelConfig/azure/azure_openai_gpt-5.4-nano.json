@@ -57,6 +57,14 @@
   ],
   "ParameterFields": [
     {
+      "Name": "deployment_name",
+      "Label": "Deployment Name",
+      "Description": "",
+      "CallDefined": false,
+      "Type": 0,
+      "IsRequired": true
+    },
+    {
       "Name": "max_output_tokens",
       "Label": "Max Output Tokens",
       "Description": "",
