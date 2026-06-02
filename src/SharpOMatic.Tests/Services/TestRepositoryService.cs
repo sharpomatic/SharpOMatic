@@ -435,6 +435,14 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.CompletedTask;
     }
 
+    public Task UpsertConnectorConfigs(IReadOnlyCollection<ConnectorConfig> configs)
+    {
+        foreach (var config in configs)
+            _connectorConfigs[config.ConfigId] = config;
+
+        return Task.CompletedTask;
+    }
+
     public Task<List<ConnectorSummary>> GetConnectorSummaries() => throw new NotImplementedException();
 
     public Task<int> GetConnectorSummaryCount(string? search) => throw new NotImplementedException();
@@ -468,6 +476,14 @@ public sealed class TestRepositoryService : IRepositoryService
     public Task UpsertModelConfig(ModelConfig config)
     {
         _modelConfigs[config.ConfigId] = config;
+        return Task.CompletedTask;
+    }
+
+    public Task UpsertModelConfigs(IReadOnlyCollection<ModelConfig> configs)
+    {
+        foreach (var config in configs)
+            _modelConfigs[config.ConfigId] = config;
+
         return Task.CompletedTask;
     }
 

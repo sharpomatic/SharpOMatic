@@ -179,6 +179,7 @@ Either provide the **ConnectionString** for the blob storage container.
 ```json
   "AssetStorage": {
     "AzureBlobStorage": {
+      "ContainerName": "assets",
       "ConnectionString": ""
     }
   }
@@ -193,4 +194,16 @@ Or you can specify the **ServiceUri** along with the **ContainerName**.
       "ServiceUri": ""
     }
   }
+```
+
+When using **ServiceUri**, the store uses `DefaultAzureCredential` by default.
+If your application handles Azure credentials differently, register the credential you want SharpOMatic to use.
+
+```csharp
+  builder.Services.AddSingleton<TokenCredential>(_ =>
+      new ManagedIdentityCredential(clientId: "..."));
+
+  builder.Services.AddSingleton<IAssetStore, AzureBlobStorageAssetStore>();
+  builder.Services.Configure<AzureBlobStorageAssetStoreOptions>(
+    builder.Configuration.GetSection("AssetStorage:AzureBlobStorage"));
 ```

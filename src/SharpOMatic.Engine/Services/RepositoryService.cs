@@ -1351,24 +1351,52 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
     public async Task UpsertConnectorConfig(ConnectorConfig config)
     {
+        await UpsertConnectorConfigs([config]);
+    }
+
+    public async Task UpsertConnectorConfigs(IReadOnlyCollection<ConnectorConfig> configs)
+    {
+        if (configs.Count == 0)
+            return;
+
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (from c in dbContext.ConnectorConfigMetadata where c.ConfigId == config.ConfigId select c).FirstOrDefaultAsync();
+        var uniqueConfigs = configs.GroupBy(config => config.ConfigId).Select(group => group.Last()).ToList();
+        var configIds = uniqueConfigs.Select(config => config.ConfigId).ToList();
+        var existingConfigs = await dbContext
+            .ConnectorConfigMetadata
+            .Where(config => configIds.Contains(config.ConfigId))
+            .ToDictionaryAsync(config => config.ConfigId);
+        var hasChanges = false;
 
-        if (metadata is null)
+        foreach (var config in uniqueConfigs)
         {
-            metadata = new ConnectorConfigMetadata()
-            {
-                Version = config.Version,
-                ConfigId = config.ConfigId,
-                Config = "",
-            };
+            var serializedConfig = JsonSerializer.Serialize(config, _options);
 
-            dbContext.ConnectorConfigMetadata.Add(metadata);
+            if (!existingConfigs.TryGetValue(config.ConfigId, out var metadata))
+            {
+                metadata = new ConnectorConfigMetadata()
+                {
+                    Version = config.Version,
+                    ConfigId = config.ConfigId,
+                    Config = serializedConfig,
+                };
+
+                dbContext.ConnectorConfigMetadata.Add(metadata);
+                hasChanges = true;
+                continue;
+            }
+
+            if ((metadata.Version == config.Version) && (metadata.Config == serializedConfig))
+                continue;
+
+            metadata.Version = config.Version;
+            metadata.Config = serializedConfig;
+            hasChanges = true;
         }
 
-        metadata.Config = JsonSerializer.Serialize(config, _options);
-        await dbContext.SaveChangesAsync();
+        if (hasChanges)
+            await dbContext.SaveChangesAsync();
     }
 
     // ------------------------------------------------
@@ -1568,24 +1596,52 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
     public async Task UpsertModelConfig(ModelConfig config)
     {
+        await UpsertModelConfigs([config]);
+    }
+
+    public async Task UpsertModelConfigs(IReadOnlyCollection<ModelConfig> configs)
+    {
+        if (configs.Count == 0)
+            return;
+
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var metadata = await (from m in dbContext.ModelConfigMetadata where m.ConfigId == config.ConfigId select m).FirstOrDefaultAsync();
+        var uniqueConfigs = configs.GroupBy(config => config.ConfigId).Select(group => group.Last()).ToList();
+        var configIds = uniqueConfigs.Select(config => config.ConfigId).ToList();
+        var existingConfigs = await dbContext
+            .ModelConfigMetadata
+            .Where(config => configIds.Contains(config.ConfigId))
+            .ToDictionaryAsync(config => config.ConfigId);
+        var hasChanges = false;
 
-        if (metadata is null)
+        foreach (var config in uniqueConfigs)
         {
-            metadata = new ModelConfigMetadata()
-            {
-                Version = config.Version,
-                ConfigId = config.ConfigId,
-                Config = "",
-            };
+            var serializedConfig = JsonSerializer.Serialize(config, _options);
 
-            dbContext.ModelConfigMetadata.Add(metadata);
+            if (!existingConfigs.TryGetValue(config.ConfigId, out var metadata))
+            {
+                metadata = new ModelConfigMetadata()
+                {
+                    Version = config.Version,
+                    ConfigId = config.ConfigId,
+                    Config = serializedConfig,
+                };
+
+                dbContext.ModelConfigMetadata.Add(metadata);
+                hasChanges = true;
+                continue;
+            }
+
+            if ((metadata.Version == config.Version) && (metadata.Config == serializedConfig))
+                continue;
+
+            metadata.Version = config.Version;
+            metadata.Config = serializedConfig;
+            hasChanges = true;
         }
 
-        metadata.Config = JsonSerializer.Serialize(config, _options);
-        await dbContext.SaveChangesAsync();
+        if (hasChanges)
+            await dbContext.SaveChangesAsync();
     }
 
     // ------------------------------------------------

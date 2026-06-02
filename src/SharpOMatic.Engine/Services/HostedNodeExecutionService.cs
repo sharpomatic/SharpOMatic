@@ -55,14 +55,19 @@ public class HostedNodeExecutionService(IServiceScopeFactory scopeFactory, INode
 
     private async Task LoadMetadata()
     {
-        await LoadMetadata<ConnectorConfig>("Metadata.Resources.ConnectorConfig", (repo, config) => repo.UpsertConnectorConfig(config));
-        await LoadMetadata<ModelConfig>("Metadata.Resources.ModelConfig", (repo, config) => repo.UpsertModelConfig(config));
-    }
-
-    private async Task LoadMetadata<T>(string resourceFilter, Func<IRepositoryService, T, Task> upsertAction)
-    {
         using var scope = scopeFactory.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepositoryService>();
+
+        var connectorConfigs = await LoadMetadata<ConnectorConfig>("Metadata.Resources.ConnectorConfig");
+        var modelConfigs = await LoadMetadata<ModelConfig>("Metadata.Resources.ModelConfig");
+
+        await repository.UpsertConnectorConfigs(connectorConfigs);
+        await repository.UpsertModelConfigs(modelConfigs);
+    }
+
+    private static async Task<List<T>> LoadMetadata<T>(string resourceFilter)
+    {
+        var configs = new List<T>();
         var assembly = Assembly.GetExecutingAssembly();
         var resourceNames = assembly.GetManifestResourceNames().Where(name => name.Contains(resourceFilter) && name.EndsWith(".json"));
 
@@ -75,7 +80,7 @@ public class HostedNodeExecutionService(IServiceScopeFactory scopeFactory, INode
                 {
                     var config = await JsonSerializer.DeserializeAsync<T>(stream);
                     if (config != null)
-                        await upsertAction(repository, config);
+                        configs.Add(config);
                 }
             }
             catch (Exception ex)
@@ -83,5 +88,7 @@ public class HostedNodeExecutionService(IServiceScopeFactory scopeFactory, INode
                 Console.WriteLine($"Failed to load metadata from {resourceName}: {ex.Message}");
             }
         }
+
+        return configs;
     }
 }

@@ -6,7 +6,7 @@ public class AzureBlobStorageAssetStore : IAssetStore, IAssetStoreMove
     private readonly SemaphoreSlim _containerInit = new(1, 1);
     private bool _containerEnsured;
 
-    public AzureBlobStorageAssetStore(IOptions<AzureBlobStorageAssetStoreOptions> options)
+    public AzureBlobStorageAssetStore(IOptions<AzureBlobStorageAssetStoreOptions> options, TokenCredential? credential = null)
     {
         if (options is null)
             throw new SharpOMaticException("Azure Blob Storage options are required.");
@@ -29,7 +29,9 @@ public class AzureBlobStorageAssetStore : IAssetStore, IAssetStoreMove
             if (!Uri.TryCreate(settings.ServiceUri, UriKind.Absolute, out var serviceUri))
                 throw new SharpOMaticException("Azure Blob Storage ServiceUri is invalid.");
 
-            var serviceClient = new BlobServiceClient(serviceUri, new DefaultAzureCredential());
+            credential ??= new DefaultAzureCredential();
+
+            var serviceClient = new BlobServiceClient(serviceUri, credential);
             _containerClient = serviceClient.GetBlobContainerClient(containerName);
         }
     }

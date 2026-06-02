@@ -18,6 +18,7 @@ global using System.Text.Json.Serialization;
 global using System.Threading.Channels;
 global using Azure;
 global using Azure.AI.OpenAI;
+global using Azure.Core;
 global using Azure.Identity;
 global using Azure.Storage.Blobs;
 global using Google.GenAI;

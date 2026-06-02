@@ -76,6 +76,7 @@ public interface IRepositoryService
     Task<List<ConnectorConfig>> GetConnectorConfigs();
     Task<ConnectorConfig?> GetConnectorConfig(string configId);
     Task UpsertConnectorConfig(ConnectorConfig config);
+    Task UpsertConnectorConfigs(IReadOnlyCollection<ConnectorConfig> configs);
 
     // ------------------------------------------------
     // Connector Operations
@@ -93,6 +94,7 @@ public interface IRepositoryService
     Task<List<ModelConfig>> GetModelConfigs();
     Task<ModelConfig?> GetModelConfig(string configId);
     Task UpsertModelConfig(ModelConfig config);
+    Task UpsertModelConfigs(IReadOnlyCollection<ModelConfig> configs);
 
     // ------------------------------------------------
     // Model Operations
