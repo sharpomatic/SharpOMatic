@@ -2126,39 +2126,54 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     public async Task<bool> UpsertEvalRun(EvalRun evalRun, bool allowInsert = true)
     {
         const int maxInsertAttempts = 2;
+        var requestedOrder = evalRun.Order;
+
+        using var strategyContext = dbContextFactory.CreateDbContext();
+        var strategy = strategyContext.Database.CreateExecutionStrategy();
 
         for (var attempt = 1; attempt <= maxInsertAttempts; attempt++)
         {
-            using var dbContext = dbContextFactory.CreateDbContext();
-            await using var transaction = await dbContext.Database.BeginTransactionAsync();
+            var retryOrderAllocation = false;
 
-            var entity = await (from run in dbContext.EvalRuns where run.EvalRunId == evalRun.EvalRunId select run).FirstOrDefaultAsync();
-
-            if (entity is null)
+            var saved = await strategy.ExecuteAsync(async () =>
             {
-                if (!allowInsert)
+                using var dbContext = dbContextFactory.CreateDbContext();
+                await using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+                var entity = await (from run in dbContext.EvalRuns where run.EvalRunId == evalRun.EvalRunId select run).FirstOrDefaultAsync();
+
+                if (entity is null)
+                {
+                    if (!allowInsert)
+                        return false;
+
+                    evalRun.Order = requestedOrder > 0 ? requestedOrder : await GetNextEvalRunOrder(dbContext, evalRun.EvalConfigId);
+                    dbContext.EvalRuns.Add(evalRun);
+                }
+                else
+                {
+                    evalRun.Order = entity.Order;
+                    dbContext.Entry(entity).CurrentValues.SetValues(evalRun);
+                    dbContext.Entry(entity).Property(run => run.CancelRequested).IsModified = false;
+                }
+
+                try
+                {
+                    await dbContext.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return true;
+                }
+                catch (DbUpdateException ex) when (entity is null && requestedOrder <= 0 && attempt < maxInsertAttempts && IsUniqueEvalRunOrderViolation(ex))
+                {
+                    await transaction.RollbackAsync();
+                    evalRun.Order = requestedOrder;
+                    retryOrderAllocation = true;
                     return false;
+                }
+            });
 
-                evalRun.Order = evalRun.Order > 0 ? evalRun.Order : await GetNextEvalRunOrder(dbContext, evalRun.EvalConfigId);
-                dbContext.EvalRuns.Add(evalRun);
-            }
-            else
-            {
-                evalRun.Order = entity.Order;
-                dbContext.Entry(entity).CurrentValues.SetValues(evalRun);
-                dbContext.Entry(entity).Property(run => run.CancelRequested).IsModified = false;
-            }
-
-            try
-            {
-                await dbContext.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return true;
-            }
-            catch (DbUpdateException ex) when (entity is null && attempt < maxInsertAttempts && IsUniqueEvalRunOrderViolation(ex))
-            {
-                await transaction.RollbackAsync();
-            }
+            if (saved || !retryOrderAllocation)
+                return saved;
         }
 
         throw new SharpOMaticException($"EvalRun '{evalRun.EvalRunId}' could not be saved because a unique run order could not be allocated.");
@@ -2378,49 +2393,67 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
     public async Task MoveEvalRun(Guid evalRunId, MoveDirection direction)
     {
-        using var dbContext = dbContextFactory.CreateDbContext();
-        await using var transaction = await dbContext.Database.BeginTransactionAsync();
+        using var strategyContext = dbContextFactory.CreateDbContext();
+        var strategy = strategyContext.Database.CreateExecutionStrategy();
 
-        var evalRun = await dbContext.EvalRuns.FirstOrDefaultAsync(run => run.EvalRunId == evalRunId);
-        if (evalRun is null)
-            throw new SharpOMaticException($"EvalRun '{evalRunId}' cannot be found.");
+        Guid? adjacentRunId = null;
+        int? currentOrder = null;
+        int? adjacentOrder = null;
 
-        var adjacentRun = direction switch
+        await strategy.ExecuteAsync(async () =>
         {
-            MoveDirection.Up => await dbContext
-                .EvalRuns
-                .Where(run => run.EvalConfigId == evalRun.EvalConfigId && run.Order > evalRun.Order)
-                .OrderBy(run => run.Order)
-                .ThenByDescending(run => run.Started)
-                .ThenBy(run => run.EvalRunId)
-                .FirstOrDefaultAsync(),
-            MoveDirection.Down => await dbContext
-                .EvalRuns
-                .Where(run => run.EvalConfigId == evalRun.EvalConfigId && run.Order < evalRun.Order)
-                .OrderByDescending(run => run.Order)
-                .ThenByDescending(run => run.Started)
-                .ThenBy(run => run.EvalRunId)
-                .FirstOrDefaultAsync(),
-            _ => throw new SharpOMaticException($"Move direction '{direction}' is not supported."),
-        };
+            using var dbContext = dbContextFactory.CreateDbContext();
+            await using var transaction = await dbContext.Database.BeginTransactionAsync();
 
-        if (adjacentRun is null)
-        {
+            var evalRun = await dbContext.EvalRuns.FirstOrDefaultAsync(run => run.EvalRunId == evalRunId);
+            if (evalRun is null)
+                throw new SharpOMaticException($"EvalRun '{evalRunId}' cannot be found.");
+
+            var adjacentRun = adjacentRunId.HasValue
+                ? await dbContext.EvalRuns.FirstOrDefaultAsync(run => run.EvalRunId == adjacentRunId.Value)
+                : direction switch
+                {
+                    MoveDirection.Up => await dbContext
+                        .EvalRuns.Where(run => run.EvalConfigId == evalRun.EvalConfigId && run.Order > evalRun.Order)
+                        .OrderBy(run => run.Order)
+                        .ThenByDescending(run => run.Started)
+                        .ThenBy(run => run.EvalRunId)
+                        .FirstOrDefaultAsync(),
+                    MoveDirection.Down => await dbContext
+                        .EvalRuns.Where(run => run.EvalConfigId == evalRun.EvalConfigId && run.Order < evalRun.Order)
+                        .OrderByDescending(run => run.Order)
+                        .ThenByDescending(run => run.Started)
+                        .ThenBy(run => run.EvalRunId)
+                        .FirstOrDefaultAsync(),
+                    _ => throw new SharpOMaticException($"Move direction '{direction}' is not supported."),
+                };
+
+            if (adjacentRun is null)
+            {
+                await transaction.CommitAsync();
+                return;
+            }
+
+            if (currentOrder.HasValue && adjacentOrder.HasValue && evalRun.Order == adjacentOrder.Value && adjacentRun.Order == currentOrder.Value)
+            {
+                await transaction.CommitAsync();
+                return;
+            }
+
+            currentOrder ??= evalRun.Order;
+            adjacentOrder ??= adjacentRun.Order;
+            adjacentRunId ??= adjacentRun.EvalRunId;
+
+            var sentinelOrder = await GetSentinelEvalRunOrder(dbContext, evalRun.EvalConfigId);
+
+            evalRun.Order = sentinelOrder;
+            await dbContext.SaveChangesAsync();
+
+            adjacentRun.Order = currentOrder.Value;
+            evalRun.Order = adjacentOrder.Value;
+            await dbContext.SaveChangesAsync();
             await transaction.CommitAsync();
-            return;
-        }
-
-        var currentOrder = evalRun.Order;
-        var adjacentOrder = adjacentRun.Order;
-        var sentinelOrder = await GetSentinelEvalRunOrder(dbContext, evalRun.EvalConfigId);
-
-        evalRun.Order = sentinelOrder;
-        await dbContext.SaveChangesAsync();
-
-        adjacentRun.Order = currentOrder;
-        evalRun.Order = adjacentOrder;
-        await dbContext.SaveChangesAsync();
-        await transaction.CommitAsync();
+        });
     }
 
     public async Task DeleteEvalRun(Guid evalRunId)
