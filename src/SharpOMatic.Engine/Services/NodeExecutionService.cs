@@ -5,7 +5,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
     public const int DEFAULT_RUN_HISTORY_LIMIT = 50;
     public const int DEFAULT_NODE_RUN_LIMIT = 500;
     private const string DEFAULT_BATCH_OUTPUT_PATH = "output";
-    private readonly SemaphoreSlim _semaphore = new(5);
+    private readonly SemaphoreSlim _semaphore = new(16);
 
     public async Task RunQueueAsync(CancellationToken cancellationToken = default)
     {
