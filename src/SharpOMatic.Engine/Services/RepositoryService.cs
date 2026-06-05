@@ -335,8 +335,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         using var dbContext = dbContextFactory.CreateDbContext();
 
         var conversationsToDelete = await dbContext
-            .Conversations
-            .Where(c => c.WorkflowId == workflowId && c.Status != ConversationStatus.Suspended && c.Status != ConversationStatus.Running)
+            .Conversations.Where(c => c.WorkflowId == workflowId && c.Status != ConversationStatus.Suspended && c.Status != ConversationStatus.Running)
             .OrderByDescending(c => c.Updated)
             .Skip(keepLatest)
             .Select(c => c.ConversationId)
@@ -432,7 +431,12 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var runIdsToDelete = await dbContext.Runs.Where(r => r.WorkflowId == workflowId && r.ConversationId == null).OrderByDescending(r => r.Created).Skip(keepLatest).Select(r => r.RunId).ToListAsync();
+        var runIdsToDelete = await dbContext
+            .Runs.Where(r => r.WorkflowId == workflowId && r.ConversationId == null)
+            .OrderByDescending(r => r.Created)
+            .Skip(keepLatest)
+            .Select(r => r.RunId)
+            .ToListAsync();
 
         if (runIdsToDelete.Count == 0)
             return;
@@ -589,8 +593,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (ids.Count == 0)
             return [];
 
-        return await dbContext.StreamEvents
-            .AsNoTracking()
+        return await dbContext
+            .StreamEvents.AsNoTracking()
             .Where(e => e.ConversationId == conversationId && !e.HideFromReply && e.MessageId != null && ids.Contains(e.MessageId))
             .OrderBy(e => e.SequenceNumber)
             .ThenBy(e => e.Created)
@@ -608,8 +612,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (ids.Count == 0)
             return [];
 
-        return await dbContext.StreamEvents
-            .AsNoTracking()
+        return await dbContext
+            .StreamEvents.AsNoTracking()
             .Where(e => e.ConversationId == conversationId && !e.HideFromReply && e.ToolCallId != null && ids.Contains(e.ToolCallId))
             .OrderBy(e => e.SequenceNumber)
             .ThenBy(e => e.Created)
@@ -623,8 +627,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (string.IsNullOrWhiteSpace(conversationId))
             throw new SharpOMaticException("Conversation stream id cannot be empty.");
 
-        return await dbContext.StreamEvents
-            .AsNoTracking()
+        return await dbContext
+            .StreamEvents.AsNoTracking()
             .Where(e => e.ConversationId == conversationId && !e.HideFromReply && (e.EventKind == StreamEventKind.StateSnapshot || e.EventKind == StreamEventKind.StateDelta))
             .OrderBy(e => e.SequenceNumber)
             .ThenBy(e => e.Created)
@@ -659,14 +663,10 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         var metricsInRange = await metricsQuery.ToListAsync();
 
-        var masterItems = request.Scope == ModelCallMetricScope.All
-            ? []
-            : BuildMetricMasterItems(metricsInRange, request.Scope, request.MasterSearch);
+        var masterItems = request.Scope == ModelCallMetricScope.All ? [] : BuildMetricMasterItems(metricsInRange, request.Scope, request.MasterSearch);
 
         var selectedMetrics = ApplyMetricScope(metricsInRange, request.Scope, request.ScopeKey).ToList();
-        var scopeName = request.Scope == ModelCallMetricScope.All
-            ? null
-            : masterItems.FirstOrDefault(item => string.Equals(item.Key, request.ScopeKey, StringComparison.Ordinal))?.Name;
+        var scopeName = request.Scope == ModelCallMetricScope.All ? null : masterItems.FirstOrDefault(item => string.Equals(item.Key, request.ScopeKey, StringComparison.Ordinal))?.Name;
 
         var dashboardRange = GetMetricDashboardRange(selectedMetrics, start, end, request.Bucket, request.AllTime);
 
@@ -680,24 +680,14 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             BuildMetricTotals(selectedMetrics),
             masterItems,
             BuildMetricTimeBuckets(selectedMetrics, dashboardRange.Start, dashboardRange.End, request.Bucket),
-            BuildMetricBreakdown(selectedMetrics, metric => BuildMetricIdKey(metric.WorkflowId), metric => metric.WorkflowName),
-            BuildMetricBreakdown(selectedMetrics, metric => BuildMetricKey(metric.ConnectorId, metric.ConnectorName), GetMetricConnectorName),
-            BuildMetricBreakdown(selectedMetrics, metric => BuildMetricKey(metric.ModelId, GetMetricModelName(metric)), GetMetricModelName),
+            BuildMetricBreakdown(selectedMetrics, metric => BuildMetricNameKey(GetMetricWorkflowName(metric)), GetMetricWorkflowName),
+            BuildMetricBreakdown(selectedMetrics, metric => BuildMetricNameKey(GetMetricConnectorName(metric)), GetMetricConnectorName),
+            BuildMetricBreakdown(selectedMetrics, metric => BuildMetricNameKey(GetMetricModelName(metric)), GetMetricModelName),
             BuildMetricBreakdown(selectedMetrics, metric => BuildMetricIdKey(metric.NodeEntityId), metric => metric.NodeTitle),
             BuildMetricFailures(selectedMetrics),
-            selectedMetrics
-                .OrderByDescending(metric => metric.Created)
-                .Skip(recentSkip)
-                .Take(recentTake)
-                .Select(ToMetricCallSummary)
-                .ToList(),
+            selectedMetrics.OrderByDescending(metric => metric.Created).Skip(recentSkip).Take(recentTake).Select(ToMetricCallSummary).ToList(),
             selectedMetrics.Count,
-            selectedMetrics
-                .OrderByDescending(metric => metric.Duration ?? -1)
-                .ThenByDescending(metric => metric.Created)
-                .Take(10)
-                .Select(ToMetricCallSummary)
-                .ToList()
+            selectedMetrics.OrderByDescending(metric => metric.Duration ?? -1).ThenByDescending(metric => metric.Created).Take(10).Select(ToMetricCallSummary).ToList()
         );
     }
 
@@ -718,9 +708,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         var groups = scope switch
         {
-            ModelCallMetricScope.Workflow => metrics.GroupBy(metric => new MetricGroupKey(BuildMetricIdKey(metric.WorkflowId), metric.WorkflowName)),
-            ModelCallMetricScope.Connector => metrics.GroupBy(metric => new MetricGroupKey(BuildMetricKey(metric.ConnectorId, metric.ConnectorName), GetMetricConnectorName(metric))),
-            ModelCallMetricScope.Model => metrics.GroupBy(metric => new MetricGroupKey(BuildMetricKey(metric.ModelId, GetMetricModelName(metric)), GetMetricModelName(metric))),
+            ModelCallMetricScope.Workflow => metrics.GroupBy(metric => new MetricGroupKey(BuildMetricNameKey(GetMetricWorkflowName(metric)), GetMetricWorkflowName(metric))),
+            ModelCallMetricScope.Connector => metrics.GroupBy(metric => new MetricGroupKey(BuildMetricNameKey(GetMetricConnectorName(metric)), GetMetricConnectorName(metric))),
+            ModelCallMetricScope.Model => metrics.GroupBy(metric => new MetricGroupKey(BuildMetricNameKey(GetMetricModelName(metric)), GetMetricModelName(metric))),
             _ => [],
         };
 
@@ -744,9 +734,10 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 );
             });
 
-        items = scope == ModelCallMetricScope.Connector
-            ? items.OrderByDescending(item => item.TotalCalls).ThenBy(item => item.Name)
-            : items.OrderByDescending(item => item.TotalCost).ThenByDescending(item => item.TotalCalls).ThenBy(item => item.Name);
+        items =
+            scope == ModelCallMetricScope.Connector
+                ? items.OrderByDescending(item => item.TotalCalls).ThenBy(item => item.Name)
+                : items.OrderByDescending(item => item.TotalCost).ThenByDescending(item => item.TotalCalls).ThenBy(item => item.Name);
 
         return items.ToList();
     }
@@ -758,9 +749,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         return scope switch
         {
-            ModelCallMetricScope.Workflow => metrics.Where(metric => MetricIdKeyMatches(scopeKey, metric.WorkflowId)),
-            ModelCallMetricScope.Connector => metrics.Where(metric => MetricKeyMatches(scopeKey, metric.ConnectorId, metric.ConnectorName)),
-            ModelCallMetricScope.Model => metrics.Where(metric => MetricKeyMatches(scopeKey, metric.ModelId, GetMetricModelName(metric))),
+            ModelCallMetricScope.Workflow => metrics.Where(metric => MetricNameKeyMatches(scopeKey, GetMetricWorkflowName(metric))),
+            ModelCallMetricScope.Connector => metrics.Where(metric => MetricNameKeyMatches(scopeKey, GetMetricConnectorName(metric))),
+            ModelCallMetricScope.Model => metrics.Where(metric => MetricNameKeyMatches(scopeKey, GetMetricModelName(metric))),
             _ => metrics,
         };
     }
@@ -787,9 +778,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
     private static List<ModelCallMetricTimeBucket> BuildMetricTimeBuckets(List<ModelCallMetric> metrics, DateTime start, DateTime end, ModelCallMetricBucket bucket)
     {
-        var groups = metrics
-            .GroupBy(metric => GetMetricBucketStart(metric.Created, bucket))
-            .ToDictionary(group => group.Key, group => group.ToList());
+        var groups = metrics.GroupBy(metric => GetMetricBucketStart(metric.Created, bucket)).ToDictionary(group => group.Key, group => group.ToList());
 
         var results = new List<ModelCallMetricTimeBucket>();
         for (var bucketStart = GetMetricBucketStart(start, bucket); bucketStart < end; bucketStart = AddMetricBucket(bucketStart, bucket))
@@ -860,9 +849,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 group.Count(),
                 group.Min(metric => metric.Created),
                 group.Max(metric => metric.Created),
-                group.Select(metric => metric.WorkflowId).Distinct().Count(),
-                group.Select(metric => BuildMetricKey(metric.ConnectorId, metric.ConnectorName)).Distinct(StringComparer.Ordinal).Count(),
-                group.Select(metric => BuildMetricKey(metric.ModelId, GetMetricModelName(metric))).Distinct(StringComparer.Ordinal).Count()
+                group.Select(metric => BuildMetricNameKey(GetMetricWorkflowName(metric))).Distinct(StringComparer.Ordinal).Count(),
+                group.Select(metric => BuildMetricNameKey(GetMetricConnectorName(metric))).Distinct(StringComparer.Ordinal).Count(),
+                group.Select(metric => BuildMetricNameKey(GetMetricModelName(metric))).Distinct(StringComparer.Ordinal).Count()
             ))
             .OrderByDescending(group => group.Count)
             .ThenByDescending(group => group.LastSeen)
@@ -909,22 +898,16 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
     private static string BuildMetricIdKey(Guid id) => $"id:{id:D}";
 
-    private static string BuildMetricKey(Guid? id, string? name)
+    private static string BuildMetricNameKey(string displayName) => $"name:{displayName}";
+
+    private static bool MetricNameKeyMatches(string key, string displayName)
     {
-        return id.HasValue ? BuildMetricIdKey(id.Value) : $"name:{GetMetricDisplayName(name, "Unknown")}";
+        return string.Equals(key, BuildMetricNameKey(displayName), StringComparison.Ordinal);
     }
 
-    private static bool MetricIdKeyMatches(string key, Guid id)
-    {
-        return string.Equals(key, BuildMetricIdKey(id), StringComparison.Ordinal);
-    }
+    private static string GetMetricWorkflowName(ModelCallMetric metric) => GetMetricDisplayName(metric.WorkflowName, "Unknown workflow");
 
-    private static bool MetricKeyMatches(string key, Guid? id, string? name)
-    {
-        return id.HasValue
-            ? MetricIdKeyMatches(key, id.Value)
-            : string.Equals(key, $"name:{GetMetricDisplayName(name, "Unknown")}", StringComparison.Ordinal);
-    }
+    private static string GetMetricWorkflowName(WorkflowRunMetric metric) => GetMetricDisplayName(metric.WorkflowName, "Unknown workflow");
 
     private static string GetMetricConnectorName(ModelCallMetric metric) => GetMetricDisplayName(metric.ConnectorName, "No connector");
 
@@ -979,13 +962,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             metricsQuery = metricsQuery.Where(metric => metric.Created >= start && metric.Created < end);
 
         var metricsInRange = await metricsQuery.ToListAsync();
-        var masterItems = request.Scope == WorkflowRunMetricScope.All
-            ? []
-            : BuildWorkflowRunMetricMasterItems(metricsInRange, request.Scope, request.MasterSearch);
+        var masterItems = request.Scope == WorkflowRunMetricScope.All ? [] : BuildWorkflowRunMetricMasterItems(metricsInRange, request.Scope, request.MasterSearch);
         var selectedMetrics = ApplyWorkflowRunMetricScope(metricsInRange, request.Scope, request.ScopeKey).ToList();
-        var scopeName = request.Scope == WorkflowRunMetricScope.All
-            ? null
-            : masterItems.FirstOrDefault(item => string.Equals(item.Key, request.ScopeKey, StringComparison.Ordinal))?.Name;
+        var scopeName = request.Scope == WorkflowRunMetricScope.All ? null : masterItems.FirstOrDefault(item => string.Equals(item.Key, request.ScopeKey, StringComparison.Ordinal))?.Name;
         var dashboardRange = GetWorkflowRunMetricDashboardRange(selectedMetrics, start, end, request.Bucket, request.AllTime);
 
         return new WorkflowRunMetricsDashboard(
@@ -1000,19 +979,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             BuildWorkflowRunMetricTimeBuckets(selectedMetrics, dashboardRange.Start, dashboardRange.End, request.Bucket),
             BuildWorkflowRunMetricBreakdown(selectedMetrics),
             BuildWorkflowRunMetricFailures(selectedMetrics),
-            selectedMetrics
-                .OrderByDescending(metric => metric.Created)
-                .Skip(recentSkip)
-                .Take(recentTake)
-                .Select(ToWorkflowRunMetricRunSummary)
-                .ToList(),
+            selectedMetrics.OrderByDescending(metric => metric.Created).Skip(recentSkip).Take(recentTake).Select(ToWorkflowRunMetricRunSummary).ToList(),
             selectedMetrics.Count,
-            selectedMetrics
-                .OrderByDescending(metric => metric.Duration ?? -1)
-                .ThenByDescending(metric => metric.Created)
-                .Take(10)
-                .Select(ToWorkflowRunMetricRunSummary)
-                .ToList()
+            selectedMetrics.OrderByDescending(metric => metric.Duration ?? -1).ThenByDescending(metric => metric.Created).Take(10).Select(ToWorkflowRunMetricRunSummary).ToList()
         );
     }
 
@@ -1033,14 +1002,15 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         var groups = scope switch
         {
-            WorkflowRunMetricScope.Workflow => metrics.GroupBy(metric => new MetricGroupKey(BuildMetricIdKey(metric.WorkflowId), metric.WorkflowName)),
+            WorkflowRunMetricScope.Workflow => metrics.GroupBy(metric => new MetricGroupKey(BuildMetricNameKey(GetMetricWorkflowName(metric)), GetMetricWorkflowName(metric))),
             WorkflowRunMetricScope.Error => metrics
                 .Where(metric => metric.RunStatus == RunStatus.Failed)
                 .GroupBy(metric => new MetricGroupKey(BuildWorkflowRunErrorKey(metric), GetWorkflowRunErrorDisplayName(metric))),
             _ => [],
         };
 
-        var items = groups.Select(group =>
+        var items = groups
+            .Select(group =>
             {
                 var groupMetrics = group.ToList();
                 var totals = BuildWorkflowRunMetricTotals(groupMetrics);
@@ -1065,12 +1035,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (!string.IsNullOrWhiteSpace(search))
             items = items.Where(item => item.Name.Contains(search.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
 
-        return items
-            .OrderByDescending(item => item.FailedRuns)
-            .ThenByDescending(item => item.TotalRuns)
-            .ThenBy(item => item.Name)
-            .Take(100)
-            .ToList();
+        return items.OrderByDescending(item => item.FailedRuns).ThenByDescending(item => item.TotalRuns).ThenBy(item => item.Name).Take(100).ToList();
     }
 
     private static IEnumerable<WorkflowRunMetric> ApplyWorkflowRunMetricScope(List<WorkflowRunMetric> metrics, WorkflowRunMetricScope scope, string? scopeKey)
@@ -1083,7 +1048,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         return scope switch
         {
-            WorkflowRunMetricScope.Workflow => metrics.Where(metric => MetricIdKeyMatches(scopeKey, metric.WorkflowId)),
+            WorkflowRunMetricScope.Workflow => metrics.Where(metric => MetricNameKeyMatches(scopeKey, GetMetricWorkflowName(metric))),
             WorkflowRunMetricScope.Error => metrics.Where(metric => metric.RunStatus == RunStatus.Failed && string.Equals(BuildWorkflowRunErrorKey(metric), scopeKey, StringComparison.Ordinal)),
             _ => metrics,
         };
@@ -1114,9 +1079,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
     private static List<WorkflowRunMetricTimeBucket> BuildWorkflowRunMetricTimeBuckets(List<WorkflowRunMetric> metrics, DateTime start, DateTime end, ModelCallMetricBucket bucket)
     {
-        var groups = metrics
-            .GroupBy(metric => GetMetricBucketStart(metric.Created, bucket))
-            .ToDictionary(group => group.Key, group => group.ToList());
+        var groups = metrics.GroupBy(metric => GetMetricBucketStart(metric.Created, bucket)).ToDictionary(group => group.Key, group => group.ToList());
 
         var results = new List<WorkflowRunMetricTimeBucket>();
         for (var bucketStart = GetMetricBucketStart(start, bucket); bucketStart < end; bucketStart = AddMetricBucket(bucketStart, bucket))
@@ -1149,7 +1112,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     private static List<WorkflowRunMetricBreakdownItem> BuildWorkflowRunMetricBreakdown(List<WorkflowRunMetric> metrics)
     {
         return metrics
-            .GroupBy(metric => new MetricGroupKey(BuildMetricIdKey(metric.WorkflowId), metric.WorkflowName))
+            .GroupBy(metric => new MetricGroupKey(BuildMetricNameKey(GetMetricWorkflowName(metric)), GetMetricWorkflowName(metric)))
             .Select(group =>
             {
                 var groupMetrics = group.ToList();
@@ -1198,7 +1161,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 group.Count(),
                 group.Min(metric => metric.Created),
                 group.Max(metric => metric.Created),
-                group.Select(metric => metric.WorkflowId).Distinct().Count()
+                group.Select(metric => BuildMetricNameKey(GetMetricWorkflowName(metric))).Distinct(StringComparer.Ordinal).Count()
             ))
             .OrderByDescending(group => group.Count)
             .ThenByDescending(group => group.LastSeen)
@@ -1363,10 +1326,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         var uniqueConfigs = configs.GroupBy(config => config.ConfigId).Select(group => group.Last()).ToList();
         var configIds = uniqueConfigs.Select(config => config.ConfigId).ToList();
-        var existingConfigs = await dbContext
-            .ConnectorConfigMetadata
-            .Where(config => configIds.Contains(config.ConfigId))
-            .ToDictionaryAsync(config => config.ConfigId);
+        var existingConfigs = await dbContext.ConnectorConfigMetadata.Where(config => configIds.Contains(config.ConfigId)).ToDictionaryAsync(config => config.ConfigId);
         var hasChanges = false;
 
         foreach (var config in uniqueConfigs)
@@ -1608,10 +1568,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         var uniqueConfigs = configs.GroupBy(config => config.ConfigId).Select(group => group.Last()).ToList();
         var configIds = uniqueConfigs.Select(config => config.ConfigId).ToList();
-        var existingConfigs = await dbContext
-            .ModelConfigMetadata
-            .Where(config => configIds.Contains(config.ConfigId))
-            .ToDictionaryAsync(config => config.ConfigId);
+        var existingConfigs = await dbContext.ModelConfigMetadata.Where(config => configIds.Contains(config.ConfigId)).ToDictionaryAsync(config => config.ConfigId);
         var hasChanges = false;
 
         foreach (var config in uniqueConfigs)
@@ -1890,8 +1847,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         ).ToListAsync();
 
         var runs = await dbContext
-            .EvalRuns
-            .AsNoTracking()
+            .EvalRuns.AsNoTracking()
             .Where(run => run.EvalConfigId == evalConfigId && run.Status != EvalRunStatus.Running)
             .OrderBy(run => run.Order)
             .ThenBy(run => run.Started)
@@ -1900,39 +1856,39 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         var runIds = runs.Select(run => run.EvalRunId).ToList();
 
-        var runRows = runIds.Count == 0
-            ? new List<EvalRunRow>()
-            : await dbContext
-                .EvalRunRows
-                .AsNoTracking()
-                .Where(row => runIds.Contains(row.EvalRunId))
-                .OrderBy(row => row.EvalRunId)
-                .ThenBy(row => row.Order)
-                .ThenBy(row => row.EvalRunRowId)
-                .ToListAsync();
+        var runRows =
+            runIds.Count == 0
+                ? new List<EvalRunRow>()
+                : await dbContext
+                    .EvalRunRows.AsNoTracking()
+                    .Where(row => runIds.Contains(row.EvalRunId))
+                    .OrderBy(row => row.EvalRunId)
+                    .ThenBy(row => row.Order)
+                    .ThenBy(row => row.EvalRunRowId)
+                    .ToListAsync();
 
-        var runRowGraders = runIds.Count == 0
-            ? new List<EvalRunRowGrader>()
-            : await dbContext
-                .EvalRunRowGraders
-                .AsNoTracking()
-                .Where(grader => runIds.Contains(grader.EvalRunId))
-                .OrderBy(grader => grader.EvalRunId)
-                .ThenBy(grader => grader.EvalRunRowId)
-                .ThenBy(grader => grader.EvalGraderId)
-                .ThenBy(grader => grader.EvalRunRowGraderId)
-                .ToListAsync();
+        var runRowGraders =
+            runIds.Count == 0
+                ? new List<EvalRunRowGrader>()
+                : await dbContext
+                    .EvalRunRowGraders.AsNoTracking()
+                    .Where(grader => runIds.Contains(grader.EvalRunId))
+                    .OrderBy(grader => grader.EvalRunId)
+                    .ThenBy(grader => grader.EvalRunRowId)
+                    .ThenBy(grader => grader.EvalGraderId)
+                    .ThenBy(grader => grader.EvalRunRowGraderId)
+                    .ToListAsync();
 
-        var runGraderSummaries = runIds.Count == 0
-            ? new List<EvalRunGraderSummary>()
-            : await dbContext
-                .EvalRunGraderSummaries
-                .AsNoTracking()
-                .Where(summary => runIds.Contains(summary.EvalRunId))
-                .OrderBy(summary => summary.EvalRunId)
-                .ThenBy(summary => summary.EvalGraderId)
-                .ThenBy(summary => summary.EvalRunGraderSummaryId)
-                .ToListAsync();
+        var runGraderSummaries =
+            runIds.Count == 0
+                ? new List<EvalRunGraderSummary>()
+                : await dbContext
+                    .EvalRunGraderSummaries.AsNoTracking()
+                    .Where(summary => runIds.Contains(summary.EvalRunId))
+                    .OrderBy(summary => summary.EvalRunId)
+                    .ThenBy(summary => summary.EvalGraderId)
+                    .ThenBy(summary => summary.EvalRunGraderSummaryId)
+                    .ToListAsync();
 
         return new TransferEvaluationPackage
         {
@@ -2189,9 +2145,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         var ids = runRows.Select(row => row.EvalRunRowId).Distinct().ToList();
         var entities = await (from run in dbContext.EvalRunRows where ids.Contains(run.EvalRunRowId) select run).ToListAsync();
         var missingRunIds = runRows.Where(row => entities.All(entity => entity.EvalRunRowId != row.EvalRunRowId)).Select(row => row.EvalRunId).Distinct().ToList();
-        var existingRunIds = allowInsert && missingRunIds.Count > 0
-            ? (await dbContext.EvalRuns.Where(run => missingRunIds.Contains(run.EvalRunId)).Select(run => run.EvalRunId).ToListAsync()).ToHashSet()
-            : [];
+        var existingRunIds =
+            allowInsert && missingRunIds.Count > 0 ? (await dbContext.EvalRuns.Where(run => missingRunIds.Contains(run.EvalRunId)).Select(run => run.EvalRunId).ToListAsync()).ToHashSet() : [];
         var hasChanges = false;
 
         foreach (var row in runRows)
@@ -2229,9 +2184,10 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         var ids = runRowGraders.Select(row => row.EvalRunRowGraderId).Distinct().ToList();
         var entities = await (from run in dbContext.EvalRunRowGraders where ids.Contains(run.EvalRunRowGraderId) select run).ToListAsync();
         var missingRowIds = runRowGraders.Where(row => entities.All(entity => entity.EvalRunRowGraderId != row.EvalRunRowGraderId)).Select(row => row.EvalRunRowId).Distinct().ToList();
-        var existingRowIds = allowInsert && missingRowIds.Count > 0
-            ? (await dbContext.EvalRunRows.Where(row => missingRowIds.Contains(row.EvalRunRowId)).Select(row => row.EvalRunRowId).ToListAsync()).ToHashSet()
-            : [];
+        var existingRowIds =
+            allowInsert && missingRowIds.Count > 0
+                ? (await dbContext.EvalRunRows.Where(row => missingRowIds.Contains(row.EvalRunRowId)).Select(row => row.EvalRunRowId).ToListAsync()).ToHashSet()
+                : [];
         var hasChanges = false;
 
         foreach (var row in runRowGraders)
@@ -2708,10 +2664,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             if (
                 message.Contains("EvalRuns", StringComparison.OrdinalIgnoreCase)
                 && message.Contains("Order", StringComparison.OrdinalIgnoreCase)
-                && (
-                    message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase)
-                    || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase)
-                )
+                && (message.Contains("UNIQUE", StringComparison.OrdinalIgnoreCase) || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase))
             )
             {
                 return true;

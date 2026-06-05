@@ -273,16 +273,7 @@ public class ModelCallMetricUnitTests
         );
 
         var dashboard = await repository.GetModelCallMetricsDashboard(
-            new ModelCallMetricsDashboardRequest(
-                now.Date,
-                now.Date.AddDays(1),
-                ModelCallMetricBucket.Day,
-                ModelCallMetricScope.Workflow,
-                $"id:{workflowA:D}",
-                null,
-                0,
-                25
-            )
+            new ModelCallMetricsDashboardRequest(now.Date, now.Date.AddDays(1), ModelCallMetricBucket.Day, ModelCallMetricScope.Workflow, "name:Workflow A", null, 0, 25)
         );
 
         Assert.Equal("Workflow A", dashboard.ScopeName);
@@ -305,22 +296,115 @@ public class ModelCallMetricUnitTests
         Assert.Equal(2, dashboard.TimeBuckets[0].TotalCalls);
     }
 
+    [Fact]
+    public async Task ModelCallMetricsDashboardScopesUseSnapshotNamesWhenEntitiesAreRenamed()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<SharpOMaticDbContext>().UseSqlite(connection).Options;
+        await using (var dbContext = new SharpOMaticDbContext(options, Options.Create(new SharpOMaticDbOptions())))
+            await dbContext.Database.EnsureCreatedAsync();
+
+        var repository = new RepositoryService(new TestDbContextFactory(options));
+        var workflowId = Guid.NewGuid();
+        var connectorId = Guid.NewGuid();
+        var modelId = Guid.NewGuid();
+        var now = DateTime.UtcNow.Date.AddHours(12);
+
+        await repository.AppendModelCallMetric(CreateModelCallMetric(now.AddHours(-1), workflowId, "Old Workflow", connectorId, "Old Connector", modelId, "Old Model", 100, 0.01m));
+        await repository.AppendModelCallMetric(CreateModelCallMetric(now, workflowId, "New Workflow", connectorId, "New Connector", modelId, "New Model", 200, 0.02m));
+
+        var workflowMasterDashboard = await repository.GetModelCallMetricsDashboard(
+            new ModelCallMetricsDashboardRequest(now.Date, now.Date.AddDays(1), ModelCallMetricBucket.Day, ModelCallMetricScope.Workflow, null, null, 0, 25)
+        );
+        var oldWorkflowItem = Assert.Single(workflowMasterDashboard.MasterItems, item => item.Name == "Old Workflow");
+        var newWorkflowItem = Assert.Single(workflowMasterDashboard.MasterItems, item => item.Name == "New Workflow");
+        Assert.Equal("name:Old Workflow", oldWorkflowItem.Key);
+        Assert.Equal("name:New Workflow", newWorkflowItem.Key);
+
+        var oldWorkflowDashboard = await repository.GetModelCallMetricsDashboard(
+            new ModelCallMetricsDashboardRequest(now.Date, now.Date.AddDays(1), ModelCallMetricBucket.Day, ModelCallMetricScope.Workflow, oldWorkflowItem.Key, null, 0, 25)
+        );
+        Assert.Equal("Old Workflow", oldWorkflowDashboard.ScopeName);
+        Assert.Equal(1, oldWorkflowDashboard.Totals.TotalCalls);
+        Assert.Single(oldWorkflowDashboard.RecentCalls);
+        Assert.Equal("Old Workflow", oldWorkflowDashboard.RecentCalls[0].WorkflowName);
+
+        var connectorMasterDashboard = await repository.GetModelCallMetricsDashboard(
+            new ModelCallMetricsDashboardRequest(now.Date, now.Date.AddDays(1), ModelCallMetricBucket.Day, ModelCallMetricScope.Connector, null, null, 0, 25)
+        );
+        var oldConnectorItem = Assert.Single(connectorMasterDashboard.MasterItems, item => item.Name == "Old Connector");
+        var newConnectorItem = Assert.Single(connectorMasterDashboard.MasterItems, item => item.Name == "New Connector");
+        Assert.Equal("name:Old Connector", oldConnectorItem.Key);
+        Assert.Equal("name:New Connector", newConnectorItem.Key);
+
+        var oldConnectorDashboard = await repository.GetModelCallMetricsDashboard(
+            new ModelCallMetricsDashboardRequest(now.Date, now.Date.AddDays(1), ModelCallMetricBucket.Day, ModelCallMetricScope.Connector, oldConnectorItem.Key, null, 0, 25)
+        );
+        Assert.Equal("Old Connector", oldConnectorDashboard.ScopeName);
+        Assert.Equal(1, oldConnectorDashboard.Totals.TotalCalls);
+        Assert.Single(oldConnectorDashboard.RecentCalls);
+        Assert.Equal("Old Connector", oldConnectorDashboard.RecentCalls[0].ConnectorName);
+
+        var modelMasterDashboard = await repository.GetModelCallMetricsDashboard(
+            new ModelCallMetricsDashboardRequest(now.Date, now.Date.AddDays(1), ModelCallMetricBucket.Day, ModelCallMetricScope.Model, null, null, 0, 25)
+        );
+        var oldModelItem = Assert.Single(modelMasterDashboard.MasterItems, item => item.Name == "Old Model");
+        var newModelItem = Assert.Single(modelMasterDashboard.MasterItems, item => item.Name == "New Model");
+        Assert.Equal("name:Old Model", oldModelItem.Key);
+        Assert.Equal("name:New Model", newModelItem.Key);
+
+        var oldModelDashboard = await repository.GetModelCallMetricsDashboard(
+            new ModelCallMetricsDashboardRequest(now.Date, now.Date.AddDays(1), ModelCallMetricBucket.Day, ModelCallMetricScope.Model, oldModelItem.Key, null, 0, 25)
+        );
+        Assert.Equal("Old Model", oldModelDashboard.ScopeName);
+        Assert.Equal(1, oldModelDashboard.Totals.TotalCalls);
+        Assert.Single(oldModelDashboard.RecentCalls);
+        Assert.Equal("Old Model", oldModelDashboard.RecentCalls[0].ModelName);
+    }
+
     private static WorkflowEntity CreateWorkflow(Guid? modelId)
     {
-        var workflow = new WorkflowBuilder()
-            .WithName("Metric Workflow")
-            .AddStart()
-            .AddModelCall("model")
-            .AddEnd()
-            .Connect("start", "model")
-            .Connect("model", "end")
-            .Build();
+        var workflow = new WorkflowBuilder().WithName("Metric Workflow").AddStart().AddModelCall("model").AddEnd().Connect("start", "model").Connect("model", "end").Build();
 
         var node = Assert.IsType<ModelCallNodeEntity>(workflow.Nodes.Single(node => node.Title == "model"));
         node.ModelId = modelId;
         node.Prompt = "Say hello";
         node.TextOutputPath = "output.text";
         return workflow;
+    }
+
+    private static ModelCallMetric CreateModelCallMetric(
+        DateTime created,
+        Guid workflowId,
+        string workflowName,
+        Guid connectorId,
+        string connectorName,
+        Guid modelId,
+        string modelName,
+        long totalTokens,
+        decimal totalCost
+    )
+    {
+        return new ModelCallMetric()
+        {
+            Id = Guid.NewGuid(),
+            Created = created,
+            Duration = 100,
+            Succeeded = true,
+            WorkflowId = workflowId,
+            WorkflowName = workflowName,
+            RunId = Guid.NewGuid(),
+            NodeEntityId = Guid.NewGuid(),
+            NodeTitle = "model",
+            ConnectorId = connectorId,
+            ConnectorName = connectorName,
+            ModelId = modelId,
+            ModelName = modelName,
+            TotalTokens = totalTokens,
+            TotalCost = totalCost,
+        };
     }
 
     private static async Task SeedModelCallMetadata(IRepositoryService repository, string configId, Model model)

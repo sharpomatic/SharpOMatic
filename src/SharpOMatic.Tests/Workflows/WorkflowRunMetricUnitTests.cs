@@ -30,12 +30,7 @@ public sealed class WorkflowRunMetricUnitTests
     [Fact]
     public async Task FailedRunWritesErrorAndFailedNodeSnapshotFields()
     {
-        var workflow = new WorkflowBuilder()
-            .WithName("Failing Workflow")
-            .AddStart()
-            .AddCode("explode", "throw new System.InvalidOperationException(\"Boom\");")
-            .Connect("start", "explode")
-            .Build();
+        var workflow = new WorkflowBuilder().WithName("Failing Workflow").AddStart().AddCode("explode", "throw new System.InvalidOperationException(\"Boom\");").Connect("start", "explode").Build();
         var failedNode = workflow.Nodes.Single(node => node.Title == "explode");
         using var provider = WorkflowRunner.BuildProvider();
         var repository = (TestRepositoryService)provider.GetRequiredService<IRepositoryService>();
@@ -57,13 +52,7 @@ public sealed class WorkflowRunMetricUnitTests
     [Fact]
     public async Task SuspendedConversationRunWritesSeparateNonFailureStatus()
     {
-        var workflow = new WorkflowBuilder()
-            .WithName("Suspended Workflow")
-            .EnableConversations()
-            .AddStart()
-            .AddSuspend("wait")
-            .Connect("start", "wait")
-            .Build();
+        var workflow = new WorkflowBuilder().WithName("Suspended Workflow").EnableConversations().AddStart().AddSuspend("wait").Connect("start", "wait").Build();
         using var provider = WorkflowRunner.BuildProvider();
         var repository = (TestRepositoryService)provider.GetRequiredService<IRepositoryService>();
         await repository.UpsertWorkflow(workflow);
@@ -195,6 +184,7 @@ public sealed class WorkflowRunMetricUnitTests
         );
         var workflowMasterItem = Assert.Single(workflowMasterDashboard.MasterItems);
         Assert.Equal("Workflow A", workflowMasterItem.Name);
+        Assert.Equal("name:Workflow A", workflowMasterItem.Key);
 
         var workflowScopedDashboard = await repository.GetWorkflowRunMetricsDashboard(
             new WorkflowRunMetricsDashboardRequest(now.Date, now.Date.AddDays(1), ModelCallMetricBucket.Hour, WorkflowRunMetricScope.Workflow, workflowMasterItem.Key, null, 0, 25)
@@ -225,26 +215,48 @@ public sealed class WorkflowRunMetricUnitTests
         Assert.Equal(GetBucketStart(now).AddDays(1), allTimeDashboard.End);
     }
 
+    [Fact]
+    public async Task WorkflowRunMetricsDashboardScopesUseSnapshotNamesWhenWorkflowIsRenamed()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<SharpOMaticDbContext>().UseSqlite(connection).Options;
+        await using (var dbContext = new SharpOMaticDbContext(options, Options.Create(new SharpOMaticDbOptions())))
+            await dbContext.Database.EnsureCreatedAsync();
+
+        var repository = new RepositoryService(new TestDbContextFactory(options));
+        var workflowId = Guid.NewGuid();
+        var now = DateTime.UtcNow.Date.AddHours(12);
+
+        await repository.AppendWorkflowRunMetric(CreateWorkflowRunMetric(Guid.NewGuid(), workflowId, "Old Workflow", now.AddHours(-1), RunStatus.Success, 100));
+        await repository.AppendWorkflowRunMetric(CreateWorkflowRunMetric(Guid.NewGuid(), workflowId, "New Workflow", now, RunStatus.Success, 200));
+
+        var masterDashboard = await repository.GetWorkflowRunMetricsDashboard(
+            new WorkflowRunMetricsDashboardRequest(now.Date, now.Date.AddDays(1), ModelCallMetricBucket.Day, WorkflowRunMetricScope.Workflow, null, null, 0, 25)
+        );
+        var oldWorkflowItem = Assert.Single(masterDashboard.MasterItems, item => item.Name == "Old Workflow");
+        var newWorkflowItem = Assert.Single(masterDashboard.MasterItems, item => item.Name == "New Workflow");
+        Assert.Equal("name:Old Workflow", oldWorkflowItem.Key);
+        Assert.Equal("name:New Workflow", newWorkflowItem.Key);
+
+        var oldWorkflowDashboard = await repository.GetWorkflowRunMetricsDashboard(
+            new WorkflowRunMetricsDashboardRequest(now.Date, now.Date.AddDays(1), ModelCallMetricBucket.Day, WorkflowRunMetricScope.Workflow, oldWorkflowItem.Key, null, 0, 25)
+        );
+        Assert.Equal("Old Workflow", oldWorkflowDashboard.ScopeName);
+        Assert.Equal(1, oldWorkflowDashboard.Totals.TotalRuns);
+        Assert.Single(oldWorkflowDashboard.RecentRuns);
+        Assert.Equal("Old Workflow", oldWorkflowDashboard.RecentRuns[0].WorkflowName);
+    }
+
     private static WorkflowEntity CreateSuccessfulWorkflow()
     {
-        return new WorkflowBuilder()
-            .WithName("Workflow Metrics")
-            .AddStart()
-            .AddCode("set value", "Context.Set<string>(\"output.value\", \"ok\");")
-            .Connect("start", "set value")
-            .Build();
+        return new WorkflowBuilder().WithName("Workflow Metrics").AddStart().AddCode("set value", "Context.Set<string>(\"output.value\", \"ok\");").Connect("start", "set value").Build();
     }
 
     private static WorkflowEntity CreateModelWorkflow(Guid? modelId)
     {
-        var workflow = new WorkflowBuilder()
-            .WithName("Model Workflow")
-            .AddStart()
-            .AddModelCall("model")
-            .AddEnd()
-            .Connect("start", "model")
-            .Connect("model", "end")
-            .Build();
+        var workflow = new WorkflowBuilder().WithName("Model Workflow").AddStart().AddModelCall("model").AddEnd().Connect("start", "model").Connect("model", "end").Build();
 
         var node = Assert.IsType<ModelCallNodeEntity>(workflow.Nodes.Single(node => node.Title == "model"));
         node.ModelId = modelId;

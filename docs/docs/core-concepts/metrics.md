@@ -20,7 +20,7 @@ The Model Calls view has four tabs:
 - **Connectors** lists connectors and shows metrics for the selected connector.
 - **Models** lists models and shows metrics for the selected model.
 
-Scoped tabs use the stored snapshot names from the metric rows, so older calls remain visible even if the original workflow, connector, model, or node has been renamed or deleted.
+Scoped tabs use the stored snapshot names from the metric rows, so older calls remain visible even if the original workflow, connector, model, or node has been renamed or deleted. Workflow, connector, and model selections match by snapshot name rather than internal ID, so selecting an old name after a rename shows only metrics captured under that old name.
 
 The Workflow Runs view has three tabs:
 
