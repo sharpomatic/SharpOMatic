@@ -643,6 +643,11 @@ export class DesignerComponent {
 
   @HostListener('window:keydown.delete', ['$event'])
   onDeleteKeyPressed(event: Event): void {
+    const target = event.target as HTMLElement;
+    const tag = target.tagName.toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || target.isContentEditable) {
+      return;
+    }
     this.updateService.deleteSelected(this.workflow());
   }
 
