@@ -3,5 +3,5 @@ namespace SharpOMatic.Engine.Interfaces;
 public interface ISamplesService
 {
     Task<IReadOnlyList<string>> GetWorkflowNames();
-    Task<Guid> CreateWorkflow(string sampleName);
+    Task<Guid> CreateWorkflow(string sampleName, Guid? workflowFolderId = null);
 }

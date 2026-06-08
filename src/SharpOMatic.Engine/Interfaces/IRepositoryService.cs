@@ -6,12 +6,22 @@ public interface IRepositoryService
     // Workflow Operations
     // ------------------------------------------------
     Task<List<WorkflowSummary>> GetWorkflowSummaries();
-    Task<int> GetWorkflowSummaryCount(string? search);
-    Task<List<WorkflowSummary>> GetWorkflowSummaries(string? search, WorkflowSortField sortBy, SortDirection sortDirection, int skip, int take);
+    Task<int> GetWorkflowSummaryCount(string? search, Guid? folderId = null, bool topLevelOnly = false);
+    Task<List<WorkflowSummary>> GetWorkflowSummaries(string? search, WorkflowSortField sortBy, SortDirection sortDirection, int skip, int take, Guid? folderId = null, bool topLevelOnly = false);
+    Task<WorkflowSummary?> GetWorkflowSummaryByName(string name, string? folderName);
     Task<WorkflowEntity> GetWorkflow(Guid workflowId);
     Task UpsertWorkflow(WorkflowEntity workflow);
     Task DeleteWorkflow(Guid workflowId);
     Task<Guid> CopyWorkflow(Guid workflowId);
+    Task MoveWorkflowToFolder(Guid workflowId, Guid? folderId);
+
+    Task<WorkflowFolder> GetWorkflowFolder(Guid folderId);
+    Task<WorkflowFolder?> GetWorkflowFolderByName(string name);
+    Task<int> GetWorkflowFolderCount(string? search);
+    Task<List<WorkflowFolder>> GetWorkflowFolders(string? search, SortDirection sortDirection, int skip, int take);
+    Task<int> GetWorkflowFolderWorkflowCount(Guid folderId);
+    Task UpsertWorkflowFolder(WorkflowFolder folder);
+    Task DeleteWorkflowFolder(Guid folderId);
 
     // ------------------------------------------------
     // Conversation Operations

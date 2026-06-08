@@ -25,19 +25,13 @@ public class EngineService(
 
     public async Task<Guid> GetWorkflowId(string workflowName)
     {
-        if (string.IsNullOrWhiteSpace(workflowName))
-            throw new SharpOMaticException("Workflow name cannot be empty or whitespace.");
+        var parts = WorkflowNameParser.Parse(workflowName);
 
-        var summaries = await RepositoryService.GetWorkflowSummaries();
-        var matches = summaries.Where(w => w.Name == workflowName).Take(2).ToList();
-
-        if (matches.Count == 0)
+        var match = await RepositoryService.GetWorkflowSummaryByName(parts.WorkflowName, parts.FolderName);
+        if (match is null)
             throw new SharpOMaticException("There is no matching workflow for this name.");
 
-        if (matches.Count > 1)
-            throw new SharpOMaticException("There is more than one matching workflow for this name.");
-
-        return matches[0].Id;
+        return match.Id;
     }
 
     public async Task<Run> StartWorkflowRunAndWait(

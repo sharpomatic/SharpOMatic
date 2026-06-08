@@ -97,6 +97,19 @@ You can also use a workflow name:
 }
 ```
 
+For a workflow inside a folder, pass the slash-qualified name:
+
+```json
+{
+  "threadId": "support-chat-001",
+  "forwardedProps": {
+    "sharpomatic": {
+      "workflowName": "Support/Support Chat"
+    }
+  }
+}
+```
+
 For compatibility, SharpOMatic also accepts `workflowId` or `workflowName` directly under `forwardedProps`, but the nested `sharpomatic` object is the preferred convention.
 
 ## Request context enrichment

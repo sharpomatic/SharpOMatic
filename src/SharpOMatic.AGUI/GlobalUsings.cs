@@ -13,6 +13,7 @@ global using SharpOMatic.Engine.DTO;
 global using SharpOMatic.Engine.Entities.Definitions;
 global using SharpOMatic.Engine.Enumerations;
 global using SharpOMatic.Engine.Exceptions;
+global using SharpOMatic.Engine.Helpers;
 global using SharpOMatic.Engine.Interfaces;
 global using SharpOMatic.Engine.Repository;
 global using System.Collections.Concurrent;

@@ -2682,21 +2682,34 @@ public sealed class AgUiControllerUnitTests
     }
 
     [Fact]
-    public async Task AgUi_history_returns_bad_request_for_ambiguous_workflow_name()
+    public async Task AgUi_history_resolves_slash_qualified_workflow_name()
     {
         using var provider = SharpOMatic.Tests.Workflows.WorkflowRunner.BuildProvider();
         var repositoryService = provider.GetRequiredService<IRepositoryService>();
 
+        var folder = new WorkflowFolder { WorkflowFolderId = Guid.NewGuid(), Name = "Support", Created = DateTime.UtcNow };
+        var folderedWorkflowId = Guid.NewGuid();
+        await repositoryService.UpsertWorkflowFolder(folder);
         await repositoryService.UpsertWorkflow(CreateWorkflow(Guid.NewGuid(), isConversationEnabled: true, name: "Duplicate Workflow"));
-        await repositoryService.UpsertWorkflow(CreateWorkflow(Guid.NewGuid(), isConversationEnabled: true, name: "Duplicate Workflow"));
+        await repositoryService.UpsertWorkflow(CreateWorkflow(folderedWorkflowId, isConversationEnabled: true, name: "Duplicate Workflow", workflowFolderId: folder.WorkflowFolderId));
+        await repositoryService.UpsertConversation(
+            new Conversation()
+            {
+                ConversationId = "thread-1",
+                WorkflowId = folderedWorkflowId,
+                Status = ConversationStatus.Created,
+                Created = DateTime.UtcNow,
+                Updated = DateTime.UtcNow,
+            }
+        );
 
         var controller = new AgUiController(new Mock<IEngineService>().Object, new Mock<IAgUiRunEventBroker>().Object);
         controller.ControllerContext = new ControllerContext() { HttpContext = CreateHttpContext(provider) };
 
-        var result = Assert.IsType<BadRequestObjectResult>(
-            await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowName = "Duplicate Workflow" })
+        var result = Assert.IsType<OkObjectResult>(
+            await controller.History(new AgUiHistoryRequest() { ThreadId = "thread-1", WorkflowName = "Support/Duplicate Workflow" })
         );
-        Assert.Equal("There is more than one matching workflow for this name.", ReadMessage(result.Value));
+        Assert.NotNull(result.Value);
     }
 
     [Fact]
@@ -3548,12 +3561,13 @@ public sealed class AgUiControllerUnitTests
         };
     }
 
-    private static WorkflowEntity CreateWorkflow(Guid workflowId, bool isConversationEnabled, string? name = null)
+    private static WorkflowEntity CreateWorkflow(Guid workflowId, bool isConversationEnabled, string? name = null, Guid? workflowFolderId = null)
     {
         return new WorkflowEntity()
         {
             Version = 1,
             Id = workflowId,
+            WorkflowFolderId = workflowFolderId,
             Name = name ?? $"workflow-{workflowId:N}",
             Description = "test workflow",
             Nodes = [],

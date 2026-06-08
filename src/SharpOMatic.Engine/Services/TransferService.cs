@@ -76,6 +76,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         foreach (var workflowId in workflowIds)
         {
             var workflow = await repositoryService.GetWorkflow(workflowId);
+            workflow.FolderName = workflow.WorkflowFolderName;
             await WriteEnvelopeEntryAsync(
                 archive,
                 BuildJsonEntryName(WorkflowDirectory, workflow.Name, workflow.Id),
@@ -251,6 +252,34 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
 
     private async Task<TransferImportResult> ImportWorkflowAsync(WorkflowEntity workflow)
     {
+        var folderName = (workflow.FolderName ?? workflow.WorkflowFolderName)?.Trim();
+        if (string.IsNullOrWhiteSpace(folderName))
+            folderName = null;
+
+        if (folderName?.Contains('/', StringComparison.Ordinal) == true || folderName?.Contains('\\', StringComparison.Ordinal) == true)
+            throw new SharpOMaticException($"Workflow '{workflow.Name}' has an invalid workflow folder name.");
+
+        workflow.WorkflowFolderId = null;
+        workflow.WorkflowFolderName = null;
+        workflow.FolderName = null;
+
+        if (folderName is not null)
+        {
+            var folder = await repositoryService.GetWorkflowFolderByName(folderName);
+            if (folder is null)
+            {
+                folder = new WorkflowFolder
+                {
+                    WorkflowFolderId = Guid.NewGuid(),
+                    Name = folderName,
+                    Created = DateTime.Now,
+                };
+                await repositoryService.UpsertWorkflowFolder(folder);
+            }
+
+            workflow.WorkflowFolderId = folder.WorkflowFolderId;
+        }
+
         await repositoryService.UpsertWorkflow(workflow);
         return new TransferImportResult { WorkflowsImported = 1 };
     }

@@ -11,21 +11,29 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     // ------------------------------------------------
     public async Task<List<WorkflowSummary>> GetWorkflowSummaries()
     {
-        return await GetWorkflowSummaries(null, WorkflowSortField.Name, SortDirection.Ascending, 0, 0);
+        return await GetWorkflowSummaries(null, WorkflowSortField.Name, SortDirection.Ascending, 0, 0, null, false);
     }
 
-    public async Task<int> GetWorkflowSummaryCount(string? search)
+    public async Task<int> GetWorkflowSummaryCount(string? search, Guid? folderId = null, bool topLevelOnly = false)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
-        var workflows = ApplyWorkflowSearch(dbContext.Workflows.AsNoTracking(), search);
+        var workflows = ApplyWorkflowFolderFilter(ApplyWorkflowSearch(dbContext.Workflows.AsNoTracking(), search), folderId, topLevelOnly);
         return await workflows.CountAsync();
     }
 
-    public async Task<List<WorkflowSummary>> GetWorkflowSummaries(string? search, WorkflowSortField sortBy, SortDirection sortDirection, int skip, int take)
+    public async Task<List<WorkflowSummary>> GetWorkflowSummaries(
+        string? search,
+        WorkflowSortField sortBy,
+        SortDirection sortDirection,
+        int skip,
+        int take,
+        Guid? folderId = null,
+        bool topLevelOnly = false
+    )
     {
         using var dbContext = dbContextFactory.CreateDbContext();
 
-        var workflows = ApplyWorkflowSearch(dbContext.Workflows.AsNoTracking(), search);
+        var workflows = ApplyWorkflowFolderFilter(ApplyWorkflowSearch(dbContext.Workflows.AsNoTracking(), search), folderId, topLevelOnly);
         var sorted = GetSortedWorkflows(workflows, sortBy, sortDirection);
 
         if (skip > 0)
@@ -34,16 +42,55 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (take > 0)
             sorted = sorted.Take(take);
 
-        return await sorted
-            .Select(workflow => new WorkflowSummary
+        return await (
+            from workflow in sorted
+            join folder in dbContext.WorkflowFolders.AsNoTracking() on workflow.WorkflowFolderId equals folder.WorkflowFolderId into folders
+            from folder in folders.DefaultIfEmpty()
+            select new WorkflowSummary
             {
                 Version = workflow.Version,
                 Id = workflow.WorkflowId,
+                WorkflowFolderId = workflow.WorkflowFolderId,
+                WorkflowFolderName = folder == null ? null : folder.Name,
                 Name = workflow.Named,
                 Description = workflow.Description,
                 IsConversationEnabled = workflow.IsConversationEnabled,
+            }
+        ).ToListAsync();
+    }
+
+    public async Task<WorkflowSummary?> GetWorkflowSummaryByName(string name, string? folderName)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var normalizedName = name.Trim();
+        var normalizedFolderName = string.IsNullOrWhiteSpace(folderName) ? null : folderName.Trim();
+
+        var workflows =
+            from workflow in dbContext.Workflows.AsNoTracking()
+            join folder in dbContext.WorkflowFolders.AsNoTracking() on workflow.WorkflowFolderId equals folder.WorkflowFolderId into folders
+            from folder in folders.DefaultIfEmpty()
+            where workflow.Named == normalizedName
+            select new { workflow, folder };
+
+        workflows = normalizedFolderName is null
+            ? workflows.Where(item => item.workflow.WorkflowFolderId == null)
+            : workflows.Where(item => item.folder != null && item.folder.Name == normalizedFolderName);
+
+        return await workflows
+            .Select(item => new WorkflowSummary
+            {
+                Version = item.workflow.Version,
+                Id = item.workflow.WorkflowId,
+                WorkflowFolderId = item.workflow.WorkflowFolderId,
+                WorkflowFolderName = item.folder == null ? null : item.folder.Name,
+                Name = item.workflow.Named,
+                Description = item.workflow.Description,
+                IsConversationEnabled = item.workflow.IsConversationEnabled,
             })
-            .ToListAsync();
+            .FirstOrDefaultAsync();
     }
 
     public async Task<WorkflowEntity> GetWorkflow(Guid workflowId)
@@ -54,18 +101,25 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
-        return workflow is null
-            ? throw new SharpOMaticException($"Workflow '{workflowId}' cannot be found.")
-            : new WorkflowEntity()
-            {
-                Version = workflow.Version,
-                Id = workflow.WorkflowId,
-                Name = workflow.Named,
-                Description = workflow.Description,
-                IsConversationEnabled = workflow.IsConversationEnabled,
-                Nodes = JsonSerializer.Deserialize<NodeEntity[]>(workflow.Nodes, _options)!,
-                Connections = JsonSerializer.Deserialize<ConnectionEntity[]>(workflow.Connections, _options)!,
-            };
+        if (workflow is null)
+            throw new SharpOMaticException($"Workflow '{workflowId}' cannot be found.");
+
+        string? folderName = null;
+        if (workflow.WorkflowFolderId.HasValue)
+            folderName = await dbContext.WorkflowFolders.AsNoTracking().Where(f => f.WorkflowFolderId == workflow.WorkflowFolderId.Value).Select(f => f.Name).FirstOrDefaultAsync();
+
+        return new WorkflowEntity()
+        {
+            Version = workflow.Version,
+            Id = workflow.WorkflowId,
+            WorkflowFolderId = workflow.WorkflowFolderId,
+            WorkflowFolderName = folderName,
+            Name = workflow.Named,
+            Description = workflow.Description,
+            IsConversationEnabled = workflow.IsConversationEnabled,
+            Nodes = JsonSerializer.Deserialize<NodeEntity[]>(workflow.Nodes, _options)!,
+            Connections = JsonSerializer.Deserialize<ConnectionEntity[]>(workflow.Connections, _options)!,
+        };
     }
 
     public async Task UpsertWorkflow(WorkflowEntity workflow)
@@ -80,6 +134,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             {
                 Version = workflow.Version,
                 WorkflowId = workflow.Id,
+                WorkflowFolderId = null,
                 Named = "",
                 Description = "",
                 IsConversationEnabled = false,
@@ -90,7 +145,14 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             dbContext.Workflows.Add(entry);
         }
 
-        entry.Named = workflow.Name;
+        var normalizedName = NormalizeWorkflowName(workflow.Name);
+        if (workflow.WorkflowFolderId.HasValue)
+            _ = await GetWorkflowFolder(workflow.WorkflowFolderId.Value);
+
+        await EnsureWorkflowNameIsUnique(dbContext, workflow.Id, workflow.WorkflowFolderId, normalizedName);
+
+        entry.WorkflowFolderId = workflow.WorkflowFolderId;
+        entry.Named = normalizedName;
         entry.Description = workflow.Description;
         entry.IsConversationEnabled = workflow.IsConversationEnabled;
         entry.Nodes = JsonSerializer.Serialize(workflow.Nodes, _options);
@@ -130,7 +192,11 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (workflow is null)
             throw new SharpOMaticException($"Workflow '{workflowId}' cannot be found.");
 
-        var existingNames = await dbContext.Workflows.AsNoTracking().Select(w => w.Named).ToListAsync();
+        var existingNamesQuery = dbContext.Workflows.AsNoTracking();
+        existingNamesQuery = workflow.WorkflowFolderId.HasValue
+            ? existingNamesQuery.Where(w => w.WorkflowFolderId == workflow.WorkflowFolderId.Value)
+            : existingNamesQuery.Where(w => w.WorkflowFolderId == null);
+        var existingNames = await existingNamesQuery.Select(w => w.Named).ToListAsync();
 
         var nameSet = new HashSet<string>(existingNames, StringComparer.OrdinalIgnoreCase);
         var baseName = workflow.Named;
@@ -165,6 +231,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         {
             WorkflowId = Guid.NewGuid(),
             Version = workflow.Version,
+            WorkflowFolderId = workflow.WorkflowFolderId,
             Named = copyName,
             Description = workflow.Description,
             IsConversationEnabled = workflow.IsConversationEnabled,
@@ -176,6 +243,110 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
 
         return newWorkflow.WorkflowId;
+    }
+
+    public async Task MoveWorkflowToFolder(Guid workflowId, Guid? folderId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var workflow = await dbContext.Workflows.FirstOrDefaultAsync(w => w.WorkflowId == workflowId);
+        if (workflow is null)
+            throw new SharpOMaticException($"Workflow '{workflowId}' cannot be found.");
+
+        if (workflow.WorkflowFolderId == folderId)
+            return;
+
+        if (folderId.HasValue)
+            _ = await GetWorkflowFolder(folderId.Value);
+
+        await EnsureWorkflowNameIsUnique(dbContext, workflowId, folderId, workflow.Named);
+        workflow.WorkflowFolderId = folderId;
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task<WorkflowFolder> GetWorkflowFolder(Guid folderId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var folder = await dbContext.WorkflowFolders.AsNoTracking().FirstOrDefaultAsync(f => f.WorkflowFolderId == folderId);
+
+        if (folder is null)
+            throw new SharpOMaticException($"Workflow folder '{folderId}' cannot be found.");
+
+        return folder;
+    }
+
+    public async Task<WorkflowFolder?> GetWorkflowFolderByName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var normalizedName = name.Trim();
+        return await dbContext.WorkflowFolders.AsNoTracking().FirstOrDefaultAsync(f => f.Name == normalizedName);
+    }
+
+    public async Task<int> GetWorkflowFolderCount(string? search)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var folders = ApplyWorkflowFolderSearch(dbContext.WorkflowFolders.AsNoTracking(), search);
+        return await folders.CountAsync();
+    }
+
+    public async Task<List<WorkflowFolder>> GetWorkflowFolders(string? search, SortDirection sortDirection, int skip, int take)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        var folders = ApplyWorkflowFolderSearch(dbContext.WorkflowFolders.AsNoTracking(), search);
+        folders = sortDirection == SortDirection.Descending ? folders.OrderByDescending(f => f.Name).ThenByDescending(f => f.Created) : folders.OrderBy(f => f.Name).ThenBy(f => f.Created);
+
+        if (skip > 0)
+            folders = folders.Skip(skip);
+
+        if (take > 0)
+            folders = folders.Take(take);
+
+        return await folders.ToListAsync();
+    }
+
+    public async Task<int> GetWorkflowFolderWorkflowCount(Guid folderId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        return await dbContext.Workflows.AsNoTracking().Where(w => w.WorkflowFolderId == folderId).CountAsync();
+    }
+
+    public async Task UpsertWorkflowFolder(WorkflowFolder folder)
+    {
+        var normalizedName = NormalizeWorkflowFolderName(folder.Name);
+
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var existingByName = await dbContext.WorkflowFolders.AsNoTracking().FirstOrDefaultAsync(f => f.Name == normalizedName);
+        if (existingByName is not null && existingByName.WorkflowFolderId != folder.WorkflowFolderId)
+            throw new SharpOMaticException("A workflow folder with this name already exists.");
+
+        folder.Name = normalizedName;
+
+        var entity = await dbContext.WorkflowFolders.FirstOrDefaultAsync(f => f.WorkflowFolderId == folder.WorkflowFolderId);
+        if (entity is null)
+            dbContext.WorkflowFolders.Add(folder);
+        else
+            dbContext.Entry(entity).CurrentValues.SetValues(folder);
+
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task DeleteWorkflowFolder(Guid folderId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var count = await dbContext.Workflows.AsNoTracking().Where(w => w.WorkflowFolderId == folderId).CountAsync();
+        if (count > 0)
+            throw new SharpOMaticException("Workflow folder is not empty.");
+
+        var folder = await dbContext.WorkflowFolders.FirstOrDefaultAsync(f => f.WorkflowFolderId == folderId);
+        if (folder is null)
+            throw new SharpOMaticException($"Workflow folder '{folderId}' cannot be found.");
+
+        dbContext.Remove(folder);
+        await dbContext.SaveChangesAsync();
     }
 
     private static bool TryParseCopySuffix(string name, out string baseName, out int copyNumber)
@@ -222,6 +393,17 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         return workflows.Where(workflow => workflow.Named.ToLower().Contains(normalizedSearch));
     }
 
+    private static IQueryable<Workflow> ApplyWorkflowFolderFilter(IQueryable<Workflow> workflows, Guid? folderId, bool topLevelOnly)
+    {
+        if (topLevelOnly)
+            return workflows.Where(workflow => workflow.WorkflowFolderId == null);
+
+        if (folderId.HasValue)
+            return workflows.Where(workflow => workflow.WorkflowFolderId == folderId.Value);
+
+        return workflows;
+    }
+
     private static IQueryable<Workflow> GetSortedWorkflows(IQueryable<Workflow> workflows, WorkflowSortField sortBy, SortDirection sortDirection)
     {
         return sortBy switch
@@ -233,6 +415,49 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 ? workflows.OrderBy(workflow => workflow.Named).ThenBy(workflow => workflow.Description)
                 : workflows.OrderByDescending(workflow => workflow.Named).ThenByDescending(workflow => workflow.Description),
         };
+    }
+
+    private static IQueryable<WorkflowFolder> ApplyWorkflowFolderSearch(IQueryable<WorkflowFolder> folders, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+            return folders;
+
+        var normalizedSearch = search.Trim().ToLower();
+        return folders.Where(folder => folder.Name.ToLower().Contains(normalizedSearch));
+    }
+
+    private static string NormalizeWorkflowName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new SharpOMaticException("Workflow name is required.");
+
+        var trimmed = name.Trim();
+        if (trimmed.Contains('/', StringComparison.Ordinal) || trimmed.Contains('\\', StringComparison.Ordinal))
+            throw new SharpOMaticException("Workflow name cannot contain '/' or '\\'.");
+
+        return trimmed;
+    }
+
+    private static string NormalizeWorkflowFolderName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new SharpOMaticException("Workflow folder name is required.");
+
+        var trimmed = name.Trim();
+        if (trimmed.Contains('/', StringComparison.Ordinal) || trimmed.Contains('\\', StringComparison.Ordinal))
+            throw new SharpOMaticException("Workflow folder name cannot contain '/' or '\\'.");
+
+        return trimmed;
+    }
+
+    private static async Task EnsureWorkflowNameIsUnique(SharpOMaticDbContext dbContext, Guid workflowId, Guid? folderId, string name)
+    {
+        var workflows = dbContext.Workflows.AsNoTracking().Where(w => w.WorkflowId != workflowId && w.Named == name);
+        workflows = folderId.HasValue ? workflows.Where(w => w.WorkflowFolderId == folderId.Value) : workflows.Where(w => w.WorkflowFolderId == null);
+
+        var conflict = await workflows.AnyAsync();
+        if (conflict)
+            throw new SharpOMaticException("A workflow with this name already exists in this folder.");
     }
 
     // ------------------------------------------------

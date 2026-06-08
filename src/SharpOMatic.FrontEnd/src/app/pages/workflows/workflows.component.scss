@@ -12,33 +12,136 @@
   overflow: hidden;
 }
 
-.workflows-body {
+.workflows-tab {
   min-height: 0;
+}
+
+.workflows-layout {
+  display: flex;
+  min-height: 0;
+}
+
+.workflows-folders-column {
+  flex: 0 0 250px;
+  width: 250px;
+  min-width: 250px;
+  max-width: 250px;
+}
+
+.workflows-main-column {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .workflows-toolbar {
   flex: 0 0 auto;
 }
 
+.folders-master {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--bs-border-color);
+}
+
+.folders-master-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.folders-master-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.folders-master-item {
+  border-left: 0;
+  border-right: 0;
+  border-radius: 0;
+  text-align: left;
+}
+
 .workflows-search {
   max-width: 360px;
 }
 
-.workflows-list {
+.workflows-table {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  align-content: flex-start;
+  overflow-x: auto;
 }
 
-.workflow-card {
-  width: 300px;
+.workflows-table .table {
+  table-layout: fixed;
+  min-width: 980px;
+  width: 100%;
+}
+
+.workflows-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bs-body-tertiary);
 }
 
 .workflows-pagination {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--bs-border-color);
+}
+
+.workflows-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.workflows-sort:hover,
+.workflows-sort:focus {
+  text-decoration: underline;
+}
+
+.col-select {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+}
+
+.col-folder {
+  width: 180px;
+  min-width: 180px;
+  max-width: 220px;
+}
+
+.col-name {
+  min-width: 200px;
+}
+
+.col-description {
+  min-width: 300px;
+}
+
+.col-conversation {
+  width: 70px;
+  min-width: 70px;
+  max-width: 70px;
+}
+
+.col-actions {
+  width: 190px;
+  min-width: 190px;
+  max-width: 190px;
 }
 
 .empty-state {

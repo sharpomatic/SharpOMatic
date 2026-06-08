@@ -2,7 +2,7 @@
   <div
     class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary"
   >
-    <h2 class="">
+    <h2>
       <i class="bi bi-share pe-3 icon-sm"></i>Workflows ({{
         workflowsTotal || workflows.length
       }})
@@ -37,165 +37,355 @@
           </ul>
         </div>
       }
+      <button
+        class="btn btn-primary"
+        [disabled]="
+          selectedWorkflowCount() === 0 ||
+          isDeletingSelected ||
+          isMovingSelected
+        "
+        (click)="moveSelectedWorkflows()"
+      >
+        {{ isMovingSelected ? "Moving..." : "Move" }}
+      </button>
+      <button
+        class="btn btn-danger"
+        [disabled]="
+          selectedWorkflowCount() === 0 ||
+          isDeletingSelected ||
+          isMovingSelected
+        "
+        (click)="deleteSelectedWorkflows()"
+      >
+        {{ isDeletingSelected ? "Deleting..." : "Delete" }}
+      </button>
     </div>
   </div>
   <hr class="m-0" />
-  <div class="p-3 bg-body-tertiary h-100 d-flex flex-column workflows-body">
-    <div class="workflows-toolbar d-flex align-items-center gap-2 mb-3">
-      <div class="input-group workflows-search">
-        <span class="input-group-text"><i class="bi bi-search"></i></span>
-        <input
-          #searchInput
-          type="search"
-          class="form-control"
-          placeholder="Search by name"
-          [value]="searchText"
-          (input)="onSearchChange($event)"
-          (keyup.enter)="applySearch()"
-        />
+  <div class="bg-body-tertiary h-100 d-flex flex-column workflows-tab">
+    <div class="workflows-layout flex-grow-1">
+      <div class="workflows-folders-column d-flex">
+        <div class="folders-master">
+          <div class="folders-master-toolbar">
+            <button class="btn btn-primary btn-sm" (click)="createFolder()">
+              Add
+            </button>
+            <button
+              class="btn btn-outline-primary btn-sm"
+              [disabled]="
+                selectedFolderFilter === 'all' || selectedFolderFilter === 'top'
+              "
+              title="Rename selected folder"
+              (click)="editSelectedFolder()"
+            >
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button
+              class="btn btn-outline-danger btn-sm"
+              [disabled]="
+                selectedFolderFilter === 'all' || selectedFolderFilter === 'top'
+              "
+              title="Delete selected folder"
+              (click)="deleteSelectedFolder()"
+            >
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+          <div class="folders-master-list list-group list-group-flush">
+            <button
+              type="button"
+              class="list-group-item list-group-item-action folders-master-item"
+              [class.active]="selectedFolderFilter === 'all'"
+              [attr.aria-current]="
+                selectedFolderFilter === 'all' ? 'true' : null
+              "
+              (click)="selectAllWorkflows()"
+            >
+              <span>All Workflows</span>
+            </button>
+            <button
+              type="button"
+              class="list-group-item list-group-item-action folders-master-item"
+              [class.active]="selectedFolderFilter === 'top'"
+              [attr.aria-current]="
+                selectedFolderFilter === 'top' ? 'true' : null
+              "
+              (click)="selectTopLevelWorkflows()"
+            >
+              <span>Top-level</span>
+            </button>
+            @for (folder of folders; track folder.workflowFolderId) {
+              <button
+                type="button"
+                class="list-group-item list-group-item-action folders-master-item"
+                [class.active]="isFolderFilterSelected(folder.workflowFolderId)"
+                [attr.aria-current]="
+                  isFolderFilterSelected(folder.workflowFolderId)
+                    ? 'true'
+                    : null
+                "
+                (click)="selectFolderWorkflows(folder.workflowFolderId)"
+                title="{{ folder.name }}"
+              >
+                <span class="text-truncate">{{ folder.name }}</span>
+              </button>
+            }
+          </div>
+        </div>
       </div>
-    </div>
-    @if (!isLoading && workflowsTotal === 0 && workflows.length === 0) {
-      <div class="empty-state text-body-secondary">
-        <div class="empty-icon"><i class="bi bi-share"></i></div>
-        @if (searchText) {
-          <div class="empty-title">No matching workflows</div>
-          <div class="empty-subtitle">
-            Try a different search to find workflows by name.
+
+      <div class="p-3 workflows-main-column d-flex flex-column">
+        <div class="workflows-toolbar d-flex align-items-center gap-2 mb-3">
+          <div class="input-group workflows-search">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input
+              #searchInput
+              type="search"
+              class="form-control"
+              placeholder="Search by name"
+              [value]="searchText"
+              (input)="onSearchChange($event)"
+              (keyup.enter)="applySearch()"
+            />
+          </div>
+        </div>
+        @if (!isLoading && workflowsTotal === 0 && workflows.length === 0) {
+          <div class="empty-state text-body-secondary">
+            <div class="empty-icon"><i class="bi bi-share"></i></div>
+            @if (searchText) {
+              <div class="empty-title">No matching workflows</div>
+              <div class="empty-subtitle">
+                Try a different search to find workflows by name.
+              </div>
+            } @else {
+              <div class="empty-title">No workflows yet</div>
+              <div class="empty-subtitle">
+                Create a workflow to start building automations.
+              </div>
+            }
           </div>
         } @else {
-          <div class="empty-title">No workflows yet</div>
-          <div class="empty-subtitle">
-            Create a workflow to start building automations.
-          </div>
-        }
-      </div>
-    } @else {
-      <div class="d-flex flex-wrap gap-3 workflows-list">
-        @for (workflow of workflows; track workflow.id) {
-          <div class="card workflow-card">
-            <div class="card-header">
-              <div class="d-flex align-items-center justify-content-between gap-2">
-                <h5 class="mb-0">{{ workflow.name() }}</h5>
-                @if (workflow.isConversationEnabled()) {
-                  <span
-                    class="text-primary"
-                    title="Conversation workflow"
-                    aria-label="Conversation workflow"
-                  >
-                    <i class="bi bi-chat-dots-fill"></i>
-                  </span>
-                }
-              </div>
-            </div>
-            <div class="card-body">
-              <p class="card-text">{{ workflow.description() }}</p>
-              <button
-                class="btn btn-secondary"
-                [routerLink]="['/workflows', workflow.id]"
-                [queryParams]="{ tab: 'design' }"
-              >
-                Open
-              </button>
-              <button
-                class="btn btn-secondary ms-2"
-                (click)="copyWorkflow(workflow)"
-              >
-                Copy
-              </button>
-              <button
-                class="btn btn-outline-danger ms-2"
-                (click)="deleteWorkflow(workflow)"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        }
-      </div>
-      @if (workflowsTotal > 0) {
-        <div
-          class="d-flex align-items-center justify-content-between workflows-pagination"
-        >
-          <div class="text-muted small">
-            Page {{ workflowsPage }} of {{ workflowsPageCount() }} ({{
-              workflowsTotal
-            }}
-            total workflows)
-          </div>
-          @if (workflowsPageCount() > 1) {
-            <nav aria-label="Workflows pagination">
-              <ul class="pagination pagination-sm mb-0">
-                <li class="page-item" [class.disabled]="workflowsPage === 1">
-                  <button
-                    class="page-link"
-                    type="button"
-                    [disabled]="workflowsPage === 1"
-                    aria-label="First"
-                    (click)="onWorkflowsPageChange(1)"
-                  >
-                    <span aria-hidden="true">&laquo;</span>
-                  </button>
-                </li>
-                <li class="page-item" [class.disabled]="workflowsPage === 1">
-                  <button
-                    class="page-link"
-                    type="button"
-                    [disabled]="workflowsPage === 1"
-                    aria-label="Previous"
-                    (click)="onWorkflowsPageChange(workflowsPage - 1)"
-                  >
-                    <span aria-hidden="true">&lsaquo;</span>
-                  </button>
-                </li>
-                @for (page of workflowsPageNumbers(); track page) {
-                  <li
-                    class="page-item"
-                    [class.active]="page === workflowsPage"
-                    [attr.aria-current]="page === workflowsPage ? 'page' : null"
-                  >
+          <div class="table-responsive workflows-table">
+            <table
+              class="table table-sm table-striped table-hover align-middle"
+            >
+              <thead>
+                <tr>
+                  <th scope="col" class="col-select"></th>
+                  <th scope="col" class="col-folder">Folder</th>
+                  <th scope="col" class="col-name">
                     <button
-                      class="page-link"
+                      class="btn btn-link p-0 workflows-sort"
                       type="button"
-                      (click)="onWorkflowsPageChange(page)"
+                      (click)="onWorkflowsSortChange(WorkflowSortField.Name)"
                     >
-                      {{ page }}
+                      Name
+                      @if (workflowsSortField === WorkflowSortField.Name) {
+                        <i
+                          class="bi"
+                          [class.bi-arrow-down]="
+                            workflowsSortDirection === SortDirection.Descending
+                          "
+                          [class.bi-arrow-up]="
+                            workflowsSortDirection === SortDirection.Ascending
+                          "
+                        ></i>
+                      }
                     </button>
-                  </li>
+                  </th>
+                  <th scope="col" class="col-description">
+                    <button
+                      class="btn btn-link p-0 workflows-sort"
+                      type="button"
+                      (click)="
+                        onWorkflowsSortChange(WorkflowSortField.Description)
+                      "
+                    >
+                      Description
+                      @if (
+                        workflowsSortField === WorkflowSortField.Description
+                      ) {
+                        <i
+                          class="bi"
+                          [class.bi-arrow-down]="
+                            workflowsSortDirection === SortDirection.Descending
+                          "
+                          [class.bi-arrow-up]="
+                            workflowsSortDirection === SortDirection.Ascending
+                          "
+                        ></i>
+                      }
+                    </button>
+                  </th>
+                  <th scope="col" class="col-conversation text-center">Chat</th>
+                  <th scope="col" class="col-actions text-end"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (workflow of workflows; track workflow.id) {
+                  <tr>
+                    <td class="col-select text-center">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        [id]="'workflow-select-' + workflow.id"
+                        [checked]="isWorkflowSelected(workflow.id)"
+                        [disabled]="isDeletingSelected || isMovingSelected"
+                        (change)="
+                          onWorkflowSelectionChange(workflow.id, $event)
+                        "
+                      />
+                    </td>
+                    <td
+                      class="col-folder text-truncate"
+                      title="{{ workflow.workflowFolderName() || '' }}"
+                    >
+                      {{ workflow.workflowFolderName() || "" }}
+                    </td>
+                    <td
+                      class="col-name text-truncate"
+                      title="{{ workflow.name() }}"
+                    >
+                      {{ workflow.name() }}
+                    </td>
+                    <td
+                      class="col-description text-truncate"
+                      title="{{ workflow.description() }}"
+                    >
+                      {{ workflow.description() }}
+                    </td>
+                    <td class="col-conversation text-center">
+                      @if (workflow.isConversationEnabled()) {
+                        <span
+                          class="text-primary"
+                          title="Conversation workflow"
+                          aria-label="Conversation workflow"
+                        >
+                          <i class="bi bi-chat-dots-fill"></i>
+                        </span>
+                      }
+                    </td>
+                    <td class="col-actions text-end">
+                      <div class="d-inline-flex gap-2">
+                        <button
+                          class="btn btn-sm btn-secondary"
+                          [routerLink]="['/workflows', workflow.id]"
+                          [queryParams]="{ tab: 'design' }"
+                        >
+                          Open
+                        </button>
+                        <button
+                          class="btn btn-sm btn-secondary"
+                          (click)="copyWorkflow(workflow)"
+                        >
+                          Copy
+                        </button>
+                        <button
+                          class="btn btn-sm btn-outline-danger"
+                          (click)="deleteWorkflow(workflow)"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 }
-                <li
-                  class="page-item"
-                  [class.disabled]="workflowsPage >= workflowsPageCount()"
-                >
-                  <button
-                    class="page-link"
-                    type="button"
-                    [disabled]="workflowsPage >= workflowsPageCount()"
-                    aria-label="Next"
-                    (click)="onWorkflowsPageChange(workflowsPage + 1)"
-                  >
-                    <span aria-hidden="true">&rsaquo;</span>
-                  </button>
-                </li>
-                <li
-                  class="page-item"
-                  [class.disabled]="workflowsPage >= workflowsPageCount()"
-                >
-                  <button
-                    class="page-link"
-                    type="button"
-                    [disabled]="workflowsPage >= workflowsPageCount()"
-                    aria-label="Last"
-                    (click)="onWorkflowsPageChange(workflowsPageCount())"
-                  >
-                    <span aria-hidden="true">&raquo;</span>
-                  </button>
-                </li>
-              </ul>
-            </nav>
+              </tbody>
+            </table>
+          </div>
+          @if (workflowsTotal > 0) {
+            <div
+              class="d-flex align-items-center justify-content-between workflows-pagination"
+            >
+              <div class="text-muted small">
+                Page {{ workflowsPage }} of {{ workflowsPageCount() }} ({{
+                  workflowsTotal
+                }}
+                total workflows)
+              </div>
+              @if (workflowsPageCount() > 1) {
+                <nav aria-label="Workflows pagination">
+                  <ul class="pagination pagination-sm mb-0">
+                    <li
+                      class="page-item"
+                      [class.disabled]="workflowsPage === 1"
+                    >
+                      <button
+                        class="page-link"
+                        type="button"
+                        [disabled]="workflowsPage === 1"
+                        aria-label="First"
+                        (click)="onWorkflowsPageChange(1)"
+                      >
+                        <span aria-hidden="true">&laquo;</span>
+                      </button>
+                    </li>
+                    <li
+                      class="page-item"
+                      [class.disabled]="workflowsPage === 1"
+                    >
+                      <button
+                        class="page-link"
+                        type="button"
+                        [disabled]="workflowsPage === 1"
+                        aria-label="Previous"
+                        (click)="onWorkflowsPageChange(workflowsPage - 1)"
+                      >
+                        <span aria-hidden="true">&lsaquo;</span>
+                      </button>
+                    </li>
+                    @for (page of workflowsPageNumbers(); track page) {
+                      <li
+                        class="page-item"
+                        [class.active]="page === workflowsPage"
+                        [attr.aria-current]="
+                          page === workflowsPage ? 'page' : null
+                        "
+                      >
+                        <button
+                          class="page-link"
+                          type="button"
+                          (click)="onWorkflowsPageChange(page)"
+                        >
+                          {{ page }}
+                        </button>
+                      </li>
+                    }
+                    <li
+                      class="page-item"
+                      [class.disabled]="workflowsPage >= workflowsPageCount()"
+                    >
+                      <button
+                        class="page-link"
+                        type="button"
+                        [disabled]="workflowsPage >= workflowsPageCount()"
+                        aria-label="Next"
+                        (click)="onWorkflowsPageChange(workflowsPage + 1)"
+                      >
+                        <span aria-hidden="true">&rsaquo;</span>
+                      </button>
+                    </li>
+                    <li
+                      class="page-item"
+                      [class.disabled]="workflowsPage >= workflowsPageCount()"
+                    >
+                      <button
+                        class="page-link"
+                        type="button"
+                        [disabled]="workflowsPage >= workflowsPageCount()"
+                        aria-label="Last"
+                        (click)="onWorkflowsPageChange(workflowsPageCount())"
+                      >
+                        <span aria-hidden="true">&raquo;</span>
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
+              }
+            </div>
           }
-        </div>
-      }
-    }
+        }
+      </div>
+    </div>
   </div>
 </div>

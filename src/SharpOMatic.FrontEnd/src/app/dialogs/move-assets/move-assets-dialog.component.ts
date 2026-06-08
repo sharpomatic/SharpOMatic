@@ -14,6 +14,7 @@ export interface MoveAssetFolderOption {
   templateUrl: './move-assets-dialog.component.html',
 })
 export class MoveAssetsDialogComponent {
+  public title = 'Move Assets';
   public readonly topLevelOptionValue = MoveAssetsTopLevelOptionValue;
   public folders: MoveAssetFolderOption[] = [];
   public selectedFolderId: string | null = null;

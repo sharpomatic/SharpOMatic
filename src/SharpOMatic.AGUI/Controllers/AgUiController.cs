@@ -289,16 +289,13 @@ public sealed class AgUiController(
             }
         }
 
-        var summaries = await repositoryService.GetWorkflowSummaries();
-        var matches = summaries.Where(w => w.Name == workflowName).Take(2).ToList();
+        var parts = WorkflowNameParser.Parse(workflowName!);
+        var match = await repositoryService.GetWorkflowSummaryByName(parts.WorkflowName, parts.FolderName);
 
-        if (matches.Count == 0)
+        if (match is null)
             throw new AgUiNotFoundException("AG-UI workflow was not found.");
 
-        if (matches.Count > 1)
-            throw new SharpOMaticException("There is more than one matching workflow for this name.");
-
-        return await repositoryService.GetWorkflow(matches[0].Id);
+        return await repositoryService.GetWorkflow(match.Id);
     }
 
     private static ContextObject BuildBaseContext(AgUiRunRequest request)

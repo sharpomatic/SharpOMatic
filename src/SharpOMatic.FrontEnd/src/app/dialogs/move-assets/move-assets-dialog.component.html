@@ -1,5 +1,5 @@
 <div class="modal-header">
-  <h4 class="modal-title pull-left">Move Assets</h4>
+  <h4 class="modal-title pull-left">{{ title }}</h4>
   <button
     type="button"
     class="btn-close close pull-right"
@@ -23,6 +23,10 @@
   </select>
 </div>
 <div class="modal-footer">
-  <button type="button" class="btn btn-primary" (click)="close()">Cancel</button>
-  <button type="button" class="btn btn-primary" (click)="confirm()">Move</button>
+  <button type="button" class="btn btn-primary" (click)="close()">
+    Cancel
+  </button>
+  <button type="button" class="btn btn-primary" (click)="confirm()">
+    Move
+  </button>
 </div>

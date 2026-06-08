@@ -8,6 +8,9 @@ public sealed class TransferServiceUnitTests
     public async Task Export_includes_workflows_connectors_models_folders_assets_and_strips_secrets()
     {
         var workflow = CreateWorkflow();
+        var workflowFolder = CreateWorkflowFolder();
+        workflow.WorkflowFolderId = workflowFolder.WorkflowFolderId;
+        workflow.WorkflowFolderName = workflowFolder.Name;
         var connector = CreateConnector();
         var model = CreateModel(connector.ConnectorId);
         var folder = CreateAssetFolder();
@@ -24,9 +27,7 @@ public sealed class TransferServiceUnitTests
         repository.Setup(service => service.GetAssetFolder(folder.FolderId)).ReturnsAsync(folder);
 
         var assetStore = new Mock<IAssetStore>();
-        assetStore
-            .Setup(store => store.OpenReadAsync(asset.StorageKey, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => new MemoryStream(assetBytes));
+        assetStore.Setup(store => store.OpenReadAsync(asset.StorageKey, It.IsAny<CancellationToken>())).ReturnsAsync(() => new MemoryStream(assetBytes));
 
         var transferService = new TransferService(repository.Object, assetStore.Object);
         await using var output = new MemoryStream();
@@ -52,6 +53,7 @@ public sealed class TransferServiceUnitTests
 
         Assert.Null(archive.GetEntry("manifest.json"));
         Assert.Equal(workflow.Id, exportedWorkflow.Id);
+        Assert.Equal(workflowFolder.Name, exportedWorkflow.FolderName);
         Assert.False(exportedConnector.FieldValues.ContainsKey("apiKey"));
         Assert.Equal("east", exportedConnector.FieldValues["region"]);
         Assert.False(exportedModel.ParameterValues.ContainsKey("deploymentKey"));
@@ -65,6 +67,8 @@ public sealed class TransferServiceUnitTests
     public async Task Import_updates_workflows_connectors_models_folders_assets_and_merges_existing_secrets()
     {
         var workflow = CreateWorkflow();
+        var workflowFolder = CreateWorkflowFolder();
+        workflow.FolderName = workflowFolder.Name;
         var connector = CreateConnector();
         var model = CreateModel(connector.ConnectorId);
         var folder = CreateAssetFolder();
@@ -73,31 +77,30 @@ public sealed class TransferServiceUnitTests
         connector.FieldValues.Remove("apiKey");
         model.ParameterValues.Remove("deploymentKey");
 
-        await using var input = CreateTransferArchive(
-            archive =>
-            {
-                WriteEnvelopeEntry(archive, "misc/workflow.json", "workflow", workflow);
-                WriteEnvelopeEntry(archive, "connectors/connector.json", "connector", connector);
-                WriteEnvelopeEntry(archive, "models/model.json", "model", model);
-                WriteEnvelopeEntry(
-                    archive,
-                    "assets/asset.json",
-                    "asset",
-                    new TransferAssetPayload
-                    {
-                        AssetId = asset.AssetId,
-                        FolderName = folder.Name,
-                        Name = asset.Name,
-                        MediaType = asset.MediaType,
-                        Created = asset.Created,
-                        SizeBytes = asset.SizeBytes,
-                        ContentBase64 = Convert.ToBase64String(assetBytes),
-                    }
-                );
-            }
-        );
+        await using var input = CreateTransferArchive(archive =>
+        {
+            WriteEnvelopeEntry(archive, "misc/workflow.json", "workflow", workflow);
+            WriteEnvelopeEntry(archive, "connectors/connector.json", "connector", connector);
+            WriteEnvelopeEntry(archive, "models/model.json", "model", model);
+            WriteEnvelopeEntry(
+                archive,
+                "assets/asset.json",
+                "asset",
+                new TransferAssetPayload
+                {
+                    AssetId = asset.AssetId,
+                    FolderName = folder.Name,
+                    Name = asset.Name,
+                    MediaType = asset.MediaType,
+                    Created = asset.Created,
+                    SizeBytes = asset.SizeBytes,
+                    ContentBase64 = Convert.ToBase64String(assetBytes),
+                }
+            );
+        });
 
         WorkflowEntity? importedWorkflow = null;
+        WorkflowFolder? importedWorkflowFolder = null;
         Connector? importedConnector = null;
         Model? importedModel = null;
         AssetFolder? importedFolder = null;
@@ -110,7 +113,9 @@ public sealed class TransferServiceUnitTests
         repository.Setup(service => service.GetModelConfig(model.ConfigId)).ReturnsAsync(CreateModelConfig(model.ConfigId));
         repository.Setup(service => service.GetModel(model.ModelId, false)).ReturnsAsync(CreateModel(connector.ConnectorId, secretValue: "existing-model-secret"));
         repository.Setup(service => service.GetAssetFolderByName(folder.Name)).ReturnsAsync((AssetFolder?)null);
+        repository.Setup(service => service.GetWorkflowFolderByName(workflowFolder.Name)).ReturnsAsync((WorkflowFolder?)null);
         repository.Setup(service => service.UpsertWorkflow(It.IsAny<WorkflowEntity>())).Callback<WorkflowEntity>(item => importedWorkflow = item).Returns(Task.CompletedTask);
+        repository.Setup(service => service.UpsertWorkflowFolder(It.IsAny<WorkflowFolder>())).Callback<WorkflowFolder>(item => importedWorkflowFolder = item).Returns(Task.CompletedTask);
         repository.Setup(service => service.UpsertConnector(It.IsAny<Connector>(), false)).Callback<Connector, bool>((item, _) => importedConnector = item).Returns(Task.CompletedTask);
         repository.Setup(service => service.UpsertModel(It.IsAny<Model>())).Callback<Model>(item => importedModel = item).Returns(Task.CompletedTask);
         repository.Setup(service => service.UpsertAssetFolder(It.IsAny<AssetFolder>())).Callback<AssetFolder>(item => importedFolder = item).Returns(Task.CompletedTask);
@@ -119,12 +124,14 @@ public sealed class TransferServiceUnitTests
         var assetStore = new Mock<IAssetStore>();
         assetStore
             .Setup(store => store.SaveAsync(It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
-            .Callback<string, Stream, CancellationToken>((_, stream, _) =>
-            {
-                using var memory = new MemoryStream();
-                stream.CopyTo(memory);
-                savedAssetBytes = memory.ToArray();
-            })
+            .Callback<string, Stream, CancellationToken>(
+                (_, stream, _) =>
+                {
+                    using var memory = new MemoryStream();
+                    stream.CopyTo(memory);
+                    savedAssetBytes = memory.ToArray();
+                }
+            )
             .Returns(Task.CompletedTask);
 
         var transferService = new TransferService(repository.Object, assetStore.Object);
@@ -138,6 +145,8 @@ public sealed class TransferServiceUnitTests
         Assert.Equal(1, result.ModelsImported);
         Assert.Equal(1, result.AssetsImported);
         Assert.Equal(workflow.Id, importedWorkflow?.Id);
+        Assert.Equal(workflowFolder.Name, importedWorkflowFolder?.Name);
+        Assert.Equal(importedWorkflowFolder?.WorkflowFolderId, importedWorkflow?.WorkflowFolderId);
         Assert.Equal("existing-connector-secret", importedConnector?.FieldValues["apiKey"]);
         Assert.Equal("existing-model-secret", importedModel?.ParameterValues["deploymentKey"]);
         Assert.Equal(folder.Name, importedFolder?.Name);
@@ -333,12 +342,7 @@ public sealed class TransferServiceUnitTests
         repository.Setup(service => service.UpsertWorkflow(It.IsAny<WorkflowEntity>())).Returns(Task.CompletedTask);
         var transferService = new TransferService(repository.Object, Mock.Of<IAssetStore>());
 
-        var result = await transferService.ImportFilesAsync(
-            [
-                new TransferImportFile { Name = "workflow.json", Stream = valid },
-                new TransferImportFile { Name = "bad.json", Stream = invalid },
-            ]
-        );
+        var result = await transferService.ImportFilesAsync([new TransferImportFile { Name = "workflow.json", Stream = valid }, new TransferImportFile { Name = "bad.json", Stream = invalid }]);
 
         Assert.Equal(2, result.FilesProcessed);
         Assert.Equal(1, result.FilesImported);
@@ -367,7 +371,8 @@ public sealed class TransferServiceUnitTests
         Action<EvalRun>? runs = null,
         Action<List<EvalRunRow>>? runRows = null,
         Action<List<EvalRunRowGrader>>? runRowGraders = null,
-        Action<List<EvalRunGraderSummary>>? summaries = null)
+        Action<List<EvalRunGraderSummary>>? summaries = null
+    )
     {
         var repository = new Mock<IRepositoryService>();
         repository.Setup(service => service.UpsertEvalConfig(It.IsAny<EvalConfig>())).Callback<EvalConfig>(item => config?.Invoke(item)).Returns(Task.CompletedTask);
@@ -377,8 +382,14 @@ public sealed class TransferServiceUnitTests
         repository.Setup(service => service.UpsertEvalData(It.IsAny<List<EvalData>>())).Returns(Task.CompletedTask);
         repository.Setup(service => service.UpsertEvalRun(It.IsAny<EvalRun>(), true)).Callback<EvalRun, bool>((item, _) => runs?.Invoke(item)).ReturnsAsync(true);
         repository.Setup(service => service.UpsertEvalRunRows(It.IsAny<List<EvalRunRow>>(), true)).Callback<List<EvalRunRow>, bool>((items, _) => runRows?.Invoke(items)).ReturnsAsync(true);
-        repository.Setup(service => service.UpsertEvalRunRowGraders(It.IsAny<List<EvalRunRowGrader>>(), true)).Callback<List<EvalRunRowGrader>, bool>((items, _) => runRowGraders?.Invoke(items)).ReturnsAsync(true);
-        repository.Setup(service => service.UpsertEvalRunGraderSummaries(It.IsAny<List<EvalRunGraderSummary>>())).Callback<List<EvalRunGraderSummary>>(items => summaries?.Invoke(items)).Returns(Task.CompletedTask);
+        repository
+            .Setup(service => service.UpsertEvalRunRowGraders(It.IsAny<List<EvalRunRowGrader>>(), true))
+            .Callback<List<EvalRunRowGrader>, bool>((items, _) => runRowGraders?.Invoke(items))
+            .ReturnsAsync(true);
+        repository
+            .Setup(service => service.UpsertEvalRunGraderSummaries(It.IsAny<List<EvalRunGraderSummary>>()))
+            .Callback<List<EvalRunGraderSummary>>(items => summaries?.Invoke(items))
+            .Returns(Task.CompletedTask);
         return repository;
     }
 
@@ -576,6 +587,16 @@ public sealed class TransferServiceUnitTests
         };
     }
 
+    private static WorkflowFolder CreateWorkflowFolder()
+    {
+        return new WorkflowFolder
+        {
+            WorkflowFolderId = Guid.NewGuid(),
+            Name = "Workflow Folder",
+            Created = DateTime.UtcNow.AddDays(-1),
+        };
+    }
+
     private static Connector CreateConnector(string secretValue = "connector-secret")
     {
         return new Connector
@@ -586,11 +607,7 @@ public sealed class TransferServiceUnitTests
             Name = "Connector",
             Description = "Connector transfer test",
             AuthenticationModeId = "api-key",
-            FieldValues = new Dictionary<string, string?>
-            {
-                ["apiKey"] = secretValue,
-                ["region"] = "east",
-            },
+            FieldValues = new Dictionary<string, string?> { ["apiKey"] = secretValue, ["region"] = "east" },
         };
     }
 
@@ -610,11 +627,7 @@ public sealed class TransferServiceUnitTests
                     DisplayName = "API Key",
                     Kind = AuthenticationModeKind.ApiKey,
                     IsDefault = true,
-                    Fields =
-                    [
-                        CreateFieldDescriptor("apiKey", FieldDescriptorType.Secret),
-                        CreateFieldDescriptor("region", FieldDescriptorType.String),
-                    ],
+                    Fields = [CreateFieldDescriptor("apiKey", FieldDescriptorType.Secret), CreateFieldDescriptor("region", FieldDescriptorType.String)],
                 },
             ],
         };
@@ -631,11 +644,7 @@ public sealed class TransferServiceUnitTests
             Name = "Model",
             Description = "Model transfer test",
             CustomCapabilities = ["chat"],
-            ParameterValues = new Dictionary<string, string?>
-            {
-                ["deploymentKey"] = secretValue,
-                ["mode"] = "fast",
-            },
+            ParameterValues = new Dictionary<string, string?> { ["deploymentKey"] = secretValue, ["mode"] = "fast" },
         };
     }
 
@@ -650,11 +659,7 @@ public sealed class TransferServiceUnitTests
             ConnectorConfigId = "connector-config",
             IsCustom = false,
             Capabilities = [new ModelCapability { Name = "chat", DisplayName = "Chat" }],
-            ParameterFields =
-            [
-                CreateFieldDescriptor("deploymentKey", FieldDescriptorType.Secret),
-                CreateFieldDescriptor("mode", FieldDescriptorType.String),
-            ],
+            ParameterFields = [CreateFieldDescriptor("deploymentKey", FieldDescriptorType.Secret), CreateFieldDescriptor("mode", FieldDescriptorType.String)],
         };
     }
 

@@ -75,6 +75,7 @@ import { MoveDirection } from '../eval/enumerations/move-direction';
 import { AssetSummary } from '../pages/assets/interfaces/asset-summary';
 import { AssetText } from '../pages/assets/interfaces/asset-text';
 import { AssetFolderSummary } from '../pages/assets/interfaces/asset-folder-summary';
+import { WorkflowFolderSummary } from '../pages/workflows/interfaces/workflow-folder-summary';
 import { TransferImportResult } from '../pages/transfer/interfaces/transfer-import-result';
 import { TransferExportRequest } from '../pages/transfer/interfaces/transfer-export-request';
 import { EvalRunSummarySnapshot } from '../eval/definitions/eval-run-summary';
@@ -105,6 +106,8 @@ export class ServerRepositoryService {
     take = 0,
     sortBy: WorkflowSortField = WorkflowSortField.Name,
     sortDirection: SortDirection = SortDirection.Ascending,
+    folderId?: string,
+    topLevelOnly = false,
   ): Observable<WorkflowSummaryEntity[]> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams()
@@ -114,6 +117,12 @@ export class ServerRepositoryService {
       .set('sortDirection', sortDirection);
     if (search.trim().length > 0) {
       params = params.set('search', search.trim());
+    }
+    if (folderId) {
+      params = params.set('folderId', folderId);
+    }
+    if (topLevelOnly) {
+      params = params.set('topLevelOnly', true);
     }
 
     return this.http
@@ -127,11 +136,21 @@ export class ServerRepositoryService {
       );
   }
 
-  public getWorkflowCount(search = ''): Observable<number> {
+  public getWorkflowCount(
+    search = '',
+    folderId?: string,
+    topLevelOnly = false,
+  ): Observable<number> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams();
     if (search.trim().length > 0) {
       params = params.set('search', search.trim());
+    }
+    if (folderId) {
+      params = params.set('folderId', folderId);
+    }
+    if (topLevelOnly) {
+      params = params.set('topLevelOnly', true);
     }
 
     return this.http
@@ -163,6 +182,24 @@ export class ServerRepositoryService {
         catchError((error) => {
           this.notifyError('Saving workflow', error);
           return of(undefined);
+        }),
+      );
+  }
+
+  public moveWorkflowToFolder(
+    workflowId: string,
+    workflowFolderId?: string | null,
+  ): Observable<boolean> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .put<void>(`${apiUrl}/api/workflow/${workflowId}/folder`, {
+        workflowFolderId: workflowFolderId ?? null,
+      })
+      .pipe(
+        map(() => true),
+        catchError((error) => {
+          this.notifyError('Moving workflow', error);
+          return of(false);
         }),
       );
   }
@@ -271,15 +308,114 @@ export class ServerRepositoryService {
 
   public createWorkflowFromSample(
     sampleName: string,
+    workflowFolderId?: string | null,
   ): Observable<string | undefined> {
     const apiUrl = this.settingsService.apiUrl();
     const encodedSampleName = encodeURIComponent(sampleName);
+    let params = new HttpParams();
+    if (workflowFolderId) {
+      params = params.set('workflowFolderId', workflowFolderId);
+    }
+
     return this.http
-      .post<string>(`${apiUrl}/api/samples/${encodedSampleName}`, null)
+      .post<string>(`${apiUrl}/api/samples/${encodedSampleName}`, null, {
+        params,
+      })
       .pipe(
         catchError((error) => {
           this.notifyError('Creating workflow from sample', error);
           return of(undefined);
+        }),
+      );
+  }
+
+  public getWorkflowFolders(
+    search = '',
+    skip = 0,
+    take = 0,
+    sortDirection: SortDirection = SortDirection.Ascending,
+  ): Observable<WorkflowFolderSummary[]> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams()
+      .set('skip', skip)
+      .set('take', take)
+      .set('sortDirection', sortDirection);
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http
+      .get<WorkflowFolderSummary[]>(`${apiUrl}/api/workflow/folders`, {
+        params,
+      })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading workflow folders', error);
+          return of([]);
+        }),
+      );
+  }
+
+  public getWorkflowFolderCount(search = ''): Observable<number> {
+    const apiUrl = this.settingsService.apiUrl();
+    let params = new HttpParams();
+    if (search.trim().length > 0) {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http
+      .get<number>(`${apiUrl}/api/workflow/folders/count`, { params })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Loading workflow folder count', error);
+          return of(0);
+        }),
+      );
+  }
+
+  public createWorkflowFolder(
+    name: string,
+  ): Observable<WorkflowFolderSummary | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .post<WorkflowFolderSummary>(`${apiUrl}/api/workflow/folders`, { name })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Creating workflow folder', error);
+          return of(null);
+        }),
+      );
+  }
+
+  public renameWorkflowFolder(
+    folderId: string,
+    name: string,
+  ): Observable<WorkflowFolderSummary | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .put<WorkflowFolderSummary>(
+        `${apiUrl}/api/workflow/folders/${folderId}`,
+        {
+          name,
+        },
+      )
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Renaming workflow folder', error);
+          return of(null);
+        }),
+      );
+  }
+
+  public deleteWorkflowFolder(folderId: string): Observable<boolean> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .delete<void>(`${apiUrl}/api/workflow/folders/${folderId}`)
+      .pipe(
+        map(() => true),
+        catchError((error) => {
+          this.notifyError('Deleting workflow folder', error);
+          return of(false);
         }),
       );
   }
@@ -407,8 +543,9 @@ export class ServerRepositoryService {
           result
             ? {
                 ...result,
-                conversations: (result.conversations ?? []).map((conversation) =>
-                  this.normalizeConversationSummary(conversation),
+                conversations: (result.conversations ?? []).map(
+                  (conversation) =>
+                    this.normalizeConversationSummary(conversation),
                 ),
               }
             : null,
@@ -573,14 +710,15 @@ export class ServerRepositoryService {
   ): StreamEventModel[] {
     return (events ?? []).map((streamEvent) => ({
       ...streamEvent,
-      eventKind: this.normalizeEnumValue(StreamEventKind, streamEvent.eventKind),
+      eventKind: this.normalizeEnumValue(
+        StreamEventKind,
+        streamEvent.eventKind,
+      ),
       messageRole:
-        streamEvent.messageRole === null || streamEvent.messageRole === undefined
+        streamEvent.messageRole === null ||
+        streamEvent.messageRole === undefined
           ? streamEvent.messageRole
-          : this.normalizeEnumValue(
-              StreamMessageRole,
-              streamEvent.messageRole,
-            ),
+          : this.normalizeEnumValue(StreamMessageRole, streamEvent.messageRole),
     }));
   }
 
@@ -961,14 +1099,12 @@ export class ServerRepositoryService {
 
   public upsertEvalRows(rows: EvalRowSnapshot[]): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http
-      .post<void>(`${apiUrl}/api/eval/configs/rows`, rows)
-      .pipe(
-        catchError((error) => {
-          this.notifyError('Saving eval rows', error);
-          return of(undefined);
-        }),
-      );
+    return this.http.post<void>(`${apiUrl}/api/eval/configs/rows`, rows).pipe(
+      catchError((error) => {
+        this.notifyError('Saving eval rows', error);
+        return of(undefined);
+      }),
+    );
   }
 
   public deleteEvalRow(id: string): Observable<void> {
@@ -983,14 +1119,12 @@ export class ServerRepositoryService {
 
   public upsertEvalData(data: EvalDataSnapshot[]): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http
-      .post<void>(`${apiUrl}/api/eval/configs/data`, data)
-      .pipe(
-        catchError((error) => {
-          this.notifyError('Saving eval data', error);
-          return of(undefined);
-        }),
-      );
+    return this.http.post<void>(`${apiUrl}/api/eval/configs/data`, data).pipe(
+      catchError((error) => {
+        this.notifyError('Saving eval data', error);
+        return of(undefined);
+      }),
+    );
   }
 
   public deleteEvalData(id: string): Observable<void> {
@@ -1039,10 +1173,9 @@ export class ServerRepositoryService {
     }
 
     return this.http
-      .get<EvalRunSummarySnapshot[]>(
-        `${apiUrl}/api/eval/configs/${evalConfigId}/runs`,
-        { params },
-      )
+      .get<
+        EvalRunSummarySnapshot[]
+      >(`${apiUrl}/api/eval/configs/${evalConfigId}/runs`, { params })
       .pipe(
         catchError((error) => {
           this.notifyError('Loading eval runs', error);
@@ -1051,7 +1184,10 @@ export class ServerRepositoryService {
       );
   }
 
-  public getEvalRunCount(evalConfigId: string, search = ''): Observable<number> {
+  public getEvalRunCount(
+    evalConfigId: string,
+    search = '',
+  ): Observable<number> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams();
     if (search.trim().length > 0) {
@@ -1097,7 +1233,9 @@ export class ServerRepositoryService {
       );
   }
 
-  public getEvalRunDetail(evalRunId: string): Observable<EvalRunDetailSnapshot | null> {
+  public getEvalRunDetail(
+    evalRunId: string,
+  ): Observable<EvalRunDetailSnapshot | null> {
     const apiUrl = this.settingsService.apiUrl();
     return this.http
       .get<EvalRunDetailSnapshot>(`${apiUrl}/api/eval/runs/${evalRunId}/detail`)
@@ -1150,9 +1288,12 @@ export class ServerRepositoryService {
     }
 
     return this.http
-      .get<EvalRunRowDetailSnapshot[]>(`${apiUrl}/api/eval/runs/${evalRunId}/rows`, {
-        params,
-      })
+      .get<EvalRunRowDetailSnapshot[]>(
+        `${apiUrl}/api/eval/runs/${evalRunId}/rows`,
+        {
+          params,
+        },
+      )
       .pipe(
         catchError((error) => {
           this.notifyError('Loading eval run rows', error);
@@ -1161,7 +1302,10 @@ export class ServerRepositoryService {
       );
   }
 
-  public getEvalRunRowCount(evalRunId: string, search = ''): Observable<number> {
+  public getEvalRunRowCount(
+    evalRunId: string,
+    search = '',
+  ): Observable<number> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams();
     if (search.trim().length > 0) {
@@ -1169,7 +1313,9 @@ export class ServerRepositoryService {
     }
 
     return this.http
-      .get<number>(`${apiUrl}/api/eval/runs/${evalRunId}/rows/count`, { params })
+      .get<number>(`${apiUrl}/api/eval/runs/${evalRunId}/rows/count`, {
+        params,
+      })
       .pipe(
         catchError((error) => {
           this.notifyError('Loading eval run row count', error);
@@ -1391,7 +1537,9 @@ export class ServerRepositoryService {
       );
   }
 
-  public createAssetFolder(name: string): Observable<AssetFolderSummary | null> {
+  public createAssetFolder(
+    name: string,
+  ): Observable<AssetFolderSummary | null> {
     const apiUrl = this.settingsService.apiUrl();
     return this.http
       .post<AssetFolderSummary>(`${apiUrl}/api/assets/folders`, { name })

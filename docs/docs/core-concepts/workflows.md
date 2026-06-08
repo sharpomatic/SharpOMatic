@@ -7,6 +7,15 @@ A workflow is a directed graph of nodes connected by links that control executio
 Create and configure workflows in the browser-based editor, run them there to review results, and iterate quickly.
 Once complete, you can invoke workflows programmatically in your deployed environment.
 
+## Folders
+
+Workflow folders are a single-level organization tool in the editor.
+Folders are used for display and management only; they do not become part of the stored workflow name.
+
+Top-level workflows have no folder.
+Workflow names must be unique within their folder, including the top-level area.
+When running by name, use `Workflow Name` for a top-level workflow or `Folder Name/Workflow Name` for a workflow inside a folder.
+
 ## Nodes
 
 Common node types include:

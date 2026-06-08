@@ -14,7 +14,7 @@ public class SamplesService(IRepositoryService repositoryService) : ISamplesServ
         return catalog.Names;
     }
 
-    public async Task<Guid> CreateWorkflow(string sampleName)
+    public async Task<Guid> CreateWorkflow(string sampleName, Guid? workflowFolderId = null)
     {
         if (string.IsNullOrWhiteSpace(sampleName))
             throw new SharpOMaticException("Sample name cannot be empty or whitespace.");
@@ -26,6 +26,8 @@ public class SamplesService(IRepositoryService repositoryService) : ISamplesServ
         var assembly = Assembly.GetExecutingAssembly();
         var workflow = await LoadWorkflowSample(assembly, resourceName);
         workflow.Id = Guid.NewGuid();
+        workflow.WorkflowFolderId = workflowFolderId;
+        workflow.WorkflowFolderName = null;
 
         await repositoryService.UpsertWorkflow(workflow);
         return workflow.Id;

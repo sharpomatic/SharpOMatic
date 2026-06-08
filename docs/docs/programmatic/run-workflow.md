@@ -14,11 +14,13 @@ var engine = serviceProvider.GetRequiredService<IEngineService>();
 ```
 
 If you prefer workflow names instead of stored identifiers, use `GetWorkflowId`.
-Workflow names are not guaranteed to be unique, so the helper throws if there is no match or more than one match.
+Top-level workflows are resolved by name directly.
+Foldered workflows are resolved with a single slash-qualified name such as `Support/Chat`.
 
 ```csharp
 var engine = serviceProvider.GetRequiredService<IEngineService>();
 var workflowId = await engine.GetWorkflowId("Example Workflow");
+var folderedWorkflowId = await engine.GetWorkflowId("Support/Chat");
 ```
 
 You can also get the workflow identifier directly from the editor UI.

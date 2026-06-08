@@ -11,9 +11,9 @@ public class SamplesController : ControllerBase
     }
 
     [HttpPost("{sampleName}")]
-    public async Task<ActionResult<Guid>> CreateWorkflow(ISamplesService samplesService, [FromRoute] string sampleName)
+    public async Task<ActionResult<Guid>> CreateWorkflow(ISamplesService samplesService, [FromRoute] string sampleName, [FromQuery] Guid? workflowFolderId = null)
     {
-        var workflowId = await samplesService.CreateWorkflow(sampleName);
+        var workflowId = await samplesService.CreateWorkflow(sampleName, workflowFolderId);
         return workflowId;
     }
 }

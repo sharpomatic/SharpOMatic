@@ -981,9 +981,35 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<int>("Version")
                         .HasColumnType("INTEGER");
 
+                    b.Property<Guid?>("WorkflowFolderId")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("WorkflowId");
 
+                    b.HasIndex("WorkflowFolderId");
+
                     b.ToTable("Workflows", "SharpOMatic");
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.WorkflowFolder", b =>
+                {
+                    b.Property<Guid>("WorkflowFolderId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Created")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("WorkflowFolderId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("WorkflowFolders", "SharpOMatic");
                 });
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.WorkflowRunMetric", b =>
@@ -1090,7 +1116,7 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.HasOne("SharpOMatic.Engine.Repository.Conversation", null)
                         .WithMany()
                         .HasForeignKey("ConversationId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("SharpOMatic.Engine.Repository.AssetFolder", null)
                         .WithMany()
@@ -1135,7 +1161,7 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.HasOne("SharpOMatic.Engine.Repository.EvalColumn", null)
                         .WithMany()
                         .HasForeignKey("EvalColumnId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("SharpOMatic.Engine.Repository.EvalRow", null)
@@ -1177,7 +1203,7 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.HasOne("SharpOMatic.Engine.Repository.EvalGrader", null)
                         .WithMany()
                         .HasForeignKey("EvalGraderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("SharpOMatic.Engine.Repository.EvalRun", null)
@@ -1192,7 +1218,7 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.HasOne("SharpOMatic.Engine.Repository.EvalRow", null)
                         .WithMany()
                         .HasForeignKey("EvalRowId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("SharpOMatic.Engine.Repository.EvalRun", null)
@@ -1207,7 +1233,7 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.HasOne("SharpOMatic.Engine.Repository.EvalGrader", null)
                         .WithMany()
                         .HasForeignKey("EvalGraderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("SharpOMatic.Engine.Repository.EvalRunRow", null)
@@ -1222,7 +1248,7 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.HasOne("SharpOMatic.Engine.Repository.Conversation", null)
                         .WithMany()
                         .HasForeignKey("ConversationId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("SharpOMatic.Engine.Repository.Workflow", null)
                         .WithMany()
@@ -1247,6 +1273,14 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .HasForeignKey("RunId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("SharpOMatic.Engine.Repository.Workflow", b =>
+                {
+                    b.HasOne("SharpOMatic.Engine.Repository.WorkflowFolder", null)
+                        .WithMany()
+                        .HasForeignKey("WorkflowFolderId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 #pragma warning restore 612, 618
         }

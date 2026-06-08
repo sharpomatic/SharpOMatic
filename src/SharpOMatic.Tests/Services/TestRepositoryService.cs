@@ -14,6 +14,7 @@ public sealed class TestRepositoryService : IRepositoryService
     private readonly ConcurrentDictionary<Guid, WorkflowRunMetric> _workflowRunMetrics = new();
     private readonly ConcurrentDictionary<Guid, Asset> _assets = new();
     private readonly ConcurrentDictionary<Guid, AssetFolder> _assetFolders = new();
+    private readonly ConcurrentDictionary<Guid, WorkflowFolder> _workflowFolders = new();
     private readonly ConcurrentDictionary<string, ConnectorConfig> _connectorConfigs = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<Guid, Connector> _connectors = new();
     private readonly ConcurrentDictionary<string, ModelConfig> _modelConfigs = new(StringComparer.Ordinal);
@@ -21,12 +22,14 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task<List<WorkflowSummary>> GetWorkflowSummaries()
     {
-        var summaries = _workflows.Values
-            .OrderBy(w => w.Name)
+        var summaries = _workflows
+            .Values.OrderBy(w => w.Name)
             .Select(w => new WorkflowSummary()
             {
                 Version = w.Version,
                 Id = w.Id,
+                WorkflowFolderId = w.WorkflowFolderId,
+                WorkflowFolderName = w.WorkflowFolderName,
                 Name = w.Name,
                 Description = w.Description,
                 IsConversationEnabled = w.IsConversationEnabled,
@@ -36,9 +39,40 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.FromResult(summaries);
     }
 
-    public Task<int> GetWorkflowSummaryCount(string? search) => throw new NotImplementedException();
+    public Task<int> GetWorkflowSummaryCount(string? search, Guid? folderId = null, bool topLevelOnly = false) => throw new NotImplementedException();
 
-    public Task<List<WorkflowSummary>> GetWorkflowSummaries(string? search, WorkflowSortField sortBy, SortDirection sortDirection, int skip, int take) => throw new NotImplementedException();
+    public Task<List<WorkflowSummary>> GetWorkflowSummaries(
+        string? search,
+        WorkflowSortField sortBy,
+        SortDirection sortDirection,
+        int skip,
+        int take,
+        Guid? folderId = null,
+        bool topLevelOnly = false
+    ) => throw new NotImplementedException();
+
+    public Task<WorkflowSummary?> GetWorkflowSummaryByName(string name, string? folderName)
+    {
+        var workflow = _workflows.Values.FirstOrDefault(w =>
+            w.Name.Equals(name, StringComparison.Ordinal) && (folderName is null ? w.WorkflowFolderId is null : string.Equals(w.WorkflowFolderName, folderName, StringComparison.Ordinal))
+        );
+
+        if (workflow is null)
+            return Task.FromResult<WorkflowSummary?>(null);
+
+        return Task.FromResult<WorkflowSummary?>(
+            new WorkflowSummary
+            {
+                Version = workflow.Version,
+                Id = workflow.Id,
+                WorkflowFolderId = workflow.WorkflowFolderId,
+                WorkflowFolderName = workflow.WorkflowFolderName,
+                Name = workflow.Name,
+                Description = workflow.Description,
+                IsConversationEnabled = workflow.IsConversationEnabled,
+            }
+        );
+    }
 
     public Task<WorkflowEntity> GetWorkflow(Guid workflowId)
     {
@@ -50,6 +84,7 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task UpsertWorkflow(WorkflowEntity workflow)
     {
+        workflow.WorkflowFolderName = workflow.WorkflowFolderId.HasValue && _workflowFolders.TryGetValue(workflow.WorkflowFolderId.Value, out var folder) ? folder.Name : null;
         _workflows[workflow.Id] = workflow;
         return Task.CompletedTask;
     }
@@ -57,6 +92,63 @@ public sealed class TestRepositoryService : IRepositoryService
     public Task DeleteWorkflow(Guid workflowId) => throw new NotImplementedException();
 
     public Task<Guid> CopyWorkflow(Guid workflowId) => throw new NotImplementedException();
+
+    public Task MoveWorkflowToFolder(Guid workflowId, Guid? folderId)
+    {
+        if (_workflows.TryGetValue(workflowId, out var workflow))
+        {
+            workflow.WorkflowFolderId = folderId;
+            workflow.WorkflowFolderName = folderId.HasValue && _workflowFolders.TryGetValue(folderId.Value, out var folder) ? folder.Name : null;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task<WorkflowFolder> GetWorkflowFolder(Guid folderId)
+    {
+        if (!_workflowFolders.TryGetValue(folderId, out var folder))
+            throw new SharpOMaticException($"Workflow folder '{folderId}' cannot be found.");
+
+        return Task.FromResult(folder);
+    }
+
+    public Task<WorkflowFolder?> GetWorkflowFolderByName(string name)
+    {
+        return Task.FromResult(_workflowFolders.Values.FirstOrDefault(f => f.Name.Equals(name, StringComparison.Ordinal)));
+    }
+
+    public Task<int> GetWorkflowFolderCount(string? search)
+    {
+        return Task.FromResult(_workflowFolders.Count);
+    }
+
+    public Task<List<WorkflowFolder>> GetWorkflowFolders(string? search, SortDirection sortDirection, int skip, int take)
+    {
+        IEnumerable<WorkflowFolder> folders = _workflowFolders.Values.OrderBy(f => f.Name);
+        if (skip > 0)
+            folders = folders.Skip(skip);
+        if (take > 0)
+            folders = folders.Take(take);
+
+        return Task.FromResult(folders.ToList());
+    }
+
+    public Task<int> GetWorkflowFolderWorkflowCount(Guid folderId)
+    {
+        return Task.FromResult(_workflows.Values.Count(w => w.WorkflowFolderId == folderId));
+    }
+
+    public Task UpsertWorkflowFolder(WorkflowFolder folder)
+    {
+        _workflowFolders[folder.WorkflowFolderId] = folder;
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteWorkflowFolder(Guid folderId)
+    {
+        _workflowFolders.TryRemove(folderId, out _);
+        return Task.CompletedTask;
+    }
 
     public Task<Conversation?> GetLatestConversationForWorkflow(Guid workflowId)
     {
@@ -137,8 +229,8 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task PruneWorkflowConversations(Guid workflowId, int keepLatest)
     {
-        var conversationsToDelete = _conversations.Values
-            .Where(c => c.WorkflowId == workflowId && c.Status != ConversationStatus.Suspended && c.Status != ConversationStatus.Running)
+        var conversationsToDelete = _conversations
+            .Values.Where(c => c.WorkflowId == workflowId && c.Status != ConversationStatus.Suspended && c.Status != ConversationStatus.Running)
             .OrderByDescending(c => c.Updated)
             .Skip(keepLatest)
             .Select(c => c.ConversationId)
@@ -200,9 +292,7 @@ public sealed class TestRepositoryService : IRepositoryService
             RunSortField.Status => sortDirection == SortDirection.Ascending
                 ? runs.OrderBy(r => r.RunStatus).ThenByDescending(r => r.Created)
                 : runs.OrderByDescending(r => r.RunStatus).ThenByDescending(r => r.Created),
-            _ => sortDirection == SortDirection.Ascending
-                ? runs.OrderBy(r => r.Created)
-                : runs.OrderByDescending(r => r.Created)
+            _ => sortDirection == SortDirection.Ascending ? runs.OrderBy(r => r.Created) : runs.OrderByDescending(r => r.Created),
         };
 
         if (skip > 0)
@@ -222,12 +312,7 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task PruneWorkflowRuns(Guid workflowId, int keepLatest)
     {
-        var runIdsToDelete = _runs.Values
-            .Where(r => r.WorkflowId == workflowId && r.ConversationId == null)
-            .OrderByDescending(r => r.Created)
-            .Skip(keepLatest)
-            .Select(r => r.RunId)
-            .ToList();
+        var runIdsToDelete = _runs.Values.Where(r => r.WorkflowId == workflowId && r.ConversationId == null).OrderByDescending(r => r.Created).Skip(keepLatest).Select(r => r.RunId).ToList();
 
         foreach (var runId in runIdsToDelete)
         {
@@ -329,8 +414,8 @@ public sealed class TestRepositoryService : IRepositoryService
         if (take <= 0)
             return Task.FromResult<List<StreamEvent>>([]);
 
-        var streamEvents = _streamEvents.Values
-            .Where(e => e.ConversationId == conversationId && !e.HideFromReply)
+        var streamEvents = _streamEvents
+            .Values.Where(e => e.ConversationId == conversationId && !e.HideFromReply)
             .Where(e => !beforeSequenceNumber.HasValue || e.SequenceNumber < beforeSequenceNumber.Value)
             .OrderByDescending(e => e.SequenceNumber)
             .ThenByDescending(e => e.Created)
@@ -346,8 +431,8 @@ public sealed class TestRepositoryService : IRepositoryService
             throw new SharpOMaticException("Conversation stream id cannot be empty.");
 
         var ids = messageIds.Where(id => !string.IsNullOrWhiteSpace(id)).ToHashSet(StringComparer.Ordinal);
-        var streamEvents = _streamEvents.Values
-            .Where(e => e.ConversationId == conversationId && !e.HideFromReply && e.MessageId is not null && ids.Contains(e.MessageId))
+        var streamEvents = _streamEvents
+            .Values.Where(e => e.ConversationId == conversationId && !e.HideFromReply && e.MessageId is not null && ids.Contains(e.MessageId))
             .OrderBy(e => e.SequenceNumber)
             .ThenBy(e => e.Created)
             .ToList();
@@ -361,8 +446,8 @@ public sealed class TestRepositoryService : IRepositoryService
             throw new SharpOMaticException("Conversation stream id cannot be empty.");
 
         var ids = toolCallIds.Where(id => !string.IsNullOrWhiteSpace(id)).ToHashSet(StringComparer.Ordinal);
-        var streamEvents = _streamEvents.Values
-            .Where(e => e.ConversationId == conversationId && !e.HideFromReply && e.ToolCallId is not null && ids.Contains(e.ToolCallId))
+        var streamEvents = _streamEvents
+            .Values.Where(e => e.ConversationId == conversationId && !e.HideFromReply && e.ToolCallId is not null && ids.Contains(e.ToolCallId))
             .OrderBy(e => e.SequenceNumber)
             .ThenBy(e => e.Created)
             .ToList();
@@ -375,8 +460,8 @@ public sealed class TestRepositoryService : IRepositoryService
         if (string.IsNullOrWhiteSpace(conversationId))
             throw new SharpOMaticException("Conversation stream id cannot be empty.");
 
-        var streamEvents = _streamEvents.Values
-            .Where(e => e.ConversationId == conversationId && !e.HideFromReply && e.EventKind is StreamEventKind.StateSnapshot or StreamEventKind.StateDelta)
+        var streamEvents = _streamEvents
+            .Values.Where(e => e.ConversationId == conversationId && !e.HideFromReply && e.EventKind is StreamEventKind.StateSnapshot or StreamEventKind.StateDelta)
             .OrderBy(e => e.SequenceNumber)
             .ThenBy(e => e.Created)
             .ToList();
@@ -555,7 +640,7 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task<bool> UpsertEvalRunRowGraders(List<EvalRunRowGrader> runRowGraders, bool allowInsert = true) => throw new NotImplementedException();
 
-    public Task UpsertEvalRunGraderSummaries( List<EvalRunGraderSummary> graderSummaries) => throw new NotImplementedException();
+    public Task UpsertEvalRunGraderSummaries(List<EvalRunGraderSummary> graderSummaries) => throw new NotImplementedException();
 
     public Task<int> GetEvalRunSummaryCount(Guid evalConfigId, string? search) => throw new NotImplementedException();
 
@@ -629,12 +714,19 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task<Asset?> GetRunAssetByName(Guid runId, string name)
     {
-        return Task.FromResult(_assets.Values.Where(a => a.Scope == AssetScope.Run && a.RunId == runId && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).OrderByDescending(a => a.Created).FirstOrDefault());
+        return Task.FromResult(
+            _assets.Values.Where(a => a.Scope == AssetScope.Run && a.RunId == runId && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).OrderByDescending(a => a.Created).FirstOrDefault()
+        );
     }
 
     public Task<Asset?> GetConversationAssetByName(string conversationId, string name)
     {
-        return Task.FromResult(_assets.Values.Where(a => a.Scope == AssetScope.Conversation && a.ConversationId == conversationId && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).OrderByDescending(a => a.Created).FirstOrDefault());
+        return Task.FromResult(
+            _assets
+                .Values.Where(a => a.Scope == AssetScope.Conversation && a.ConversationId == conversationId && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(a => a.Created)
+                .FirstOrDefault()
+        );
     }
 
     public Task<Asset?> GetLibraryAssetByFolderAndName(string folderName, string name)
@@ -643,7 +735,12 @@ public sealed class TestRepositoryService : IRepositoryService
         if (folder is null)
             return Task.FromResult<Asset?>(null);
 
-        return Task.FromResult(_assets.Values.Where(a => a.Scope == AssetScope.Library && a.FolderId == folder.FolderId && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).OrderByDescending(a => a.Created).FirstOrDefault());
+        return Task.FromResult(
+            _assets
+                .Values.Where(a => a.Scope == AssetScope.Library && a.FolderId == folder.FolderId && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(a => a.Created)
+                .FirstOrDefault()
+        );
     }
 
     public Task<Asset?> GetLibraryAssetByName(string name)

@@ -6,6 +6,8 @@ import { nodeFromSnapshot } from './node-factory';
 import { ConnectorEntity } from './connector.entity';
 
 export interface WorkflowSnapshot extends EntitySnapshot {
+  workflowFolderId?: string | null;
+  workflowFolderName?: string | null;
   name: string;
   description: string;
   isConversationEnabled: boolean;
@@ -19,6 +21,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
   private connectorMap: Map<string, ConnectorEntity> = new Map();
 
   public name: WritableSignal<string>;
+  public workflowFolderId: WritableSignal<string | null>;
+  public workflowFolderName: WritableSignal<string | null>;
   public description: WritableSignal<string>;
   public isConversationEnabled: WritableSignal<boolean>;
   public nodes: WritableSignal<NodeEntity<NodeSnapshot>[]>;
@@ -28,6 +32,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
   constructor(snapshot: WorkflowSnapshot) {
     super(snapshot);
 
+    this.workflowFolderId = signal(snapshot.workflowFolderId ?? null);
+    this.workflowFolderName = signal(snapshot.workflowFolderName ?? null);
     this.name = signal(snapshot.name);
     this.description = signal(snapshot.description);
     this.isConversationEnabled = signal(snapshot.isConversationEnabled);
@@ -45,6 +51,7 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
 
       // Must touch all property signals
       const currentName = this.name();
+      const currentWorkflowFolderId = this.workflowFolderId();
       const currentDescription = this.description();
       const currentIsConversationEnabled = this.isConversationEnabled();
       const currentNodes = this.nodes();
@@ -73,6 +80,7 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
 
       const isDirty =
         needsRefresh ||
+        currentWorkflowFolderId !== (snapshot.workflowFolderId ?? null) ||
         currentName !== snapshot.name ||
         currentDescription !== snapshot.description ||
         currentIsConversationEnabled !== snapshot.isConversationEnabled;
@@ -89,6 +97,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
     return {
       id: this.id,
       version: this.version,
+      workflowFolderId: this.workflowFolderId(),
+      workflowFolderName: this.workflowFolderName(),
       name: this.name(),
       description: this.description(),
       isConversationEnabled: this.isConversationEnabled(),
@@ -102,6 +112,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
   public static override defaultSnapshot() {
     return {
       ...Entity.defaultSnapshot(),
+      workflowFolderId: null,
+      workflowFolderName: null,
       name: 'Untitled',
       description: '',
       isConversationEnabled: false,

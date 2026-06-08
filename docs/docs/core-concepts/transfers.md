@@ -93,7 +93,9 @@ Each exported file is self-describing:
 }
 ```
 
-Asset payloads also include `folderName`, `mediaType`, `sizeBytes`, and `contentBase64`.
+Workflow and asset payloads can include `folderName`.
+On import, missing workflow or library asset folders are created automatically.
+Asset payloads also include `mediaType`, `sizeBytes`, and `contentBase64`.
 
 ## Controller
 
