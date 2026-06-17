@@ -5,9 +5,7 @@ public class GoogleGenAIModelCaller(IEnumerable<IEngineNotification> engineNotif
     private readonly IEnumerable<IEngineNotification> _engineNotifications = engineNotifications;
 
     public GoogleGenAIModelCaller()
-        : this([])
-    {
-    }
+        : this([]) { }
 
     public override async Task<ModelCallResult> Call(
         Model model,
@@ -42,7 +40,7 @@ public class GoogleGenAIModelCaller(IEnumerable<IEngineNotification> engineNotif
         (var chatClient, var modelName) = GetChatClient(model, modelConfig, authenticationModeConfig, connectionFields);
 
         // Use the Microsoft Agent Framework by creating a chat client based agent
-        var agent = new ChatClientAgent(chatClient, instructions: instructions, services: agentServiceProvider);
+        var agent = new ChatClientAgent(CreateFunctionInvokingChatClient(chatClient, agentServiceProvider), instructions: instructions, services: agentServiceProvider);
         await EmitPromptStreamEvents(processContext, prompt, node.DisableStreamUser);
         var result = await CallConfiguredAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
         return result.ProviderModelName is null
@@ -72,14 +70,7 @@ public class GoogleGenAIModelCaller(IEnumerable<IEngineNotification> engineNotif
         // Allow the user notifications to customize the field values
         var notifications = processContext.ServiceScope.ServiceProvider.GetServices<IEngineNotification>();
         foreach (var notification in notifications)
-            notification.ConnectionOverride(
-                processContext.Run.RunId,
-                processContext.Run.WorkflowId,
-                processContext.Run.ConversationId,
-                connector.ConfigId,
-                authenticationModel,
-                connectionFields
-            );
+            notification.ConnectionOverride(processContext.Run.RunId, processContext.Run.WorkflowId, processContext.Run.ConversationId, connector.ConfigId, authenticationModel, connectionFields);
 
         return (authenticationModel, connectionFields);
     }
@@ -95,14 +86,19 @@ public class GoogleGenAIModelCaller(IEnumerable<IEngineNotification> engineNotif
     {
         // Mostly we have set the ChatOptions but sometimes we have to drop down to the Google AI specific GenerateContentConfig
         List<Action<Google.GenAI.Types.GenerateContentConfig>> rawActions = [];
-        chatOptions = chatOptions ?? new ChatOptions() { AdditionalProperties = [], RawRepresentationFactory = (_) =>
-        {
-            var config = new Google.GenAI.Types.GenerateContentConfig();
-            foreach (var rawAction in rawActions)
-                rawAction(config);
-            return config;
-        }
-        };
+        chatOptions =
+            chatOptions
+            ?? new ChatOptions()
+            {
+                AdditionalProperties = [],
+                RawRepresentationFactory = (_) =>
+                {
+                    var config = new Google.GenAI.Types.GenerateContentConfig();
+                    foreach (var rawAction in rawActions)
+                        rawAction(config);
+                    return config;
+                },
+            };
 
         chatOptions = SetupBasicCapabilities(model, modelConfig, processContext, threadContext, node, chatOptions);
 

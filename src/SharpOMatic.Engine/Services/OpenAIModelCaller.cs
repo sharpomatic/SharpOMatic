@@ -6,9 +6,7 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
     private readonly IEnumerable<IEngineNotification> _engineNotifications = engineNotifications;
 
     public OpenAIModelCaller()
-        : this([])
-    {
-    }
+        : this([]) { }
 
     public override async Task<ModelCallResult> Call(
         Model model,
@@ -43,7 +41,12 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
         (var agentClient, var modelName) = GetOpenAIResponseClient(model, modelConfig, authenticationModeConfig, connectionFields);
 
         // Use the Microsoft Agent Framework by creating an agent from the responses AI client, then run the agent call
-        var agent = agentClient.AsAIAgent(modelName, instructions: instructions, services: agentServiceProvider);
+        var agent = agentClient.AsAIAgent(
+            modelName,
+            instructions: instructions,
+            clientFactory: chatClient => CreateFunctionInvokingChatClient(chatClient, agentServiceProvider),
+            services: agentServiceProvider
+        );
         await EmitPromptStreamEvents(processContext, prompt, node.DisableStreamUser);
         var result = await CallConfiguredAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
         return result.ProviderModelName is null
@@ -110,14 +113,7 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
         // Allow the user notifications to customize the field values
         var notifications = processContext.ServiceScope.ServiceProvider.GetServices<IEngineNotification>();
         foreach (var notification in notifications)
-            notification.ConnectionOverride(
-                processContext.Run.RunId,
-                processContext.Run.WorkflowId,
-                processContext.Run.ConversationId,
-                connector.ConfigId,
-                authenticationModel,
-                connectionFields
-            );
+            notification.ConnectionOverride(processContext.Run.RunId, processContext.Run.WorkflowId, processContext.Run.ConversationId, connector.ConfigId, authenticationModel, connectionFields);
 
         return (authenticationModel, connectionFields);
     }

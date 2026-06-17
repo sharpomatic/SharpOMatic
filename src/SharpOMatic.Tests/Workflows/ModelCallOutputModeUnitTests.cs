@@ -1,4 +1,3 @@
-
 namespace SharpOMatic.Tests.Workflows;
 
 public sealed class ModelCallOutputModeUnitTests
@@ -6,13 +5,7 @@ public sealed class ModelCallOutputModeUnitTests
     [Fact]
     public void Workflow_deserialization_defaults_model_call_batch_output_to_false_when_missing()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddModelCall("model")
-            .AddEnd()
-            .Connect("start", "model")
-            .Connect("model", "end")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddModelCall("model").AddEnd().Connect("start", "model").Connect("model", "end").Build();
 
         var json = SharpOMatic.Engine.Helpers.WorkflowSnapshotSerializer.SerializeWorkflow(workflow);
         json = json.Replace("\"batchOutput\":false,", string.Empty, StringComparison.Ordinal);
@@ -114,14 +107,7 @@ public sealed class ModelCallOutputModeUnitTests
 
         public async Task InvokeConfiguredAgent(ModelCallNodeEntity node)
         {
-            await CallConfiguredAgent(
-                null!,
-                new List<ChatMessage>(),
-                chatOptions: null,
-                jsonOutput: false,
-                node,
-                new NullProgressSink()
-            );
+            await CallConfiguredAgent(null!, new List<ChatMessage>(), chatOptions: null, jsonOutput: false, node, new NullProgressSink());
         }
 
         public override Task<ModelCallResult> Call(
@@ -138,18 +124,10 @@ public sealed class ModelCallOutputModeUnitTests
             throw new NotSupportedException();
         }
 
-        protected override Task<ModelCallResult> CallAgent(
-            AIAgent agent,
-            List<ChatMessage> chat,
-            ChatOptions? chatOptions,
-            bool jsonOutput,
-            ModelCallNodeEntity node
-        )
+        protected override Task<ModelCallResult> CallAgent(AIAgent agent, List<ChatMessage> chat, ChatOptions? chatOptions, bool jsonOutput, ModelCallNodeEntity node)
         {
             BatchCallCount += 1;
-            return Task.FromResult<ModelCallResult>(
-                (chat, new List<ChatMessage>(), string.Empty)
-            );
+            return Task.FromResult<ModelCallResult>((chat, new List<ChatMessage>(), string.Empty));
         }
 
         protected override Task<ModelCallResult> CallStreamingAgent(
@@ -162,21 +140,26 @@ public sealed class ModelCallOutputModeUnitTests
         )
         {
             StreamingCallCount += 1;
-            return Task.FromResult<ModelCallResult>(
-                (chat, new List<ChatMessage>(), string.Empty)
-            );
+            return Task.FromResult<ModelCallResult>((chat, new List<ChatMessage>(), string.Empty));
         }
     }
 
     private sealed class NullProgressSink : IModelCallProgressSink
     {
         public Task OnTextStartAsync(string messageId) => Task.CompletedTask;
+
         public Task OnTextDeltaAsync(string messageId, string textDelta) => Task.CompletedTask;
+
         public Task OnTextEndAsync(string messageId) => Task.CompletedTask;
+
         public Task OnReasoningAsync(string reasoningId, string text) => Task.CompletedTask;
+
         public Task OnToolCallAsync(string toolCallId, string? toolName, string? argsSnapshot = null, string? parentMessageId = null, string? data = null) => Task.CompletedTask;
+
         public Task OnToolCallResultAsync(string messageId, string toolCallId, string content) => Task.CompletedTask;
+
         public Task CompleteAsync() => Task.CompletedTask;
+
         public Task PersistAsync() => Task.CompletedTask;
     }
 }

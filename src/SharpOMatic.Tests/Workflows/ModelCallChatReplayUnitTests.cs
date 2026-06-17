@@ -49,13 +49,13 @@ public sealed class ModelCallChatReplayUnitTests
 
             Assert.Equal(ChatRole.Assistant, replayedChat[1].Role);
             Assert.Equal(
-                "Result of calling tool lookup_weather with arguments {\"city\":\"Sydney\"} = Sunny",
+                "Invoked Tool Call, Name = lookup_weather, Arguments = {\"city\":\"Sydney\"}, Result = Sunny",
                 Assert.IsType<TextContent>(replayedChat[1].Contents.Single()).Text
             );
 
             Assert.Equal(ChatRole.Assistant, replayedChat[2].Role);
             Assert.Equal(
-                "Result of calling tool get_time with no arguments = Noon",
+                "Invoked Tool Call, Name = get_time, Result = Noon",
                 Assert.IsType<TextContent>(replayedChat[2].Contents.Single()).Text
             );
 
@@ -120,9 +120,9 @@ public sealed class ModelCallChatReplayUnitTests
             Assert.Equal(ChatRole.Assistant, sanitizedMessage.Role);
             Assert.Equal("Portable text", Assert.IsType<TextContent>(sanitizedMessage.Contents.Single()).Text);
             Assert.Equal(ChatRole.Assistant, replayedChat[1].Role);
-            Assert.Equal("Result of calling tool lookup_weather with arguments {\"city\":\"Sydney\"} = Sunny", Assert.IsType<TextContent>(replayedChat[1].Contents.Single()).Text);
+            Assert.Equal("Invoked Tool Call, Name = lookup_weather, Arguments = {\"city\":\"Sydney\"}, Result = Sunny", Assert.IsType<TextContent>(replayedChat[1].Contents.Single()).Text);
             Assert.Equal(ChatRole.Assistant, replayedChat[2].Role);
-            Assert.Equal("Result of calling tool get_time with no arguments = Noon", Assert.IsType<TextContent>(replayedChat[2].Contents.Single()).Text);
+            Assert.Equal("Invoked Tool Call, Name = get_time, Result = Noon", Assert.IsType<TextContent>(replayedChat[2].Contents.Single()).Text);
             Assert.All(replayedChat, message =>
             {
                 Assert.True(message.Role == ChatRole.User || message.Role == ChatRole.Assistant);

@@ -146,11 +146,17 @@ internal static class ChatHistoryReplayHelper
         var toolName = ResolveToolName(functionResultContent, functionCallContent);
         var resultText = SerializeToolResult(functionResultContent.Result);
         var argumentsText = SerializeToolArguments(functionCallContent);
-        var text = string.IsNullOrWhiteSpace(argumentsText)
-            ? $"Result of calling tool {toolName} with no arguments = {resultText}"
-            : $"Result of calling tool {toolName} with arguments {argumentsText} = {resultText}";
 
-        return new ChatMessage(ChatRole.Assistant, [new TextContent(text)]);
+        StringBuilder sb = new();
+        sb.Append($"Invoked Tool Call, Name = {toolName}");
+
+        if (!string.IsNullOrWhiteSpace(argumentsText))
+            sb.Append($", Arguments = {argumentsText}");
+
+        if (resultText is not null)
+            sb.Append($", Result = {resultText}");
+
+        return new ChatMessage(ChatRole.Assistant, [new TextContent(sb.ToString())]);
     }
 
     private static FunctionCallContent? ResolveToolCall(

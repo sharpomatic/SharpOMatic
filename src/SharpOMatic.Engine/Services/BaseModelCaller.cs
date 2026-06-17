@@ -3,6 +3,8 @@ namespace SharpOMatic.Engine.Services;
 
 public abstract class BaseModelCaller : IModelCaller
 {
+    private const string GracefulStopToolResultSentinel = "__SharpOMaticModelCallGracefulStop__";
+
     public abstract Task<ModelCallResult> Call(
         Model model,
         ModelConfig modelConfig,
@@ -14,16 +16,25 @@ public abstract class BaseModelCaller : IModelCaller
         IModelCallProgressSink progressSink
     );
 
-    protected virtual async Task<ModelCallResult> CallAgent(
-        AIAgent agent,
-        List<ChatMessage> chat,
-        ChatOptions? chatOptions,
-        bool jsonOutput,
-        ModelCallNodeEntity node
-    )
+    protected virtual async Task<ModelCallResult> CallAgent(AIAgent agent, List<ChatMessage> chat, ChatOptions? chatOptions, bool jsonOutput, ModelCallNodeEntity node)
     {
-        var response = await agent.RunAsync(chat, options: new ChatClientAgentRunOptions(chatOptions));
-        var resultValue = ResponseToOutputValue(jsonOutput, response);
+        AgentResponse response;
+        try
+        {
+            response = await agent.RunAsync(chat, options: new ChatClientAgentRunOptions(chatOptions));
+        }
+        catch (Exception ex) when (TryGetGracefulStopException(ex, out _))
+        {
+            return new ModelCallResult()
+            {
+                Chat = chat,
+                Responses = [],
+                ResultValue = string.Empty,
+            };
+        }
+
+        var stoppedGracefully = RemoveGracefulStopToolResults(response.Messages);
+        var resultValue = ResponseToOutputValue(jsonOutput && !stoppedGracefully, response);
         return new ModelCallResult()
         {
             Chat = chat,
@@ -45,6 +56,7 @@ public abstract class BaseModelCaller : IModelCaller
         List<AgentResponseUpdate> updates = [];
         string syntheticMessageId = $"assistant-{Guid.NewGuid():N}";
         string? currentAssistantMessageId = null;
+        bool stoppedGracefully = false;
 
         try
         {
@@ -99,6 +111,10 @@ public abstract class BaseModelCaller : IModelCaller
                                 );
                                 break;
 
+                            case FunctionResultContent functionResultContent when IsGracefulStopToolResult(functionResultContent):
+                                stoppedGracefully = true;
+                                break;
+
                             case FunctionResultContent functionResultContent:
                                 var toolResultMessageId = ResolveToolResultMessageId(update, functionResultContent, syntheticMessageId);
                                 await progressSink.OnToolCallResultAsync(
@@ -123,6 +139,10 @@ public abstract class BaseModelCaller : IModelCaller
                 }
             }
         }
+        catch (Exception ex) when (TryGetGracefulStopException(ex, out _))
+        {
+            stoppedGracefully = true;
+        }
         finally
         {
             if (currentAssistantMessageId is not null)
@@ -132,13 +152,89 @@ public abstract class BaseModelCaller : IModelCaller
         }
 
         var response = updates.ToAgentResponse();
-        var resultValue = ResponseToOutputValue(jsonOutput, response);
+        stoppedGracefully |= RemoveGracefulStopToolResults(response.Messages);
+        var resultValue = ResponseToOutputValue(jsonOutput && !stoppedGracefully, response);
         return new ModelCallResult()
         {
             Chat = chat,
             Responses = response.Messages,
             ResultValue = resultValue,
             Usage = response.Usage,
+        };
+    }
+
+    protected virtual IChatClient CreateFunctionInvokingChatClient(IChatClient chatClient, IServiceProvider? toolServiceProvider)
+    {
+        return new FunctionInvokingChatClient(chatClient, loggerFactory: null, functionInvocationServices: toolServiceProvider)
+        {
+            FunctionInvoker = async (context, cancellationToken) =>
+            {
+                try
+                {
+                    return await context.Function.InvokeAsync(context.Arguments, cancellationToken);
+                }
+                catch (Exception ex) when (TryGetGracefulStopException(ex, out _))
+                {
+                    context.Terminate = true;
+                    return GracefulStopToolResultSentinel;
+                }
+            },
+        };
+    }
+
+    protected static bool TryGetGracefulStopException(Exception exception, [NotNullWhen(true)] out ModelCallGracefulStopException? gracefulStopException)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is ModelCallGracefulStopException modelCallGracefulStopException)
+            {
+                gracefulStopException = modelCallGracefulStopException;
+                return true;
+            }
+
+            if (current is AggregateException aggregateException)
+            {
+                foreach (var innerException in aggregateException.Flatten().InnerExceptions)
+                {
+                    if (TryGetGracefulStopException(innerException, out gracefulStopException))
+                        return true;
+                }
+            }
+        }
+
+        gracefulStopException = null;
+        return false;
+    }
+
+    private static bool RemoveGracefulStopToolResults(IList<ChatMessage> messages)
+    {
+        var removed = false;
+        for (var messageIndex = messages.Count - 1; messageIndex >= 0; messageIndex -= 1)
+        {
+            var message = messages[messageIndex];
+            for (var contentIndex = message.Contents.Count - 1; contentIndex >= 0; contentIndex -= 1)
+            {
+                if (message.Contents[contentIndex] is not FunctionResultContent functionResultContent || !IsGracefulStopToolResult(functionResultContent))
+                    continue;
+
+                message.Contents.RemoveAt(contentIndex);
+                removed = true;
+            }
+
+            if (message.Contents.Count == 0)
+                messages.RemoveAt(messageIndex);
+        }
+
+        return removed;
+    }
+
+    private static bool IsGracefulStopToolResult(FunctionResultContent functionResultContent)
+    {
+        return functionResultContent.Result switch
+        {
+            string result => string.Equals(result, GracefulStopToolResultSentinel, StringComparison.Ordinal),
+            JsonElement { ValueKind: JsonValueKind.String } element => string.Equals(element.GetString(), GracefulStopToolResultSentinel, StringComparison.Ordinal),
+            _ => false,
         };
     }
 
@@ -151,9 +247,7 @@ public abstract class BaseModelCaller : IModelCaller
         IModelCallProgressSink progressSink
     )
     {
-        return node.BatchOutput
-            ? CallAgent(agent, chat, chatOptions, jsonOutput, node)
-            : CallStreamingAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
+        return node.BatchOutput ? CallAgent(agent, chat, chatOptions, jsonOutput, node) : CallStreamingAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
     }
 
     protected virtual string ResolveMessageId(AgentResponseUpdate update, string syntheticMessageId)
@@ -188,11 +282,7 @@ public abstract class BaseModelCaller : IModelCaller
         return $"tool-result:{fallbackMessageId}";
     }
 
-    protected virtual string ResolveToolResultMessageId(
-        AgentResponseUpdate update,
-        FunctionResultContent functionResultContent,
-        string syntheticMessageId
-    )
+    protected virtual string ResolveToolResultMessageId(AgentResponseUpdate update, FunctionResultContent functionResultContent, string syntheticMessageId)
     {
         if (!string.IsNullOrWhiteSpace(update.MessageId))
             return update.MessageId.Trim();
@@ -357,11 +447,7 @@ public abstract class BaseModelCaller : IModelCaller
         {
             if (GetCapabilityCallString(model, modelConfig, node, "SupportsToolCalling", "selected_tools", out string selectedTools))
             {
-                agentServiceProvider = new OverlayServiceProvider(
-                    agentServiceProvider,
-                    threadContext.NodeContext,
-                    new StreamEventHelper(processContext, threadContext.NodeContext)
-                );
+                agentServiceProvider = new OverlayServiceProvider(agentServiceProvider, threadContext.NodeContext, new StreamEventHelper(processContext, threadContext.NodeContext));
 
                 var toolNames = selectedTools.Split(',');
                 List<AITool> tools = [];
@@ -496,30 +582,28 @@ public abstract class BaseModelCaller : IModelCaller
             return Task.CompletedTask;
 
         var messageId = $"user-{Guid.NewGuid():N}";
-        return processContext.AppendStreamEvents(
-            [
-                new StreamEventWrite()
-                {
-                    EventKind = StreamEventKind.TextStart,
-                    MessageId = messageId,
-                    MessageRole = StreamMessageRole.User,
-                    Silent = true,
-                },
-                new StreamEventWrite()
-                {
-                    EventKind = StreamEventKind.TextContent,
-                    MessageId = messageId,
-                    TextDelta = prompt,
-                    Silent = true,
-                },
-                new StreamEventWrite()
-                {
-                    EventKind = StreamEventKind.TextEnd,
-                    MessageId = messageId,
-                    Silent = true,
-                },
-            ]
-        );
+        return processContext.AppendStreamEvents([
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.TextStart,
+                MessageId = messageId,
+                MessageRole = StreamMessageRole.User,
+                Silent = true,
+            },
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.TextContent,
+                MessageId = messageId,
+                TextDelta = prompt,
+                Silent = true,
+            },
+            new StreamEventWrite()
+            {
+                EventKind = StreamEventKind.TextEnd,
+                MessageId = messageId,
+                Silent = true,
+            },
+        ]);
     }
 
     protected static object? FastDeserializeString(string json)
