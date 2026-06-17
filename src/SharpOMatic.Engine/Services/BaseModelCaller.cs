@@ -357,7 +357,11 @@ public abstract class BaseModelCaller : IModelCaller
         {
             if (GetCapabilityCallString(model, modelConfig, node, "SupportsToolCalling", "selected_tools", out string selectedTools))
             {
-                agentServiceProvider = new OverlayServiceProvider(agentServiceProvider, threadContext.NodeContext);
+                agentServiceProvider = new OverlayServiceProvider(
+                    agentServiceProvider,
+                    threadContext.NodeContext,
+                    new StreamEventHelper(processContext, threadContext.NodeContext)
+                );
 
                 var toolNames = selectedTools.Split(',');
                 List<AITool> tools = [];
