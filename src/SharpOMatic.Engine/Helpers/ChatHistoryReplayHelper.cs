@@ -153,7 +153,7 @@ internal static class ChatHistoryReplayHelper
         if (!string.IsNullOrWhiteSpace(argumentsText))
             sb.Append($", Arguments = {argumentsText}");
 
-        if (resultText is not null)
+        if (!string.IsNullOrWhiteSpace(resultText))
             sb.Append($", Result = {resultText}");
 
         return new ChatMessage(ChatRole.Assistant, [new TextContent(sb.ToString())]);
