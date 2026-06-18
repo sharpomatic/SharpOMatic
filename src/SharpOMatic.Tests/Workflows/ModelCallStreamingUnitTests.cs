@@ -370,9 +370,14 @@ public sealed class ModelCallStreamingUnitTests
             Assert.Equal("Hello world", output.Get<string>("output.text"));
 
             var chatOutput = output.Get<ContextList>("output.chat");
-            Assert.Equal(2, chatOutput.Count);
+            Assert.Equal(3, chatOutput.Count);
             Assert.Equal(ChatRole.User, ((ChatMessage)chatOutput[0]!).Role);
             Assert.Equal(ChatRole.Assistant, ((ChatMessage)chatOutput[1]!).Role);
+            Assert.Equal(ChatRole.Assistant, ((ChatMessage)chatOutput[2]!).Role);
+            Assert.Equal(
+                "Invoked Tool Call, Name = lookup_weather, Arguments = {\"city\":\"Sydney\"}",
+                Assert.IsType<TextContent>(((ChatMessage)chatOutput[2]!).Contents.Single()).Text
+            );
         }
         finally
         {
