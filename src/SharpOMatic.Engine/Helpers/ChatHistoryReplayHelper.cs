@@ -58,6 +58,14 @@ internal static class ChatHistoryReplayHelper
                 portableMessages.Add(toolResultMessage);
         }
 
+        // Emit any tool calls that were tracked but never paired with a result.
+        // This happens when a graceful stop removes the sentinel FunctionResultContent,
+        // leaving the preceding FunctionCallContent with no matching result to consume it.
+        foreach (var orphanedCall in toolCallsById.Values)
+            portableMessages.Add(CreateOrphanedToolCallMessage(orphanedCall));
+        while (anonymousToolCalls.Count > 0)
+            portableMessages.Add(CreateOrphanedToolCallMessage(anonymousToolCalls.Dequeue()));
+
         return portableMessages;
     }
 
@@ -155,6 +163,20 @@ internal static class ChatHistoryReplayHelper
 
         if (!string.IsNullOrWhiteSpace(resultText))
             sb.Append($", Result = {resultText}");
+
+        return new ChatMessage(ChatRole.Assistant, [new TextContent(sb.ToString())]);
+    }
+
+    private static ChatMessage CreateOrphanedToolCallMessage(FunctionCallContent functionCallContent)
+    {
+        var toolName = functionCallContent.Name?.Trim() ?? "unknown";
+        var argumentsText = SerializeToolArguments(functionCallContent);
+
+        StringBuilder sb = new();
+        sb.Append($"Invoked Tool Call, Name = {toolName}");
+
+        if (!string.IsNullOrWhiteSpace(argumentsText))
+            sb.Append($", Arguments = {argumentsText}");
 
         return new ChatMessage(ChatRole.Assistant, [new TextContent(sb.ToString())]);
     }
