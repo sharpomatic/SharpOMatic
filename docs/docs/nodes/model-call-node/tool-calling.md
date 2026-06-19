@@ -43,6 +43,17 @@ Example tool call implementations.
     }
 ```
 
+Tool methods can use `System.ComponentModel.DisplayNameAttribute` to expose a different name to the model than the C# method name. This is useful when keeping C# methods in PascalCase while presenting snake_case tool names to an LLM.
+
+```csharp
+    [DisplayName("get_greeting")]
+    [Description("Get a friendly greeting.")]
+    public static string GetGreeting(IServiceProvider services)
+    {
+      return "Howdy doody!";
+    }
+```
+
 ### IServiceProvider
 
 Notice that your methods can take **IServiceProvider** as a parameter.

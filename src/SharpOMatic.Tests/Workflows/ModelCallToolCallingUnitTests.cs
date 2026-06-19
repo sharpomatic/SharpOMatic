@@ -3,6 +3,27 @@ namespace SharpOMatic.Tests.Workflows;
 public sealed class ModelCallToolCallingUnitTests
 {
     [Fact]
+    public void Tool_registry_uses_display_name_attribute_for_tool_names()
+    {
+        var registry = new ToolMethodRegistry([(Func<string>)DefinedToolWithDisplayName]);
+
+        var toolName = Assert.Single(registry.GetToolDisplayNames());
+        var tool = Assert.IsType<Func<string>>(registry.GetToolFromDisplayName("defined_tool"));
+
+        Assert.Equal("defined_tool", toolName);
+        Assert.Equal("ok", tool());
+        Assert.Null(registry.GetToolFromDisplayName(nameof(DefinedToolWithDisplayName)));
+    }
+
+    [Fact]
+    public void Tool_registry_rejects_duplicate_display_names()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(() => new ToolMethodRegistry([(Func<string>)DefinedToolWithDisplayName, (Func<string>)DuplicateDefinedToolWithDisplayName]));
+
+        Assert.Contains("defined_tool", exception.Message);
+    }
+
+    [Fact]
     public void Setup_tool_calling_ignores_selected_tools_that_are_not_registered()
     {
         using var provider = WorkflowRunner.BuildProvider(services => services.AddSingleton<IToolMethodRegistry>(new ToolMethodRegistry([(Func<string>)DefinedTool])));
@@ -36,6 +57,39 @@ public sealed class ModelCallToolCallingUnitTests
     }
 
     [Fact]
+    public void Setup_tool_calling_uses_display_name_attribute_for_selected_tools()
+    {
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddSingleton<IToolMethodRegistry>(new ToolMethodRegistry([(Func<string>)DefinedToolWithDisplayName])));
+        using var scope = provider.CreateScope();
+
+        var workflow = new WorkflowEntity
+        {
+            Id = Guid.NewGuid(),
+            Version = 1,
+            Name = "Tool workflow",
+            Description = "",
+            Nodes = [],
+            Connections = [],
+        };
+        var run = new Run
+        {
+            RunId = Guid.NewGuid(),
+            WorkflowId = workflow.Id,
+            Created = DateTime.UtcNow,
+            RunStatus = RunStatus.Running,
+        };
+        var processContext = new ProcessContext(scope, run, 100, null);
+        var workflowContext = new WorkflowContext(processContext, workflow);
+        var threadContext = new ThreadContext(processContext, workflowContext, []);
+        var caller = new ToolCallingTestModelCaller();
+        var chatOptions = new ChatOptions { AdditionalProperties = [] };
+
+        caller.InvokeSetupToolCalling(chatOptions, CreateToolCallingModel(), CreateToolCallingModelConfig(), processContext, threadContext, CreateModelCallNode("defined_tool"));
+
+        Assert.Single(chatOptions.Tools ?? []);
+    }
+
+    [Fact]
     public async Task Tool_graceful_stop_exception_ends_streaming_model_call_with_partial_messages()
     {
         var caller = new ToolCallingTestModelCaller();
@@ -59,6 +113,12 @@ public sealed class ModelCallToolCallingUnitTests
     }
 
     private static string DefinedTool() => "ok";
+
+    [System.ComponentModel.DisplayName("defined_tool")]
+    private static string DefinedToolWithDisplayName() => "ok";
+
+    [System.ComponentModel.DisplayName("defined_tool")]
+    private static string DuplicateDefinedToolWithDisplayName() => "duplicate";
 
     private static string NeedsUserInput()
     {
