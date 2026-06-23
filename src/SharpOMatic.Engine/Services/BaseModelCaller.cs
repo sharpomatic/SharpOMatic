@@ -504,38 +504,73 @@ public abstract class BaseModelCaller : IModelCaller
                 if (!threadContext.NodeContext.TryGet<object?>(node.ImageInputPath, out var imageValue) || imageValue is null)
                     throw new SharpOMaticException($"Image input path '{node.ImageInputPath}' could not be resolved.");
 
-                List<AssetRef> assetRefs = [];
                 if (imageValue is AssetRef assetRef)
-                    assetRefs.Add(assetRef);
+                    await AddAssetImageMessage(chat, processContext, assetRef);
                 else if (imageValue is ContextList assetList)
                 {
                     for (var i = 0; i < assetList.Count; i += 1)
                     {
                         var item = assetList[i];
                         if (item is AssetRef listAssetRef)
-                            assetRefs.Add(listAssetRef);
+                            await AddAssetImageMessage(chat, processContext, listAssetRef);
+                        else if (item is string listImageUrl)
+                            chat.Add(CreateImageUriMessage(node.ImageInputPath, listImageUrl));
                         else
-                            throw new SharpOMaticException($"Image input path '{node.ImageInputPath}' contains a non-asset entry at index {i}.");
+                            throw new SharpOMaticException($"Image input path '{node.ImageInputPath}' contains an entry at index {i} that is not an asset or image URL.");
                     }
                 }
+                else if (imageValue is string imageUrl)
+                    chat.Add(CreateImageUriMessage(node.ImageInputPath, imageUrl));
                 else
-                    throw new SharpOMaticException($"Image input path '{node.ImageInputPath}' must be an asset or asset list.");
-
-                foreach (var entry in assetRefs)
-                {
-                    var asset = await processContext.RepositoryService.GetAsset(entry.AssetId);
-                    if (!asset.MediaType.StartsWith("image/"))
-                        throw new SharpOMaticException($"Asset '{entry.Name}' is not an image.");
-
-                    await using var stream = await processContext.AssetStore.OpenReadAsync(asset.StorageKey);
-                    using var buffer = new MemoryStream();
-                    await stream.CopyToAsync(buffer);
-
-                    var content = new DataContent(buffer.ToArray(), asset.MediaType);
-                    chat.Add(new ChatMessage(ChatRole.User, [content]));
-                }
+                    throw new SharpOMaticException($"Image input path '{node.ImageInputPath}' must be an asset, asset list, or image URL.");
             }
         }
+    }
+
+    private static async Task AddAssetImageMessage(List<ChatMessage> chat, ProcessContext processContext, AssetRef entry)
+    {
+        var asset = await processContext.RepositoryService.GetAsset(entry.AssetId);
+        if (!asset.MediaType.StartsWith("image/"))
+            throw new SharpOMaticException($"Asset '{entry.Name}' is not an image.");
+
+        await using var stream = await processContext.AssetStore.OpenReadAsync(asset.StorageKey);
+        using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer);
+
+        var content = new DataContent(buffer.ToArray(), asset.MediaType);
+        chat.Add(new ChatMessage(ChatRole.User, [content]));
+    }
+
+    private static ChatMessage CreateImageUriMessage(string imageInputPath, string imageUrl)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl) || !Uri.TryCreate(imageUrl.Trim(), UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
+            throw new SharpOMaticException($"Image input path '{imageInputPath}' must be an asset, asset list, or image URL.");
+
+        var mediaType = GetImageMediaType(uri);
+        if (string.IsNullOrWhiteSpace(mediaType))
+            throw new SharpOMaticException($"Image input URL '{uri}' must resolve to an image media type.");
+
+        return new ChatMessage(ChatRole.User, [new UriContent(uri.ToString(), mediaType)]);
+    }
+
+    private static string? GetImageMediaType(Uri uri)
+    {
+        return Path.GetExtension(uri.AbsolutePath).ToLowerInvariant() switch
+        {
+            ".avif" => "image/avif",
+            ".bmp" => "image/bmp",
+            ".gif" => "image/gif",
+            ".heic" => "image/heic",
+            ".heif" => "image/heif",
+            ".jpeg" => "image/jpeg",
+            ".jpg" => "image/jpeg",
+            ".png" => "image/png",
+            ".svg" => "image/svg+xml",
+            ".tif" => "image/tiff",
+            ".tiff" => "image/tiff",
+            ".webp" => "image/webp",
+            _ => null,
+        };
     }
 
     protected virtual async Task<(string? instructions, string? prompt)> ResolveInstructionsAndPrompt(
