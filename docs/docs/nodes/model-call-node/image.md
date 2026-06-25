@@ -6,6 +6,8 @@ sidebar_position: 3
 If the model supports image input or image output, this tab is available.
 
 **Image Input Path** must point to an **AssetRef**, an absolute HTTP/HTTPS image URL string, or a list containing **AssetRef** values and/or image URL strings.
+If the configured path resolves to `null`, SharpOMatic treats the image input as absent and continues without adding an image to the model call.
+If the configured path is missing from context, the model call fails because the image input path could not be resolved.
 You can insert these **AssetRef** values using the editor for interactive development purposes.
 Programmatically, you can add them when creating the initial context to insert into the workflow or inside a **Code** node.
 Note that these assets and URLs must be image types; they cannot be text, PDF documents, or binary data.

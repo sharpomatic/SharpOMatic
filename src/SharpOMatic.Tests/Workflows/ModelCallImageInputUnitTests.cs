@@ -34,6 +34,22 @@ public sealed class ModelCallImageInputUnitTests
     }
 
     [Fact]
+    public async Task Image_input_path_rejects_missing_context_value()
+    {
+        var exception = await Assert.ThrowsAsync<SharpOMaticException>(() => InvokeAddImageMessages(null, setImageValue: false));
+
+        Assert.Equal("Image input path 'input.image' could not be resolved.", exception.Message);
+    }
+
+    [Fact]
+    public async Task Image_input_path_ignores_null_context_value()
+    {
+        var chat = await InvokeAddImageMessages(null);
+
+        Assert.Empty(chat);
+    }
+
+    [Fact]
     public async Task Image_input_path_rejects_string_that_is_not_url()
     {
         var exception = await Assert.ThrowsAsync<SharpOMaticException>(() => InvokeAddImageMessages("library/plan.png"));
@@ -49,7 +65,7 @@ public sealed class ModelCallImageInputUnitTests
         Assert.Equal("Image input URL 'https://example.com/files/specification.pdf' must resolve to an image media type.", exception.Message);
     }
 
-    private static async Task<List<ChatMessage>> InvokeAddImageMessages(object imageValue)
+    private static async Task<List<ChatMessage>> InvokeAddImageMessages(object? imageValue, bool setImageValue = true)
     {
         using var provider = WorkflowRunner.BuildProvider();
         using var scope = provider.CreateScope();
@@ -64,7 +80,8 @@ public sealed class ModelCallImageInputUnitTests
         var processContext = new ProcessContext(scope, run, 100, null);
         var workflowContext = new WorkflowContext(processContext, new WorkflowBuilder().AddStart().Build());
         ContextObject nodeContext = [];
-        nodeContext.Set("input.image", imageValue);
+        if (setImageValue)
+            nodeContext.Set("input.image", imageValue);
 
         var threadContext = new ThreadContext(processContext, workflowContext, nodeContext);
         var node = CreateModelCallNode();

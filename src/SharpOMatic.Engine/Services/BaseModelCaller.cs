@@ -501,8 +501,11 @@ public abstract class BaseModelCaller : IModelCaller
         {
             if (!string.IsNullOrWhiteSpace(node.ImageInputPath))
             {
-                if (!threadContext.NodeContext.TryGet<object?>(node.ImageInputPath, out var imageValue) || imageValue is null)
+                if (!threadContext.NodeContext.TryGet<object?>(node.ImageInputPath, out var imageValue))
                     throw new SharpOMaticException($"Image input path '{node.ImageInputPath}' could not be resolved.");
+
+                if (imageValue is null)
+                    return;
 
                 if (imageValue is AssetRef assetRef)
                     await AddAssetImageMessage(chat, processContext, assetRef);
