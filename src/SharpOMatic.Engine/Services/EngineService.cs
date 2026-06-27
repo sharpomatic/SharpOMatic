@@ -732,6 +732,10 @@ public class EngineService(
                 evalRunRow.OutputContext = runResult.OutputContext;
                 evalRunRow.Error = runResult.Error;
                 evalRunRow.Status = EvalRunStatus.Failed;
+
+                // Record a failed grader entry for each grader so the failure is reflected in grader counts,
+                // not just the row-level failed count.
+                await MarkGradersAsFailedForRow(repository, evalRunId, evalRunRow.EvalRunRowId, evalConfigDetail.Graders, runResult.Error);
             }
             else
             {
@@ -753,6 +757,10 @@ public class EngineService(
         {
             evalRunRow.Error = ex.Message;
             evalRunRow.Status = EvalRunStatus.Failed;
+
+            // Record a failed grader entry for each grader so the failure is reflected in grader counts,
+            // not just the row-level failed count.
+            await MarkGradersAsFailedForRow(repository, evalRunId, evalRunRow.EvalRunRowId, evalConfigDetail.Graders, ex.Message);
         }
         finally
         {
@@ -761,6 +769,27 @@ public class EngineService(
         }
 
         return evalRunRow;
+    }
+
+    private static async Task MarkGradersAsFailedForRow(IRepositoryService repository, Guid evalRunId, Guid evalRunRowId, IEnumerable<EvalGrader> graders, string? error)
+    {
+        var now = DateTime.Now;
+        var failedGraders = graders
+            .Select(grader => new EvalRunRowGrader
+            {
+                EvalRunRowGraderId = Guid.NewGuid(),
+                EvalRunRowId = evalRunRowId,
+                EvalGraderId = grader.EvalGraderId,
+                EvalRunId = evalRunId,
+                Started = now,
+                Finished = now,
+                Status = EvalRunStatus.Failed,
+                Error = error,
+            })
+            .ToList();
+
+        if (failedGraders.Count > 0)
+            await repository.UpsertEvalRunRowGraders(failedGraders);
     }
 
     private async Task<EvalRunRowGrader> PerformEvalGrader(IRepositoryService repository, IJsonConverterService jsonConverterService, Guid evalRunId, Guid evalRunRowId, EvalGrader evalGrader, string? jsonContext)

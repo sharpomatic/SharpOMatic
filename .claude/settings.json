@@ -13,7 +13,10 @@
       "PowerShell(dotnet build c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Engine\\\\SharpOMatic.Engine.csproj -v q 2>&1)",
       "PowerShell(dotnet test c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Tests\\\\SharpOMatic.Tests.csproj --filter \"EvalRowsCsv\" -v normal -- RunConfiguration.TargetFrameworkVersion=net10.0 2>&1)",
       "PowerShell(dotnet build c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Engine\\\\SharpOMatic.Engine.csproj c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Tests\\\\SharpOMatic.Tests.csproj 2>&1)",
-      "PowerShell(dotnet build c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Editor\\\\SharpOMatic.Editor.csproj -p:PrepareEditorAssets=false -v q 2>&1)"
+      "PowerShell(dotnet build c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Editor\\\\SharpOMatic.Editor.csproj -p:PrepareEditorAssets=false -v q 2>&1)",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "WebFetch(domain:community.openai.com)"
     ],
     "additionalDirectories": [
       "C:\\Users\\PhilipWright\\AppData\\Local\\Temp\\claude\\c--Code-SharpOMatic\\54860d39-a437-4ef0-a560-42125952a646\\scratchpad"

@@ -1,4 +1,4 @@
-﻿#pragma warning disable OPENAI001
+﻿#pragma warning disable OPENAI001, MAAI001
 namespace SharpOMatic.Engine.Services;
 
 public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotifications) : BaseModelCaller
@@ -41,10 +41,20 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
         (var agentClient, var modelName) = GetOpenAIResponseClient(model, modelConfig, authenticationModeConfig, connectionFields);
 
         // Use the Microsoft Agent Framework by creating an agent from the responses AI client, then run the agent call
+        //
+        // WORKAROUND: AsIChatClientWithStoredOutputDisabled forces stateless mode (StoredOutputEnabled=false).
+        // The default stateful mode (StoredOutputEnabled=true) causes an intermittent HTTP 400
+        // "No tool call found for function call output with call_id" when multiple tools are available.
+        // The bug is inside FunctionInvokingChatClient (Microsoft.Extensions.AI): when the Responses API
+        // returns a ConversationId on one turn but not the next, the framework misassembles the follow-up
+        // request, breaking the strict function_call → function_call_output pairing the Responses API requires.
+        // Track: https://github.com/microsoft/agent-framework/issues/3795
+        // TO REVERT: replace the clientFactory lambda below with the commented-out original line.
         var agent = agentClient.AsAIAgent(
             modelName,
             instructions: instructions,
-            clientFactory: chatClient => CreateFunctionInvokingChatClient(chatClient, agentServiceProvider),
+            // Original (stateful): clientFactory: chatClient => CreateFunctionInvokingChatClient(chatClient, agentServiceProvider),
+            clientFactory: _ => CreateFunctionInvokingChatClient(agentClient.AsIChatClientWithStoredOutputDisabled(modelName), agentServiceProvider),
             services: agentServiceProvider
         );
         await EmitPromptStreamEvents(processContext, prompt, node.DisableStreamUser);
