@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, forkJoin, map, of, switchMap, take } from 'rxjs';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
+import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
 import { TabComponent, TabItem } from '../../components/tab/tab.component';
 import { EvalConfig } from '../../eval/definitions/eval-config';
 import { EvalColumn } from '../../eval/definitions/eval-column';
@@ -52,6 +53,7 @@ import {
     FormsModule,
     TabComponent,
     MonacoEditorModule,
+    BsDropdownModule,
     EvalGraderResultComponent,
   ],
   templateUrl: './evaluation.component.html',
@@ -625,11 +627,59 @@ export class EvaluationComponent
   }
 
   onDeleteSelectedRow(): void {
-    if (!this.selectedRow) {
+    const selectedRow = this.selectedRow;
+    if (!selectedRow) {
       return;
     }
 
-    this.onDeleteRow(this.selectedRow);
+    const rows = this.evalConfig.rows();
+    const rowIndex = rows.indexOf(selectedRow);
+    const rowName = this.getRowListDisplayName(selectedRow, rowIndex);
+    this.confirmModalRef = this.modalService.show(ConfirmDialogComponent, {
+      initialState: {
+        title: 'Delete Row',
+        message: `Are you sure you want to delete '${rowName}'? This change is not saved until you save the evaluation.`,
+      },
+    });
+
+    const modalRef = this.confirmModalRef;
+    modalRef.onHidden?.pipe(take(1)).subscribe(() => {
+      if (!modalRef.content?.result) {
+        return;
+      }
+
+      this.onDeleteRow(selectedRow);
+    });
+  }
+
+  canDeleteAllRows(): boolean {
+    return this.evalConfig.rows().length > 0;
+  }
+
+  onDeleteAllRows(): void {
+    const rowCount = this.evalConfig.rows().length;
+    if (rowCount === 0) {
+      return;
+    }
+
+    const rowLabel = rowCount === 1 ? 'row' : 'rows';
+    this.confirmModalRef = this.modalService.show(ConfirmDialogComponent, {
+      initialState: {
+        title: 'Delete All Rows',
+        message: `Are you sure you want to delete all ${rowCount} ${rowLabel}? This change is not saved until you save the evaluation.`,
+      },
+    });
+
+    const modalRef = this.confirmModalRef;
+    modalRef.onHidden?.pipe(take(1)).subscribe(() => {
+      if (!modalRef.content?.result) {
+        return;
+      }
+
+      this.evalConfig.rows.set([]);
+      this.selectedRowId = null;
+      this.ensureSelectedRow();
+    });
   }
 
   getRowListDisplayName(row: EvalRow, index: number): string {

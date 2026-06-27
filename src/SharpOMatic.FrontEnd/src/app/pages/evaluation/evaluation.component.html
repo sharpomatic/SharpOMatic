@@ -263,6 +263,34 @@
           >
             <i class="bi bi-trash"></i>
           </button>
+          <div class="dropdown" dropdown>
+            <button
+              class="btn btn-outline-secondary btn-sm dropdown-toggle"
+              type="button"
+              id="rows-actions-dropdown"
+              dropdownToggle
+              [disabled]="!canDeleteAllRows()"
+              aria-label="Rows actions"
+            >
+              <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul
+              class="dropdown-menu dropdown-menu-end"
+              aria-labelledby="rows-actions-dropdown"
+              *dropdownMenu
+            >
+              <li>
+                <button
+                  type="button"
+                  class="dropdown-item text-danger"
+                  [disabled]="!canDeleteAllRows()"
+                  (click)="onDeleteAllRows()"
+                >
+                  Delete all rows
+                </button>
+              </li>
+            </ul>
+          </div>
         </div>
         <div class="rows-master-list list-group list-group-flush">
           @if (!evalConfig.rows().length) {

@@ -36,6 +36,8 @@ It is used to identify each row in run views and result tables.
 Rows are the individual test cases.
 Each row stores values for the configured columns.
 When you run the evaluation, each row becomes one workflow execution input.
+In the editor's Rows tab, rows can be deleted one at a time or cleared in bulk with **Delete all rows** from the row actions menu after confirming the action.
+Row deletion is saved when you save the evaluation.
 
 ### Graders
 
