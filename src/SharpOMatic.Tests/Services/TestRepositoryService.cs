@@ -620,6 +620,8 @@ public sealed class TestRepositoryService : IRepositoryService
 
     public Task UpsertEvalRows(List<EvalRow> rows) => throw new NotImplementedException();
 
+    public Task InsertEvalRowsWithData(List<EvalRow> rows, List<EvalData> data) => throw new NotImplementedException();
+
     public Task DeleteEvalRow(Guid evalRowId) => throw new NotImplementedException();
 
     public Task UpsertEvalData(List<EvalData> data) => throw new NotImplementedException();

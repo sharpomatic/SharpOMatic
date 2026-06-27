@@ -921,4 +921,351 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             }
         }
     }
+
+    public async Task<EvalRowsCsvImportResult> ImportEvalRowsCsvAsync(
+        Guid evalConfigId,
+        Stream input,
+        string fileName,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (input is null)
+            throw new SharpOMaticException("CSV file is required.");
+
+        if (string.IsNullOrWhiteSpace(fileName) || !fileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+            throw new SharpOMaticException("Import file must have a .csv extension.");
+
+        using var reader = new StreamReader(
+            input,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true),
+            detectEncodingFromByteOrderMarks: true,
+            leaveOpen: true
+        );
+
+        var csvText = await reader.ReadToEndAsync(cancellationToken);
+        var records = ParseCsvRows(csvText);
+        if (records.Count == 0 || records[0].Fields.All(field => string.IsNullOrWhiteSpace(field)))
+            throw new SharpOMaticException("CSV file must include a header row.");
+
+        var detail = await repositoryService.GetEvalConfigDetail(evalConfigId);
+        var columns = detail.Columns.OrderBy(column => column.Order).ToList();
+        if (columns.Count == 0)
+            throw new SharpOMaticException("Evaluation has no columns to import.");
+
+        var columnsByName = BuildCsvColumnLookup(columns);
+        var matchedHeaderIndexes = MatchCsvHeaders(records[0], columnsByName);
+        ValidateCsvRequiredHeaders(columns, matchedHeaderIndexes);
+
+        var importedRows = new List<EvalRow>();
+        var importedData = new List<EvalData>();
+        var nextOrder = detail.Rows.Count == 0 ? 0 : detail.Rows.Max(row => row.Order) + 1;
+
+        foreach (var record in records.Skip(1))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (record.Fields.All(field => string.IsNullOrWhiteSpace(field)))
+                continue;
+
+            var evalRowId = Guid.NewGuid();
+            importedRows.Add(new EvalRow
+            {
+                EvalRowId = evalRowId,
+                EvalConfigId = evalConfigId,
+                Order = nextOrder++,
+            });
+
+            foreach (var column in columns)
+            {
+                var rawValue = GetCsvRecordValue(record, matchedHeaderIndexes, column);
+                var value = rawValue?.Trim() ?? string.Empty;
+                if (value.Length == 0)
+                {
+                    if (!column.Optional && column.EntryType != ContextEntryType.String)
+                        throw new SharpOMaticException($"CSV row {record.LineNumber} is missing required value for column '{column.Name}'.");
+
+                    if (column.EntryType == ContextEntryType.String)
+                        importedData.Add(BuildCsvData(record.LineNumber, evalRowId, column, string.Empty, string.Empty));
+
+                    continue;
+                }
+
+                importedData.Add(BuildCsvData(record.LineNumber, evalRowId, column, rawValue ?? string.Empty, value));
+            }
+        }
+
+        if (importedRows.Count > 0)
+            await repositoryService.InsertEvalRowsWithData(importedRows, importedData);
+
+        return new EvalRowsCsvImportResult { RowsImported = importedRows.Count };
+    }
+
+    public async Task<Stream> ExportEvalRowsCsvAsync(Guid evalConfigId, CancellationToken cancellationToken = default)
+    {
+        var detail = await repositoryService.GetEvalConfigDetail(evalConfigId);
+        var columns = detail
+            .Columns.Where(column =>
+                column.EntryType != ContextEntryType.AssetRef
+                && column.EntryType != ContextEntryType.AssetRefList
+            )
+            .OrderBy(column => column.Order)
+            .ToList();
+
+        var dataByRow = detail
+            .Data.GroupBy(data => data.EvalRowId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.ToDictionary(data => data.EvalColumnId)
+            );
+
+        var memoryStream = new MemoryStream();
+        var writer = new StreamWriter(
+            memoryStream,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
+            leaveOpen: true
+        );
+
+        await using (writer)
+        {
+            WriteCsvRow(writer, columns.Select(column => column.Name));
+
+            var rows = detail.Rows.OrderBy(row => row.Order);
+            foreach (var row in rows)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                dataByRow.TryGetValue(row.EvalRowId, out var rowData);
+                WriteCsvRow(
+                    writer,
+                    columns.Select(column =>
+                    {
+                        var data = rowData is not null && rowData.TryGetValue(column.EvalColumnId, out var cellData)
+                            ? cellData
+                            : null;
+                        return FormatCsvValue(column.EntryType, data);
+                    })
+                );
+            }
+        }
+
+        memoryStream.Position = 0;
+        return memoryStream;
+    }
+
+    private static Dictionary<string, EvalColumn> BuildCsvColumnLookup(List<EvalColumn> columns)
+    {
+        var columnsByName = new Dictionary<string, EvalColumn>(StringComparer.OrdinalIgnoreCase);
+        foreach (var column in columns)
+        {
+            var name = column.Name.Trim();
+            if (!columnsByName.TryAdd(name, column))
+                throw new SharpOMaticException($"Evaluation has duplicate column name '{column.Name}'.");
+        }
+
+        return columnsByName;
+    }
+
+    private static Dictionary<Guid, int> MatchCsvHeaders(CsvRowRecord headerRecord, Dictionary<string, EvalColumn> columnsByName)
+    {
+        var matchedHeaderIndexes = new Dictionary<Guid, int>();
+        foreach (var header in headerRecord.Fields.Select((value, index) => new { value, index }))
+        {
+            var name = header.value.Trim();
+            if (name.Length == 0 || !columnsByName.TryGetValue(name, out var column))
+                continue;
+
+            if (matchedHeaderIndexes.ContainsKey(column.EvalColumnId))
+                throw new SharpOMaticException($"CSV header contains duplicate column '{name}'.");
+
+            matchedHeaderIndexes[column.EvalColumnId] = header.index;
+        }
+
+        return matchedHeaderIndexes;
+    }
+
+    private static void ValidateCsvRequiredHeaders(List<EvalColumn> columns, Dictionary<Guid, int> matchedHeaderIndexes)
+    {
+        foreach (var column in columns.Where(column => !column.Optional))
+        {
+            if (!matchedHeaderIndexes.ContainsKey(column.EvalColumnId))
+                throw new SharpOMaticException($"CSV file is missing required column '{column.Name}'.");
+        }
+    }
+
+    private static string? GetCsvRecordValue(CsvRowRecord record, Dictionary<Guid, int> matchedHeaderIndexes, EvalColumn column)
+    {
+        if (!matchedHeaderIndexes.TryGetValue(column.EvalColumnId, out var headerIndex))
+            return null;
+
+        return headerIndex < record.Fields.Count ? record.Fields[headerIndex] : string.Empty;
+    }
+
+    private static EvalData BuildCsvData(int lineNumber, Guid evalRowId, EvalColumn column, string rawValue, string trimmedValue)
+    {
+        var data = new EvalData
+        {
+            EvalDataId = Guid.NewGuid(),
+            EvalRowId = evalRowId,
+            EvalColumnId = column.EvalColumnId,
+        };
+
+        switch (column.EntryType)
+        {
+            case ContextEntryType.Bool:
+                if (!bool.TryParse(trimmedValue, out var boolValue))
+                    throw new SharpOMaticException($"CSV row {lineNumber} column '{column.Name}' must be true or false.");
+
+                data.BoolValue = boolValue;
+                break;
+
+            case ContextEntryType.Int:
+                if (!int.TryParse(trimmedValue, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var intValue))
+                    throw new SharpOMaticException($"CSV row {lineNumber} column '{column.Name}' must be an integer.");
+
+                data.IntValue = intValue;
+                break;
+
+            case ContextEntryType.Double:
+                if (!double.TryParse(trimmedValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var doubleValue))
+                    throw new SharpOMaticException($"CSV row {lineNumber} column '{column.Name}' must be a number.");
+
+                data.DoubleValue = doubleValue;
+                break;
+
+            default:
+                data.StringValue = rawValue;
+                break;
+        }
+
+        return data;
+    }
+
+    private static string FormatCsvValue(ContextEntryType entryType, EvalData? data)
+    {
+        if (data is null)
+            return string.Empty;
+
+        return entryType switch
+        {
+            ContextEntryType.Bool => data.BoolValue.HasValue
+                ? data.BoolValue.Value.ToString().ToLowerInvariant()
+                : string.Empty,
+            ContextEntryType.Int => data.IntValue.HasValue
+                ? data.IntValue.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                : string.Empty,
+            ContextEntryType.Double => data.DoubleValue.HasValue
+                ? data.DoubleValue.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                : string.Empty,
+            _ => data.StringValue ?? string.Empty,
+        };
+    }
+
+    private static string QuoteCsvField(string value)
+    {
+        if (value.Length == 0)
+            return value;
+
+        if (value.Contains('"') || value.Contains(',') || value.Contains('\r') || value.Contains('\n'))
+            return '"' + value.Replace("\"", "\"\"") + '"';
+
+        return value;
+    }
+
+    private static void WriteCsvRow(StreamWriter writer, IEnumerable<string> fields)
+    {
+        writer.Write(string.Join(",", fields.Select(QuoteCsvField)));
+        writer.Write("\r\n");
+    }
+
+    private static List<CsvRowRecord> ParseCsvRows(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return [];
+
+        var records = new List<CsvRowRecord>();
+        var fields = new List<string>();
+        var field = new StringBuilder();
+        var inQuotes = false;
+        var lineNumber = 1;
+        var recordLineNumber = 1;
+
+        for (var index = 0; index < text.Length; index++)
+        {
+            var current = text[index];
+            if (inQuotes)
+            {
+                if (current == '"')
+                {
+                    if (index + 1 < text.Length && text[index + 1] == '"')
+                    {
+                        field.Append('"');
+                        index++;
+                    }
+                    else
+                    {
+                        inQuotes = false;
+                    }
+                }
+                else
+                {
+                    if (current == '\n')
+                        lineNumber++;
+                    else if (current == '\r')
+                    {
+                        lineNumber++;
+                        if (index + 1 < text.Length && text[index + 1] == '\n')
+                            index++;
+                    }
+
+                    field.Append(current);
+                }
+
+                continue;
+            }
+
+            if (current == '"')
+            {
+                if (field.Length != 0)
+                    throw new SharpOMaticException($"CSV line {lineNumber} contains an unexpected quote.");
+
+                inQuotes = true;
+                continue;
+            }
+
+            if (current == ',')
+            {
+                fields.Add(field.ToString());
+                field.Clear();
+                continue;
+            }
+
+            if (current == '\n' || current == '\r')
+            {
+                fields.Add(field.ToString());
+                field.Clear();
+                records.Add(new CsvRowRecord(recordLineNumber, fields));
+                fields = [];
+
+                lineNumber++;
+                if (current == '\r' && index + 1 < text.Length && text[index + 1] == '\n')
+                    index++;
+
+                recordLineNumber = lineNumber;
+                continue;
+            }
+
+            field.Append(current);
+        }
+
+        if (inQuotes)
+            throw new SharpOMaticException($"CSV line {lineNumber} has an unterminated quoted field.");
+
+        fields.Add(field.ToString());
+        if (fields.Count > 1 || fields.Any(fieldValue => fieldValue.Length > 0))
+            records.Add(new CsvRowRecord(recordLineNumber, fields));
+
+        return records;
+    }
+
+    private sealed record CsvRowRecord(int LineNumber, List<string> Fields);
 }

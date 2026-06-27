@@ -1117,6 +1117,28 @@ export class ServerRepositoryService {
     );
   }
 
+  public importEvalRowsCsv(
+    evalConfigId: string,
+    file: File,
+  ): Observable<{ rowsImported: number }> {
+    const apiUrl = this.settingsService.apiUrl();
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.http.post<{ rowsImported: number }>(
+      `${apiUrl}/api/eval/configs/${evalConfigId}/rows/import/csv`,
+      formData,
+    );
+  }
+
+  public exportEvalRowsCsv(evalConfigId: string): Observable<HttpResponse<Blob>> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.get(
+      `${apiUrl}/api/eval/configs/${evalConfigId}/rows/export/csv`,
+      { observe: 'response', responseType: 'blob' },
+    );
+  }
+
   public upsertEvalData(data: EvalDataSnapshot[]): Observable<void> {
     const apiUrl = this.settingsService.apiUrl();
     return this.http.post<void>(`${apiUrl}/api/eval/configs/data`, data).pipe(

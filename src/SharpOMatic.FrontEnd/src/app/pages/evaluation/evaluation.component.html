@@ -239,6 +239,13 @@
     <div class="bg-body-tertiary h-100 rows-tab">
       <div class="rows-master">
         <div class="rows-master-toolbar">
+          <input
+            #rowsCsvImportInput
+            type="file"
+            accept=".csv"
+            class="d-none"
+            (change)="onRowsCsvFileSelected($event)"
+          />
           <button class="btn btn-primary btn-sm" (click)="appendRow()">
             Add
           </button>
@@ -269,7 +276,7 @@
               type="button"
               id="rows-actions-dropdown"
               dropdownToggle
-              [disabled]="!canDeleteAllRows()"
+              [disabled]="isImportingRowsCsv || isExportingRowsCsv"
               aria-label="Rows actions"
             >
               <i class="bi bi-three-dots-vertical"></i>
@@ -279,6 +286,27 @@
               aria-labelledby="rows-actions-dropdown"
               *dropdownMenu
             >
+              <li>
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  [disabled]="isImportingRowsCsv || isExportingRowsCsv"
+                  (click)="triggerRowsCsvImport(rowsCsvImportInput)"
+                >
+                  Import rows from CSV
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  [disabled]="isImportingRowsCsv || isExportingRowsCsv"
+                  (click)="exportRowsCsv()"
+                >
+                  Export rows to CSV
+                </button>
+              </li>
+              <li><hr class="dropdown-divider" /></li>
               <li>
                 <button
                   type="button"

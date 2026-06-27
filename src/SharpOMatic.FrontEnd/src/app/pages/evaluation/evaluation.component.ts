@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpResponse } from '@angular/common/http';
 import {
   Component,
   effect,
@@ -38,12 +39,14 @@ import { EvalRunRowScoreMode } from '../../eval/enumerations/eval-run-row-score-
 import { EvalRunScoreMode } from '../../eval/enumerations/eval-run-score-mode';
 import { MoveDirection } from '../../eval/enumerations/move-direction';
 import { TextInputDialogComponent } from '../../dialogs/text-input/text-input-dialog.component';
+import { InformationDialogComponent } from '../../dialogs/information/information-dialog.component';
 import { EvalGraderResultComponent } from './components/eval-grader-result/eval-grader-result.component';
 import { EvalRunSummarySnapshot } from '../../eval/definitions/eval-run-summary';
 import {
   EvalRunDetailSnapshot,
   EvalRunGraderSummaryDetailSnapshot,
 } from '../../eval/definitions/eval-run-detail';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-evaluation',
@@ -74,9 +77,11 @@ export class EvaluationComponent
   private readonly serverRepository = inject(ServerRepositoryService);
   private readonly signalrService = inject(SignalrService);
   private readonly modalService = inject(BsModalService);
+  private readonly toastService = inject(ToastService);
   private startRunModalRef: BsModalRef<EvalStartRunDialogComponent> | undefined;
   private confirmModalRef: BsModalRef<ConfirmDialogComponent> | undefined;
   private renameRunModalRef: BsModalRef<TextInputDialogComponent> | undefined;
+  private infoModalRef: BsModalRef<InformationDialogComponent> | undefined;
   private readonly terminalReloadingRunIds = new Set<string>();
   private readonly evalRunProgressListener = (data: EvalRunSummarySnapshot) =>
     this.onEvalRunProgress(data);
@@ -131,6 +136,8 @@ export class EvaluationComponent
   public isCancelingRun = false;
   public isMovingRun = false;
   public isRenamingRun = false;
+  public isImportingRowsCsv = false;
+  public isExportingRowsCsv = false;
 
   constructor() {
     effect(() => {
@@ -654,6 +661,119 @@ export class EvaluationComponent
 
   canDeleteAllRows(): boolean {
     return this.evalConfig.rows().length > 0;
+  }
+
+  triggerRowsCsvImport(fileInput: HTMLInputElement): void {
+    if (this.isImportingRowsCsv) {
+      return;
+    }
+
+    if (this.evalConfig.isDirty()) {
+      this.showInfoDialog(
+        'Save Evaluation',
+        'Save the evaluation before importing rows from CSV.',
+      );
+      return;
+    }
+
+    fileInput.click();
+  }
+
+  onRowsCsvFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    const resetInput = () => {
+      if (input) {
+        input.value = '';
+      }
+    };
+
+    if (!file || this.isImportingRowsCsv) {
+      resetInput();
+      return;
+    }
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      resetInput();
+      this.showCsvImportFailure('Choose a .csv file to import rows.');
+      return;
+    }
+
+    if (this.evalConfig.isDirty()) {
+      resetInput();
+      this.showInfoDialog(
+        'Save Evaluation',
+        'Save the evaluation before importing rows from CSV.',
+      );
+      return;
+    }
+
+    this.isImportingRowsCsv = true;
+    this.serverRepository
+      .importEvalRowsCsv(this.evalConfig.evalConfigId, file)
+      .subscribe({
+        next: (result) => {
+          this.isImportingRowsCsv = false;
+          resetInput();
+          this.selectedRowId = null;
+          this.loadEvalConfig(this.evalConfig.evalConfigId);
+          const rowLabel = result.rowsImported === 1 ? 'row' : 'rows';
+          this.toastService.success(
+            `Imported ${result.rowsImported} ${rowLabel}.`,
+          );
+        },
+        error: (error) => {
+          this.isImportingRowsCsv = false;
+          resetInput();
+          this.showCsvImportFailure(error);
+        },
+      });
+  }
+
+  exportRowsCsv(): void {
+    if (this.isExportingRowsCsv) {
+      return;
+    }
+
+    this.isExportingRowsCsv = true;
+    this.serverRepository
+      .exportEvalRowsCsv(this.evalConfig.evalConfigId)
+      .subscribe({
+        next: (response) => {
+          this.isExportingRowsCsv = false;
+          this.downloadCsvExport(response);
+        },
+        error: () => {
+          this.isExportingRowsCsv = false;
+          this.showInfoDialog('Export Failed', 'CSV export failed.');
+        },
+      });
+  }
+
+  private downloadCsvExport(response: HttpResponse<Blob>): void {
+    if (!response.body) {
+      this.showInfoDialog('Export Failed', 'CSV export returned an empty response.');
+      return;
+    }
+
+    const header = response.headers.get('content-disposition');
+    const fileName = this.parseCsvFileName(header) ?? 'eval-rows.csv';
+
+    const url = window.URL.createObjectURL(response.body);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
+  private parseCsvFileName(contentDisposition: string | null): string | null {
+    if (!contentDisposition) return null;
+    const match = /filename\s*=\s*"?([^";\n]+)"?/i.exec(contentDisposition);
+    return match?.[1]?.trim() ?? null;
   }
 
   onDeleteAllRows(): void {
@@ -1332,6 +1452,26 @@ export class EvaluationComponent
       if (this.activeTabId === 'runs') {
         this.ensureRunsLoaded();
       }
+    });
+  }
+
+  private showCsvImportFailure(error: unknown): void {
+    if (typeof error === 'string') {
+      this.showInfoDialog('Import Failed', error);
+      return;
+    }
+
+    const detail = this.toastService.extractErrorDetail(error);
+    const message = detail ? `Import failed: ${detail}` : 'Import failed.';
+    this.showInfoDialog('Import Failed', message);
+  }
+
+  private showInfoDialog(title: string, message: string): void {
+    this.infoModalRef = this.modalService.show(InformationDialogComponent, {
+      initialState: {
+        title,
+        message,
+      },
     });
   }
 

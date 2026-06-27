@@ -2253,6 +2253,36 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
+    public async Task InsertEvalRowsWithData(List<EvalRow> rows, List<EvalData> data)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+
+        if (rows.Count == 0)
+            return;
+
+        var rowIds = rows.Select(row => row.EvalRowId).Distinct().ToList();
+        if (rowIds.Count != rows.Count)
+            throw new SharpOMaticException("Imported evaluation rows contain duplicate ids.");
+
+        var dataIds = data.Select(item => item.EvalDataId).Distinct().ToList();
+        if (dataIds.Count != data.Count)
+            throw new SharpOMaticException("Imported evaluation data contains duplicate ids.");
+
+        var existingRowCount = await (from row in dbContext.EvalRows where rowIds.Contains(row.EvalRowId) select row).CountAsync();
+        if (existingRowCount > 0)
+            throw new SharpOMaticException("One or more imported evaluation rows already exist.");
+
+        var existingDataCount = dataIds.Count == 0 ? 0 : await (from item in dbContext.EvalData where dataIds.Contains(item.EvalDataId) select item).CountAsync();
+        if (existingDataCount > 0)
+            throw new SharpOMaticException("One or more imported evaluation data entries already exist.");
+
+        dbContext.EvalRows.AddRange(rows);
+        if (data.Count > 0)
+            dbContext.EvalData.AddRange(data);
+
+        await dbContext.SaveChangesAsync();
+    }
+
     public async Task DeleteEvalRow(Guid evalRowId)
     {
         using var dbContext = dbContextFactory.CreateDbContext();

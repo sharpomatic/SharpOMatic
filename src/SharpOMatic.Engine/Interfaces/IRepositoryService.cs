@@ -139,6 +139,7 @@ public interface IRepositoryService
     Task UpsertEvalColumns(List<EvalColumn> columns);
     Task DeleteEvalColumn(Guid evalColumnId);
     Task UpsertEvalRows(List<EvalRow> rows);
+    Task InsertEvalRowsWithData(List<EvalRow> rows, List<EvalData> data);
     Task DeleteEvalRow(Guid evalRowId);
     Task UpsertEvalData(List<EvalData> data);
     Task DeleteEvalData(Guid evalDataId);

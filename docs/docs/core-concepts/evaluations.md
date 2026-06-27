@@ -39,6 +39,12 @@ When you run the evaluation, each row becomes one workflow execution input.
 In the editor's Rows tab, rows can be deleted one at a time or cleared in bulk with **Delete all rows** from the row actions menu after confirming the action.
 Row deletion is saved when you save the evaluation.
 
+You can also import rows from a CSV file from the row actions menu.
+Save any pending evaluation changes before importing so the server uses the latest column definitions.
+CSV headers are matched to evaluation column names case-insensitively, and extra CSV columns are ignored.
+Mandatory evaluation columns must be present in the CSV and must have a value in every imported row.
+Optional columns can be missing from the CSV, or can contain empty values.
+
 ### Graders
 
 Graders are workflows that score or assess the output from the main evaluation workflow.

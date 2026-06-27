@@ -187,6 +187,52 @@ public class EvalController : ControllerBase
         await repositoryService.UpsertEvalRows(rows);
     }
 
+    [HttpPost("configs/{id}/rows/import/csv")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> ImportEvalRowsCsv(ITransferService transferService, Guid id, [FromForm] EvalRowsCsvImportRequest request)
+    {
+        if (request.File is null || request.File.Length == 0)
+            return BadRequest("CSV file is required.");
+
+        if (!request.File.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+            return BadRequest("Import file must have a .csv extension.");
+
+        try
+        {
+            await using var stream = request.File.OpenReadStream();
+            var result = await transferService.ImportEvalRowsCsvAsync(id, stream, request.File.FileName, HttpContext.RequestAborted);
+            return Ok(result);
+        }
+        catch (Exception exception) when (IsCsvImportRequestFailure(exception))
+        {
+            return BadRequest(exception.Message);
+        }
+    }
+
+    [HttpGet("configs/{id}/rows/export/csv")]
+    public async Task<IActionResult> ExportEvalRowsCsv(
+        ITransferService transferService,
+        IRepositoryService repositoryService,
+        Guid id
+    )
+    {
+        var config = await repositoryService.GetEvalConfig(id);
+        if (config is null)
+            return NotFound();
+
+        var safeFileName = SanitizeFileName(config.Name);
+        var stream = await transferService.ExportEvalRowsCsvAsync(id, HttpContext.RequestAborted);
+        Response.Headers["Content-Disposition"] = $"attachment; filename=\"{safeFileName}-rows.csv\"";
+        return File(stream, "text/csv");
+    }
+
+    private static string SanitizeFileName(string name)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var sanitized = new string(name.Select(c => invalid.Contains(c) ? '_' : c).ToArray()).Trim();
+        return sanitized.Length == 0 ? "eval" : sanitized;
+    }
+
     [HttpDelete("rows/{id}")]
     public async Task DeleteEvalRow(IRepositoryService repositoryService, Guid id)
     {
@@ -206,5 +252,10 @@ public class EvalController : ControllerBase
     public async Task DeleteEvalData(IRepositoryService repositoryService, Guid id)
     {
         await repositoryService.DeleteEvalData(id);
+    }
+
+    private static bool IsCsvImportRequestFailure(Exception exception)
+    {
+        return exception is SharpOMaticException or FormatException or DecoderFallbackException or InvalidOperationException;
     }
 }

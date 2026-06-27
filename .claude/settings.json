@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(dotnet build c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.sln --no-restore -v q 2>&1)",
+      "PowerShell(dotnet test c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.sln --filter \"FullyQualifiedName!~IntegrationTests\" --no-build -v q 2>&1)",
+      "Bash(echo \"EXIT:$?\")",
+      "PowerShell(dotnet test c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Tests\\\\SharpOMatic.Tests.csproj --filter \"EvalRowsCsvExport\" --no-build -v normal 2>&1)",
+      "PowerShell(dotnet test c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Tests\\\\SharpOMatic.Tests.csproj --filter \"EvalRowsCsvImport\" --no-build -v normal 2>&1)",
+      "PowerShell(dotnet test c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Tests\\\\SharpOMatic.Tests.csproj --filter \"EvalRowsCsvImport\" -v normal 2>&1)",
+      "PowerShell(dotnet build c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Tests\\\\SharpOMatic.Tests.csproj -v q 2>&1)",
+      "PowerShell(dotnet build c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Engine\\\\SharpOMatic.Engine.csproj c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Editor\\\\SharpOMatic.Editor.csproj -v q 2>&1)",
+      "PowerShell(dotnet test c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Tests\\\\SharpOMatic.Tests.csproj --filter \"EvalRowsCsv\" --no-build -v normal 2>&1)",
+      "PowerShell(dotnet build c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Engine\\\\SharpOMatic.Engine.csproj -v q 2>&1)",
+      "PowerShell(dotnet test c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Tests\\\\SharpOMatic.Tests.csproj --filter \"EvalRowsCsv\" -v normal -- RunConfiguration.TargetFrameworkVersion=net10.0 2>&1)",
+      "PowerShell(dotnet build c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Engine\\\\SharpOMatic.Engine.csproj c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Tests\\\\SharpOMatic.Tests.csproj 2>&1)",
+      "PowerShell(dotnet build c:\\\\Code\\\\SharpOMatic\\\\src\\\\SharpOMatic.Editor\\\\SharpOMatic.Editor.csproj -p:PrepareEditorAssets=false -v q 2>&1)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\PhilipWright\\AppData\\Local\\Temp\\claude\\c--Code-SharpOMatic\\54860d39-a437-4ef0-a560-42125952a646\\scratchpad"
+    ]
+  }
+}
