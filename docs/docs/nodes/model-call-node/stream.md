@@ -36,6 +36,7 @@ When enabled, the following stream event lifecycle is suppressed:
 
 The model can still call tools, tool results are still available to the model, and tool-call information is still recorded in the trace viewer.
 If **Chat Output Path** is set, the chat transcript can still include synthetic assistant messages for model tool results unless **Drop Tool Calls** is enabled on the **Details** tab.
+The **Tool Calling** tab can override this global default for individual selected tools by setting **AG-UI Output** to **Always** or **Never**.
 
 ## Disable Reasoning Events
 

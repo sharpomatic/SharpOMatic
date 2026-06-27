@@ -2,6 +2,7 @@ import { computed, signal, WritableSignal } from '@angular/core';
 import { ConnectorEntity } from './connector.entity';
 import { NodeEntity, NodeSnapshot } from './node.entity';
 import { NodeType } from '../enumerations/node-type';
+import { ModelCallToolAgUiOutputMode } from '../enumerations/model-call-tool-ag-ui-output-mode';
 
 export interface ModelCallNodeSnapshot extends NodeSnapshot {
   modelId: string | null;
@@ -19,6 +20,7 @@ export interface ModelCallNodeSnapshot extends NodeSnapshot {
   imageInputPath: string;
   imageOutputPath: string;
   parameterValues: Record<string, string | null>;
+  toolAgUiOutputModes?: Record<string, ModelCallToolAgUiOutputMode>;
 }
 
 export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
@@ -37,6 +39,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
   public imageInputPath: WritableSignal<string>;
   public imageOutputPath: WritableSignal<string>;
   public parameterValues: WritableSignal<Record<string, string | null>>;
+  public toolAgUiOutputModes: WritableSignal<
+    Record<string, ModelCallToolAgUiOutputMode>
+  >;
 
   constructor(snapshot: ModelCallNodeSnapshot) {
     super(snapshot);
@@ -56,6 +61,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
     this.imageInputPath = signal(snapshot.imageInputPath ?? '');
     this.imageOutputPath = signal(snapshot.imageOutputPath ?? '');
     this.parameterValues = signal({ ...(snapshot.parameterValues ?? {}) });
+    this.toolAgUiOutputModes = signal({
+      ...(snapshot.toolAgUiOutputModes ?? {}),
+    });
 
     const baseIsDirty = this.isDirty;
     this.isDirty = computed(() => {
@@ -78,6 +86,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       const currentImageInputPath = this.imageInputPath();
       const currentImageOutputPath = this.imageOutputPath();
       const currentParameterValues = this.parameterValues();
+      const currentToolAgUiOutputModes = this.toolAgUiOutputModes();
 
       return (
         currentIsDirty ||
@@ -98,6 +107,10 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
         !ModelCallNodeEntity.areParameterValuesEqual(
           currentParameterValues,
           snapshot.parameterValues,
+        ) ||
+        !ModelCallNodeEntity.areRecordsEqual(
+          currentToolAgUiOutputModes,
+          snapshot.toolAgUiOutputModes ?? {},
         )
       );
     });
@@ -121,6 +134,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       imageInputPath: this.imageInputPath(),
       imageOutputPath: this.imageOutputPath(),
       parameterValues: this.parameterValues(),
+      toolAgUiOutputModes: this.toolAgUiOutputModes(),
     };
   }
 
@@ -152,6 +166,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       imageInputPath: '',
       imageOutputPath: 'output.image',
       parameterValues: {},
+      toolAgUiOutputModes: {},
     };
   }
 
@@ -166,6 +181,13 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
   private static areParameterValuesEqual(
     current: Record<string, string | null>,
     snapshot: Record<string, string | null>,
+  ): boolean {
+    return ModelCallNodeEntity.areRecordsEqual(current, snapshot ?? {});
+  }
+
+  private static areRecordsEqual<T>(
+    current: Record<string, T>,
+    snapshot: Record<string, T>,
   ): boolean {
     const currentEntries = Object.entries(current ?? {});
     const snapshotEntries = Object.entries(snapshot ?? {});

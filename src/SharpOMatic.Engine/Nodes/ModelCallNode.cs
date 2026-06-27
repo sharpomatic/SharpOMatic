@@ -240,6 +240,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         private readonly Dictionary<string, string> _reasoningTextById = new(StringComparer.Ordinal);
         private readonly HashSet<string> _openReasoningIds = new(StringComparer.Ordinal);
         private readonly Dictionary<string, string> _toolCallArgsById = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, string> _toolNamesByToolCallId = new(StringComparer.Ordinal);
         private readonly HashSet<string> _openToolCallIds = new(StringComparer.Ordinal);
         private readonly StringBuilder _pendingAssistantText = new();
         private readonly List<StreamEvent> _streamEvents = [];
@@ -331,7 +332,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             await CloseAllOpenReasoningAsync();
             await CloseToolCallAsync(toolCallId);
 
-            if (node.DisableStreamTool)
+            if (!ShouldEmitToolStreamEvents(GetToolNameForToolCallId(toolCallId)))
                 return;
 
             await AddStreamEventAsync(
@@ -500,9 +501,12 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             await FlushPendingAssistantInformationAsync();
 
             var title = string.IsNullOrWhiteSpace(toolName) ? "Tool call" : toolName;
+            if (!string.IsNullOrWhiteSpace(toolName))
+                _toolNamesByToolCallId[toolCallId] = toolName;
+
             await UpsertInformationAsync(toolCallId, InformationType.ToolCall, title, data);
 
-            if (node.DisableStreamTool)
+            if (!ShouldEmitToolStreamEvents(toolName))
                 return;
 
             if (_openToolCallIds.Add(toolCallId))
@@ -708,7 +712,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             if (!_openToolCallIds.Remove(toolCallId))
                 return;
 
-            if (node.DisableStreamTool)
+            if (!ShouldEmitToolStreamEvents(GetToolNameForToolCallId(toolCallId)))
                 return;
 
             await AddStreamEventAsync(
@@ -719,6 +723,34 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                     ToolCallId = toolCallId,
                 }
             );
+        }
+
+        private string? GetToolNameForToolCallId(string toolCallId)
+        {
+            return _toolNamesByToolCallId.TryGetValue(toolCallId, out var toolName)
+                ? toolName
+                : null;
+        }
+
+        private bool ShouldEmitToolStreamEvents(string? toolName)
+        {
+            return ResolveToolAgUiOutputMode(toolName) switch
+            {
+                ModelCallToolAgUiOutputMode.Always => true,
+                ModelCallToolAgUiOutputMode.Never => false,
+                _ => !node.DisableStreamTool,
+            };
+        }
+
+        private ModelCallToolAgUiOutputMode ResolveToolAgUiOutputMode(string? toolName)
+        {
+            if (string.IsNullOrWhiteSpace(toolName))
+                return ModelCallToolAgUiOutputMode.Inherit;
+
+            var modes = node.ToolAgUiOutputModes;
+            return (modes is not null) && modes.TryGetValue(toolName.Trim(), out var mode)
+                ? mode
+                : ModelCallToolAgUiOutputMode.Inherit;
         }
 
         private async Task UpsertInformationAsync(string key, InformationType informationType, string text, string? data)

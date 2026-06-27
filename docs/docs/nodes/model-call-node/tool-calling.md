@@ -11,7 +11,7 @@ If the model supports tool calling, this tab is available.
 
 During program setup, you can use the **AddToolMethods** extension to specify a list of C# static methods available for calling.
 Use a comma-separated list if you need to specify more than one method.
-You do not have to provide all the tools for every call. Use the checkboxes to select only those you want to make available during this model call.
+You do not have to provide all the tools for every call. Use the checkbox in the tool table to select only those you want to make available during this model call.
 
 ```csharp
   builder.Services.AddSharpOMaticEngine()
@@ -54,6 +54,21 @@ Tool methods can use `System.ComponentModel.DisplayNameAttribute` to expose a di
     }
 ```
 
+## Per-tool AG-UI output
+
+Each selected tool has an **AG-UI Output** dropdown in the tool table.
+This controls only the tool-call stream events for that specific tool.
+It does not change whether the tool can execute, whether the model sees the result, or whether trace information is recorded.
+
+The available modes are:
+
+- **Inherit**: use the global **Disable Tool Events** setting from the model call **AG-UI** tab.
+- **Always**: emit tool-call stream events for this tool even when **Disable Tool Events** is enabled.
+- **Never**: suppress tool-call stream events for this tool even when **Disable Tool Events** is disabled.
+
+When a tool is deselected, its per-tool AG-UI output setting is removed.
+Existing workflows that do not have per-tool settings behave as though every selected tool is set to **Inherit**.
+
 ### IServiceProvider
 
 Notice that your methods can take **IServiceProvider** as a parameter.
@@ -88,6 +103,7 @@ Models offering this capability allow you to use this checkbox to turn it on or 
 When a model call performs tool calling, SharpOMatic now emits tool-call stream events as part of the live run output.
 These appear in the AG-UI tab and are also translated to AG-UI protocol events when using the AG-UI endpoint.
 If the node has **Disable Tool Events** enabled on its [**AG-UI** tab](./stream.md), these protocol-style tool stream events are suppressed for that model call, but the tool-call trace information is still recorded.
+Per-tool **AG-UI Output** settings can override that global default for individual selected tools.
 
 The tool-call stream lifecycle is:
 

@@ -604,6 +604,178 @@ public sealed class ModelCallStreamingUnitTests
     }
 
     [Fact]
+    public async Task Tool_ag_ui_output_always_emits_tool_stream_events_when_global_tool_events_are_disabled()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddModelCall("model")
+            .AddEnd()
+            .Connect("start", "model")
+            .Connect("model", "end")
+            .Build();
+
+        var model = CreateModel("openai");
+        ConfigureModelNode(workflow, "model", model.ModelId, disableStreamTool: true);
+        var modelNode = Assert.IsType<ModelCallNodeEntity>(workflow.Nodes.Single(n => n.Title == "model"));
+        modelNode.ToolAgUiOutputModes["lookup_weather"] = ModelCallToolAgUiOutputMode.Always;
+
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddKeyedScoped<IModelCaller, StreamingTestModelCaller>("openai"));
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "openai", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.Contains(streamEvents, e => e.EventKind == StreamEventKind.ToolCallStart);
+            Assert.Contains(streamEvents, e => e.EventKind == StreamEventKind.ToolCallArgs);
+            Assert.Contains(streamEvents, e => e.EventKind == StreamEventKind.ToolCallEnd);
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Tool_ag_ui_output_never_suppresses_tool_stream_events_when_global_tool_events_are_enabled()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddModelCall("model")
+            .AddEnd()
+            .Connect("start", "model")
+            .Connect("model", "end")
+            .Build();
+
+        var model = CreateModel("openai");
+        ConfigureModelNode(workflow, "model", model.ModelId);
+        var modelNode = Assert.IsType<ModelCallNodeEntity>(workflow.Nodes.Single(n => n.Title == "model"));
+        modelNode.ToolAgUiOutputModes["lookup_weather"] = ModelCallToolAgUiOutputMode.Never;
+
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddKeyedScoped<IModelCaller, StreamingTestModelCaller>("openai"));
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "openai", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.DoesNotContain(streamEvents, e => e.EventKind is StreamEventKind.ToolCallStart or StreamEventKind.ToolCallArgs or StreamEventKind.ToolCallEnd or StreamEventKind.ToolCallResult);
+
+            var informations = await repositoryService.GetRunInformations(run.RunId);
+            Assert.Contains(informations, i => (i.InformationType == InformationType.ToolCall) && (i.Text == "lookup_weather"));
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Tool_ag_ui_output_always_emits_tool_result_when_tool_call_id_is_known()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddModelCall("model")
+            .AddEnd()
+            .Connect("start", "model")
+            .Connect("model", "end")
+            .Build();
+
+        var model = CreateModel("google");
+        ConfigureModelNode(workflow, "model", model.ModelId, disableStreamTool: true);
+        var modelNode = Assert.IsType<ModelCallNodeEntity>(workflow.Nodes.Single(n => n.Title == "model"));
+        modelNode.ToolAgUiOutputModes["google_lookup"] = ModelCallToolAgUiOutputMode.Always;
+
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddKeyedScoped<IModelCaller, GoogleStreamingTestModelCaller>("google"));
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "google", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.Contains(streamEvents, e => e.EventKind == StreamEventKind.ToolCallStart);
+            Assert.Contains(streamEvents, e => e.EventKind == StreamEventKind.ToolCallResult && e.ToolCallId == "google-call-1" && e.TextDelta == "Sunny");
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Unknown_tool_result_call_id_falls_back_to_global_tool_stream_setting()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddModelCall("model")
+            .AddEnd()
+            .Connect("start", "model")
+            .Connect("model", "end")
+            .Build();
+
+        var model = CreateModel("openai");
+        ConfigureModelNode(workflow, "model", model.ModelId, disableStreamTool: true);
+
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddKeyedScoped<IModelCaller, UnknownToolResultTestModelCaller>("openai"));
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "openai", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.DoesNotContain(streamEvents, e => e.EventKind == StreamEventKind.ToolCallResult);
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
     public async Task Conversation_model_call_reasoning_events_continue_sequence_across_turns()
     {
         var workflow = new WorkflowBuilder()
@@ -1627,6 +1799,25 @@ public sealed class ModelCallStreamingUnitTests
             await progressSink.OnToolCallAsync("call-1", "lookup_weather", "{\"city\":\"Sydney\"}", "assistant-1");
             await progressSink.CompleteAsync();
             return ([], [], "Hello");
+        }
+    }
+
+    private sealed class UnknownToolResultTestModelCaller : IModelCaller
+    {
+        public async Task<ModelCallResult> Call(
+            Model model,
+            ModelConfig modelConfig,
+            Connector connector,
+            ConnectorConfig connectorConfig,
+            ProcessContext processContext,
+            ThreadContext threadContext,
+            ModelCallNodeEntity node,
+            IModelCallProgressSink progressSink
+        )
+        {
+            await progressSink.OnToolCallResultAsync("result-1", "unknown-call-1", "Unknown result");
+            await progressSink.CompleteAsync();
+            return ([], [], string.Empty);
         }
     }
 

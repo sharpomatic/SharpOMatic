@@ -354,25 +354,63 @@
           >
           <div class="flex-fill control-column long">
             @if (toolDisplayNames.length) {
-              @for (toolName of toolDisplayNames; track toolName) {
-                <div class="form-check">
-                  <input
-                    class="form-check-input"
-                    type="checkbox"
-                    [id]="toolId(toolName)"
-                    [checked]="isToolSelected(toolName)"
-                    (change)="
-                      onToolSelectionChange(
-                        toolName,
-                        $any($event.target).checked
-                      )
-                    "
-                  />
-                  <label class="form-check-label" [for]="toolId(toolName)">
-                    {{ toolName }}
-                  </label>
-                </div>
-              }
+              <table class="table table-sm table-hover align-middle tool-calling-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Tool</th>
+                    <th scope="col">AG-UI Output</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (toolName of toolDisplayNames; track toolName) {
+                    <tr>
+                      <td>
+                        <div class="form-check">
+                          <input
+                            class="form-check-input"
+                            type="checkbox"
+                            [id]="toolId(toolName)"
+                            [checked]="isToolSelected(toolName)"
+                            (change)="
+                              onToolSelectionChange(
+                                toolName,
+                                $any($event.target).checked
+                              )
+                            "
+                          />
+                          <label
+                            class="form-check-label"
+                            [for]="toolId(toolName)"
+                          >
+                            {{ toolName }}
+                          </label>
+                        </div>
+                      </td>
+                      <td>
+                        @if (isToolSelected(toolName)) {
+                          <select
+                            class="form-select form-select-sm tool-ag-ui-output-select"
+                            [id]="toolAgUiOutputId(toolName)"
+                            [ngModel]="getToolAgUiOutputMode(toolName)"
+                            (ngModelChange)="
+                              onToolAgUiOutputModeChange(toolName, $event)
+                            "
+                          >
+                            @for (
+                              option of toolAgUiOutputModeOptions;
+                              track option.value
+                            ) {
+                              <option [ngValue]="option.value">
+                                {{ option.label }}
+                              </option>
+                            }
+                          </select>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
             } @else {
               <em>(no tools)</em>
             }

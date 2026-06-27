@@ -108,6 +108,18 @@
   word-break: break-word;
 }
 
+.tool-calling-table {
+  margin-bottom: 0;
+}
+
+.tool-calling-table th:first-child {
+  width: 60%;
+}
+
+.tool-ag-ui-output-select {
+  max-width: 180px;
+}
+
 .tiny {
   max-width: 200px;
   width: 100%;

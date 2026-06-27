@@ -36,6 +36,7 @@ import {
 import { ModelPickerComponent } from '../../components/model-picker/model-picker.component';
 import { ModelPickerOption } from '../../components/model-picker/model-picker-option';
 import { forkJoin } from 'rxjs';
+import { ModelCallToolAgUiOutputMode } from '../../entities/enumerations/model-call-tool-ag-ui-output-mode';
 
 @Component({
   selector: 'app-model-call-node-dialog',
@@ -79,6 +80,11 @@ export class ModelCallNodeDialogComponent implements OnInit {
   public structuredSchemaEditorOptions = MonacoService.editorOptionsJson;
   public typeSchemaNames: string[] = [];
   public toolDisplayNames: string[] = [];
+  public readonly toolAgUiOutputModeOptions = [
+    { value: ModelCallToolAgUiOutputMode.Inherit, label: 'Inherit' },
+    { value: ModelCallToolAgUiOutputMode.Always, label: 'Always' },
+    { value: ModelCallToolAgUiOutputMode.Never, label: 'Never' },
+  ];
   public informationEntries(): ModelInformationDisplayEntry[] {
     return buildModelInformationEntries(this.modelConfig?.information);
   }
@@ -500,6 +506,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
       selectedTools.add(toolName);
     } else {
       selectedTools.delete(toolName);
+      this.removeToolAgUiOutputMode(toolName);
     }
 
     const ordered = this.toolDisplayNames.filter((name) =>
@@ -513,8 +520,40 @@ export class ModelCallNodeDialogComponent implements OnInit {
     }));
   }
 
+  public getToolAgUiOutputMode(toolName: string): ModelCallToolAgUiOutputMode {
+    return (
+      this.node.toolAgUiOutputModes()[toolName] ??
+      ModelCallToolAgUiOutputMode.Inherit
+    );
+  }
+
+  public onToolAgUiOutputModeChange(
+    toolName: string,
+    mode: ModelCallToolAgUiOutputMode | string,
+  ): void {
+    const selectedMode =
+      typeof mode === 'string'
+        ? (Number(mode) as ModelCallToolAgUiOutputMode)
+        : mode;
+
+    this.node.toolAgUiOutputModes.update((current) => {
+      const next = { ...current };
+      if (selectedMode === ModelCallToolAgUiOutputMode.Inherit) {
+        delete next[toolName];
+      } else {
+        next[toolName] = selectedMode;
+      }
+
+      return next;
+    });
+  }
+
   public toolId(toolName: string): string {
     return `tool-${toolName.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+  }
+
+  public toolAgUiOutputId(toolName: string): string {
+    return `tool-ag-ui-output-${toolName.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
   }
 
   private getSelectedTools(): Set<string> {
@@ -524,6 +563,18 @@ export class ModelCallNodeDialogComponent implements OnInit {
       .map((p) => p.trim())
       .filter((p) => p.length > 0);
     return new Set(parts);
+  }
+
+  private removeToolAgUiOutputMode(toolName: string): void {
+    this.node.toolAgUiOutputModes.update((current) => {
+      if (!(toolName in current)) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[toolName];
+      return next;
+    });
   }
 
   private refreshTabs(): void {
