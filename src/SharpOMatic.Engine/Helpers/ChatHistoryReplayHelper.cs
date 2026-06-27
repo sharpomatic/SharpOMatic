@@ -59,7 +59,7 @@ internal static class ChatHistoryReplayHelper
         }
 
         // Emit any tool calls that were tracked but never paired with a result.
-        // This happens when a graceful stop removes the sentinel FunctionResultContent,
+        // This happens when a model-call exit removes the sentinel FunctionResultContent,
         // leaving the preceding FunctionCallContent with no matching result to consume it.
         foreach (var orphanedCall in toolCallsById.Values)
             portableMessages.Add(CreateOrphanedToolCallMessage(orphanedCall));

@@ -37,6 +37,8 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             if (!Node.BatchOutput)
                 WriteChatOutput(result.Chat, result.Responses);
 
+            ApplyExitContext(result);
+
             await progressSink.PersistAsync();
 
             stopwatch.Stop();
@@ -138,6 +140,19 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         {
             ThreadContext.NodeContext.TrySet(Node.ChatOutputPath, ChatHistoryReplayHelper.CreatePortableOutputMessages(chat.Concat(responses), Node.DropToolCalls));
         }
+    }
+
+    private void ApplyExitContext(ModelCallResult result)
+    {
+        if (result.ExitContext is null)
+            return;
+
+        var path = string.IsNullOrWhiteSpace(result.ExitContextPath)
+            ? "exit"
+            : result.ExitContextPath.Trim();
+
+        if (!ThreadContext.NodeContext.TrySet(path, result.ExitContext))
+            throw new SharpOMaticException($"Could not set model call exit context at '{path}'.");
     }
 
     private async Task<(Model, ModelConfig, Connector, ConnectorConfig)> LoadModelAndConnector(ModelCallMetric metric)

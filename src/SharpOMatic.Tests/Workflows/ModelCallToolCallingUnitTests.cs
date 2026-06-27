@@ -90,26 +90,31 @@ public sealed class ModelCallToolCallingUnitTests
     }
 
     [Fact]
-    public async Task Tool_graceful_stop_exception_ends_streaming_model_call_with_partial_messages()
+    public async Task Tool_model_call_exit_exception_ends_streaming_model_call_with_partial_messages_and_exit_context()
     {
         var caller = new ToolCallingTestModelCaller();
-        var agent = new ChatClientAgent(caller.InvokeCreateFunctionInvokingChatClient(new ToolRequestingChatClient()));
+        var exitState = new ModelCallExitState();
+        var toolServiceProvider = new OverlayServiceProvider(new ServiceCollection().BuildServiceProvider(), exitState);
+        var agent = new ChatClientAgent(caller.InvokeCreateFunctionInvokingChatClient(new ToolRequestingChatClient(), toolServiceProvider));
 
-        var result = await caller.InvokeStreamingAgent(agent, CreateModelCallNode("NeedsUserInput"), [AIFunctionFactory.Create((Func<string>)NeedsUserInput, "NeedsUserInput")]);
+        var result = await caller.InvokeStreamingAgent(agent, CreateModelCallNode("NeedsUserInput"), [AIFunctionFactory.Create((Func<string>)NeedsUserInput, "NeedsUserInput")], exitState);
 
         Assert.Equal(string.Empty, result.ResultValue);
         var assistantMessage = Assert.Single(result.Responses);
         var functionCall = Assert.IsType<FunctionCallContent>(assistantMessage.Contents.Single());
         Assert.Equal("call-1", functionCall.CallId);
         Assert.Equal("NeedsUserInput", functionCall.Name);
+        Assert.NotNull(result.ExitContext);
+        Assert.Equal("exit", result.ExitContextPath);
+        Assert.Equal("need_input", result.ExitContext.Get<string>("reason"));
     }
 
     [Fact]
-    public void Graceful_stop_exception_detection_unwraps_common_exception_wrappers()
+    public void Model_call_exit_exception_detection_unwraps_common_exception_wrappers()
     {
-        var exception = new AggregateException(new InvalidOperationException("outer", new System.Reflection.TargetInvocationException(new ModelCallGracefulStopException("need input"))));
+        var exception = new AggregateException(new InvalidOperationException("outer", new System.Reflection.TargetInvocationException(new ModelCallExitException())));
 
-        Assert.True(ToolCallingTestModelCaller.ContainsGracefulStop(exception));
+        Assert.True(ToolCallingTestModelCaller.ContainsModelCallExit(exception));
     }
 
     private static string DefinedTool() => "ok";
@@ -122,7 +127,9 @@ public sealed class ModelCallToolCallingUnitTests
 
     private static string NeedsUserInput()
     {
-        throw new ModelCallGracefulStopException("Need more user input.");
+        var context = new ContextObject();
+        context.Set("reason", "need_input");
+        throw new ModelCallExitException(context);
     }
 
     private static Model CreateToolCallingModel()
@@ -183,9 +190,9 @@ public sealed class ModelCallToolCallingUnitTests
 
     private sealed class ToolCallingTestModelCaller : BaseModelCaller
     {
-        public static bool ContainsGracefulStop(Exception exception)
+        public static bool ContainsModelCallExit(Exception exception)
         {
-            return TryGetGracefulStopException(exception, out _);
+            return TryGetModelCallExitException(exception, out _);
         }
 
         public IServiceProvider InvokeSetupToolCalling(
@@ -200,14 +207,14 @@ public sealed class ModelCallToolCallingUnitTests
             return SetupToolCalling(chatOptions, model, modelConfig, processContext, threadContext, node);
         }
 
-        public Task<ModelCallResult> InvokeStreamingAgent(AIAgent agent, ModelCallNodeEntity node, IList<AITool> tools)
+        public Task<ModelCallResult> InvokeStreamingAgent(AIAgent agent, ModelCallNodeEntity node, IList<AITool> tools, ModelCallExitState? modelCallExitState = null)
         {
-            return CallStreamingAgent(agent, [], new ChatOptions() { Tools = tools }, jsonOutput: true, node, new NullProgressSink());
+            return CallConfiguredAgent(agent, [], new ChatOptions() { Tools = tools }, jsonOutput: true, node, new NullProgressSink(), modelCallExitState);
         }
 
-        public IChatClient InvokeCreateFunctionInvokingChatClient(IChatClient chatClient)
+        public IChatClient InvokeCreateFunctionInvokingChatClient(IChatClient chatClient, IServiceProvider? toolServiceProvider = null)
         {
-            return CreateFunctionInvokingChatClient(chatClient, toolServiceProvider: null);
+            return CreateFunctionInvokingChatClient(chatClient, toolServiceProvider);
         }
 
         public override Task<ModelCallResult> Call(
@@ -242,7 +249,7 @@ public sealed class ModelCallToolCallingUnitTests
         {
             _callCount += 1;
             if (_callCount > 1)
-                throw new InvalidOperationException("The model call should stop after the tool throws ModelCallGracefulStopException.");
+                throw new InvalidOperationException("The model call should stop after the tool throws ModelCallExitException.");
 
             await Task.Yield();
             yield return new ChatResponseUpdate(ChatRole.Assistant, [new FunctionCallContent("call-1", "NeedsUserInput", new Dictionary<string, object?>())]) { MessageId = "assistant-1" };

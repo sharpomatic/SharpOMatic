@@ -3,7 +3,7 @@ namespace SharpOMatic.Engine.Services;
 
 public abstract class BaseModelCaller : IModelCaller
 {
-    private const string GracefulStopToolResultSentinel = "__SharpOMaticModelCallGracefulStop__";
+    private const string ModelCallExitToolResultSentinel = "__SharpOMaticModelCallExit__";
 
     public abstract Task<ModelCallResult> Call(
         Model model,
@@ -23,18 +23,20 @@ public abstract class BaseModelCaller : IModelCaller
         {
             response = await agent.RunAsync(chat, options: new ChatClientAgentRunOptions(chatOptions));
         }
-        catch (Exception ex) when (TryGetGracefulStopException(ex, out _))
+        catch (Exception ex) when (TryGetModelCallExitException(ex, out var modelCallExitException))
         {
             return new ModelCallResult()
             {
                 Chat = chat,
                 Responses = [],
                 ResultValue = string.Empty,
+                ExitContext = modelCallExitException.Context,
+                ExitContextPath = modelCallExitException.ContextPath,
             };
         }
 
-        var stoppedGracefully = RemoveGracefulStopToolResults(response.Messages);
-        var resultValue = ResponseToOutputValue(jsonOutput && !stoppedGracefully, response);
+        var exited = RemoveModelCallExitToolResults(response.Messages);
+        var resultValue = ResponseToOutputValue(jsonOutput && !exited, response);
         return new ModelCallResult()
         {
             Chat = chat,
@@ -56,7 +58,8 @@ public abstract class BaseModelCaller : IModelCaller
         List<AgentResponseUpdate> updates = [];
         string syntheticMessageId = $"assistant-{Guid.NewGuid():N}";
         string? currentAssistantMessageId = null;
-        bool stoppedGracefully = false;
+        bool exited = false;
+        ModelCallExitException? directExitException = null;
 
         try
         {
@@ -111,8 +114,8 @@ public abstract class BaseModelCaller : IModelCaller
                                 );
                                 break;
 
-                            case FunctionResultContent functionResultContent when IsGracefulStopToolResult(functionResultContent):
-                                stoppedGracefully = true;
+                            case FunctionResultContent functionResultContent when IsModelCallExitToolResult(functionResultContent):
+                                exited = true;
                                 break;
 
                             case FunctionResultContent functionResultContent:
@@ -139,9 +142,10 @@ public abstract class BaseModelCaller : IModelCaller
                 }
             }
         }
-        catch (Exception ex) when (TryGetGracefulStopException(ex, out _))
+        catch (Exception ex) when (TryGetModelCallExitException(ex, out var modelCallExitException))
         {
-            stoppedGracefully = true;
+            exited = true;
+            directExitException = modelCallExitException;
         }
         finally
         {
@@ -152,14 +156,16 @@ public abstract class BaseModelCaller : IModelCaller
         }
 
         var response = updates.ToAgentResponse();
-        stoppedGracefully |= RemoveGracefulStopToolResults(response.Messages);
-        var resultValue = ResponseToOutputValue(jsonOutput && !stoppedGracefully, response);
+        exited |= RemoveModelCallExitToolResults(response.Messages);
+        var resultValue = ResponseToOutputValue(jsonOutput && !exited, response);
         return new ModelCallResult()
         {
             Chat = chat,
             Responses = response.Messages,
             ResultValue = resultValue,
             Usage = response.Usage,
+            ExitContext = directExitException?.Context,
+            ExitContextPath = directExitException?.ContextPath ?? "exit",
         };
     }
 
@@ -173,22 +179,23 @@ public abstract class BaseModelCaller : IModelCaller
                 {
                     return await context.Function.InvokeAsync(context.Arguments, cancellationToken);
                 }
-                catch (Exception ex) when (TryGetGracefulStopException(ex, out _))
+                catch (Exception ex) when (TryGetModelCallExitException(ex, out var modelCallExitException))
                 {
+                    toolServiceProvider?.GetService<ModelCallExitState>()?.Capture(modelCallExitException);
                     context.Terminate = true;
-                    return GracefulStopToolResultSentinel;
+                    return ModelCallExitToolResultSentinel;
                 }
             },
         };
     }
 
-    protected static bool TryGetGracefulStopException(Exception exception, [NotNullWhen(true)] out ModelCallGracefulStopException? gracefulStopException)
+    protected static bool TryGetModelCallExitException(Exception exception, [NotNullWhen(true)] out ModelCallExitException? modelCallExitException)
     {
         for (var current = exception; current is not null; current = current.InnerException)
         {
-            if (current is ModelCallGracefulStopException modelCallGracefulStopException)
+            if (current is ModelCallExitException currentModelCallExitException)
             {
-                gracefulStopException = modelCallGracefulStopException;
+                modelCallExitException = currentModelCallExitException;
                 return true;
             }
 
@@ -196,17 +203,17 @@ public abstract class BaseModelCaller : IModelCaller
             {
                 foreach (var innerException in aggregateException.Flatten().InnerExceptions)
                 {
-                    if (TryGetGracefulStopException(innerException, out gracefulStopException))
+                    if (TryGetModelCallExitException(innerException, out modelCallExitException))
                         return true;
                 }
             }
         }
 
-        gracefulStopException = null;
+        modelCallExitException = null;
         return false;
     }
 
-    private static bool RemoveGracefulStopToolResults(IList<ChatMessage> messages)
+    private static bool RemoveModelCallExitToolResults(IList<ChatMessage> messages)
     {
         var removed = false;
         for (var messageIndex = messages.Count - 1; messageIndex >= 0; messageIndex -= 1)
@@ -214,7 +221,7 @@ public abstract class BaseModelCaller : IModelCaller
             var message = messages[messageIndex];
             for (var contentIndex = message.Contents.Count - 1; contentIndex >= 0; contentIndex -= 1)
             {
-                if (message.Contents[contentIndex] is not FunctionResultContent functionResultContent || !IsGracefulStopToolResult(functionResultContent))
+                if (message.Contents[contentIndex] is not FunctionResultContent functionResultContent || !IsModelCallExitToolResult(functionResultContent))
                     continue;
 
                 message.Contents.RemoveAt(contentIndex);
@@ -228,26 +235,48 @@ public abstract class BaseModelCaller : IModelCaller
         return removed;
     }
 
-    private static bool IsGracefulStopToolResult(FunctionResultContent functionResultContent)
+    private static bool IsModelCallExitToolResult(FunctionResultContent functionResultContent)
     {
         return functionResultContent.Result switch
         {
-            string result => string.Equals(result, GracefulStopToolResultSentinel, StringComparison.Ordinal),
-            JsonElement { ValueKind: JsonValueKind.String } element => string.Equals(element.GetString(), GracefulStopToolResultSentinel, StringComparison.Ordinal),
+            string result => string.Equals(result, ModelCallExitToolResultSentinel, StringComparison.Ordinal),
+            JsonElement { ValueKind: JsonValueKind.String } element => string.Equals(element.GetString(), ModelCallExitToolResultSentinel, StringComparison.Ordinal),
             _ => false,
         };
     }
 
-    protected virtual Task<ModelCallResult> CallConfiguredAgent(
+    protected virtual async Task<ModelCallResult> CallConfiguredAgent(
         AIAgent agent,
         List<ChatMessage> chat,
         ChatOptions? chatOptions,
         bool jsonOutput,
         ModelCallNodeEntity node,
-        IModelCallProgressSink progressSink
+        IModelCallProgressSink progressSink,
+        ModelCallExitState? modelCallExitState = null
     )
     {
-        return node.BatchOutput ? CallAgent(agent, chat, chatOptions, jsonOutput, node) : CallStreamingAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
+        var result = node.BatchOutput
+            ? await CallAgent(agent, chat, chatOptions, jsonOutput, node)
+            : await CallStreamingAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
+
+        return ApplyCapturedModelCallExit(result, modelCallExitState);
+    }
+
+    private static ModelCallResult ApplyCapturedModelCallExit(ModelCallResult result, ModelCallExitState? modelCallExitState)
+    {
+        if (result.ExitContext is not null || modelCallExitState?.Context is null)
+            return result;
+
+        return new ModelCallResult()
+        {
+            Chat = result.Chat,
+            Responses = result.Responses,
+            ResultValue = result.ResultValue,
+            Usage = result.Usage,
+            ProviderModelName = result.ProviderModelName,
+            ExitContext = modelCallExitState.Context,
+            ExitContextPath = modelCallExitState.ContextPath,
+        };
     }
 
     protected virtual string ResolveMessageId(AgentResponseUpdate update, string syntheticMessageId)
@@ -439,7 +468,8 @@ public abstract class BaseModelCaller : IModelCaller
         ModelConfig modelConfig,
         ProcessContext processContext,
         ThreadContext threadContext,
-        ModelCallNodeEntity node
+        ModelCallNodeEntity node,
+        ModelCallExitState? modelCallExitState = null
     )
     {
         var agentServiceProvider = processContext.ServiceScope.ServiceProvider;
@@ -447,7 +477,10 @@ public abstract class BaseModelCaller : IModelCaller
         {
             if (GetCapabilityCallString(model, modelConfig, node, "SupportsToolCalling", "selected_tools", out string selectedTools))
             {
-                agentServiceProvider = new OverlayServiceProvider(agentServiceProvider, threadContext.NodeContext, new StreamEventHelper(processContext, threadContext.NodeContext));
+                object[] localServices = modelCallExitState is null
+                    ? [threadContext.NodeContext, new StreamEventHelper(processContext, threadContext.NodeContext)]
+                    : [threadContext.NodeContext, new StreamEventHelper(processContext, threadContext.NodeContext), modelCallExitState];
+                agentServiceProvider = new OverlayServiceProvider(agentServiceProvider, localServices);
 
                 var toolNames = selectedTools.Split(',');
                 List<AITool> tools = [];

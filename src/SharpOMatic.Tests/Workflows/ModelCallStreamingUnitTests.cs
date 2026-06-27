@@ -241,6 +241,52 @@ public sealed class ModelCallStreamingUnitTests
     }
 
     [Fact]
+    public async Task Model_call_exit_context_writes_to_full_context_path_and_overwrites_existing_value()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddModelCall("model")
+            .AddEnd()
+            .Connect("start", "model")
+            .Connect("model", "end")
+            .Build();
+
+        var model = CreateModel("openai");
+        ConfigureModelNode(workflow, "model", model.ModelId);
+
+        using var provider = WorkflowRunner.BuildProvider(services =>
+        {
+            services.AddKeyedScoped<IModelCaller, ExitContextTestModelCaller>("openai");
+        });
+
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "openai", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var output = ContextObject.Deserialize(run.OutputContext);
+            var exit = output.Get<ContextObject>("output.text");
+            Assert.Equal("need_input", exit.Get<string>("reason"));
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
     public async Task Model_call_streams_reasoning_events_and_informations_before_completion()
     {
         var workflow = new WorkflowBuilder()
@@ -1687,6 +1733,35 @@ public sealed class ModelCallStreamingUnitTests
                     ),
                 ],
                 $"Turn {turnNumber} reply"
+            );
+        }
+    }
+
+    private sealed class ExitContextTestModelCaller : IModelCaller
+    {
+        public Task<ModelCallResult> Call(
+            Model model,
+            ModelConfig modelConfig,
+            Connector connector,
+            ConnectorConfig connectorConfig,
+            ProcessContext processContext,
+            ThreadContext threadContext,
+            ModelCallNodeEntity node,
+            IModelCallProgressSink progressSink
+        )
+        {
+            var exitContext = new ContextObject();
+            exitContext.Set("reason", "need_input");
+
+            return Task.FromResult(
+                new ModelCallResult()
+                {
+                    Chat = [],
+                    Responses = [],
+                    ResultValue = "text output",
+                    ExitContext = exitContext,
+                    ExitContextPath = "output.text",
+                }
             );
         }
     }

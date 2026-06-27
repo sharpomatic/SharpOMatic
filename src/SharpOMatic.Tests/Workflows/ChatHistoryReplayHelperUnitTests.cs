@@ -3,9 +3,9 @@ namespace SharpOMatic.Tests.Workflows;
 public sealed class ChatHistoryReplayHelperUnitTests
 {
     [Fact]
-    public void Orphaned_tool_call_is_emitted_after_graceful_stop_removes_its_result()
+    public void Orphaned_tool_call_is_emitted_after_model_call_exit_removes_its_result()
     {
-        // Represents the state of result.Responses after RemoveGracefulStopToolResults has run:
+        // Represents the state of result.Responses after RemoveModelCallExitToolResults has run:
         // the sentinel FunctionResultContent for "needs_input" was removed, leaving its
         // FunctionCallContent with no matching result — the orphaned case.
         var messages = new List<ChatMessage>
@@ -28,7 +28,7 @@ public sealed class ChatHistoryReplayHelperUnitTests
                     new FunctionCallContent("call-2", "needs_input", new Dictionary<string, object?> { ["prompt"] = "confirm?" }),
                 ]
             ),
-            // No FunctionResultContent for call-2 — removed by RemoveGracefulStopToolResults
+            // No FunctionResultContent for call-2 — removed by RemoveModelCallExitToolResults
         };
 
         var output = ChatHistoryReplayHelper.CreatePortableOutputMessages(messages, dropToolCalls: false);

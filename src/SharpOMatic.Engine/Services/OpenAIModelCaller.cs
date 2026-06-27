@@ -29,7 +29,8 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
         // Setup the basic capabilities, then the more specialized options
         (var chatOptions, var responseCreationOptions) = SetupResponsesBasicCapabilities(model, modelConfig, processContext, threadContext, node);
         var jsonOutput = SetupStrucuturedOutput(chatOptions, model, modelConfig, processContext, node);
-        var agentServiceProvider = SetupToolCalling(chatOptions, responseCreationOptions, model, modelConfig, processContext, threadContext, node);
+        var modelCallExitState = new ModelCallExitState();
+        var agentServiceProvider = SetupToolCalling(chatOptions, responseCreationOptions, model, modelConfig, processContext, threadContext, node, modelCallExitState);
 
         // Generate the chat messages for input to the model
         List<ChatMessage> chat = [];
@@ -58,7 +59,7 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
             services: agentServiceProvider
         );
         await EmitPromptStreamEvents(processContext, prompt, node.DisableStreamUser);
-        var result = await CallConfiguredAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
+        var result = await CallConfiguredAgent(agent, chat, chatOptions, jsonOutput, node, progressSink, modelCallExitState);
         return result.ProviderModelName is null
             ? new ModelCallResult()
             {
@@ -67,6 +68,8 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
                 ResultValue = result.ResultValue,
                 Usage = result.Usage,
                 ProviderModelName = modelName,
+                ExitContext = result.ExitContext,
+                ExitContextPath = result.ExitContextPath,
             }
             : result;
     }
@@ -157,7 +160,8 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
         ModelConfig modelConfig,
         ProcessContext processContext,
         ThreadContext threadContext,
-        ModelCallNodeEntity node
+        ModelCallNodeEntity node,
+        ModelCallExitState? modelCallExitState = null
     )
     {
         var agentServiceProvider = processContext.ServiceScope.ServiceProvider;
@@ -167,7 +171,7 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
                 responseOptions.ParallelToolCallsEnabled = parallelToolCalls;
 
             // Process all the other tool calling functionality which is common
-            agentServiceProvider = SetupToolCalling(chatOptions, model, modelConfig, processContext, threadContext, node);
+            agentServiceProvider = SetupToolCalling(chatOptions, model, modelConfig, processContext, threadContext, node, modelCallExitState);
         }
 
         return agentServiceProvider;

@@ -76,20 +76,25 @@ This allows you to get required data from the service provider.
 This example demonstrates how the workflow context for the model node can be accessed and modified.
 You could also request other interfaces relating to your own backend services.
 
-## Gracefully stopping from a tool
+## Exiting a model call from a tool
 
-Tool methods can stop the current model-call cycle without failing the workflow by throwing `ModelCallGracefulStopException`.
+Tool methods can exit the current model-call cycle without failing the workflow by throwing `ModelCallExitException`.
 Use this when the tool discovers that the workflow must collect more input or perform another workflow step before the model can continue.
 
 ```csharp
 public static string AskForMissingInput(IServiceProvider services)
 {
-  throw new ModelCallGracefulStopException("Additional user input is required.");
+  var exit = new ContextObject();
+  exit.Set("reason", "additional_input_required");
+
+  throw new ModelCallExitException(exit, "agent.pendingInput");
 }
 ```
 
 SharpOMatic treats this exception as an intentional stop, not as a model-call error.
 The model call still succeeds, writes the messages produced up to the tool call, closes any open stream events, and lets downstream workflow nodes decide how to continue.
+When a `ContextObject` is provided, the model call writes it to the supplied context path.
+The path defaults to `exit`, supports full context paths, and overwrites any existing value at that path.
 The internal stop marker is not written as a tool result, so a later model call can continue from the saved chat history without seeing a fake tool response.
 
 ## Parallel tool calls
