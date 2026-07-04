@@ -9,7 +9,7 @@ This tab enables you to create and pass in a list of chat messages that are dire
 It can be used on its own or in conjunction with the text and image tabs.
 Using this ability gives you greater flexibility and control over the exact content sent to the model call.
 
-For OpenAI, Azure OpenAI, and Google connectors, runtime progress is now incremental.
+For OpenAI, Azure OpenAI, Anthropic, Foundry Anthropic, and Google connectors, runtime progress is now incremental.
 Assistant text, visible reasoning, tool-call lifecycle events, and tool-call results are all published through stream events while the node is still running.
 Assistant, reasoning, and tool-call summary entries are also published through information updates for the trace viewer.
 

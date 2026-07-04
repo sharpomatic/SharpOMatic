@@ -221,7 +221,7 @@ public class EngineNotification(IServiceProvider serviceProvider) : IEngineNotif
         }
     }
 
-    public (ResponsesClient client, string modelName)? OpenAIResponseClientOverride(
+    public (ResponsesClient client, string modelName)? OpenAIOverride(
         Model model,
         ModelConfig modelConfig,
         AuthenticationModeConfig authenticationModeConfig,
@@ -241,7 +241,7 @@ public class EngineNotification(IServiceProvider serviceProvider) : IEngineNotif
         return (client, modelName);
     }
 
-    public (ResponsesClient client, string modelName)? AzureOpenAIResponseClientOverride(
+    public (ResponsesClient client, string modelName)? AzureOpenAIOverride(
         Model model,
         ModelConfig modelConfig,
         AuthenticationModeConfig authenticationModeConfig,
@@ -257,7 +257,7 @@ public class EngineNotification(IServiceProvider serviceProvider) : IEngineNotif
         return (client, deploymentName);
     }
 
-    public IChatClient? GoogleGenAIChatClientOverride(
+    public IChatClient? GoogleGenAIOverride(
         Model model,
         ModelConfig modelConfig,
         AuthenticationModeConfig authenticationModeConfig,
@@ -268,20 +268,55 @@ public class EngineNotification(IServiceProvider serviceProvider) : IEngineNotif
 
         return serviceProvider.GetKeyedService<IChatClient>($"google:{modelConfig.ConfigId}");
     }
+
+    public (AnthropicClient client, string modelName)? AnthropicOverride(
+        Model model,
+        ModelConfig modelConfig,
+        AuthenticationModeConfig authenticationModeConfig,
+        Dictionary<string, string?> connectionFields)
+    {
+        if (authenticationModeConfig.Id != "api_key")
+            return null;
+
+        var client = serviceProvider.GetKeyedService<AnthropicClient>($"anthropic:{modelConfig.ConfigId}");
+        if (client is null)
+            return null;
+
+        var modelName = modelConfig.IsCustom && model.ParameterValues.TryGetValue("model_name", out var customModelName)
+            ? customModelName
+            : modelConfig.DisplayName;
+
+        return (client, modelName);
+    }
+
+    public (AnthropicClient client, string modelName)? FoundryAnthropicOverride(
+        Model model,
+        ModelConfig modelConfig,
+        AuthenticationModeConfig authenticationModeConfig,
+        Dictionary<string, string?> connectionFields)
+    {
+        var client = serviceProvider.GetKeyedService<AnthropicClient>($"foundry_anthropic:{modelConfig.ConfigId}");
+        if (client is null || !model.ParameterValues.TryGetValue("deployment_name", out var deploymentName))
+            return null;
+
+        return (client, deploymentName);
+    }
 }
 ```
 
 `ConnectionOverride` can mutate connector authentication fields before the model caller creates a provider client.
-For OpenAI model calls, `OpenAIResponseClientOverride` provides a lower-level escape hatch: the first registered notification that returns a non-null `(ResponsesClient client, string modelName)` supplies the Responses client and model name for that call.
-For Azure OpenAI model calls, `AzureOpenAIResponseClientOverride` provides a lower-level escape hatch: the first registered notification that returns a non-null `(ResponsesClient client, string modelName)` supplies the Responses client and deployment/model name for that call.
-For Google model calls, `GoogleGenAIChatClientOverride` provides a lower-level escape hatch: the first registered notification that returns a non-null `IChatClient` supplies the chat client for that call.
+For OpenAI model calls, `OpenAIOverride` provides a lower-level escape hatch: the first registered notification that returns a non-null `(ResponsesClient client, string modelName)` supplies the Responses client and model name for that call.
+For Azure OpenAI model calls, `AzureOpenAIOverride` provides a lower-level escape hatch: the first registered notification that returns a non-null `(ResponsesClient client, string modelName)` supplies the Responses client and deployment/model name for that call.
+For Google model calls, `GoogleGenAIOverride` provides a lower-level escape hatch: the first registered notification that returns a non-null `IChatClient` supplies the chat client for that call.
+For direct Anthropic model calls, `AnthropicOverride` provides a lower-level escape hatch: the first registered notification that returns a non-null `(AnthropicClient client, string modelName)` supplies the Anthropic client and model name for that call.
+For Azure AI Foundry hosted Anthropic model calls, `FoundryAnthropicOverride` provides a lower-level escape hatch: the first registered notification that returns a non-null `(AnthropicClient client, string modelName)` supplies the Anthropic Foundry client and deployment/model name for that call.
 Return `null` from any lower-level override to use SharpOMatic's default client creation path.
 
 ## `IProgressService`
 
 If you need run-state updates while execution is in progress, implement `IProgressService`.
 `RunProgress` is also raised for conversation turns, including the final persisted `RunStatus.Suspended` state when a turn pauses for resume.
-For OpenAI, Azure OpenAI, and Google model calls, `StreamEventProgress` and `InformationsProgress` are also raised while the node is still running.
+For OpenAI, Azure OpenAI, Anthropic, Foundry Anthropic, and Google model calls, `StreamEventProgress` and `InformationsProgress` are also raised while the node is still running.
 That means partial assistant text, visible reasoning, tool-call lifecycle events, tool-call results, and assistant/reasoning/tool-call trace entries can all be forwarded immediately.
 If you want live model-call output, use `IProgressService` rather than polling the repository during the call.
 The engine buffers these model-call stream events and persists them when the call completes successfully.

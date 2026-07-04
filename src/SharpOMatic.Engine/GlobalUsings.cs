@@ -17,6 +17,8 @@ global using System.Text;
 global using System.Text.Json;
 global using System.Text.Json.Serialization;
 global using System.Threading.Channels;
+global using Anthropic;
+global using Anthropic.Foundry;
 global using Azure;
 global using Azure.AI.OpenAI;
 global using Azure.Core;

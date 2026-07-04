@@ -30,10 +30,12 @@
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.29.1" />
     <PackageReference Include="Google.GenAI" Version="1.12.0" />
+    <PackageReference Include="Anthropic.Foundry" Version="0.7.1" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.7.0" />
-	<PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.7.0" />
-	<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.7.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Agents.AI.Anthropic" Version="1.11.1-preview.260625.1" />
     <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.11.1" />
     <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="5.3.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
@@ -52,10 +54,12 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Metadata\Resources\ConnectorConfig\*.json" />
-    <EmbeddedResource Include="Metadata\Resources\ModelConfig\azure\*.json" />
+    <EmbeddedResource Include="Metadata\Resources\ModelConfig\azure_openai\*.json" />
     <EmbeddedResource Include="Metadata\Resources\ModelConfig\openai\*.json" />
-	  <EmbeddedResource Include="Metadata\Resources\ModelConfig\google\*.json" />
-	  <EmbeddedResource Include="Samples\Workflows\*.json" />
+    <EmbeddedResource Include="Metadata\Resources\ModelConfig\google\*.json" />
+    <EmbeddedResource Include="Metadata\Resources\ModelConfig\anthropic\*.json" />
+    <EmbeddedResource Include="Metadata\Resources\ModelConfig\azure_anthropic_foundry\*.json" />
+    <EmbeddedResource Include="Samples\Workflows\*.json" />
   </ItemGroup>
 
   <ItemGroup>

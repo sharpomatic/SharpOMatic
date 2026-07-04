@@ -16,7 +16,7 @@ You can leave this field blank to ignore the output. Text output is still genera
 - **Instructions** (Optional) system-level instructions for the call.
 - **User** (Mandatory) user-level prompt for the call.
 
-When you use an OpenAI, Azure OpenAI, or Google model, runtime output is now incremental.
+When you use an OpenAI, Azure OpenAI, Anthropic, Foundry Anthropic, or Google model, runtime output is now incremental.
 Immediately before the provider call, the resolved **User** content is stored as silent user text stream events unless **Disable User Event** is enabled on the **AG-UI** tab.
 Assistant text is streamed during execution, visible reasoning is emitted as reasoning stream events, and tool calls are emitted as tool-call stream events.
 Assistant, reasoning, and tool-call trace entries are also updated while the node is still running.

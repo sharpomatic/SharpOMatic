@@ -26,7 +26,7 @@ Secrets are stored with the connector instance and are hidden by default when re
 Currently, the following connectors are supported.
 
 Connector implementations are built and tested against the provider SDK versions referenced by the SharpOMatic packages.
-If you consume SharpOMatic from NuGet, avoid overriding or independently upgrading OpenAI, Azure OpenAI, Microsoft Agents AI, or Google SDK package versions in the host application.
+If you consume SharpOMatic from NuGet, avoid overriding or independently upgrading OpenAI, Azure OpenAI, Anthropic, Microsoft Agents AI, or Google SDK package versions in the host application.
 Those SDKs can change API names and tool-calling semantics between releases, so connector package upgrades should be made together with matching SharpOMatic code changes.
 
 ### OpenAI
@@ -80,12 +80,44 @@ You can look up the details for each credential type in the Microsoft documentat
 - AzureDeveloperCliCredential
 - InteractiveBrowserCredential
 
+### Anthropic
+
+This allows direct connection to the Anthropic API.
+Use this if you have an Anthropic account and want to call Claude models through Anthropic's own API.
+You can provide the following value:
+
+- **API Key** - mandatory
+
+### Foundry Anthropic
+
+This allows requests to Anthropic Claude models hosted as Azure AI Foundry model deployments.
+It is separate from the Azure OpenAI connector because Anthropic deployments use the Anthropic Foundry SDK path rather than the OpenAI protocol.
+Foundry Anthropic model calls are scoped to the deployment name configured on the selected model, so this value must match the Foundry deployment name rather than just the underlying Claude model family name.
+
+This connector is only for Anthropic model inference in Azure AI Foundry.
+It is not a connector for Azure AI Foundry Agent Service agents, project agents, or Foundry workflows.
+
+#### API Key
+
+The simplest method of authentication is copying the Foundry resource API key from Azure.
+SharpOMatic asks for the Foundry resource name, not the endpoint URL.
+
+- **Resource Name** - mandatory, for example `my-foundry-resource`
+- **API Key** - mandatory
+
+#### Default Azure Credential
+
+The alternate approach avoids API keys and instead uses `DefaultAzureCredential`.
+SharpOMatic asks for the Foundry resource name, not the endpoint URL.
+
+- **Resource Name** - mandatory, for example `my-foundry-resource`
+
 ## Azure Models
 
 Azure has more than one way of exposing models.
 
 - **Azure OpenAI** - This resource type only hosts OpenAI models.
-- **Microsoft Foundry** - This resource type allows models from OpenAI and other providers.
+- **Azure AI Foundry** - This resource type allows models from OpenAI and other providers, but the protocol and SDK can vary by provider.
 
 ### Azure OpenAI Resource
 
@@ -95,8 +127,10 @@ Look up the endpoint of the resource and then use either an API key or Default A
 ### Azure Foundry Resource
 
 This is the approach now recommended by Microsoft.
-Model deployments within a Foundry provide access to OpenAI models and many other open-source models such as those from DeepSeek and Meta.
-Fortunately, all models exposed from Foundry use the OpenAI protocol, so you can access DeepSeek, Llama, and thousands of other models using the Azure OpenAI connector.
+Model deployments within Foundry provide access to OpenAI models and many other models such as those from Anthropic, DeepSeek, and Meta.
+OpenAI-compatible Foundry deployments can be accessed with the Azure OpenAI connector.
+Anthropic Claude deployments use the Foundry Anthropic connector.
+Foundry Agent Service agents and project workflows are a separate execution surface and are not covered by either connector.
 
 ## Google AI
 

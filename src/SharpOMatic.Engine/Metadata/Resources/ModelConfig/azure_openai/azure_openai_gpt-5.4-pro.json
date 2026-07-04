@@ -47,10 +47,6 @@
       "DisplayName": "Supports Reasoning Effort"
     },
     {
-      "Name": "SupportsStructuredOutput",
-      "DisplayName": "Supports Structured Output"
-    },
-    {
       "Name": "SupportsToolCalling",
       "DisplayName": "Supports Tool Calling"
     }
@@ -88,22 +84,6 @@
       "DefaultValue": "None",
       "EnumOptions": [
         "Medium"
-      ]
-    },
-    {
-      "Name": "structured_output",
-      "Label": "Structured Output",
-      "Description": "",
-      "CallDefined": true,
-      "Type": 3,
-      "IsRequired": false,
-      "Capability": "SupportsStructuredOutput",
-      "DefaultValue": "Text",
-      "EnumOptions": [
-        "Text",
-        "Json",
-        "Schema",
-        "Configured Type"
       ]
     },
     {

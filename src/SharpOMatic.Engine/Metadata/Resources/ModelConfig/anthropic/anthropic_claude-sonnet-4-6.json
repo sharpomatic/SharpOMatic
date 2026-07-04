@@ -1,0 +1,123 @@
+{
+  "Version": 1,
+  "ConfigId": "anthropic_claude-sonnet-4-6",
+  "DisplayName": "claude-sonnet-4-6",
+  "Description": "Reasoning model",
+  "ConnectorConfigId": "anthropic",
+  "IsCustom": false,
+  "Information": [
+    {
+      "Name": "ContextWindow",
+      "DisplayName": "Context Window",
+      "Type": 4,
+      "Value": 1000000
+    },
+    {
+      "Name": "InputPrice",
+      "DisplayName": "Input Price per Milion",
+      "Type": 6,
+      "Value": 3
+    },
+    {
+      "Name": "OutputPrice",
+      "DisplayName": "Output Price per Milion",
+      "Type": 6,
+      "Value": 15
+    }
+  ],
+  "Capabilities": [
+    {
+      "Name": "SupportsTextIn",
+      "DisplayName": "Supports Text Input"
+    },
+    {
+      "Name": "SupportsTextOut",
+      "DisplayName": "Supports Text Output"
+    },
+    {
+      "Name": "SupportsImageIn",
+      "DisplayName": "Supports Image Input"
+    },
+    {
+      "Name": "SupportsMaxOutputTokens",
+      "DisplayName": "Supports Max Output Tokens"
+    },
+    {
+      "Name": "SupportsReasoningEffort",
+      "DisplayName": "Supports Reasoning Effort"
+    },
+    {
+      "Name": "SupportsToolCalling",
+      "DisplayName": "Supports Tool Calling"
+    }
+  ],
+  "ParameterFields": [
+    {
+      "Name": "max_output_tokens",
+      "Label": "Max Output Tokens",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 5,
+      "IsRequired": true,
+      "Capability": "SupportsMaxOutputTokens",
+      "DefaultValue": 128000,
+      "Min": 0,
+      "Max": 128000,
+      "Step": 1000
+    },
+    {
+      "Name": "thinking_mode",
+      "Label": "Thinking",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsReasoningEffort",
+      "DefaultValue": "Adaptive",
+      "EnumOptions": [
+        "Adaptive",
+        "Disabled"
+      ]
+    },
+    {
+      "Name": "effort_level",
+      "Label": "Effort Level",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsReasoningEffort",
+      "DefaultValue": "High",
+      "EnumOptions": [
+        "Low",
+        "Medium",
+        "High",
+        "Max"
+      ]
+    },
+    {
+      "Name": "parallel_tool_calls",
+      "Description": "",
+      "Label": "Parallel Tool Calls",
+      "CallDefined": true,
+      "IsRequired": false,
+      "Type": 2,
+      "Capability": "SupportsToolCalling",
+      "DefaultValue": true
+    },
+    {
+      "Name": "tool_choice",
+      "Label": "Tool Choice",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsToolCalling",
+      "DefaultValue": "Auto",
+      "EnumOptions": [
+        "None",
+        "Auto"
+      ]
+    }
+  ]
+}

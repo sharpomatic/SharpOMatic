@@ -26,7 +26,7 @@ Conversation workflows can suspend, persist their state, and later resume from t
 ## Host your own execution
 
 The execution engine is hosted in your project so you retain complete control over the environment and storage of all data.
-You can run with OpenAI, Azure OpenAI, and Google connectors while still keeping all workflow and run data in your own system.
+You can run with OpenAI, Azure OpenAI, Anthropic, Azure AI Foundry hosted Anthropic, and Google connectors while still keeping all workflow and run data in your own system.
 This makes it easy to merge workflows into an existing backend because it really is part of the that same backend.
 
 ## Deep integration

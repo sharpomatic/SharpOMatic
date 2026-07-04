@@ -21,6 +21,8 @@ Current built-in model configs cover:
 
 - **OpenAI** (for OpenAI connectors)
 - **Azure OpenAI** (for Azure OpenAI connectors)
+- **Anthropic** (for direct Anthropic API connectors)
+- **Foundry Anthropic** (for Anthropic model deployments in Azure AI Foundry)
 - **Google AI** (for Google AI connectors, including Gemini models)
 
 These lists evolve between releases as model catalogs change.

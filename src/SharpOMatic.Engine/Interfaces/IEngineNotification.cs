@@ -23,7 +23,16 @@ public interface IEngineNotification
         Dictionary<string, string?> connectionFields
     ) => null;
 
-    public IChatClient? GoogleGenAIOverride(
+    public IChatClient? GoogleGenAIOverride(Model model, ModelConfig modelConfig, AuthenticationModeConfig authenticationModeConfig, Dictionary<string, string?> connectionFields) => null;
+
+    public (AnthropicClient client, string modelName)? AnthropicOverride(
+        Model model,
+        ModelConfig modelConfig,
+        AuthenticationModeConfig authenticationModeConfig,
+        Dictionary<string, string?> connectionFields
+    ) => null;
+
+    public (AnthropicClient client, string modelName)? FoundryAnthropicOverride(
         Model model,
         ModelConfig modelConfig,
         AuthenticationModeConfig authenticationModeConfig,

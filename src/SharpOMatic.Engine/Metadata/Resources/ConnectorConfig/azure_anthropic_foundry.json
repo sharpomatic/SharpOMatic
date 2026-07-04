@@ -1,0 +1,48 @@
+{
+  "Version": 1,
+  "ConfigId": "azure_anthropic_foundry",
+  "DisplayName": "AI Foundry Anthropic",
+  "Description": "Connector to Anthropic models hosted in Azure AI Foundry.",
+  "AuthModes": [
+    {
+      "Id": "api_key",
+      "DisplayName": "API Key",
+      "Kind": 0,
+      "IsDefault": true,
+      "Fields": [
+        {
+          "Name": "resource_name",
+          "Label": "Resource Name",
+          "Description": "Azure AI Foundry resource name, without the URL.",
+          "CallDefined": false,
+          "Type": 0,
+          "IsRequired": true
+        },
+        {
+          "Name": "api_key",
+          "Label": "API key",
+          "Description": "",
+          "CallDefined": false,
+          "Type": 1,
+          "IsRequired": true
+        }
+      ]
+    },
+    {
+      "Id": "default_azure_credential",
+      "DisplayName": "Default Azure Credential",
+      "Kind": 0,
+      "IsDefault": false,
+      "Fields": [
+        {
+          "Name": "resource_name",
+          "Label": "Resource Name",
+          "Description": "Azure AI Foundry resource name, without the URL.",
+          "CallDefined": false,
+          "Type": 0,
+          "IsRequired": true
+        }
+      ]
+    }
+  ]
+}

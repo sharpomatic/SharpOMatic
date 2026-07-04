@@ -19,6 +19,8 @@ public static class ServiceCollectionExtensions
         services.TryAddKeyedScoped<IModelCaller, OpenAIModelCaller>("openai");
         services.TryAddKeyedScoped<IModelCaller, AzureOpenAIModelCaller>("azure_openai");
         services.TryAddKeyedScoped<IModelCaller, GoogleGenAIModelCaller>("google");
+        services.TryAddKeyedScoped<IModelCaller, AnthropicModelCaller>("anthropic");
+        services.TryAddKeyedScoped<IModelCaller, FoundryAnthropicModelCaller>("azure_anthropic_foundry");
         services.AddHostedService<HostedNodeExecutionService>();
 
         // Add empty versions of optional services

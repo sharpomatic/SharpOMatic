@@ -1,7 +1,7 @@
 {
   "Version": 1,
-  "ConfigId": "azure_openai_gpt-5.4",
-  "DisplayName": "gpt-5.4",
+  "ConfigId": "azure_openai_gpt-5.5",
+  "DisplayName": "gpt-5.5",
   "Description": "Reasoning model",
   "ConnectorConfigId": "azure_openai",
   "IsCustom": false,
@@ -10,19 +10,19 @@
       "Name": "ContextWindow",
       "DisplayName": "Context Window",
       "Type": 4,
-      "Value": 128000
+      "Value": 1050000
     },
     {
       "Name": "InputPrice",
       "DisplayName": "Input Price per Milion",
       "Type": 6,
-      "Value": 1.75
+      "Value": 5
     },
     {
       "Name": "OutputPrice",
       "DisplayName": "Output Price per Milion",
       "Type": 6,
-      "Value": 14
+      "Value": 30
     }
   ],
   "Capabilities": [
