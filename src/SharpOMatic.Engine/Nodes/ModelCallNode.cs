@@ -259,6 +259,11 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         private readonly HashSet<string> _openToolCallIds = new(StringComparer.Ordinal);
         private readonly StringBuilder _pendingAssistantText = new();
         private readonly List<StreamEvent> _streamEvents = [];
+
+        // True when this call streams incrementally (matches BaseModelCaller.CallConfiguredAgent's routing).
+        // When false the response is fetched/replayed as a whole, so instead of awaiting one progress push per
+        // event we buffer the events and push them in a single batched call from PersistAsync.
+        private readonly bool _liveStreaming = !(node.BatchOutput || node.IsAgUiResponseStreamSuppressed());
         private bool _hasTextUpdates;
         private bool _hasReasoningUpdates;
         private bool _hasToolCallUpdates;
@@ -375,11 +380,23 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                 await CloseToolCallAsync(toolCallId);
         }
 
-        public Task PersistAsync()
+        public async Task PersistAsync()
         {
-            return _streamEvents.Count == 0
-                ? Task.CompletedTask
-                : processContext.RepositoryService.AppendStreamEvents(CompactStreamEvents(_streamEvents));
+            if (_streamEvents.Count == 0)
+                return;
+
+            var compacted = CompactStreamEvents(_streamEvents);
+            await processContext.RepositoryService.AppendStreamEvents(compacted);
+
+            // In live-streaming mode each event was already pushed to progress services as it was produced.
+            // In batch mode nothing has been pushed yet, so emit the whole compacted set in one call rather
+            // than N awaited round-trips.
+            if (_liveStreaming)
+                return;
+
+            List<StreamEventProgressItem> updates = compacted.Select(streamEvent => new StreamEventProgressItem() { Event = streamEvent, Silent = false }).ToList();
+            foreach (var progressService in processContext.ProgressServices)
+                await progressService.StreamEventProgress(processContext.Run, updates);
         }
 
         public async Task ApplyBatchResponseFallbackAsync(IList<ChatMessage> responses)
@@ -850,6 +867,10 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             };
 
             _streamEvents.Add(streamEvent);
+
+            // Batch mode defers all pushes to a single call in PersistAsync; only live streaming pushes per event.
+            if (!_liveStreaming)
+                return;
 
             List<StreamEventProgressItem> updates = [new StreamEventProgressItem() { Event = streamEvent, Silent = false }];
             foreach (var progressService in processContext.ProgressServices)

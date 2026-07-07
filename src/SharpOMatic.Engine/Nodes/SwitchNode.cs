@@ -24,12 +24,13 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node) : Ru
 
             if (!string.IsNullOrWhiteSpace(switcher.Code))
             {
-                var options = ProcessContext.ScriptOptionsService.GetScriptOptions();
                 object? result;
 
                 try
                 {
-                    result = await CSharpScript.EvaluateAsync(switcher.Code, options, globals, typeof(ScriptCodeContext));
+                    // Compiled once and cached per (code, globals type); reused on every execution.
+                    var runner = ProcessContext.ScriptOptionsService.GetScriptRunner(switcher.Code, typeof(ScriptCodeContext));
+                    result = await runner(globals);
                 }
                 catch (CompilationErrorException e1)
                 {

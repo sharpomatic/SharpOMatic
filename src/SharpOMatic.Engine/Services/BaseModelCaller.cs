@@ -255,7 +255,13 @@ public abstract class BaseModelCaller : IModelCaller
         ModelCallExitState? modelCallExitState = null
     )
     {
-        var result = node.BatchOutput
+        // Use the (non-streaming) batch path when the author explicitly requested batch output, OR when the
+        // response cannot produce any incremental AG-UI events anyway. In the latter case streaming from the
+        // provider would only add per-chunk parsing/allocation cost for updates that are all suppressed, so we
+        // fetch the whole response in one RunAsync call instead. The progress sink derives the same predicate,
+        // so event materialisation (informations + any Always-tool events) is unchanged.
+        var useBatch = node.BatchOutput || node.IsAgUiResponseStreamSuppressed();
+        var result = useBatch
             ? await CallAgent(agent, chat, chatOptions, jsonOutput, node)
             : await CallStreamingAgent(agent, chat, chatOptions, jsonOutput, node, progressSink);
 

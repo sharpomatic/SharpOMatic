@@ -1543,6 +1543,109 @@ public sealed class ModelCallStreamingUnitTests
         }
     }
 
+    [Fact]
+    public async Task Batch_model_call_pushes_all_stream_events_in_a_single_progress_call()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddModelCall("model")
+            .AddEnd()
+            .Connect("start", "model")
+            .Connect("model", "end")
+            .Build();
+
+        var model = CreateModel("batch");
+        ConfigureModelNode(workflow, "model", model.ModelId, batchOutput: true);
+        var progress = new CapturingProgressService();
+
+        using var provider = WorkflowRunner.BuildProvider(services =>
+        {
+            services.AddSingleton<IProgressService>(progress);
+            services.AddKeyedScoped<IModelCaller, BatchFallbackTestModelCaller>("batch");
+        });
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "batch", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            // Improvement: batch mode buffers events and pushes them all in ONE StreamEventProgress call
+            // (one status entry per push), instead of one awaited push per event.
+            Assert.Equal(1, progress.StreamEventStatuses.Count);
+            Assert.All(progress.StreamEventStatuses, status => Assert.Equal(RunStatus.Running, status));
+
+            // The single push must still carry the complete set of events (nothing dropped by batching).
+            var persisted = await repositoryService.GetRunStreamEvents(run.RunId);
+            Assert.Equal(persisted.Count, progress.StreamEventKinds.Count);
+            Assert.Contains(StreamEventKind.TextContent, progress.StreamEventKinds);
+            Assert.Contains(StreamEventKind.ReasoningMessageContent, progress.StreamEventKinds);
+            Assert.Contains(StreamEventKind.ToolCallResult, progress.StreamEventKinds);
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task Streaming_model_call_pushes_stream_events_incrementally()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddModelCall("model")
+            .AddEnd()
+            .Connect("start", "model")
+            .Connect("model", "end")
+            .Build();
+
+        var model = CreateModel("openai");
+        ConfigureModelNode(workflow, "model", model.ModelId);
+        var progress = new CapturingProgressService();
+
+        using var provider = WorkflowRunner.BuildProvider(services =>
+        {
+            services.AddSingleton<IProgressService>(progress);
+            services.AddKeyedScoped<IModelCaller, StreamingTestModelCaller>("openai");
+        });
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "openai", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            // Live streaming keeps pushing per event: multiple StreamEventProgress calls, one event each,
+            // so the number of pushes equals the total number of events pushed.
+            Assert.True(progress.StreamEventStatuses.Count > 1);
+            Assert.Equal(progress.StreamEventKinds.Count, progress.StreamEventStatuses.Count);
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
     private static void ConfigureModelNode(
         WorkflowEntity workflow,
         string title,

@@ -7,7 +7,6 @@ public class CodeNode(ThreadContext threadContext, CodeNodeEntity node) : RunNod
     {
         if (!string.IsNullOrWhiteSpace(Node.Code))
         {
-            var options = ProcessContext.ScriptOptionsService.GetScriptOptions();
             var globals = new CodeNodeScriptContext()
             {
                 Context = ThreadContext.NodeContext,
@@ -20,7 +19,9 @@ public class CodeNode(ThreadContext threadContext, CodeNodeEntity node) : RunNod
 
             try
             {
-                var result = await CSharpScript.RunAsync(Node.Code, options, globals, typeof(CodeNodeScriptContext));
+                // Compiled once and cached per (code, globals type); reused on every execution.
+                var runner = ProcessContext.ScriptOptionsService.GetScriptRunner(Node.Code, typeof(CodeNodeScriptContext));
+                var result = await runner(globals);
             }
             catch (CompilationErrorException e1)
             {

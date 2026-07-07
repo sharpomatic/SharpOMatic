@@ -655,7 +655,6 @@ public class EngineService(
                         case ContextEntryType.Expression:
                             if (!string.IsNullOrWhiteSpace(columnData.StringValue))
                             {
-                                var options = scriptOptionsService.GetScriptOptions();
                                 var expressionContext = new ContextObject();
                                 var globals = new ScriptCodeContext()
                                 {
@@ -667,7 +666,9 @@ public class EngineService(
 
                                 try
                                 {
-                                    var result = await CSharpScript.EvaluateAsync(columnData.StringValue, options, globals, typeof(ScriptCodeContext));
+                                    // Compiled once and cached per (code, globals type); reused on every execution.
+                                    var runner = scriptOptionsService.GetScriptRunner(columnData.StringValue, typeof(ScriptCodeContext));
+                                    var result = await runner(globals);
                                     inputContext.Set(ContextPath(column), result);
                                 }
                                 catch (CompilationErrorException e1)

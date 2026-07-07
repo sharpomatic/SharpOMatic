@@ -61,7 +61,6 @@ public static class ContextHelpers
             case ContextEntryType.Expression:
                 if (!string.IsNullOrWhiteSpace(entry.EntryValue))
                 {
-                    var options = scriptOptionsService.GetScriptOptions();
                     var repositoryService = serviceProvider.GetRequiredService<IRepositoryService>();
                     var assetStore = serviceProvider.GetRequiredService<IAssetStore>();
                     var globals = new ScriptCodeContext()
@@ -74,7 +73,9 @@ public static class ContextHelpers
 
                     try
                     {
-                        entryValue = await CSharpScript.EvaluateAsync(entry.EntryValue, options, globals, typeof(ScriptCodeContext));
+                        // Compiled once and cached per (code, globals type); reused on every execution.
+                        var runner = scriptOptionsService.GetScriptRunner(entry.EntryValue, typeof(ScriptCodeContext));
+                        entryValue = await runner(globals);
                     }
                     catch (CompilationErrorException e1)
                     {

@@ -38,6 +38,10 @@ public class ScriptOptionsService : IScriptOptionsService
     private readonly IReadOnlyCollection<string> _imports;
     private readonly ScriptOptions _options;
 
+    // Compiled scripts are cached per (code, globalsType). Lazy with ExecutionAndPublication guarantees the
+    // (expensive) Roslyn compilation runs at most once per key, even under concurrent access from many threads.
+    private readonly ConcurrentDictionary<(string Code, Type GlobalsType), Lazy<ScriptRunner<object>>> _runnerCache = new();
+
     public ScriptOptionsService(IEnumerable<Assembly> assemblies, IEnumerable<string> imports)
     {
         var assemblySet = new HashSet<Assembly>(s_defaultAssemblies);
@@ -64,4 +68,20 @@ public class ScriptOptionsService : IScriptOptionsService
     public IReadOnlyCollection<string> GetImports() => _imports;
 
     public ScriptOptions GetScriptOptions() => _options;
+
+    public ScriptRunner<object> GetScriptRunner(string code, Type globalsType)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+        ArgumentNullException.ThrowIfNull(globalsType);
+
+        var lazy = _runnerCache.GetOrAdd(
+            (code, globalsType),
+            key => new Lazy<ScriptRunner<object>>(
+                () => CSharpScript.Create<object>(key.Code, _options, key.GlobalsType).CreateDelegate(),
+                LazyThreadSafetyMode.ExecutionAndPublication
+            )
+        );
+
+        return lazy.Value;
+    }
 }
