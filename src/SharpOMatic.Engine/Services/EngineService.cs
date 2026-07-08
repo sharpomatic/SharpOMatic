@@ -182,6 +182,8 @@ public class EngineService(
                 streamConversationId,
                 DeserializeWorkflowSnapshots(previousCheckpoint?.WorkflowSnapshotsJson)
             );
+            
+            processContext.StartRunActivity(null);
             processContext.InitializeStreamSequence(await RepositoryService.GetNextStreamSequence(run.RunId, processContext.StreamConversationId));
 
             NextNodeData nextNode;
@@ -294,6 +296,7 @@ public class EngineService(
             var nodeRunLimit = nodeRunLimitSetting?.ValueInteger ?? NodeExecutionService.DEFAULT_NODE_RUN_LIMIT;
 
             var processContext = new ProcessContext(serviceScope, run, nodeRunLimit, completionSource);
+            processContext.StartRunActivity(workflow.Name);
             processContext.InitializeStreamSequence(await RepositoryService.GetNextStreamSequence(run.RunId, processContext.StreamConversationId));
             var workflowContext = new WorkflowContext(processContext, workflow);
             var threadContext = processContext.CreateThread(nodeContext, workflowContext);

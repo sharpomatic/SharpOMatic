@@ -217,11 +217,16 @@ public sealed class EndNodeUnitTest
     [Fact]
     public async Task End_multiple_end_nodes_last_one_wins()
     {
+        // The slow branch waits until endFast has actually completed (which happens after endFast has
+        // written the run output), so endSlow deterministically overwrites it regardless of scheduling.
         var workflow = new WorkflowBuilder()
             .AddStart()
             .AddFanOut("fanout", ["fast", "slow"])
             .AddCode("fast", "Context.Set<string>(\"output.winner\", \"fast\");")
-            .AddCode("slow", "await Task.Delay(200); Context.Set<string>(\"output.winner\", \"slow\");")
+            .AddCode(
+                "slow",
+                "var gate = (NodeCompletionGate)ServiceProvider.GetService(typeof(NodeCompletionGate)); await gate.WaitForNode(\"endFast\"); Context.Set<string>(\"output.winner\", \"slow\");"
+            )
             .AddEnd("endFast")
             .AddEnd("endSlow")
             .Connect("start", "fanout")
@@ -231,7 +236,7 @@ public sealed class EndNodeUnitTest
             .Connect("slow", "endSlow")
             .Build();
 
-        var run = await WorkflowRunner.RunWorkflow([], workflow);
+        var run = await WorkflowRunner.RunWorkflow([], NodeCompletionGate.Register, workflow);
 
         Assert.NotNull(run);
         Assert.True(run.RunStatus == RunStatus.Success, run.Error);

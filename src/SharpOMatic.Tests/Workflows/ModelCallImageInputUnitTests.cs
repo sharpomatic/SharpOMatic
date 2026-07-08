@@ -54,15 +54,47 @@ public sealed class ModelCallImageInputUnitTests
     {
         var exception = await Assert.ThrowsAsync<SharpOMaticException>(() => InvokeAddImageMessages("library/plan.png"));
 
-        Assert.Equal("Image input path 'input.image' must be an asset, asset list, or image URL.", exception.Message);
+        Assert.Equal("Image input path 'input.image' must be an asset, asset list, or file URL.", exception.Message);
     }
 
     [Fact]
-    public async Task Image_input_path_rejects_url_that_is_not_an_image()
+    public async Task Image_input_path_accepts_document_urls()
     {
-        var exception = await Assert.ThrowsAsync<SharpOMaticException>(() => InvokeAddImageMessages("https://example.com/files/specification.pdf"));
+        ContextList documentInputs =
+        [
+            "https://example.com/files/specification.pdf",
+            "https://example.com/files/notes.txt",
+            "https://example.com/files/report.docx",
+            "https://example.com/files/budget.xlsx",
+            "https://example.com/files/payload.json",
+            "https://example.com/files/feed.xml",
+            "https://example.com/files/pipeline.yml",
+            "https://example.com/files/export.tsv",
+            "https://example.com/files/events.jsonl",
+            "https://example.com/files/page.html",
+        ];
 
-        Assert.Equal("Image input URL 'https://example.com/files/specification.pdf' must resolve to an image media type.", exception.Message);
+        var chat = await InvokeAddImageMessages(documentInputs);
+
+        Assert.Equal(10, chat.Count);
+        Assert.Equal("application/pdf", Assert.IsType<UriContent>(Assert.Single(chat[0].Contents)).MediaType);
+        Assert.Equal("text/plain", Assert.IsType<UriContent>(Assert.Single(chat[1].Contents)).MediaType);
+        Assert.Equal("application/vnd.openxmlformats-officedocument.wordprocessingml.document", Assert.IsType<UriContent>(Assert.Single(chat[2].Contents)).MediaType);
+        Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", Assert.IsType<UriContent>(Assert.Single(chat[3].Contents)).MediaType);
+        Assert.Equal("application/json", Assert.IsType<UriContent>(Assert.Single(chat[4].Contents)).MediaType);
+        Assert.Equal("application/xml", Assert.IsType<UriContent>(Assert.Single(chat[5].Contents)).MediaType);
+        Assert.Equal("application/yaml", Assert.IsType<UriContent>(Assert.Single(chat[6].Contents)).MediaType);
+        Assert.Equal("text/tab-separated-values", Assert.IsType<UriContent>(Assert.Single(chat[7].Contents)).MediaType);
+        Assert.Equal("application/x-ndjson", Assert.IsType<UriContent>(Assert.Single(chat[8].Contents)).MediaType);
+        Assert.Equal("text/html", Assert.IsType<UriContent>(Assert.Single(chat[9].Contents)).MediaType);
+    }
+
+    [Fact]
+    public async Task Image_input_path_rejects_url_with_unsupported_extension()
+    {
+        var exception = await Assert.ThrowsAsync<SharpOMaticException>(() => InvokeAddImageMessages("https://example.com/files/archive.zip"));
+
+        Assert.Equal("Image input URL 'https://example.com/files/archive.zip' must resolve to a supported media type.", exception.Message);
     }
 
     private static async Task<List<ChatMessage>> InvokeAddImageMessages(object? imageValue, bool setImageValue = true)

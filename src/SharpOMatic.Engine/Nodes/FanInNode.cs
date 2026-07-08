@@ -34,9 +34,15 @@ public class FanInNode(ThreadContext threadContext, FanInNodeEntity node) : RunN
             }
 
             fanOutContext.FanInArrived++;
+            NodeActivity?.SetTag("sharpomatic.fan_in.arrival", fanOutContext.FanInArrived);
+            NodeActivity?.SetTag("sharpomatic.fan_in.expected", fanOutContext.FanOutCount);
+            NodeActivity?.SetTag("sharpomatic.fan_in.completed", fanOutContext.FanInArrived == fanOutContext.FanOutCount);
             if (fanOutContext.FanInArrived < fanOutContext.FanOutCount)
             {
-                // Exit thread, exited wait for other threads to arrive
+                // Exit thread, exited wait for other threads to arrive. Retire the thread so its
+                // pre-merge context can never be used as the run output if it performs the final
+                // thread-count decrement after the merging thread has already finished.
+                ThreadContext.Retired = true;
                 return NodeExecutionResult.Continue("Thread arrived", []);
             }
             else

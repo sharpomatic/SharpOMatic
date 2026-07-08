@@ -585,7 +585,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
     }
 
     if (this.supportsImageIn || this.supportsImageOut) {
-      newTabs.push({ id: 'image', title: 'Image', content: this.imageTab });
+      newTabs.push({ id: 'image', title: 'File', content: this.imageTab });
     }
 
     if (this.supportsToolCalling) {

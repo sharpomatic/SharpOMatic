@@ -8,6 +8,7 @@ public class FanOutNode(ThreadContext threadContext, FanOutNodeEntity node) : Ru
         var json = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters);
 
         var connectedOutputs = Node.Outputs.Where(IsOutputConnected).ToList();
+        NodeActivity?.SetTag("sharpomatic.fan_out.branch_count", connectedOutputs.Count);
         if (connectedOutputs.Count == 0)
             return NodeExecutionResult.Continue("No outputs connected", []);
 

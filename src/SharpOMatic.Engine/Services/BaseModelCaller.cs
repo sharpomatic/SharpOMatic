@@ -171,6 +171,24 @@ public abstract class BaseModelCaller : IModelCaller
 
     protected virtual IChatClient CreateFunctionInvokingChatClient(IChatClient chatClient, IServiceProvider? toolServiceProvider)
     {
+        var telemetryOptions = toolServiceProvider?.GetService<IOptions<SharpOMaticTelemetryOptions>>()?.Value ?? new SharpOMaticTelemetryOptions();
+        if (telemetryOptions.Enabled)
+        {
+            chatClient = chatClient
+                .AsBuilder()
+                .UseOpenTelemetry(
+                    sourceName: SharpOMaticDiagnostics.SourceName,
+                    configure: otel =>
+                    {
+                        // Only force sensitive data on; otherwise leave the middleware default,
+                        // which honors OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT.
+                        if (telemetryOptions.EnableSensitiveData)
+                            otel.EnableSensitiveData = true;
+                    }
+                )
+                .Build();
+        }
+
         return new FunctionInvokingChatClient(chatClient, loggerFactory: null, functionInvocationServices: toolServiceProvider)
         {
             FunctionInvoker = async (context, cancellationToken) =>
@@ -555,16 +573,16 @@ public abstract class BaseModelCaller : IModelCaller
                         var item = assetList[i];
                         if (item is AssetRef listAssetRef)
                             await AddAssetImageMessage(chat, processContext, listAssetRef);
-                        else if (item is string listImageUrl)
-                            chat.Add(CreateImageUriMessage(node.ImageInputPath, listImageUrl));
+                        else if (item is string listUrl)
+                            chat.Add(CreateUriMessage(node.ImageInputPath, listUrl));
                         else
-                            throw new SharpOMaticException($"Image input path '{node.ImageInputPath}' contains an entry at index {i} that is not an asset or image URL.");
+                            throw new SharpOMaticException($"Image input path '{node.ImageInputPath}' contains an entry at index {i} that is not an asset or file URL.");
                     }
                 }
-                else if (imageValue is string imageUrl)
-                    chat.Add(CreateImageUriMessage(node.ImageInputPath, imageUrl));
+                else if (imageValue is string url)
+                    chat.Add(CreateUriMessage(node.ImageInputPath, url));
                 else
-                    throw new SharpOMaticException($"Image input path '{node.ImageInputPath}' must be an asset, asset list, or image URL.");
+                    throw new SharpOMaticException($"Image input path '{node.ImageInputPath}' must be an asset, asset list, or file URL.");
             }
         }
     }
@@ -583,19 +601,19 @@ public abstract class BaseModelCaller : IModelCaller
         chat.Add(new ChatMessage(ChatRole.User, [content]));
     }
 
-    private static ChatMessage CreateImageUriMessage(string imageInputPath, string imageUrl)
+    private static ChatMessage CreateUriMessage(string imageInputPath, string url)
     {
-        if (string.IsNullOrWhiteSpace(imageUrl) || !Uri.TryCreate(imageUrl.Trim(), UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
-            throw new SharpOMaticException($"Image input path '{imageInputPath}' must be an asset, asset list, or image URL.");
+        if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
+            throw new SharpOMaticException($"Image input path '{imageInputPath}' must be an asset, asset list, or file URL.");
 
-        var mediaType = GetImageMediaType(uri);
+        var mediaType = GetMediaType(uri);
         if (string.IsNullOrWhiteSpace(mediaType))
-            throw new SharpOMaticException($"Image input URL '{uri}' must resolve to an image media type.");
+            throw new SharpOMaticException($"Image input URL '{uri}' must resolve to a supported media type.");
 
         return new ChatMessage(ChatRole.User, [new UriContent(uri.ToString(), mediaType)]);
     }
 
-    private static string? GetImageMediaType(Uri uri)
+    private static string? GetMediaType(Uri uri)
     {
         return Path.GetExtension(uri.AbsolutePath).ToLowerInvariant() switch
         {
@@ -611,6 +629,25 @@ public abstract class BaseModelCaller : IModelCaller
             ".tif" => "image/tiff",
             ".tiff" => "image/tiff",
             ".webp" => "image/webp",
+            ".csv" => "text/csv",
+            ".doc" => "application/msword",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".htm" => "text/html",
+            ".html" => "text/html",
+            ".json" => "application/json",
+            ".jsonl" => "application/x-ndjson",
+            ".md" => "text/markdown",
+            ".ndjson" => "application/x-ndjson",
+            ".pdf" => "application/pdf",
+            ".ppt" => "application/vnd.ms-powerpoint",
+            ".pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            ".tsv" => "text/tab-separated-values",
+            ".txt" => "text/plain",
+            ".xls" => "application/vnd.ms-excel",
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".xml" => "application/xml",
+            ".yaml" => "application/yaml",
+            ".yml" => "application/yaml",
             _ => null,
         };
     }

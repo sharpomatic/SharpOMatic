@@ -7,6 +7,7 @@ public abstract class RunNode<T> : IRunNode
     protected T Node { get; init; }
     protected Trace Trace { get; init; }
     protected List<Information> Informations { get; init; }
+    protected System.Diagnostics.Activity? NodeActivity { get; private set; }
     protected ProcessContext ProcessContext => ThreadContext.ProcessContext;
     protected WorkflowContext WorkflowContext => ThreadContext.WorkflowContext;
 
@@ -40,6 +41,8 @@ public abstract class RunNode<T> : IRunNode
         await EnsureRunStarted();
         await NodeRunning();
 
+        NodeActivity = SharpOMaticDiagnostics.StartNodeActivity(ProcessContext, Node);
+        
         try
         {
             var result = request.InvocationKind switch
@@ -54,6 +57,7 @@ public abstract class RunNode<T> : IRunNode
             else
                 await NodeSuccess(result.Message);
 
+            SharpOMaticDiagnostics.CompleteNodeActivity(NodeActivity, Trace.NodeStatus, null);
             return result;
         }
         catch (Exception ex)
@@ -64,6 +68,7 @@ public abstract class RunNode<T> : IRunNode
             var includeOutputContext = !ContextSerializationHelper.IsSerializationFailure(ex);
 
             await NodeFailed(errorMessage, includeOutputContext);
+            SharpOMaticDiagnostics.CompleteNodeActivity(NodeActivity, NodeStatus.Failed, errorMessage);
             throw new SharpOMaticException(errorMessage);
         }
     }

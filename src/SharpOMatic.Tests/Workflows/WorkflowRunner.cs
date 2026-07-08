@@ -3,9 +3,14 @@ namespace SharpOMatic.Tests.Workflows;
 
 public class WorkflowRunner
 {
-    public static async Task<Run> RunWorkflow(ContextObject ctx, params WorkflowEntity[] workflows)
+    public static Task<Run> RunWorkflow(ContextObject ctx, params WorkflowEntity[] workflows)
     {
-        using var provider = BuildProvider();
+        return RunWorkflow(ctx, configureServices: null, workflows);
+    }
+
+    public static async Task<Run> RunWorkflow(ContextObject ctx, Action<IServiceCollection>? configureServices, params WorkflowEntity[] workflows)
+    {
+        using var provider = BuildProvider(configureServices);
 
         // Add all provided workflows to the database
         var repositoryService = provider.GetRequiredService<IRepositoryService>();

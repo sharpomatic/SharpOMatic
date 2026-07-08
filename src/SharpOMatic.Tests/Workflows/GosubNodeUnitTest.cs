@@ -163,7 +163,10 @@ public sealed class GosubNodeUnitTest
             .WithId(subWorkflowId)
             .AddStart()
             .AddFanOut("fanout", ["left", "right"])
-            .AddCode("left", "await Task.Delay(2000); Context.Set<string>(\"result\", \"left\");")
+            .AddCode(
+                "left",
+                "var gate = (NodeCompletionGate)ServiceProvider.GetService(typeof(NodeCompletionGate)); await gate.WaitForNode(\"right-end\"); Context.Set<string>(\"result\", \"left\");"
+            )
             .AddEnd("left-end")
             .AddCode("right", "Context.Set<string>(\"result\", \"right\");")
             .AddEnd("right-end")
@@ -174,7 +177,7 @@ public sealed class GosubNodeUnitTest
             .Connect("right", "right-end")
             .Build();
 
-        var subRun = await WorkflowRunner.RunWorkflow([], subWorkflow);
+        var subRun = await WorkflowRunner.RunWorkflow([], NodeCompletionGate.Register, subWorkflow);
 
         Assert.NotNull(subRun);
         Assert.True(subRun.RunStatus == RunStatus.Success, subRun.Error);
@@ -185,7 +188,7 @@ public sealed class GosubNodeUnitTest
 
         var parentWorkflow = new WorkflowBuilder().WithId(Guid.NewGuid()).AddStart().AddGosub("gosub", subWorkflowId).AddEnd().Connect("start", "gosub").Connect("gosub", "end").Build();
 
-        var parentRun = await WorkflowRunner.RunWorkflow([], parentWorkflow, subWorkflow);
+        var parentRun = await WorkflowRunner.RunWorkflow([], NodeCompletionGate.Register, parentWorkflow, subWorkflow);
 
         Assert.NotNull(parentRun);
         Assert.True(parentRun.RunStatus == RunStatus.Success, parentRun.Error);
@@ -993,7 +996,10 @@ public sealed class GosubNodeUnitTest
             .WithId(childId)
             .AddStart()
             .AddFanOut("fanout", ["left", "right"])
-            .AddCode("left", "await Task.Delay(2000); Context.Set<string>(\"result\", \"left\");")
+            .AddCode(
+                "left",
+                "var gate = (NodeCompletionGate)ServiceProvider.GetService(typeof(NodeCompletionGate)); await gate.WaitForNode(\"right-end\"); Context.Set<string>(\"result\", \"left\");"
+            )
             .AddEnd("left-end")
             .AddCode("right", "Context.Set<string>(\"result\", \"right\");")
             .AddEnd("right-end")
@@ -1031,7 +1037,7 @@ public sealed class GosubNodeUnitTest
             .Connect("gosub", "end")
             .Build();
 
-        var run = await WorkflowRunner.RunWorkflow([], parentWorkflow, childWorkflow);
+        var run = await WorkflowRunner.RunWorkflow([], NodeCompletionGate.Register, parentWorkflow, childWorkflow);
 
         Assert.NotNull(run);
         Assert.True(run.RunStatus == RunStatus.Success, run.Error);

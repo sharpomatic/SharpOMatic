@@ -120,7 +120,12 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
                 }
 
                 if (!continues)
+                {
+                    if (!threadContext.Retired)
+                        processContext.RecordCompletionContext(threadContext.NodeContext);
+
                     processContext.RemoveThread(threadContext);
+                }
             }
 
             if (processContext.UpdateThreadCount(nextNodes.Count - 1) == 0)
@@ -151,12 +156,18 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         processContext.Run.Error = error;
         processContext.Run.Stopped = DateTime.Now;
 
-        // If no EndNode was encountered then use the output of the last run node
+        // If no EndNode was encountered then use the output of the last run node. A retired thread
+        // (fan-in early arrival, in-flight batch slice) may perform the final decrement after the real
+        // last chain has finished, so its stale context must not win over the recorded completion context.
         if (processContext.Run.OutputContext is null)
         {
+            var completionContext = threadContext.Retired
+                ? processContext.CompletionContext ?? threadContext.NodeContext
+                : threadContext.NodeContext;
+
             try
             {
-                processContext.Run.OutputContext = ContextSerializationHelper.SerializeForPersistence(threadContext.NodeContext, processContext.JsonConverters);
+                processContext.Run.OutputContext = ContextSerializationHelper.SerializeForPersistence(completionContext, processContext.JsonConverters);
             }
             catch (SharpOMaticException ex)
             {
@@ -176,7 +187,8 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
 
         processContext.CompletionSource?.TrySetResult(processContext.Run);
 
-        await AppendWorkflowRunMetric(processContext, threadContext, exception, failedNode);
+        var runMetric = await AppendWorkflowRunMetric(processContext, threadContext, exception, failedNode);
+        SharpOMaticDiagnostics.CompleteRunActivity(processContext.RunActivity, processContext.Run, runMetric);
 
         await PruneExecutionHistory(processContext);
 
@@ -200,7 +212,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         processContext.ServiceScope.Dispose();
     }
 
-    private static async Task AppendWorkflowRunMetric(ProcessContext processContext, ThreadContext threadContext, Exception? exception, NodeEntity? failedNode)
+    private static async Task<WorkflowRunMetric?> AppendWorkflowRunMetric(ProcessContext processContext, ThreadContext threadContext, Exception? exception, NodeEntity? failedNode)
     {
         try
         {
@@ -213,34 +225,36 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             var started = run.Started ?? run.Created;
             var finished = run.Stopped ?? DateTime.Now;
 
-            await processContext.RepositoryService.AppendWorkflowRunMetric(
-                new WorkflowRunMetric()
-                {
-                    Id = Guid.NewGuid(),
-                    Created = DateTime.UtcNow,
-                    Started = started,
-                    Finished = finished,
-                    Duration = Math.Max(0, (long)(finished - started).TotalMilliseconds),
-                    RunId = run.RunId,
-                    WorkflowId = run.WorkflowId,
-                    WorkflowName = workflow.Name,
-                    WorkflowVersion = workflow.Version,
-                    Succeeded = run.RunStatus == RunStatus.Success,
-                    RunStatus = run.RunStatus,
-                    ErrorType = exception?.GetType().FullName,
-                    ErrorMessage = string.IsNullOrWhiteSpace(run.Error) ? null : run.Error,
-                    FailedNodeEntityId = failedNode?.Id,
-                    FailedNodeTitle = failedNode?.Title,
-                    FailedNodeType = failedNode?.NodeType,
-                    ConversationId = run.ConversationId,
-                    TurnNumber = run.TurnNumber,
-                    IsConversationRun = !string.IsNullOrWhiteSpace(run.ConversationId),
-                }
-            );
+            var metric = new WorkflowRunMetric()
+            {
+                Id = Guid.NewGuid(),
+                Created = DateTime.UtcNow,
+                Started = started,
+                Finished = finished,
+                Duration = Math.Max(0, (long)(finished - started).TotalMilliseconds),
+                RunId = run.RunId,
+                WorkflowId = run.WorkflowId,
+                WorkflowName = workflow.Name,
+                WorkflowVersion = workflow.Version,
+                Succeeded = run.RunStatus == RunStatus.Success,
+                RunStatus = run.RunStatus,
+                ErrorType = exception?.GetType().FullName,
+                ErrorMessage = string.IsNullOrWhiteSpace(run.Error) ? null : run.Error,
+                FailedNodeEntityId = failedNode?.Id,
+                FailedNodeTitle = failedNode?.Title,
+                FailedNodeType = failedNode?.NodeType,
+                ConversationId = run.ConversationId,
+                TurnNumber = run.TurnNumber,
+                IsConversationRun = !string.IsNullOrWhiteSpace(run.ConversationId),
+            };
+
+            await processContext.RepositoryService.AppendWorkflowRunMetric(metric);
+            return metric;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to append workflow run metric for run '{processContext.Run.RunId}': {ex.Message}");
+            return null;
         }
     }
 
@@ -392,6 +406,9 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             }
         }
 
+        // Other batch slices are still in flight; retire this thread so its slice context cannot
+        // become the run output if it performs the final thread-count decrement late.
+        threadContext.Retired = true;
         threadContext.BatchIndex = null;
         return true;
     }

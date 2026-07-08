@@ -68,11 +68,13 @@ public class SwitchNode(ThreadContext threadContext, SwitchNodeEntity node) : Ru
                     if (!IsOutputConnected(Node.Outputs[i]))
                         continue;
 
+                    NodeActivity?.SetTag("sharpomatic.switch.selected", switcher.Name);
                     return NodeExecutionResult.Continue($"Switched to {switcher.Name}", [new NextNodeData(ThreadContext, WorkflowContext.ResolveOutput(Node.Outputs[i]))]);
                 }
             }
         }
 
+        NodeActivity?.SetTag("sharpomatic.switch.selected", Node.Switches[lastIndex].Name);
         return NodeExecutionResult.Continue($"Switched to {Node.Switches[lastIndex].Name}", [new NextNodeData(ThreadContext, WorkflowContext.ResolveOutput(Node.Outputs[lastIndex]))]);
     }
 }

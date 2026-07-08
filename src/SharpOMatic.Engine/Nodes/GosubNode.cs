@@ -9,6 +9,9 @@ public class GosubNode(ThreadContext threadContext, GosubNodeEntity node) : RunN
             throw new SharpOMaticException("Gosub node workflow id must be set.");
 
         var workflow = await ProcessContext.GetOrCreatePinnedWorkflow(Node.WorkflowId.Value);
+        NodeActivity?.SetTag("sharpomatic.gosub.workflow_id", Node.WorkflowId.Value);
+        NodeActivity?.SetTag("sharpomatic.gosub.workflow_name", workflow.Name);
+        
         var startNodes = workflow.Nodes.Where(n => n.NodeType == NodeType.Start).ToList();
         if (startNodes.Count != 1)
             throw new SharpOMaticException("Must have exactly one start node.");

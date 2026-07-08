@@ -14,6 +14,11 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         {
             // Validate and load the model and connector instances
             (var model, var modelConfig, var connector, var connectorConfig) = await LoadModelAndConnector(metric);
+            NodeActivity?.SetTag("sharpomatic.model.name", metric.ModelName);
+            NodeActivity?.SetTag("sharpomatic.model.config", metric.ModelConfigId);
+            NodeActivity?.SetTag("sharpomatic.connector.name", metric.ConnectorName);
+            NodeActivity?.SetTag("sharpomatic.connector.config", metric.ConnectorConfigId);
+            
             var progressSink = new ModelCallNodeProgressSink(ProcessContext, Trace, Informations, Node);
 
             // Get the implementation for the specific connector config
@@ -24,6 +29,18 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             // Use specific implementation to perform call for us
             var result = await caller.Call(model, modelConfig, connector, connectorConfig, ProcessContext, ThreadContext, Node, progressSink);
             ApplyUsage(metric, result, modelConfig);
+
+            if (NodeActivity is not null)
+            {
+                if (metric.ProviderModelName is not null)
+                    NodeActivity.SetTag("gen_ai.request.model", metric.ProviderModelName);
+                if (metric.InputTokens.HasValue)
+                    NodeActivity.SetTag("gen_ai.usage.input_tokens", metric.InputTokens.Value);
+                if (metric.OutputTokens.HasValue)
+                    NodeActivity.SetTag("gen_ai.usage.output_tokens", metric.OutputTokens.Value);
+                if (metric.TotalCost.HasValue)
+                    NodeActivity.SetTag("sharpomatic.model_call.total_cost", (double)metric.TotalCost.Value);
+            }
 
             if (!string.IsNullOrWhiteSpace(Node.TextOutputPath) && !ThreadContext.NodeContext.TrySet(Node.TextOutputPath, result.ResultValue))
                 throw new SharpOMaticException($"Could not set '{Node.TextOutputPath}' into context.");

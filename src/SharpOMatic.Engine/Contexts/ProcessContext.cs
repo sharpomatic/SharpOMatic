@@ -1,3 +1,5 @@
+using SharpOMatic.Engine.Services;
+
 namespace SharpOMatic.Engine.Contexts;
 
 public class ProcessContext : ExecutionContext
@@ -6,6 +8,7 @@ public class ProcessContext : ExecutionContext
     private readonly ConcurrentDictionary<int, ThreadContext> _threads = new();
     private readonly ConcurrentDictionary<Guid, string> _pinnedWorkflowSnapshots = new();
     private TaskCompletionSource<Run>? _completionSource;
+    private ContextObject? _completionContext;
 
     private int _threadId = 1;
     private int _threadCount = 1;
@@ -29,6 +32,8 @@ public class ProcessContext : ExecutionContext
     public int? ConversationTurnNumber { get; }
     public string? StreamConversationId { get; }
     public PendingConversationSuspend? PendingConversationSuspend { get; private set; }
+    public SharpOMaticTelemetryOptions TelemetryOptions { get; }
+    public System.Diagnostics.Activity? RunActivity { get; private set; }
     public TaskCompletionSource<Run>? CompletionSource { get; }
     public int ActiveThreadCount => _threadCount;
     public int RunNodeLimit => _runNodeLimit;
@@ -64,6 +69,7 @@ public class ProcessContext : ExecutionContext
         SchemaTypeRegistry = serviceScope.ServiceProvider.GetRequiredService<ISchemaTypeRegistry>();
         ScriptOptionsService = serviceScope.ServiceProvider.GetRequiredService<IScriptOptionsService>();
         JsonConverters = serviceScope.ServiceProvider.GetRequiredService<IJsonConverterService>().GetConverters();
+        TelemetryOptions = serviceScope.ServiceProvider.GetService<IOptions<SharpOMaticTelemetryOptions>>()?.Value ?? new SharpOMaticTelemetryOptions();
         _runNodeLimit = runNodeLimit;
         CompletionSource = completionSource;
         _completionSource = completionSource;
@@ -75,6 +81,12 @@ public class ProcessContext : ExecutionContext
         }
 
         TrackContext(this);
+    }
+
+    public void StartRunActivity(string? workflowName)
+    {
+        if (TelemetryOptions.Enabled)
+            RunActivity = SharpOMaticDiagnostics.StartRunActivity(Run, workflowName);
     }
 
     public ThreadContext CreateThread(ContextObject nodeContext, ExecutionContext currentContext, bool incrementGosubThreads = true)
@@ -97,6 +109,13 @@ public class ProcessContext : ExecutionContext
     public void RemoveThread(ThreadContext threadContext)
     {
         _threads.TryRemove(threadContext.ThreadId, out _);
+    }
+
+    public ContextObject? CompletionContext => Volatile.Read(ref _completionContext);
+
+    public void RecordCompletionContext(ContextObject nodeContext)
+    {
+        Volatile.Write(ref _completionContext, nodeContext);
     }
 
     public int UpdateThreadCount(int delta)

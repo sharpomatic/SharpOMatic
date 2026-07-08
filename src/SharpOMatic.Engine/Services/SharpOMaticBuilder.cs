@@ -59,6 +59,14 @@ public class SharpOMaticBuilder
 
     public SharpOMaticBuilder AddScriptOptions(Assembly[] assemblies, string[] imports) => AddScriptOptions((IEnumerable<Assembly>)assemblies, (IEnumerable<string>)imports);
 
+    public SharpOMaticBuilder AddTelemetry(Action<SharpOMaticTelemetryOptions> telemetryOptionsAction)
+    {
+        ArgumentNullException.ThrowIfNull(telemetryOptionsAction);
+        Services.Configure(telemetryOptionsAction);
+
+        return this;
+    }
+
     public SharpOMaticBuilder AddRepository(
         Action<DbContextOptionsBuilder> optionsAction,
         Action<SharpOMaticDbOptions>? dbOptionsAction = null

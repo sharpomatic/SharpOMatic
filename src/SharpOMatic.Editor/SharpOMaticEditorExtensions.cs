@@ -53,6 +53,7 @@ public static class SharpOMaticEditorExtensions
         var indexHtml = LoadIndexHtml(fileProvider, editorPath, options);
 
         app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider, RequestPath = editorPath });
+        app.UseStaticFiles(new StaticFileOptions { FileProvider = fileProvider, RequestPath = normalizedBasePath });
 
         app.MapHub<NotificationHub>(notificationPath);
 

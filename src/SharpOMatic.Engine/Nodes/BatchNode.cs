@@ -20,6 +20,10 @@ public class BatchNode(ThreadContext threadContext, BatchNodeEntity node) : RunN
         if (arrayValue is not ContextList arrayList)
             throw new SharpOMaticException($"Batch node input array path '{Node.InputArrayPath}' must be a context list.");
 
+        NodeActivity?.SetTag("sharpomatic.batch.item_count", arrayList.Count);
+        NodeActivity?.SetTag("sharpomatic.batch.batch_size", Node.BatchSize);
+        NodeActivity?.SetTag("sharpomatic.batch.parallel_batches", Node.ParallelBatches);
+
         var baseContextJson = ThreadContext.NodeContext.Serialize(ProcessContext.JsonConverters);
 
         NodeEntity? continueNode = null;

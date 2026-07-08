@@ -8,5 +8,6 @@ public class ThreadContext(ProcessContext processContext, ExecutionContext curre
     public int ThreadId { get; } = processContext.GetNextThreadId();
     public Guid NodeId { get; set; }
     public int? BatchIndex { get; set; }
+    public bool Retired { get; set; }
     public WorkflowContext WorkflowContext => CurrentContext.GetWorkflowContext();
 }

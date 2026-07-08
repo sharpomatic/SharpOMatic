@@ -33,6 +33,64 @@ public sealed class FanOutInUnitTests
     }
 
     [Fact]
+    public async Task FanOutIn_merge_survives_thread_scheduling_order()
+    {
+        // Regression: whichever branch thread performed the final thread-count decrement used to
+        // supply the run output. A fan-in early arrival delayed past the merging thread would then
+        // complete the run with its stale branch context instead of the merged context.
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddFanOut("fanout", ["first", "second", "third", "fourth"])
+            .AddCode("first", "Context.Set<int>(\"output\", 1);")
+            .AddCode("second", "Context.Set<int>(\"output\", 2);")
+            .AddCode("third", "Context.Set<int>(\"output\", 3);")
+            .AddCode("fourth", "Context.Set<int>(\"output\", 4);")
+            .AddFanIn("fanin")
+            .Connect("start", "fanout")
+            .Connect("fanout.first", "first")
+            .Connect("fanout.second", "second")
+            .Connect("fanout.third", "third")
+            .Connect("fanout.fourth", "fourth")
+            .Connect("first", "fanin")
+            .Connect("second", "fanin")
+            .Connect("third", "fanin")
+            .Connect("fourth", "fanin")
+            .Build();
+
+        using var provider = WorkflowRunner.BuildProvider();
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engine = scope.ServiceProvider.GetRequiredService<IEngineService>();
+
+            for (var iteration = 0; iteration < 25; iteration++)
+            {
+                var run = await engine.StartWorkflowRunAndWait(workflow.Id, []);
+
+                Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+                Assert.NotNull(run.OutputContext);
+                var outCtx = ContextObject.Deserialize(run.OutputContext);
+                Assert.NotNull(outCtx);
+                Assert.True(outCtx.TryGetList("output", out var list), $"Iteration {iteration}: merged output list missing.");
+                Assert.NotNull(list);
+                Assert.Equal(4, list.Count);
+            }
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
     public async Task FanOutIn_preserves_parent_context()
     {
         var workflow = new WorkflowBuilder()
@@ -265,11 +323,16 @@ public sealed class FanOutInUnitTests
     [Fact]
     public async Task FanOut_without_fanin_uses_last_branch_context()
     {
+        // The second branch waits until the first branch's node has completed before finishing, so
+        // the second branch reliably exits last and supplies the run output.
         var workflow = new WorkflowBuilder()
             .AddStart()
             .AddFanOut("fanout", ["first", "second"])
             .AddCode("first", "Context.Set<string>(\"output.winner\", \"first\");")
-            .AddCode("second", "await Task.Delay(200); Context.Set<string>(\"output.winner\", \"second\");")
+            .AddCode(
+                "second",
+                "var gate = (NodeCompletionGate)ServiceProvider.GetService(typeof(NodeCompletionGate)); await gate.WaitForNode(\"first\"); await Task.Delay(100); Context.Set<string>(\"output.winner\", \"second\");"
+            )
             .Connect("start", "fanout")
             .Connect("fanout.first", "first")
             .Connect("fanout.second", "second")
@@ -278,7 +341,7 @@ public sealed class FanOutInUnitTests
         ContextObject ctx = [];
         ctx.Set<int>("input.value", 10);
 
-        var run = await WorkflowRunner.RunWorkflow(ctx, workflow);
+        var run = await WorkflowRunner.RunWorkflow(ctx, NodeCompletionGate.Register, workflow);
 
         Assert.NotNull(run);
         Assert.True(run.RunStatus == RunStatus.Success, run.Error);
