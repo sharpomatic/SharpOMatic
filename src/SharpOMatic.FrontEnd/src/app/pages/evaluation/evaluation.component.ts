@@ -201,6 +201,10 @@ export class EvaluationComponent
     this.saveChanges().subscribe();
   }
 
+  goBackToEvaluations(): void {
+    void this.router.navigate(['/evaluations']);
+  }
+
   canStartRun(): boolean {
     return (
       !this.isStartingRun &&

@@ -8,6 +8,12 @@
   font-size: 1.5rem;
 }
 
+.run-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .run-layout {
   min-height: 0;
   height: 100%;

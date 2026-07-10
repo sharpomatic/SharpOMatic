@@ -109,6 +109,12 @@ export class EvaluationRunComponent implements OnInit, OnDestroy {
     return this.selectedRunRowId === row.evalRunRowId;
   }
 
+  goBackToRuns(): void {
+    void this.router.navigate(['/evaluations', this.evalConfigId], {
+      queryParams: { tab: 'runs' },
+    });
+  }
+
   get selectedRunRow(): EvalRunRowDetailSnapshot | null {
     if (!this.selectedRunRowId) {
       return null;
