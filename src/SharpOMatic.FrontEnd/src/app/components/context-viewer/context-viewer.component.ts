@@ -4,9 +4,12 @@ import {
   Input,
   OnChanges,
   SimpleChanges,
+  inject,
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { BsModalService } from 'ngx-bootstrap/modal';
+import { ValueViewerDialogComponent } from '../../dialogs/value-viewer/value-viewer-dialog.component';
 import { formatByteSize } from '../../helper/format-size';
 
 interface ContextNode {
@@ -17,6 +20,7 @@ interface ContextNode {
   fullLength: number;
   displayLength: string;
   isTruncated: boolean;
+  isStringValue: boolean;
   showFull: boolean;
   children: ContextNode[];
   expanded: boolean;
@@ -34,6 +38,8 @@ const MAX_DISPLAY_LENGTH = 1000;
   styleUrls: ['./context-viewer.component.scss'],
 })
 export class ContextViewerComponent implements OnChanges {
+  private readonly modalService = inject(BsModalService);
+
   @Input() contexts: string[] = [];
   @Input() mode: 'full' | 'simple' = 'full';
 
@@ -128,6 +134,24 @@ export class ContextViewerComponent implements OnChanges {
     this.contextTree.set([...this.contextTree()]);
   }
 
+  isStringNode(node: ContextNode): boolean {
+    return node.isStringValue;
+  }
+
+  openValueViewer(node: ContextNode): void {
+    if (!this.isStringNode(node)) {
+      return;
+    }
+
+    this.modalService.show(ValueViewerDialogComponent, {
+      initialState: {
+        title: node.name,
+        value: node.fullValue,
+      },
+      class: 'modal-fullscreen value-viewer-modal',
+    });
+  }
+
   private buildNodesFromObject(obj: Record<string, unknown>): ContextNode[] {
     return Object.entries(obj).map(([name, payload]) =>
       this.toContextNode(name, payload),
@@ -152,6 +176,7 @@ export class ContextViewerComponent implements OnChanges {
         fullLength: 0,
         displayLength: '',
         isTruncated: false,
+        isStringValue: false,
         showFull: false,
         children,
         expanded: false,
@@ -172,6 +197,7 @@ export class ContextViewerComponent implements OnChanges {
         fullLength: 0,
         displayLength: '',
         isTruncated: false,
+        isStringValue: false,
         showFull: false,
         children,
         expanded: false,
@@ -187,6 +213,7 @@ export class ContextViewerComponent implements OnChanges {
       fullLength: formatted.fullLength,
       displayLength: formatted.displayLength,
       isTruncated: formatted.isTruncated,
+      isStringValue: typeof payloadObject.value === 'string',
       showFull: false,
       children: [],
       expanded: false,

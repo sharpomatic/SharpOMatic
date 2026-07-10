@@ -21,6 +21,8 @@ The workflow context is always an instance of **ContextObject**.
 You can add **ContextObject** and **ContextList** instances as values, allowing the creation of arbitrary hierarchies.
 Values can also be any of the standard scalar types in C# such as **string**, **bool**, **int**, **DateTimeOffset**, and so forth.
 
+In the editor, context snapshots are shown as a tree with each entry's type, name, and value. String entries include a **View** action that opens the full string value in a read-only dialog, which is useful when the inline value is too long to inspect comfortably. If the string contains JSON, the dialog defaults to a formatted JSON view and also allows switching back to the original text.
+
 You can use code to create a context using object initialization format.
 
 ```csharp
