@@ -2201,6 +2201,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (columns.Count == 0)
             return;
 
+        ValidateEvalColumns(columns);
+
         var ids = columns.Select(row => row.EvalColumnId).Distinct().ToList();
         var entities = await (from run in dbContext.EvalColumns where ids.Contains(run.EvalColumnId) select run).ToListAsync();
 
@@ -2238,6 +2240,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (rows.Count == 0)
             return;
 
+        NormalizeAndValidateEvalRows(rows);
+
         var ids = rows.Select(row => row.EvalRowId).Distinct().ToList();
         var entities = await (from run in dbContext.EvalRows where ids.Contains(run.EvalRowId) select run).ToListAsync();
 
@@ -2259,6 +2263,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         if (rows.Count == 0)
             return;
+
+        NormalizeAndValidateEvalRows(rows);
 
         var rowIds = rows.Select(row => row.EvalRowId).Distinct().ToList();
         if (rowIds.Count != rows.Count)
@@ -2826,7 +2832,62 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             if (gradersByRowId.TryGetValue(row.EvalRunRowId, out var graders))
                 row.Graders = graders;
 
+        await AppendEvalRunRowRepeatSuffixes(dbContext, evalRunId, results);
+
         return results;
+    }
+
+    private static async Task AppendEvalRunRowRepeatSuffixes(SharpOMaticDbContext dbContext, Guid evalRunId, List<EvalRunRowDetail> results)
+    {
+        if (results.Count == 0)
+            return;
+
+        var runRows = await dbContext
+            .EvalRunRows.AsNoTracking()
+            .Where(row => row.EvalRunId == evalRunId)
+            .OrderBy(row => row.Order)
+            .ThenBy(row => row.EvalRunRowId)
+            .Select(row => new { row.EvalRunRowId, row.EvalRowId })
+            .ToListAsync();
+
+        var repeatIndexes = runRows
+            .GroupBy(row => row.EvalRowId)
+            .Where(group => group.Count() > 1)
+            .SelectMany(group => group.Select((row, index) => new { row.EvalRunRowId, Repeat = index + 1 }))
+            .ToDictionary(row => row.EvalRunRowId, row => row.Repeat);
+
+        if (repeatIndexes.Count == 0)
+            return;
+
+        foreach (var result in results)
+            if (repeatIndexes.TryGetValue(result.EvalRunRowId, out var repeat))
+                result.Name = $"{result.Name} ({repeat})";
+    }
+
+    private static void ValidateEvalColumns(List<EvalColumn> columns)
+    {
+        foreach (var column in columns)
+        {
+            var name = column.Name.Trim();
+            if (name.Length == 0)
+                throw new SharpOMaticException("Evaluation column name is required.");
+
+            if (name.Equals("Repeat", StringComparison.OrdinalIgnoreCase))
+                throw new SharpOMaticException("Evaluation column name 'Repeat' is reserved.");
+
+            if (name.Equals("Name", StringComparison.OrdinalIgnoreCase) && column.Order != 0)
+                throw new SharpOMaticException("Evaluation column name 'Name' is reserved for the fixed first column.");
+        }
+    }
+
+    private static void NormalizeAndValidateEvalRows(List<EvalRow> rows)
+    {
+        foreach (var row in rows)
+        {
+            row.Repeat ??= EvalRow.DefaultRepeat;
+            if (row.Repeat < EvalRow.MinRepeat || row.Repeat > EvalRow.MaxRepeat)
+                throw new SharpOMaticException($"Evaluation row repeat must be between {EvalRow.MinRepeat} and {EvalRow.MaxRepeat}.");
+        }
     }
 
     private static IQueryable<EvalConfig> ApplyModelSearch(IQueryable<EvalConfig> evalConfigs, string? search)

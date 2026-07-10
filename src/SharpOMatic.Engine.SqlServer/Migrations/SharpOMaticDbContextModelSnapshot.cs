@@ -350,6 +350,10 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<int>("Order")
                         .HasColumnType("int");
 
+                    b.Property<int?>("Repeat")
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.HasKey("EvalRowId");
 
                     b.HasIndex("EvalConfigId");

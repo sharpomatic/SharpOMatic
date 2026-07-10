@@ -346,6 +346,10 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<int>("Order")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("Repeat")
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
+
                     b.HasKey("EvalRowId");
 
                     b.HasIndex("EvalConfigId");

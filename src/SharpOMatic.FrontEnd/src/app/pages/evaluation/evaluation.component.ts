@@ -105,6 +105,8 @@ export class EvaluationComponent
     { value: EvalRunScoreMode.PassRate, label: 'Average pass rate' },
   ];
   public readonly evalRunStatus = EvalRunStatus;
+  public readonly repeatMin = EvalRow.MIN_REPEAT;
+  public readonly repeatMax = EvalRow.MAX_REPEAT;
   private readonly tabIds = new Set([
     'details',
     'columns',
@@ -209,7 +211,9 @@ export class EvaluationComponent
   }
 
   startRun(): void {
-    const rowCount = this.evalConfig.rows().length;
+    const rowCount = this.evalConfig
+      .rows()
+      .filter((row) => row.repeat() > EvalRow.MIN_REPEAT).length;
     const graderCount = this.evalConfig.graders().length;
     const rowLabel = rowCount === 1 ? 'evaluation' : 'evaluations';
     const graderLabel = graderCount === 1 ? 'grader' : 'graders';
@@ -820,6 +824,10 @@ export class EvaluationComponent
     return this.getStringCellValue(row, nameColumn);
   }
 
+  onRowRepeatChange(row: EvalRow, value: string | number | null): void {
+    row.repeat.set(EvalRow.normalizeRepeat(value === '' ? null : value));
+  }
+
   isRowNameInvalid(row: EvalRow): boolean {
     return this.getRowNameValue(row).trim().length === 0;
   }
@@ -957,8 +965,10 @@ export class EvaluationComponent
       return true;
     }
 
+    const normalized = name.toLowerCase();
     return (
-      name.toLowerCase() === EvalConfig.REQUIRED_NAME_COLUMN_NAME.toLowerCase()
+      normalized === EvalConfig.REQUIRED_NAME_COLUMN_NAME.toLowerCase() ||
+      normalized === EvalConfig.REPEAT_FIELD_NAME.toLowerCase()
     );
   }
 
@@ -970,6 +980,10 @@ export class EvaluationComponent
     const name = column.name().trim();
     if (!name.length) {
       return 'Column name is required.';
+    }
+
+    if (name.toLowerCase() === EvalConfig.REPEAT_FIELD_NAME.toLowerCase()) {
+      return `"${EvalConfig.REPEAT_FIELD_NAME}" is reserved for the fixed repeat field.`;
     }
 
     return `"${EvalConfig.REQUIRED_NAME_COLUMN_NAME}" is reserved for the fixed first column.`;

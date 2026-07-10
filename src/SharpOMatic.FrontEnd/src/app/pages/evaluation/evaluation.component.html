@@ -418,6 +418,21 @@
                 </div>
               </div>
             }
+            <div class="mb-3 form-line">
+              <label class="form-label field-label">Repeat</label>
+              <div class="control-column tiny">
+                <input
+                  type="number"
+                  class="form-control w-100"
+                  step="1"
+                  [attr.min]="repeatMin"
+                  [attr.max]="repeatMax"
+                  [ngModel]="row.repeat()"
+                  (ngModelChange)="onRowRepeatChange(row, $event)"
+                  (blur)="onRowRepeatChange(row, $any($event.target).value)"
+                />
+              </div>
+            </div>
           </div>
         } @else {
           <div class="rows-detail-empty text-muted fst-italic">

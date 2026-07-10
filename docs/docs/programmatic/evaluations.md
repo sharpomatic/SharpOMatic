@@ -29,9 +29,10 @@ Optional parameters:
 - `name`: custom display name for the run
 - `sampleCount`: random row sample size
 
-`sampleCount` is optional. If omitted, all rows are run.
-If provided, it must be between `1` and the evaluation row count.
-Rows are chosen randomly for each run.
+`sampleCount` is optional. If omitted, all runnable rows are run according to each row's Repeat value.
+Rows with Repeat `0` are skipped.
+If provided, it must be between `1` and the number of rows whose Repeat value is greater than `0`.
+Rows are chosen randomly for each run, and sampled rows execute once regardless of their Repeat value.
 
 ```csharp
 var engine = serviceProvider.GetRequiredService<IEngineService>();

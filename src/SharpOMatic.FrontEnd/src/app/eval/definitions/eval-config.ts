@@ -24,6 +24,7 @@ export interface EvalConfigSnapshot {
 export class EvalConfig {
   private static readonly DEFAULT_MAX_PARALLEL = 1;
   public static readonly REQUIRED_NAME_COLUMN_NAME = 'Name';
+  public static readonly REPEAT_FIELD_NAME = 'Repeat';
 
   public readonly evalConfigId: string;
   public workflowId: WritableSignal<string | null>;
@@ -395,6 +396,7 @@ export class EvalConfig {
       ...row,
       evalConfigId,
       order: index,
+      repeat: EvalRow.normalizeRepeat(row.repeat),
     }));
   }
 
@@ -478,7 +480,8 @@ export class EvalConfig {
       if (
         left.evalRowId !== right.evalRowId ||
         left.evalConfigId !== right.evalConfigId ||
-        left.order !== right.order
+        left.order !== right.order ||
+        EvalRow.normalizeRepeat(left.repeat) !== EvalRow.normalizeRepeat(right.repeat)
       ) {
         return false;
       }

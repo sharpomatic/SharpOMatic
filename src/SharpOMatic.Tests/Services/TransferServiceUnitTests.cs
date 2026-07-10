@@ -304,6 +304,7 @@ public sealed class TransferServiceUnitTests
         Assert.NotEqual(package.Runs.Single().EvalRunId, importedRuns.Single().EvalRunId);
         Assert.Equal(importedConfig.EvalConfigId, importedRuns.Single().EvalConfigId);
         Assert.Equal(package.Runs.Single().Score, importedRuns.Single().Score);
+        Assert.Equal(package.Rows.Single().Repeat, importedRows.Single().Repeat);
         Assert.Equal(importedRuns.Single().EvalRunId, importedRunRows.Single().EvalRunId);
         Assert.Equal(importedRows.Single().EvalRowId, importedRunRows.Single().EvalRowId);
         Assert.Equal(package.RunRows.Single().OutputContext, importedRunRows.Single().OutputContext);
@@ -447,6 +448,7 @@ public sealed class TransferServiceUnitTests
                     EvalRowId = rowId,
                     EvalConfigId = evalConfigId,
                     Order = 1,
+                    Repeat = 3,
                 },
             ],
             Data =

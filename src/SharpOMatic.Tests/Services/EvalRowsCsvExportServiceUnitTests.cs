@@ -31,9 +31,30 @@ public sealed class EvalRowsCsvExportServiceUnitTests
 
         var lines = SplitLines(csv);
         Assert.Equal(3, lines.Length);
-        Assert.Equal("Name,Age,Score,Flag", lines[0]);
-        Assert.Equal("Alice,42,3.5,true", lines[1]);
-        Assert.Equal("Bob,7,1.25,false", lines[2]);
+        Assert.Equal("Name,Age,Score,Flag,Repeat", lines[0]);
+        Assert.Equal("Alice,42,3.5,true,1", lines[1]);
+        Assert.Equal("Bob,7,1.25,false,1", lines[2]);
+    }
+
+    [Fact]
+    public async Task Export_writes_row_repeat()
+    {
+        var evalConfigId = Guid.NewGuid();
+        var nameColumn = CreateColumn(evalConfigId, "Name", ContextEntryType.String, false, 0);
+        var row = CreateRow(evalConfigId, 0, repeat: 3);
+        var data = new List<EvalData>
+        {
+            CreateStringData(row.EvalRowId, nameColumn.EvalColumnId, "Alice"),
+        };
+        var repository = CreateRepository(evalConfigId, [nameColumn], [row], data);
+        var service = new TransferService(repository.Object, new Mock<IAssetStore>().Object);
+
+        var stream = await service.ExportEvalRowsCsvAsync(evalConfigId);
+        var csv = ReadCsv(stream);
+
+        var lines = SplitLines(csv);
+        Assert.Equal("Name,Repeat", lines[0]);
+        Assert.Equal("Alice,3", lines[1]);
     }
 
     [Fact]
@@ -49,7 +70,7 @@ public sealed class EvalRowsCsvExportServiceUnitTests
 
         var lines = SplitLines(csv);
         Assert.Single(lines);
-        Assert.Equal("Name", lines[0]);
+        Assert.Equal("Name,Repeat", lines[0]);
     }
 
     [Fact]
@@ -67,7 +88,7 @@ public sealed class EvalRowsCsvExportServiceUnitTests
 
         var lines = SplitLines(csv);
         Assert.Single(lines);
-        Assert.Equal("Name", lines[0]);
+        Assert.Equal("Name,Repeat", lines[0]);
     }
 
     [Fact]
@@ -88,7 +109,7 @@ public sealed class EvalRowsCsvExportServiceUnitTests
 
         var lines = SplitLines(csv);
         Assert.Equal(2, lines.Length);
-        Assert.Equal("\"Hello, \"\"world\"\"\"", lines[1]);
+        Assert.Equal("\"Hello, \"\"world\"\"\",1", lines[1]);
     }
 
     [Fact]
@@ -110,7 +131,7 @@ public sealed class EvalRowsCsvExportServiceUnitTests
 
         var lines = SplitLines(csv);
         Assert.Equal(2, lines.Length);
-        Assert.Equal("Alice,", lines[1]);
+        Assert.Equal("Alice,,1", lines[1]);
     }
 
     [Fact]
@@ -133,7 +154,7 @@ public sealed class EvalRowsCsvExportServiceUnitTests
         var lines = SplitLines(csv);
 
         Assert.Equal(2, lines.Length);
-        Assert.Equal("\"Alice, A.\",\"Said \"\"hello\"\"\"", lines[1]);
+        Assert.Equal("\"Alice, A.\",\"Said \"\"hello\"\"\",1", lines[1]);
     }
 
     private static Mock<IRepositoryService> CreateRepository(
@@ -187,9 +208,9 @@ public sealed class EvalRowsCsvExportServiceUnitTests
         };
     }
 
-    private static EvalRow CreateRow(Guid evalConfigId, int order)
+    private static EvalRow CreateRow(Guid evalConfigId, int order, int? repeat = null)
     {
-        return new EvalRow { EvalRowId = Guid.NewGuid(), EvalConfigId = evalConfigId, Order = order };
+        return new EvalRow { EvalRowId = Guid.NewGuid(), EvalConfigId = evalConfigId, Order = order, Repeat = repeat ?? EvalRow.DefaultRepeat };
     }
 
     private static EvalData CreateStringData(Guid rowId, Guid columnId, string value) =>

@@ -84,6 +84,8 @@ public class SharpOMaticDbContext : DbContext
 
         // Cascade delete: Deleting an EvalConfig deletes its EvalRows
         modelBuilder.Entity<EvalRow>().HasOne<EvalConfig>().WithMany().HasForeignKey(e => e.EvalConfigId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<EvalRow>().Ignore(e => e.EffectiveRepeat);
+        modelBuilder.Entity<EvalRow>().Property(e => e.Repeat).HasDefaultValue(EvalRow.DefaultRepeat);
 
         // Cascade delete: Deleting an EvalRow deletes its EvalData
         modelBuilder.Entity<EvalData>().HasOne<EvalRow>().WithMany().HasForeignKey(e => e.EvalRowId).OnDelete(DeleteBehavior.Cascade);

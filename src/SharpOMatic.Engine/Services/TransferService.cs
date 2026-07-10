@@ -14,6 +14,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
     private const string ModelType = "model";
     private const string EvaluationType = "evaluation";
     private const string AssetType = "asset";
+    private const string RepeatCsvColumnName = "Repeat";
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { Converters = { new NodeEntityConverter() } };
 
@@ -710,6 +711,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                 EvalRowId = rowIdMap[row.EvalRowId],
                 EvalConfigId = targetEvalConfigId,
                 Order = row.Order,
+                Repeat = row.Repeat ?? EvalRow.DefaultRepeat,
             })
             .ToList();
 
@@ -952,7 +954,9 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         if (columns.Count == 0)
             throw new SharpOMaticException("Evaluation has no columns to import.");
 
+        ValidateReservedEvalColumnNames(columns);
         var columnsByName = BuildCsvColumnLookup(columns);
+        var repeatHeaderIndex = GetCsvRepeatHeaderIndex(records[0]);
         var matchedHeaderIndexes = MatchCsvHeaders(records[0], columnsByName);
         ValidateCsvRequiredHeaders(columns, matchedHeaderIndexes);
 
@@ -968,11 +972,13 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                 continue;
 
             var evalRowId = Guid.NewGuid();
+            var repeat = GetCsvRepeatValue(record, repeatHeaderIndex);
             importedRows.Add(new EvalRow
             {
                 EvalRowId = evalRowId,
                 EvalConfigId = evalConfigId,
                 Order = nextOrder++,
+                Repeat = repeat,
             });
 
             foreach (var column in columns)
@@ -1010,6 +1016,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             )
             .OrderBy(column => column.Order)
             .ToList();
+        ValidateReservedEvalColumnNames(columns);
 
         var dataByRow = detail
             .Data.GroupBy(data => data.EvalRowId)
@@ -1027,7 +1034,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
 
         await using (writer)
         {
-            WriteCsvRow(writer, columns.Select(column => column.Name));
+            WriteCsvRow(writer, columns.Select(column => column.Name).Append(RepeatCsvColumnName));
 
             var rows = detail.Rows.OrderBy(row => row.Order);
             foreach (var row in rows)
@@ -1043,7 +1050,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                             ? cellData
                             : null;
                         return FormatCsvValue(column.EntryType, data);
-                    })
+                    }).Append((row.Repeat ?? EvalRow.DefaultRepeat).ToString(System.Globalization.CultureInfo.InvariantCulture))
                 );
             }
         }
@@ -1071,6 +1078,9 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         foreach (var header in headerRecord.Fields.Select((value, index) => new { value, index }))
         {
             var name = header.value.Trim();
+            if (name.Equals(RepeatCsvColumnName, StringComparison.OrdinalIgnoreCase))
+                continue;
+
             if (name.Length == 0 || !columnsByName.TryGetValue(name, out var column))
                 continue;
 
@@ -1081,6 +1091,24 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         }
 
         return matchedHeaderIndexes;
+    }
+
+    private static int? GetCsvRepeatHeaderIndex(CsvRowRecord headerRecord)
+    {
+        int? repeatHeaderIndex = null;
+        foreach (var header in headerRecord.Fields.Select((value, index) => new { value, index }))
+        {
+            var name = header.value.Trim();
+            if (!name.Equals(RepeatCsvColumnName, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (repeatHeaderIndex.HasValue)
+                throw new SharpOMaticException($"CSV header contains duplicate column '{RepeatCsvColumnName}'.");
+
+            repeatHeaderIndex = header.index;
+        }
+
+        return repeatHeaderIndex;
     }
 
     private static void ValidateCsvRequiredHeaders(List<EvalColumn> columns, Dictionary<Guid, int> matchedHeaderIndexes)
@@ -1098,6 +1126,38 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             return null;
 
         return headerIndex < record.Fields.Count ? record.Fields[headerIndex] : string.Empty;
+    }
+
+    private static int GetCsvRepeatValue(CsvRowRecord record, int? repeatHeaderIndex)
+    {
+        if (!repeatHeaderIndex.HasValue || repeatHeaderIndex.Value >= record.Fields.Count)
+            return EvalRow.DefaultRepeat;
+
+        var rawValue = record.Fields[repeatHeaderIndex.Value];
+        var value = rawValue?.Trim() ?? string.Empty;
+        if (value.Length == 0)
+            return EvalRow.DefaultRepeat;
+
+        if (!int.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var repeat))
+            throw new SharpOMaticException($"CSV row {record.LineNumber} column '{RepeatCsvColumnName}' must be an integer.");
+
+        if (repeat < EvalRow.MinRepeat || repeat > EvalRow.MaxRepeat)
+            throw new SharpOMaticException($"CSV row {record.LineNumber} column '{RepeatCsvColumnName}' must be between {EvalRow.MinRepeat} and {EvalRow.MaxRepeat}.");
+
+        return repeat;
+    }
+
+    private static void ValidateReservedEvalColumnNames(List<EvalColumn> columns)
+    {
+        foreach (var column in columns)
+        {
+            var name = column.Name.Trim();
+            if (name.Equals(RepeatCsvColumnName, StringComparison.OrdinalIgnoreCase))
+                throw new SharpOMaticException($"Evaluation column name '{RepeatCsvColumnName}' is reserved.");
+
+            if (name.Equals("Name", StringComparison.OrdinalIgnoreCase) && column.Order != 0)
+                throw new SharpOMaticException("Evaluation column name 'Name' is reserved for the fixed first column.");
+        }
     }
 
     private static EvalData BuildCsvData(int lineNumber, Guid evalRowId, EvalColumn column, string rawValue, string trimmedValue)
