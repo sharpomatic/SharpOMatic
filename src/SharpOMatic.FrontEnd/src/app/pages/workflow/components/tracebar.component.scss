@@ -20,9 +20,29 @@
   touch-action: none;
 }
 
+.trace-header {
+  gap: 0.75rem;
+  padding-right: 10px;
+}
+
+.min-width-0 {
+  min-width: 0;
+}
+
 .trace-heading-text {
   padding: 6px 20px 8px 10px;
   font-size: 24px;
+}
+
+.run-duration {
+  flex: 0 0 110px;
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
+  margin-left: auto;
+  font-size: 0.95rem;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .header-separator {

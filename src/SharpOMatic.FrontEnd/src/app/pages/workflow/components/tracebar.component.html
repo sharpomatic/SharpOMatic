@@ -7,28 +7,33 @@
     (mousedown)="startResize($event)"
     (touchstart)="startResize($event)"
   ></div>
-  <div class="d-flex flex-row align-items-center">
-    <div class="trace-heading-text">Run</div>
-    <span
-      class="run-text"
-      [class.created]="
-        workflowService.runProgress()?.runStatus === RunStatus.Created
-      "
-      [class.running]="
-        workflowService.runProgress()?.runStatus === RunStatus.Running
-      "
-      [class.success]="
-        workflowService.runProgress()?.runStatus === RunStatus.Success
-      "
-      [class.suspended]="
-        workflowService.runProgress()?.runStatus === RunStatus.Suspended
-      "
-      [class.failed]="
-        workflowService.runProgress()?.runStatus === RunStatus.Failed
-      "
-    >
-      {{ workflowService.runProgress()?.message }}
-    </span>
+  <div class="trace-header d-flex flex-row align-items-center">
+    <div class="d-flex flex-row align-items-center min-width-0">
+      <div class="trace-heading-text">Run</div>
+      <span
+        class="run-text"
+        [class.created]="
+          workflowService.runProgress()?.runStatus === RunStatus.Created
+        "
+        [class.running]="
+          workflowService.runProgress()?.runStatus === RunStatus.Running
+        "
+        [class.success]="
+          workflowService.runProgress()?.runStatus === RunStatus.Success
+        "
+        [class.suspended]="
+          workflowService.runProgress()?.runStatus === RunStatus.Suspended
+        "
+        [class.failed]="
+          workflowService.runProgress()?.runStatus === RunStatus.Failed
+        "
+      >
+        {{ workflowService.runProgress()?.message }}
+      </span>
+    </div>
+    @if (runDuration(); as duration) {
+      <div class="run-duration text-body-secondary">{{ duration }}</div>
+    }
   </div>
   @if (workflowService.runProgress()?.runStatus === RunStatus.Failed) {
     <hr class="header-separator" />
