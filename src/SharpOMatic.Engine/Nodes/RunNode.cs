@@ -57,7 +57,7 @@ public abstract class RunNode<T> : IRunNode
             else
                 await NodeSuccess(result.Message);
 
-            SharpOMaticDiagnostics.CompleteNodeActivity(NodeActivity, Trace.NodeStatus, null);
+            SharpOMaticDiagnostics.CompleteNodeActivity(NodeActivity, Trace.NodeStatus, null, null);
             return result;
         }
         catch (Exception ex)
@@ -68,8 +68,8 @@ public abstract class RunNode<T> : IRunNode
             var includeOutputContext = !ContextSerializationHelper.IsSerializationFailure(ex);
 
             await NodeFailed(errorMessage, includeOutputContext);
-            SharpOMaticDiagnostics.CompleteNodeActivity(NodeActivity, NodeStatus.Failed, errorMessage);
-            throw new SharpOMaticException(errorMessage);
+            SharpOMaticDiagnostics.CompleteNodeActivity(NodeActivity, NodeStatus.Failed, ex, errorMessage);
+            throw new SharpOMaticException(errorMessage, ex);
         }
     }
 

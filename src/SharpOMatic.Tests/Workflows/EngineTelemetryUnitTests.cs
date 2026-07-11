@@ -55,10 +55,18 @@ public sealed class EngineTelemetryUnitTests
         var runActivity = await WaitForActivity(stopped, activity => activity.OperationName.StartsWith("invoke_agent") && HasRunTag(activity, run.RunId));
         Assert.Equal(ActivityStatusCode.Error, runActivity.Status);
         Assert.Equal(nameof(RunStatus.Failed), runActivity.GetTagItem("sharpomatic.run.status")?.ToString());
+        Assert.Equal(typeof(SharpOMaticException).FullName, runActivity.GetTagItem("error.type")?.ToString());
 
         var failedNode = stopped.Single(activity => activity.OperationName.StartsWith("executor.process") && HasRunTag(activity, run.RunId) && activity.Status == ActivityStatusCode.Error);
         Assert.Equal(runActivity.SpanId, failedNode.ParentSpanId);
         Assert.Equal(nameof(NodeStatus.Failed), failedNode.GetTagItem("sharpomatic.node.status")?.ToString());
+        Assert.Equal(typeof(SharpOMaticException).FullName, failedNode.GetTagItem("error.type")?.ToString());
+
+        var exceptionEvent = Assert.Single(failedNode.Events, activityEvent => activityEvent.Name == "exception");
+        var exceptionTags = exceptionEvent.Tags.ToDictionary(tag => tag.Key, tag => tag.Value?.ToString());
+        Assert.Equal(typeof(SharpOMaticException).FullName, exceptionTags["exception.type"]);
+        Assert.Contains("boom", exceptionTags["exception.message"]);
+        Assert.Contains("SharpOMaticException", exceptionTags["exception.stacktrace"]);
     }
 
     [Fact]

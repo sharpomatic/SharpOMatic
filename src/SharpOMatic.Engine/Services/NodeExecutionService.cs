@@ -238,7 +238,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
                 WorkflowVersion = workflow.Version,
                 Succeeded = run.RunStatus == RunStatus.Success,
                 RunStatus = run.RunStatus,
-                ErrorType = exception?.GetType().FullName,
+                ErrorType = exception?.GetBaseException().GetType().FullName,
                 ErrorMessage = string.IsNullOrWhiteSpace(run.Error) ? null : run.Error,
                 FailedNodeEntityId = failedNode?.Id,
                 FailedNodeTitle = failedNode?.Title,
