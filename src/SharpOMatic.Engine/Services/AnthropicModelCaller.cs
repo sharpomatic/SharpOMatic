@@ -11,6 +11,24 @@ public class AnthropicModelCaller(IEnumerable<IEngineNotification> engineNotific
     public AnthropicModelCaller()
         : this([]) { }
 
+    public override ModelFallbackFailure? ModelFallbackFailureOverride(Exception exception)
+    {
+        if (ModelFallbackFailureClassifier.Find<Anthropic.Exceptions.AnthropicApiException>(exception) is { } apiException)
+            return ModelFallbackFailureClassifier.ClassifyStatusCode((int)apiException.StatusCode);
+
+        if (ModelFallbackFailureClassifier.Find<Anthropic.Credentials.WorkloadIdentityException>(exception) is { } identityException)
+        {
+            return identityException.StatusCode.HasValue
+                ? ModelFallbackFailureClassifier.ClassifyStatusCode((int)identityException.StatusCode.Value)
+                : new ModelFallbackFailure(ModelFallbackFailureCategory.Authentication, StatusCode: null, RetryAfter: null, IsTransient: false);
+        }
+
+        if (ModelFallbackFailureClassifier.Find<Anthropic.Exceptions.AnthropicIOException>(exception) is not null)
+            return new ModelFallbackFailure(ModelFallbackFailureCategory.Network, StatusCode: null, RetryAfter: null, IsTransient: true);
+
+        return null;
+    }
+
     public override async Task<ModelCallResult> Call(
         Model model,
         ModelConfig modelConfig,
@@ -42,7 +60,7 @@ public class AnthropicModelCaller(IEnumerable<IEngineNotification> engineNotific
         var agent = client.AsAIAgent(
             modelName,
             instructions: instructions,
-            clientFactory: chatClient => CreateFunctionInvokingChatClient(chatClient, agentServiceProvider),
+            clientFactory: chatClient => CreateFunctionInvokingChatClient(chatClient, agentServiceProvider, progressSink),
             services: agentServiceProvider
         );
         await EmitPromptStreamEvents(processContext, prompt, node.DisableStreamUser);

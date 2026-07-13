@@ -8,6 +8,7 @@ public interface IModelCallProgressSink
     Task OnReasoningAsync(string reasoningId, string text);
     Task OnToolCallAsync(string toolCallId, string? toolName, string? argsSnapshot = null, string? parentMessageId = null, string? data = null);
     Task OnToolCallResultAsync(string messageId, string toolCallId, string content);
+    Task OnToolInvocationStartedAsync(string? toolName) => Task.CompletedTask;
     Task CompleteAsync();
     Task PersistAsync();
 }

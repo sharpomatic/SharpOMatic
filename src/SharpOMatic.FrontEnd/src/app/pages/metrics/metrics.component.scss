@@ -228,6 +228,23 @@
   min-width: 980px;
 }
 
+.metrics-logical-call-table {
+  min-width: 1080px;
+}
+
+.metrics-expand-column {
+  width: 28px;
+}
+
+.metrics-attempt-detail-row > td {
+  padding: 0;
+  background: var(--bs-tertiary-bg);
+}
+
+.metrics-attempt-detail {
+  padding: 10px 18px 14px 38px;
+}
+
 .metrics-run-table {
   min-width: 1120px;
 }

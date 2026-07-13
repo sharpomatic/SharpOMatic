@@ -7,6 +7,8 @@ public interface IEngineNotification
 
     public Task EvalRunCompleted(Guid evalRunId, EvalRunStatus runStatus, string? error) => Task.CompletedTask;
 
+    public ValueTask<bool?> ModelFallbackOverride(ModelFallbackDecisionContext context, CancellationToken cancellationToken = default) => ValueTask.FromResult<bool?>(null);
+
     public void ConnectionOverride(Guid runId, Guid workflowId, string? conversationId, string connectorId, AuthenticationModeConfig authenticationModel, Dictionary<string, string?> parameters) { }
 
     public (ResponsesClient client, string modelName)? OpenAIOverride(

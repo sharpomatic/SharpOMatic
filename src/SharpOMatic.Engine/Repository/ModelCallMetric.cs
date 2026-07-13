@@ -6,10 +6,13 @@ namespace SharpOMatic.Engine.Repository;
 [Index(nameof(ModelId), nameof(Created))]
 [Index(nameof(ConversationId), nameof(Created))]
 [Index(nameof(Succeeded), nameof(Created))]
+[Index(nameof(LogicalCallId), nameof(AttemptNumber))]
 public class ModelCallMetric
 {
     [Key]
     public required Guid Id { get; set; }
+    public Guid LogicalCallId { get; set; }
+    public int AttemptNumber { get; set; } = 1;
     public required DateTime Created { get; set; }
     public long? Duration { get; set; }
     public required bool Succeeded { get; set; }
@@ -28,6 +31,8 @@ public class ModelCallMetric
     public string? ConnectorConfigName { get; set; }
     public Guid? ModelId { get; set; }
     public string? ModelName { get; set; }
+    public ModelFallbackFailureCategory? FailureCategory { get; set; }
+    public int? ProviderStatusCode { get; set; }
     public string? ModelConfigId { get; set; }
     public string? ModelConfigName { get; set; }
     public string? ProviderModelName { get; set; }

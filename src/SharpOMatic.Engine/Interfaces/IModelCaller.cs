@@ -2,6 +2,8 @@ namespace SharpOMatic.Engine.Interfaces;
 
 public interface IModelCaller
 {
+    ModelFallbackFailure? ModelFallbackFailureOverride(Exception exception) => null;
+
     Task<ModelCallResult> Call(
         Model model,
         ModelConfig modelConfig,

@@ -3,7 +3,21 @@ namespace SharpOMatic.Engine.Entities.Definitions;
 [NodeEntity(NodeType.ModelCall)]
 public class ModelCallNodeEntity : NodeEntity
 {
-    public required Guid? ModelId { get; set; }
+    private Guid? _legacyModelId;
+    private Dictionary<string, string?>? _legacyParameterValues;
+
+    public List<ModelCallModelDefinition> Models { get; set; } = [];
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Guid? ModelId
+    {
+        get => _legacyModelId;
+        set
+        {
+            _legacyModelId = value;
+            LegacyModelIdPresent = true;
+        }
+    }
     public bool BatchOutput { get; set; }
     public bool DropToolCalls { get; set; }
     public bool DisableStreamUser { get; set; }
@@ -18,7 +32,30 @@ public class ModelCallNodeEntity : NodeEntity
     public required string TextOutputPath { get; set; }
     public required string ImageInputPath { get; set; }
     public required string ImageOutputPath { get; set; }
-    public required Dictionary<string, string?> ParameterValues { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, string?>? ParameterValues
+    {
+        get => _legacyParameterValues;
+        set
+        {
+            _legacyParameterValues = value;
+            LegacyParameterValuesPresent = true;
+        }
+    }
+
+    [JsonIgnore]
+    internal bool LegacyModelIdPresent { get; private set; }
+
+    [JsonIgnore]
+    internal bool LegacyParameterValuesPresent { get; private set; }
+
+    internal void ClearLegacyModelConfiguration()
+    {
+        _legacyModelId = null;
+        _legacyParameterValues = null;
+        LegacyModelIdPresent = false;
+        LegacyParameterValuesPresent = false;
+    }
 
     /// <summary>
     /// True when the model response will not produce any incremental AG-UI stream events: assistant text,

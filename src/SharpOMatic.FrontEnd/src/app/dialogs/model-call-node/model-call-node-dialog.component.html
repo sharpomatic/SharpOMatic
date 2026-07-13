@@ -30,57 +30,201 @@
           </div>
         </div>
 
-        <div class="mb-3 form-line">
-          <label for="model-call-model" class="form-label field-label"
-            >Model</label
-          >
-          <div class="flex-fill control-column long">
-            <app-model-picker
-              controlId="model-call-model"
-              [options]="modelPickerOptions"
-              [selectedId]="selectedModelId"
-              [disabled]="!availableModels.length"
-              [allowEmptySelection]="true"
-              emptyOptionLabel="(None)"
-              placeholder="Select model"
-              (selectionChange)="onModelSelectionChange($event)"
-            >
-            </app-model-picker>
-          </div>
-        </div>
+        <div class="mb-3 form-line align-items-start">
+          <label class="form-label field-label align-top">Models</label>
+          <div class="flex-fill control-column extra-long">
+            <div class="model-card-layout mb-3">
+              <div
+                class="model-card p-3 border rounded bg-body"
+                [class.model-card-disabled]="node.modelDisabled(0)"
+              >
+                <div
+                  class="model-card-header d-flex align-items-center justify-content-between gap-2"
+                >
+                  <div class="model-card-title">
+                    Primary Model
+                    @if (node.modelDisabled(0)) {
+                      <span class="badge text-bg-secondary ms-1">Disabled</span>
+                    }
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary btn-sm"
+                      (click)="toggleModelDisabled(0)"
+                    >
+                      @if (node.modelDisabled(0)) {
+                        <i class="bi bi-play-circle me-1"></i>Enable
+                      } @else {
+                        <i class="bi bi-pause-circle me-1"></i>Disable
+                      }
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-outline-primary btn-sm"
+                      [disabled]="
+                        !node.modelId() ||
+                        fallbackModels().length + 1 >= availableModels.length
+                      "
+                      (click)="addFallbackModel()"
+                    >
+                      <i class="bi bi-plus-lg me-1"></i>Add Fallback
+                    </button>
+                  </div>
+                </div>
+                <app-model-picker
+                  controlId="model-call-model"
+                  [options]="modelPickerOptions"
+                  [selectedId]="selectedModelId"
+                  [disabled]="!availableModels.length"
+                  [allowEmptySelection]="true"
+                  emptyOptionLabel="(None)"
+                  placeholder="Select model"
+                  (selectionChange)="onModelSelectionChange($event)"
+                >
+                </app-model-picker>
 
-        @if (informationEntries().length) {
-          <div class="mb-3 form-line">
-            <label class="form-label field-label align-top">Information</label>
-            <div class="flex-fill control-column long">
-              <div class="information-list">
-                @for (entry of informationEntries(); track entry.label) {
-                  <div class="information-item">
-                    <span class="information-label">{{ entry.label }}</span>
-                    <span class="information-value">{{ entry.value }}</span>
+                @if (informationEntries().length) {
+                  <div class="information-list my-3">
+                    @for (entry of informationEntries(); track entry.label) {
+                      <div class="information-item">
+                        <span class="information-label">{{ entry.label }}</span>
+                        <span class="information-value">{{ entry.value }}</span>
+                      </div>
+                    }
                   </div>
                 }
+
+                <app-dynamic-fields
+                  [fields]="modelConfig?.parameterFields ?? []"
+                  [values]="node.parameterValues()"
+                  [capabilityContext]="capabilityContext"
+                  [ignoredCapabilities]="[
+                    'SupportsTextIn',
+                    'SupportsTextOut',
+                    'SupportsImageIn',
+                    'SupportsImageOut',
+                    'SupportsToolCalling',
+                    'SupportsStructuredOutput',
+                  ]"
+                  [includeNonCallDefined]="false"
+                  (valuesChange)="onParameterValuesChange($event)"
+                >
+                </app-dynamic-fields>
               </div>
+
+              @for (
+                fallback of fallbackModels();
+                track $index;
+                let index = $index
+              ) {
+                <div
+                  class="model-card p-3 border rounded bg-body"
+                  [class.model-card-disabled]="node.modelDisabled(index + 1)"
+                >
+                  <div
+                    class="model-card-header d-flex align-items-center justify-content-between gap-2"
+                  >
+                    <div class="model-card-title">
+                      Fallback Model {{ index + 1 }}
+                      @if (node.modelDisabled(index + 1)) {
+                        <span class="badge text-bg-secondary ms-1"
+                          >Disabled</span
+                        >
+                      }
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                      <button
+                        type="button"
+                        class="btn btn-outline-secondary btn-sm"
+                        (click)="toggleModelDisabled(index + 1)"
+                      >
+                        @if (node.modelDisabled(index + 1)) {
+                          <i class="bi bi-play-circle me-1"></i>Enable
+                        } @else {
+                          <i class="bi bi-pause-circle me-1"></i>Disable
+                        }
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-outline-danger btn-sm"
+                        (click)="confirmRemoveFallbackModel(index)"
+                      >
+                        <i class="bi bi-trash me-1"></i>Delete
+                      </button>
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <app-model-picker
+                      [controlId]="'model-call-fallback-' + index"
+                      [options]="modelPickerOptions"
+                      [selectedId]="fallback.modelId"
+                      [disabled]="!availableModels.length"
+                      [allowEmptySelection]="false"
+                      placeholder="Select fallback model"
+                      (selectionChange)="
+                        onFallbackModelSelectionChange(index, $event)
+                      "
+                    >
+                    </app-model-picker>
+                  </div>
+
+                  @if (fallbackInformationEntries(fallback.modelId).length) {
+                    <div class="information-list mb-3">
+                      @for (
+                        entry of fallbackInformationEntries(fallback.modelId);
+                        track entry.label
+                      ) {
+                        <div class="information-item">
+                          <span class="information-label">{{
+                            entry.label
+                          }}</span>
+                          <span class="information-value">{{
+                            entry.value
+                          }}</span>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  @for (
+                    message of fallbackCompatibilityMessages(fallback.modelId);
+                    track message
+                  ) {
+                    <div class="alert alert-warning py-2 mb-2">
+                      {{ message }}
+                    </div>
+                  }
+
+                  <app-dynamic-fields
+                    [fields]="
+                      fallbackModelConfig(fallback.modelId)?.parameterFields ??
+                      []
+                    "
+                    [values]="fallback.parameterValues"
+                    [capabilityContext]="
+                      fallbackCapabilityContext(fallback.modelId)
+                    "
+                    [ignoredCapabilities]="[
+                      'SupportsTextIn',
+                      'SupportsTextOut',
+                      'SupportsImageIn',
+                      'SupportsImageOut',
+                      'SupportsToolCalling',
+                      'SupportsStructuredOutput',
+                    ]"
+                    [includeCallDefined]="true"
+                    [includeNonCallDefined]="false"
+                    (valuesChange)="
+                      onFallbackParameterValuesChange(index, $event)
+                    "
+                  >
+                  </app-dynamic-fields>
+                </div>
+              }
             </div>
           </div>
-        }
-
-        <app-dynamic-fields
-          [fields]="modelConfig?.parameterFields ?? []"
-          [values]="node.parameterValues()"
-          [capabilityContext]="capabilityContext"
-          [ignoredCapabilities]="[
-            'SupportsTextIn',
-            'SupportsTextOut',
-            'SupportsImageIn',
-            'SupportsImageOut',
-            'SupportsToolCalling',
-            'SupportsStructuredOutput',
-          ]"
-          [includeNonCallDefined]="false"
-          (valuesChange)="onParameterValuesChange($event)"
-        >
-        </app-dynamic-fields>
+        </div>
 
         <div class="mb-3 form-line">
           <label for="model-call-batch-output" class="form-label field-label"
@@ -132,7 +276,9 @@
                 class="form-check-input"
                 type="checkbox"
                 [checked]="node.disableStreamUser()"
-                (change)="node.disableStreamUser.set($any($event.target).checked)"
+                (change)="
+                  node.disableStreamUser.set($any($event.target).checked)
+                "
               />
             </div>
           </div>
@@ -151,7 +297,9 @@
                 class="form-check-input"
                 type="checkbox"
                 [checked]="node.disableStreamTool()"
-                (change)="node.disableStreamTool.set($any($event.target).checked)"
+                (change)="
+                  node.disableStreamTool.set($any($event.target).checked)
+                "
               />
             </div>
           </div>
@@ -170,7 +318,9 @@
                 class="form-check-input"
                 type="checkbox"
                 [checked]="node.disableStreamReasoning()"
-                (change)="node.disableStreamReasoning.set($any($event.target).checked)"
+                (change)="
+                  node.disableStreamReasoning.set($any($event.target).checked)
+                "
               />
             </div>
           </div>
@@ -189,7 +339,11 @@
                 class="form-check-input"
                 type="checkbox"
                 [checked]="node.disableStreamAssistantText()"
-                (change)="node.disableStreamAssistantText.set($any($event.target).checked)"
+                (change)="
+                  node.disableStreamAssistantText.set(
+                    $any($event.target).checked
+                  )
+                "
               />
             </div>
           </div>
@@ -354,7 +508,9 @@
           >
           <div class="flex-fill control-column long">
             @if (toolDisplayNames.length) {
-              <table class="table table-sm table-hover align-middle tool-calling-table">
+              <table
+                class="table table-sm table-hover align-middle tool-calling-table"
+              >
                 <thead>
                   <tr>
                     <th scope="col">Tool</th>

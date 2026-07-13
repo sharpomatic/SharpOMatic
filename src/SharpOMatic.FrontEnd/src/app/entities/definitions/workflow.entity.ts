@@ -16,6 +16,7 @@ export interface WorkflowSnapshot extends EntitySnapshot {
 }
 
 export class WorkflowEntity extends Entity<WorkflowSnapshot> {
+  public static readonly CURRENT_SCHEMA_VERSION = 2;
   private nodeMap: Map<string, NodeEntity<NodeSnapshot>> = new Map();
   private connectionMap: Map<string, ConnectionEntity> = new Map();
   private connectorMap: Map<string, ConnectorEntity> = new Map();
@@ -112,6 +113,7 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
   public static override defaultSnapshot() {
     return {
       ...Entity.defaultSnapshot(),
+      version: WorkflowEntity.CURRENT_SCHEMA_VERSION,
       workflowFolderId: null,
       workflowFolderName: null,
       name: 'Untitled',

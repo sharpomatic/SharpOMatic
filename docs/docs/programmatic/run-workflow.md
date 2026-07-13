@@ -169,7 +169,7 @@ var runId = await engine.StartOrResumeConversationAndNotify(
 
 ## `IEngineNotification`
 
-`IEngineNotification` is used for workflow and evaluation completion plus connection overrides.
+`IEngineNotification` is used for workflow and evaluation completion plus connection, client, and model-fallback overrides.
 All methods have default no-op implementations, so your notification class only needs to override the hooks it uses.
 For standard one-shot runs, `conversationId` is `null`.
 For conversation turns, `conversationId` is populated and `RunCompleted` can arrive with `RunStatus.Suspended` when the turn stops at a **Suspend** node.
@@ -311,6 +311,55 @@ For Google model calls, `GoogleGenAIOverride` provides a lower-level escape hatc
 For direct Anthropic model calls, `AnthropicOverride` provides a lower-level escape hatch: the first registered notification that returns a non-null `(AnthropicClient client, string modelName)` supplies the Anthropic client and model name for that call.
 For Azure AI Foundry hosted Anthropic model calls, `FoundryAnthropicOverride` provides a lower-level escape hatch: the first registered notification that returns a non-null `(AnthropicClient client, string modelName)` supplies the Anthropic Foundry client and deployment/model name for that call.
 Return `null` from any lower-level override to use SharpOMatic's default client creation path.
+
+### Model fallback override
+
+`ModelFallbackOverride` can override SharpOMatic's built-in decision after a safe failed model attempt and before the next configured model is called:
+
+```csharp
+public ValueTask<bool?> ModelFallbackOverride(
+    ModelFallbackDecisionContext context,
+    CancellationToken cancellationToken = default)
+{
+    if (context.Failure.StatusCode == 401 &&
+        context.NextModel.ConnectorId != context.FailedModel.ConnectorId)
+    {
+        return ValueTask.FromResult<bool?>(true);
+    }
+
+    return ValueTask.FromResult<bool?>(null);
+}
+```
+
+Return values mean:
+
+- `true`: try the next model
+- `false`: stop and surface the current failure
+- `null`: make no decision
+
+Registered notifications are checked in registration order and the first non-null result wins. If all return null, SharpOMatic uses its built-in recommendation. The context includes the failed and next model/connector identities, normalized failure category and status, original exception, attempt position, and built-in recommendation. Connector secrets are not included.
+
+The override is called only while fallback remains safe. It cannot force another attempt after cancellation, provider response output, or tool invocation has started.
+
+Provider callers can classify SDK-specific errors before SharpOMatic applies its standard HTTP/network translation. `BaseModelCaller` exposes a virtual method, while `IModelCaller` supplies a compatible default implementation:
+
+```csharp
+public override ModelFallbackFailure? ModelFallbackFailureOverride(Exception exception)
+{
+    if (exception is ProviderOverloadedException)
+    {
+        return new ModelFallbackFailure(
+            ModelFallbackFailureCategory.ProviderUnavailable,
+            StatusCode: 529,
+            RetryAfter: null,
+            IsTransient: true);
+    }
+
+    return null;
+}
+```
+
+Returning null uses the standard classifier. This method only translates the provider error; `ModelFallbackOverride` and the engine safety gates still decide whether another model is called.
 
 ## `IProgressService`
 

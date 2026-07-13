@@ -26,9 +26,13 @@ export interface ModelCallMetricsDashboard {
   modelBreakdown: ModelCallMetricBreakdownItem[];
   nodeBreakdown: ModelCallMetricBreakdownItem[];
   failures: ModelCallMetricFailureGroup[];
+  failureCategories: ModelCallMetricFailureCategoryGroup[];
   recentCalls: ModelCallMetricCallSummary[];
   recentCallsTotal: number;
   slowestCalls: ModelCallMetricCallSummary[];
+  recentLogicalCalls: ModelCallMetricLogicalCallSummary[];
+  recentLogicalCallsTotal: number;
+  slowestLogicalCalls: ModelCallMetricLogicalCallSummary[];
 }
 
 export interface ModelCallMetricTotals {
@@ -44,6 +48,12 @@ export interface ModelCallMetricTotals {
   averageDuration: number | null;
   p95Duration: number | null;
   failureRate: number;
+  logicalCalls: number;
+  callsRequiringFallback: number;
+  recoveredCalls: number;
+  unrecoveredCalls: number;
+  fallbackRecoveryRate: number;
+  logicalFailureRate: number;
 }
 
 export interface ModelCallMetricMasterItem {
@@ -71,6 +81,13 @@ export interface ModelCallMetricTimeBucket {
   unpricedCalls: number;
   averageDuration: number | null;
   p95Duration: number | null;
+  logicalCalls: number;
+  primaryAttempts: number;
+  fallbackAttempts: number;
+  successfulFallbackAttempts: number;
+  failedFallbackAttempts: number;
+  recoveredCalls: number;
+  unrecoveredCalls: number;
 }
 
 export interface ModelCallMetricBreakdownItem {
@@ -83,6 +100,30 @@ export interface ModelCallMetricBreakdownItem {
   averageDuration: number | null;
   p95Duration: number | null;
   failureRate: number;
+  primaryAttempts: number;
+  fallbackAttempts: number;
+  successfulFallbackAttempts: number;
+}
+
+export interface ModelCallMetricFailureCategoryGroup {
+  category: ModelFallbackFailureCategory;
+  providerStatusCode: number | null;
+  count: number;
+  lastSeen: string;
+  primaryAttempts: number;
+  fallbackAttempts: number;
+}
+
+export enum ModelFallbackFailureCategory {
+  Unknown = 0,
+  RateLimited = 1,
+  ProviderUnavailable = 2,
+  Timeout = 3,
+  Network = 4,
+  Authentication = 5,
+  InvalidRequest = 6,
+  Configuration = 7,
+  Cancellation = 8,
 }
 
 export interface ModelCallMetricFailureGroup {
@@ -98,6 +139,8 @@ export interface ModelCallMetricFailureGroup {
 
 export interface ModelCallMetricCallSummary {
   id: string;
+  logicalCallId: string;
+  attemptNumber: number;
   created: string;
   workflowName: string;
   nodeTitle: string;
@@ -109,6 +152,24 @@ export interface ModelCallMetricCallSummary {
   totalTokens: number | null;
   totalCost: number | null;
   succeeded: boolean;
+  failureCategory: number | null;
+  providerStatusCode: number | null;
   errorType: string | null;
   errorMessage: string | null;
+}
+
+export interface ModelCallMetricLogicalCallSummary {
+  logicalCallId: string;
+  created: string;
+  workflowName: string;
+  nodeTitle: string;
+  finalConnectorName: string | null;
+  finalModelName: string | null;
+  attemptCount: number;
+  duration: number | null;
+  totalTokens: number;
+  totalCost: number | null;
+  succeeded: boolean;
+  recoveredByFallback: boolean;
+  attempts: ModelCallMetricCallSummary[];
 }
