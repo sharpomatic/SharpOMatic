@@ -12,8 +12,8 @@ using SharpOMatic.Engine.Repository;
 namespace SharpOMatic.Engine.SqlServer.Migrations
 {
     [DbContext(typeof(SharpOMaticDbContext))]
-    [Migration("20260711145429_ModelCallFallbackAttempts")]
-    partial class ModelCallFallbackAttempts
+    [Migration("20260713115435_10-0-7")]
+    partial class _1007
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
