@@ -6,7 +6,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'SharpOMatic',
-  tagline: 'AI workflow designer and engine for .NET projects',
+  tagline: 'Build reliable AI workflows faster in .NET',
   favicon: 'img/favicon.ico',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -57,33 +57,40 @@ const config: Config = {
   ],
 
   themeConfig: {
-    // Replace with your project's social card
+    image: 'img/docusaurus-social-card.jpg',
     colorMode: {
       defaultMode: 'light',
-      disableSwitch: true,
-      respectPrefersColorScheme: false,
+      disableSwitch: false,
+      respectPrefersColorScheme: true,
     },
     navbar: {
       title: 'SharpOMatic',
       logo: {
         alt: 'SharpOMatic',
         src: 'img/small_dark.png',
+        srcDark: 'img/small_light.png',
       },
       items: [
         {
           to: '/docs/',
           position: 'right',
-          label: 'Docs',
+          label: 'Documentation',
         },
         {
           to: '/blog',
           position: 'right',
-          label: 'Blog',
+          label: 'Releases',
         },
         {
           href: 'https://github.com/sharpomatic/SharpOMatic/issues',
           label: 'Support',
           position: 'right',
+        },
+        {
+          href: 'https://github.com/sharpomatic/SharpOMatic',
+          label: 'View on GitHub',
+          position: 'right',
+          className: 'navbar__github-button',
         },
       ],
     },
@@ -94,26 +101,55 @@ const config: Config = {
           title: 'Docs',
           items: [
             {
-              label: 'Intro',
+              label: 'Introduction',
               to: '/docs/',
             },
             {
-              label: 'Blog',
-              to: '/blog',
+              label: 'Getting started',
+              to: '/docs/getting-started/start-with-nuget-packages',
+            },
+            {
+              label: 'Core concepts',
+              to: '/docs/core-concepts/workflows',
             },
           ],
         },
         {
-          title: 'More',
+          title: 'Build',
+          items: [
+            {
+              label: 'Model Call node',
+              to: '/docs/nodes/model-call-node/text',
+            },
+            {
+              label: 'AG-UI',
+              to: '/docs/ag-ui/',
+            },
+            {
+              label: 'Programmatic API',
+              to: '/docs/programmatic/run-workflow',
+            },
+          ],
+        },
+        {
+          title: 'Project',
           items: [
             {
               label: 'GitHub',
               href: 'https://github.com/sharpomatic/SharpOMatic',
             },
+            {
+              label: 'Release notes',
+              to: '/blog',
+            },
+            {
+              label: 'Support',
+              href: 'https://github.com/sharpomatic/SharpOMatic/issues',
+            },
           ],
         },
       ],
-      copyright: `Copyright (c) ${new Date().getFullYear()} Phil Wright.`,
+      copyright: `SharpOMatic · Build reliable AI workflows faster in .NET · © ${new Date().getFullYear()} Phil Wright`,
     },
     prism: {
       theme: prismThemes.vsDark,
