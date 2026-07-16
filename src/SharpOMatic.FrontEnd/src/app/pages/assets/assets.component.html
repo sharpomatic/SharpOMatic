@@ -25,7 +25,22 @@
       <button
         class="btn btn-primary"
         [disabled]="
-          selectedAssetCount() === 0 || isDeletingSelected || isMovingSelected
+          selectedAssetCount() !== 1 ||
+          isDeletingSelected ||
+          isMovingSelected ||
+          isRenamingSelected
+        "
+        (click)="renameSelectedAsset()"
+      >
+        {{ isRenamingSelected ? "Renaming..." : "Rename" }}
+      </button>
+      <button
+        class="btn btn-primary"
+        [disabled]="
+          selectedAssetCount() === 0 ||
+          isDeletingSelected ||
+          isMovingSelected ||
+          isRenamingSelected
         "
         (click)="moveSelectedAssets()"
       >
@@ -34,7 +49,10 @@
       <button
         class="btn btn-danger"
         [disabled]="
-          selectedAssetCount() === 0 || isDeletingSelected || isMovingSelected
+          selectedAssetCount() === 0 ||
+          isDeletingSelected ||
+          isMovingSelected ||
+          isRenamingSelected
         "
         (click)="deleteSelectedAssets()"
       >
@@ -53,7 +71,9 @@
             </button>
             <button
               class="btn btn-outline-primary btn-sm"
-              [disabled]="selectedFolderFilter === 'all' || selectedFolderFilter === 'top'"
+              [disabled]="
+                selectedFolderFilter === 'all' || selectedFolderFilter === 'top'
+              "
               title="Rename selected folder"
               (click)="editSelectedFolder()"
             >
@@ -77,7 +97,9 @@
             </button>
             <button
               class="btn btn-outline-danger btn-sm"
-              [disabled]="selectedFolderFilter === 'all' || selectedFolderFilter === 'top'"
+              [disabled]="
+                selectedFolderFilter === 'all' || selectedFolderFilter === 'top'
+              "
               title="Delete selected folder"
               (click)="deleteSelectedFolder()"
             >
@@ -89,7 +111,9 @@
               type="button"
               class="list-group-item list-group-item-action folders-master-item"
               [class.active]="selectedFolderFilter === 'all'"
-              [attr.aria-current]="selectedFolderFilter === 'all' ? 'true' : null"
+              [attr.aria-current]="
+                selectedFolderFilter === 'all' ? 'true' : null
+              "
               (click)="selectAllAssets()"
             >
               <span>All Assets</span>
@@ -98,7 +122,9 @@
               type="button"
               class="list-group-item list-group-item-action folders-master-item"
               [class.active]="selectedFolderFilter === 'top'"
-              [attr.aria-current]="selectedFolderFilter === 'top' ? 'true' : null"
+              [attr.aria-current]="
+                selectedFolderFilter === 'top' ? 'true' : null
+              "
               (click)="selectTopLevelAssets()"
             >
               <span>Top-level</span>
@@ -108,7 +134,9 @@
                 type="button"
                 class="list-group-item list-group-item-action folders-master-item"
                 [class.active]="isFolderFilterSelected(folder.folderId)"
-                [attr.aria-current]="isFolderFilterSelected(folder.folderId) ? 'true' : null"
+                [attr.aria-current]="
+                  isFolderFilterSelected(folder.folderId) ? 'true' : null
+                "
                 (click)="selectFolderAssets(folder.folderId)"
                 title="{{ folder.name }}"
               >
@@ -151,7 +179,9 @@
           </div>
         } @else {
           <div class="table-responsive assets-table">
-            <table class="table table-sm table-striped table-hover align-middle">
+            <table
+              class="table table-sm table-striped table-hover align-middle"
+            >
               <thead>
                 <tr>
                   <th scope="col" class="col-select"></th>
@@ -252,7 +282,10 @@
                         (change)="onAssetSelectionChange(asset.assetId, $event)"
                       />
                     </td>
-                    <td class="col-folder text-truncate" title="{{ asset.folderName || '' }}">
+                    <td
+                      class="col-folder text-truncate"
+                      title="{{ asset.folderName || '' }}"
+                    >
                       {{ asset.folderName || "" }}
                     </td>
                     <td class="col-name text-truncate" title="{{ asset.name }}">
@@ -265,7 +298,9 @@
                       {{ asset.mediaType }}
                     </td>
                     <td class="col-size">{{ formatSize(asset.sizeBytes) }}</td>
-                    <td class="col-created">{{ asset.created | date: "short" }}</td>
+                    <td class="col-created">
+                      {{ asset.created | date: "short" }}
+                    </td>
                     <td class="col-actions text-end">
                       <div class="d-inline-flex gap-2">
                         @if (isImageAsset(asset)) {
@@ -330,7 +365,9 @@
                       <li
                         class="page-item"
                         [class.active]="page === assetsPage"
-                        [attr.aria-current]="page === assetsPage ? 'page' : null"
+                        [attr.aria-current]="
+                          page === assetsPage ? 'page' : null
+                        "
                       >
                         <button
                           class="page-link"

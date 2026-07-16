@@ -117,6 +117,42 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         return new AssetTextRequest { Content = content };
     }
 
+    [HttpPut("{id}/name")]
+    public async Task<ActionResult<AssetSummary>> RenameAsset(Guid id, [FromBody] AssetNameRequest request)
+    {
+        var asset = await repositoryService.GetAsset(id);
+        if (asset.Scope != AssetScope.Library)
+            return BadRequest("Only library assets can be renamed in the editor.");
+
+        var normalizedName = request.Name?.Trim() ?? string.Empty;
+        if (!AssetNameParser.IsValidAssetName(normalizedName))
+            return BadRequest("Asset name is required and cannot contain ','.");
+
+        if (string.Equals(asset.Name, normalizedName, StringComparison.Ordinal))
+            return await ToSummary(asset);
+
+        var existing = await repositoryService.GetLibraryAssetByLocationAndName(asset.FolderId, normalizedName);
+        if (existing is not null && existing.AssetId != asset.AssetId)
+            return Conflict("An asset with this name already exists in this folder.");
+
+        var updated = new Asset
+        {
+            AssetId = asset.AssetId,
+            RunId = asset.RunId,
+            ConversationId = asset.ConversationId,
+            FolderId = asset.FolderId,
+            Name = normalizedName,
+            Scope = asset.Scope,
+            Created = asset.Created,
+            MediaType = asset.MediaType,
+            SizeBytes = asset.SizeBytes,
+            StorageKey = asset.StorageKey,
+        };
+
+        await repositoryService.UpsertAsset(updated);
+        return await ToSummary(updated);
+    }
+
     [HttpPut("{id}/text")]
     public async Task<IActionResult> UpdateAssetText(Guid id, [FromBody] AssetTextRequest request)
     {
@@ -358,6 +394,12 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
     }
 
     private static AssetFolderSummary ToSummary(AssetFolder folder) => new(folder.FolderId, folder.Name, folder.Created);
+
+    private async Task<AssetSummary> ToSummary(Asset asset)
+    {
+        string? folderName = asset.FolderId.HasValue ? (await repositoryService.GetAssetFolder(asset.FolderId.Value)).Name : null;
+        return new AssetSummary(asset.AssetId, asset.Name, asset.MediaType, asset.SizeBytes, asset.Scope, asset.Created, asset.FolderId, folderName);
+    }
 
     private async Task<Dictionary<Guid, string>> BuildFolderNameLookup(List<Asset> assets)
     {

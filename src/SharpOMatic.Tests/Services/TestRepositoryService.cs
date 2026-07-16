@@ -751,6 +751,16 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.FromResult(_assets.Values.Where(a => a.Scope == AssetScope.Library && a.Name.Equals(name, StringComparison.OrdinalIgnoreCase)).OrderByDescending(a => a.Created).FirstOrDefault());
     }
 
+    public Task<Asset?> GetLibraryAssetByLocationAndName(Guid? folderId, string name)
+    {
+        return Task.FromResult(
+            _assets
+                .Values.Where(asset => asset.Scope == AssetScope.Library && asset.FolderId == folderId && asset.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(asset => asset.Created)
+                .FirstOrDefault()
+        );
+    }
+
     public Task UpsertAsset(Asset asset)
     {
         _assets[asset.AssetId] = asset;

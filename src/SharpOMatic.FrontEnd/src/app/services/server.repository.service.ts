@@ -1131,7 +1131,9 @@ export class ServerRepositoryService {
     );
   }
 
-  public exportEvalRowsCsv(evalConfigId: string): Observable<HttpResponse<Blob>> {
+  public exportEvalRowsCsv(
+    evalConfigId: string,
+  ): Observable<HttpResponse<Blob>> {
     const apiUrl = this.settingsService.apiUrl();
     return this.http.get(
       `${apiUrl}/api/eval/configs/${evalConfigId}/rows/export/csv`,
@@ -1617,6 +1619,21 @@ export class ServerRepositoryService {
         catchError((error) => {
           this.notifyError('Moving asset', error);
           return of(false);
+        }),
+      );
+  }
+
+  public renameAsset(
+    assetId: string,
+    name: string,
+  ): Observable<AssetSummary | null> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http
+      .put<AssetSummary>(`${apiUrl}/api/assets/${assetId}/name`, { name })
+      .pipe(
+        catchError((error) => {
+          this.notifyError('Renaming asset', error);
+          return of(null);
         }),
       );
   }

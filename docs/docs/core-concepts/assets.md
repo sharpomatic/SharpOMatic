@@ -27,8 +27,10 @@ Assets are scoped in three ways:
 ### Library Assets
 
 Library assets allow for reuse and are not tied to a specific workflow or workflow run.
-They are typically added via the editor where you can list, add, move, and delete them.
+They are typically added via the editor where you can list, add, rename, move, and delete them.
 Library assets can be organized into folders, and those folders are preserved during transfer export/import.
+Renaming is available when one asset is selected and edits the complete name, including its extension.
+Asset names must be unique within their folder; leaving the name unchanged is a no-op.
 Programmatic changes are also possible.
 
 ### Run Assets
