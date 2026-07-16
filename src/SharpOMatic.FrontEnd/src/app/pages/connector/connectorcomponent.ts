@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnInit, inject } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Connector } from '../../metadata/definitions/connector';
 import { ConnectorConfig } from '../../metadata/definitions/connector-config';
 import { ServerRepositoryService } from '../../services/server.repository.service';
@@ -19,6 +19,7 @@ import { DynamicFieldsComponent } from '../../components/dynamic-fields/dynamic-
 })
 export class ConnectorComponent implements OnInit, CanLeaveWithUnsavedChanges {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly serverRepository = inject(ServerRepositoryService);
   private readonly metadataService = inject(MetadataService);
 
@@ -40,6 +41,10 @@ export class ConnectorComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
   save(): void {
     this.saveChanges().subscribe();
+  }
+
+  goBackToConnectors(): void {
+    void this.router.navigate(['/connectors']);
   }
 
   public onConnectorConfigChange(configId: string): void {

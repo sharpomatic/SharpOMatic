@@ -153,6 +153,10 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
     this.saveChanges().subscribe();
   }
 
+  goBackToWorkflows(): void {
+    void this.router.navigate(['/workflows']);
+  }
+
   run(): void {
     const hasRunInputs = this.workflowService.runInputs().entries().length > 0;
     if (!hasRunInputs) {

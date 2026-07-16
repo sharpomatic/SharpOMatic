@@ -12,7 +12,10 @@ import {
 import { FormsModule } from '@angular/forms';
 import { ContextViewerComponent } from '../../components/context-viewer/context-viewer.component';
 import { TabComponent, TabItem } from '../../components/tab/tab.component';
-import { ModelCallNodeEntity } from '../../entities/definitions/model-call-node.entity';
+import {
+  ModelCallModelSnapshot,
+  ModelCallNodeEntity,
+} from '../../entities/definitions/model-call-node.entity';
 import { TraceProgressModel } from '../../pages/workflow/interfaces/trace-progress-model';
 import { DIALOG_DATA } from '../services/dialog.service';
 import { ServerRepositoryService } from '../../services/server.repository.service';
@@ -37,6 +40,8 @@ import { ModelPickerComponent } from '../../components/model-picker/model-picker
 import { ModelPickerOption } from '../../components/model-picker/model-picker-option';
 import { forkJoin } from 'rxjs';
 import { ModelCallToolAgUiOutputMode } from '../../entities/enumerations/model-call-tool-ag-ui-output-mode';
+import { BsModalService } from 'ngx-bootstrap/modal';
+import { ConfirmDialogComponent } from '../confirm/confirm-dialog.component';
 
 @Component({
   selector: 'app-model-call-node-dialog',
@@ -52,6 +57,7 @@ import { ModelCallToolAgUiOutputMode } from '../../entities/enumerations/model-c
   ],
   templateUrl: './model-call-node-dialog.component.html',
   styleUrls: ['./model-call-node-dialog.component.scss'],
+  providers: [BsModalService],
 })
 export class ModelCallNodeDialogComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
@@ -109,6 +115,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
   private toolDisplayNamesLoaded = false;
 
   private readonly serverRepository = inject(ServerRepositoryService);
+  private readonly modalService = inject(BsModalService);
 
   constructor(
     @Inject(DIALOG_DATA)
@@ -156,6 +163,340 @@ export class ModelCallNodeDialogComponent implements OnInit {
     this.loadModel(modelId);
   }
 
+  public fallbackModels(): ModelCallModelSnapshot[] {
+    return this.node.fallbackModels();
+  }
+
+  public addFallbackModel(): void {
+    if (!this.node.modelId()) {
+      return;
+    }
+
+    const usedIds = new Set(
+      this.node.toSnapshot().models.map((model) => model.modelId),
+    );
+    const candidate = this.availableModels.find(
+      (model) => !usedIds.has(model.modelId),
+    );
+    if (!candidate) {
+      return;
+    }
+
+    this.node.setFallbackModels([
+      ...this.fallbackModels(),
+      {
+        modelId: candidate.modelId,
+        parameterValues: this.buildFallbackParameterValues(
+          candidate.modelId,
+          {},
+        ),
+      },
+    ]);
+  }
+
+  public onFallbackModelSelectionChange(
+    index: number,
+    modelId: string | null,
+  ): void {
+    if (!modelId) {
+      this.removeFallbackModel(index);
+      return;
+    }
+
+    const fallbacks = this.fallbackModels();
+    const previous = fallbacks[index];
+    fallbacks[index] = {
+      modelId,
+      ...(previous?.disabled ? { disabled: true } : {}),
+      parameterValues: this.buildFallbackParameterValues(
+        modelId,
+        previous?.modelId === modelId ? previous.parameterValues : {},
+      ),
+    };
+    this.node.setFallbackModels(fallbacks);
+  }
+
+  public toggleModelDisabled(modelIndex: number): void {
+    this.node.setModelDisabled(
+      modelIndex,
+      !this.node.modelDisabled(modelIndex),
+    );
+  }
+
+  public onFallbackParameterValuesChange(
+    index: number,
+    values: Record<string, string | null>,
+  ): void {
+    const fallbacks = this.fallbackModels();
+    const fallback = fallbacks[index];
+    if (!fallback) {
+      return;
+    }
+
+    fallbacks[index] = { ...fallback, parameterValues: { ...values } };
+    this.node.setFallbackModels(fallbacks);
+  }
+
+  public removeFallbackModel(index: number): void {
+    const fallbacks = this.fallbackModels();
+    fallbacks.splice(index, 1);
+    this.node.setFallbackModels(fallbacks);
+  }
+
+  public confirmRemoveFallbackModel(index: number): void {
+    const fallback = this.fallbackModels()[index];
+    if (!fallback) {
+      return;
+    }
+
+    const modelName =
+      this.availableModels.find((model) => model.modelId === fallback.modelId)
+        ?.name ?? `Fallback Model ${index + 1}`;
+    const modalRef = this.modalService.show(ConfirmDialogComponent, {
+      initialState: {
+        title: 'Delete Fallback Model',
+        message: `Are you sure you want to delete the fallback model '${modelName}'?`,
+      },
+    });
+
+    modalRef.onHidden?.subscribe(() => {
+      if (modalRef.content?.result) {
+        this.removeFallbackModel(index);
+      }
+    });
+  }
+
+  public fallbackModelConfig(modelId: string): ModelConfig | null {
+    const model = this.modelDetailsCache.get(modelId);
+    return model
+      ? (this.modelConfigsCache.find(
+          (config) => config.configId === model.configId(),
+        ) ?? null)
+      : null;
+  }
+
+  public fallbackInformationEntries(
+    modelId: string,
+  ): ModelInformationDisplayEntry[] {
+    const fallbackInformation = this.fallbackModelConfig(modelId)?.information;
+    if (!fallbackInformation || !this.modelConfig) {
+      return [];
+    }
+
+    const primaryInformationNames = new Set(
+      this.modelConfig.information.map((entry) => entry.name),
+    );
+    const matchingInformation = fallbackInformation.filter((entry) =>
+      primaryInformationNames.has(entry.name),
+    );
+
+    return buildModelInformationEntries(matchingInformation);
+  }
+
+  public fallbackCapabilityContext(
+    modelId: string,
+  ): DynamicFieldsCapabilityContext | null {
+    const model = this.modelDetailsCache.get(modelId);
+    const config = this.fallbackModelConfig(modelId);
+    if (!model || !config) {
+      return null;
+    }
+
+    return {
+      capabilities: config.capabilities,
+      isCustom: config.isCustom,
+      customCapabilities: model.customCapabilities(),
+    };
+  }
+
+  public fallbackCompatibilityMessages(modelId: string): string[] {
+    const primaryModel = this.loadedModel;
+    const fallbackModel = this.modelDetailsCache.get(modelId);
+    const fallbackConfig = this.fallbackModelConfig(modelId);
+    if (!primaryModel || !fallbackModel || !fallbackConfig) {
+      return ['Model details are not available.'];
+    }
+
+    const messages: string[] = [];
+    if (
+      !this.modelSupportsCapability(
+        fallbackModel,
+        fallbackConfig,
+        'SupportsTextIn',
+      )
+    ) {
+      messages.push('The fallback model does not support text input.');
+    }
+
+    if (
+      this.supportsImageIn &&
+      this.node.imageInputPath().trim() &&
+      !this.modelSupportsCapability(
+        fallbackModel,
+        fallbackConfig,
+        'SupportsImageIn',
+      )
+    ) {
+      messages.push(
+        'The configured image input is not supported by the fallback model.',
+      );
+    }
+
+    if (this.getSelectedTools().size) {
+      if (
+        !this.modelSupportsCapability(
+          fallbackModel,
+          fallbackConfig,
+          'SupportsToolCalling',
+        )
+      ) {
+        messages.push(
+          'The selected tools require tool calling, which is not supported by the fallback model.',
+        );
+      } else {
+        messages.push(
+          ...this.capabilitySelectionWarnings(
+            fallbackConfig,
+            'SupportsToolCalling',
+          ),
+        );
+      }
+    }
+
+    const structuredOutput = this.structuredOutputMode;
+    if (structuredOutput && structuredOutput !== 'Text') {
+      if (
+        !this.modelSupportsCapability(
+          fallbackModel,
+          fallbackConfig,
+          'SupportsStructuredOutput',
+        )
+      ) {
+        messages.push(
+          `Structured output type '${structuredOutput}' is not supported by the fallback model.`,
+        );
+      } else {
+        messages.push(
+          ...this.capabilitySelectionWarnings(
+            fallbackConfig,
+            'SupportsStructuredOutput',
+          ),
+        );
+      }
+    }
+
+    return messages;
+  }
+
+  private modelSupportsCapability(
+    model: Model,
+    config: ModelConfig,
+    capability: string,
+  ): boolean {
+    return (
+      config.capabilities.some((item) => item.name === capability) &&
+      (!config.isCustom || model.customCapabilities().has(capability))
+    );
+  }
+
+  private capabilitySelectionWarnings(
+    fallbackConfig: ModelConfig,
+    capability: string,
+  ): string[] {
+    if (!this.modelConfig) {
+      return [];
+    }
+
+    const values = this.node.parameterValues();
+    const fallbackFields = new Map(
+      fallbackConfig.parameterFields
+        .filter((field) => field.capability === capability)
+        .map((field) => [field.name, field] as const),
+    );
+
+    return this.modelConfig.parameterFields
+      .filter((field) => field.callDefined && field.capability === capability)
+      .flatMap((primaryField) => {
+        const value = values[primaryField.name];
+        if (value === null || value === undefined || value === '') {
+          return [];
+        }
+
+        const fallbackField = fallbackFields.get(primaryField.name);
+        if (!fallbackField) {
+          return [
+            `${primaryField.label} is configured but is not supported by the fallback model.`,
+          ];
+        }
+
+        if (fallbackField.type !== primaryField.type) {
+          return [
+            `${primaryField.label} value '${value}' is not supported by the fallback model.`,
+          ];
+        }
+
+        if (
+          fallbackField.enumOptions?.length &&
+          !fallbackField.enumOptions.includes(value)
+        ) {
+          return [
+            `${primaryField.label} value '${value}' is not supported by the fallback model.`,
+          ];
+        }
+
+        const numericValue = Number(value);
+        if (
+          Number.isFinite(numericValue) &&
+          ((fallbackField.min !== null && numericValue < fallbackField.min) ||
+            (fallbackField.max !== null && numericValue > fallbackField.max))
+        ) {
+          return [
+            `${primaryField.label} value '${value}' is outside the range supported by the fallback model.`,
+          ];
+        }
+
+        return [];
+      });
+  }
+
+  private buildFallbackParameterValues(
+    modelId: string,
+    previousValues: Record<string, string | null>,
+  ): Record<string, string | null> {
+    const model = this.modelDetailsCache.get(modelId);
+    const config = this.fallbackModelConfig(modelId);
+    if (!model || !config) {
+      return { ...previousValues };
+    }
+
+    const next = { ...previousValues };
+    config.parameterFields.forEach((field) => {
+      if (!field.callDefined) {
+        return;
+      }
+      if (
+        field.capability &&
+        config.isCustom &&
+        !model.customCapabilities().has(field.capability)
+      ) {
+        return;
+      }
+
+      if (field.name in previousValues) {
+        next[field.name] = this.applyFieldConstraints(
+          field,
+          previousValues[field.name],
+        );
+      } else {
+        next[field.name] =
+          field.defaultValue === null || field.defaultValue === undefined
+            ? null
+            : String(field.defaultValue);
+      }
+    });
+    return next;
+  }
+
   private loadAvailableModels(): void {
     forkJoin({
       models: this.serverRepository.getModelSummaries(),
@@ -171,7 +512,9 @@ export class ModelCallNodeDialogComponent implements OnInit {
         return;
       }
 
-      forkJoin(models.map((model) => this.serverRepository.getModel(model.modelId))).subscribe((details) => {
+      forkJoin(
+        models.map((model) => this.serverRepository.getModel(model.modelId)),
+      ).subscribe((details) => {
         details.forEach((detail) => {
           if (detail) {
             this.modelDetailsCache.set(detail.modelId, detail);
@@ -255,12 +598,16 @@ export class ModelCallNodeDialogComponent implements OnInit {
 
   private refreshModelPickerOptions(): void {
     const configsById = new Map(
-      this.modelConfigsCache.map((config) => [config.configId, config] as const),
+      this.modelConfigsCache.map(
+        (config) => [config.configId, config] as const,
+      ),
     );
 
     this.modelPickerOptions = this.availableModels.map((model) => {
       const detail = this.modelDetailsCache.get(model.modelId) ?? null;
-      const config = detail ? (configsById.get(detail.configId()) ?? null) : null;
+      const config = detail
+        ? (configsById.get(detail.configId()) ?? null)
+        : null;
       return {
         id: model.modelId,
         label: model.name,
@@ -578,7 +925,9 @@ export class ModelCallNodeDialogComponent implements OnInit {
   }
 
   private refreshTabs(): void {
-    const newTabs: TabItem[] = [{ id: 'details', title: 'Details', content: this.detailsTab }];
+    const newTabs: TabItem[] = [
+      { id: 'details', title: 'Details', content: this.detailsTab },
+    ];
 
     if (this.supportsTextIn || this.supportsTextOut) {
       newTabs.push({ id: 'text', title: 'Text', content: this.textTab });

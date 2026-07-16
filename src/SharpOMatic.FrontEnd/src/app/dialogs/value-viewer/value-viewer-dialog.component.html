@@ -1,0 +1,53 @@
+<div
+  class="modal-header d-flex justify-content-between align-items-center bg-body-secondary"
+>
+  <h4 class="modal-title">{{ title }}</h4>
+  <div class="d-flex align-items-center gap-3">
+    <div class="btn-group btn-group-sm" role="group" aria-label="Value view mode">
+      <button
+        type="button"
+        class="btn"
+        [class.btn-primary]="mode === 'text'"
+        [class.btn-outline-primary]="mode !== 'text'"
+        (click)="setMode('text')"
+      >
+        Text
+      </button>
+      <button
+        type="button"
+        class="btn"
+        [class.btn-primary]="mode === 'json'"
+        [class.btn-outline-primary]="mode !== 'json'"
+        [disabled]="!isJson"
+        (click)="setMode('json')"
+      >
+        JSON
+      </button>
+    </div>
+    <button
+      type="button"
+      class="btn btn-primary"
+      (click)="copyToClipboard()"
+    >
+      <i class="bi bi-clipboard pe-1"></i>Copy
+    </button>
+    <button type="button" class="btn btn-primary" (click)="close()">
+      Close
+    </button>
+  </div>
+</div>
+<div class="modal-body value-viewer-body bg-body-tertiary">
+  @if (mode === 'json') {
+    <ngx-monaco-editor
+      class="value-viewer-content value-viewer-editor"
+      [options]="jsonEditorOptions"
+      [ngModel]="jsonValue"
+    ></ngx-monaco-editor>
+  } @else {
+    <textarea
+      class="form-control value-viewer-content"
+      [value]="displayValue"
+      readonly
+    ></textarea>
+  }
+</div>

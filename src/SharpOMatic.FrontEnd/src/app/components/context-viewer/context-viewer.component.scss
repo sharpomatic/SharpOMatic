@@ -54,7 +54,11 @@
 }
 
 .name {
-  min-width: 90px;
+  flex: 0 0 135px;
+  max-width: 135px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .type {
@@ -63,6 +67,19 @@
 
 .value {
   flex: 1 1 auto;
+}
+
+.view-action {
+  flex: 0 0 50px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.context-view-button {
+  width: 48px;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
 }
 
 .value-toggle {

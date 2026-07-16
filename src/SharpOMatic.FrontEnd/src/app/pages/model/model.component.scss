@@ -61,6 +61,12 @@
   font-size: 1.5rem;
 }
 
+.detail-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .information-list {
   border: 1px solid var(--bs-border-color);
   border-radius: var(--bs-border-radius);

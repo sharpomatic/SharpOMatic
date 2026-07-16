@@ -12,7 +12,7 @@ All engine spans are created on a single `ActivitySource` named `SharpOMatic.Eng
 | Span | When | Key attributes |
 | --- | --- | --- |
 | `invoke_agent {workflow name}` | One per workflow run, from start until success, failure, or suspension. Follows the OpenTelemetry GenAI agent-invocation convention so agent-aware backends (such as the Application Insights Agents view) list each run as an agent run. | `gen_ai.operation.name` (`invoke_agent`), `gen_ai.provider.name` (`sharpomatic`), `gen_ai.agent.id` / `gen_ai.agent.name` (workflow id/name), `gen_ai.conversation.id` and `session.id` (conversation id), `workflow.id`, `workflow.name`, `sharpomatic.run.id`, `sharpomatic.run.status`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `sharpomatic.model_call.count`, `sharpomatic.model_call.total_cost`, `error.type`, `sharpomatic.failed_node.*` |
-| `executor.process {node title}` | One per node execution, parented to the run span. | `executor.id`, `executor.type`, `sharpomatic.node.status`, `sharpomatic.run.id`, plus node-specific attributes below |
+| `executor.process {node title}` | One per node execution, parented to the run span. Failed nodes include a standard `exception` event containing the exception type, message, and stack trace. | `executor.id`, `executor.type`, `sharpomatic.node.status`, `sharpomatic.run.id`, `error.type`, plus node-specific attributes below |
 | `chat {model}` | One per provider round trip, emitted by the `Microsoft.Extensions.AI` OpenTelemetry middleware that the engine wraps around every model call chat client. Follows the OpenTelemetry GenAI semantic conventions (`gen_ai.*` attributes including token usage). | `gen_ai.*` |
 
 Node executions add type-specific attributes to their `executor.process` span:
@@ -30,7 +30,7 @@ Custom node implementations deriving from `RunNode<T>` can stamp their own tags 
 
 The run span is started on the caller's async flow, so it is parented to whatever ambient `Activity` is current when the run starts (for example an ASP.NET Core request or a message-processing span in the host). Node spans execute on engine worker threads and are parented explicitly to the run span. Model call spans are children of their node span.
 
-Failed runs and nodes set the span status to `Error`; the workflow run and model call metrics recorded in the repository are unchanged and complement the spans.
+Failed runs and nodes set the span status to `Error`. A failed node also records the original exception on its span as an OpenTelemetry `exception` event with `exception.type`, `exception.message`, and `exception.stacktrace`. Exceptions wrapped with a workflow-friendly message preserve the original exception as their inner exception. Exception messages and stack traces can contain sensitive application data or source paths, so hosts should send traces only to a trusted backend. The workflow run and model call metrics recorded in the repository complement the spans.
 
 ## Exporting Spans From A Host
 

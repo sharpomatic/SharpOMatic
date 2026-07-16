@@ -108,6 +108,42 @@
   word-break: break-word;
 }
 
+.model-card-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.model-card {
+  min-width: 0;
+}
+
+.model-card-disabled {
+  border-style: dashed !important;
+  background-color: var(--bs-tertiary-bg) !important;
+}
+
+.model-card-disabled > :not(.model-card-header) {
+  opacity: 0.55;
+}
+
+.model-card-title {
+  color: var(--bs-secondary-color);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.model-card-header {
+  min-height: 31px;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .model-card-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .tool-calling-table {
   margin-bottom: 0;
 }

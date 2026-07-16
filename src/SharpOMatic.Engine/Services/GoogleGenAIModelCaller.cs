@@ -7,6 +7,28 @@ public class GoogleGenAIModelCaller(IEnumerable<IEngineNotification> engineNotif
     public GoogleGenAIModelCaller()
         : this([]) { }
 
+    public override ModelFallbackFailure? ModelFallbackFailureOverride(Exception exception)
+    {
+        if (ModelFallbackFailureClassifier.Find<ClientError>(exception) is { } clientError)
+        {
+            return clientError.StatusCode > 0
+                ? ModelFallbackFailureClassifier.ClassifyStatusCode(clientError.StatusCode)
+                : new ModelFallbackFailure(ModelFallbackFailureCategory.InvalidRequest, StatusCode: null, RetryAfter: null, IsTransient: false);
+        }
+
+        if (ModelFallbackFailureClassifier.Find<ServerError>(exception) is { } serverError)
+        {
+            return serverError.StatusCode > 0
+                ? ModelFallbackFailureClassifier.ClassifyStatusCode(serverError.StatusCode)
+                : new ModelFallbackFailure(ModelFallbackFailureCategory.ProviderUnavailable, StatusCode: null, RetryAfter: null, IsTransient: true);
+        }
+
+        if (ModelFallbackFailureClassifier.Find<System.Net.WebSockets.WebSocketException>(exception) is not null)
+            return new ModelFallbackFailure(ModelFallbackFailureCategory.Network, StatusCode: null, RetryAfter: null, IsTransient: true);
+
+        return null;
+    }
+
     public override async Task<ModelCallResult> Call(
         Model model,
         ModelConfig modelConfig,
@@ -41,7 +63,7 @@ public class GoogleGenAIModelCaller(IEnumerable<IEngineNotification> engineNotif
         (var chatClient, var modelName) = GetChatClient(model, modelConfig, authenticationModeConfig, connectionFields);
 
         // Use the Microsoft Agent Framework by creating a chat client based agent
-        var agent = new ChatClientAgent(CreateFunctionInvokingChatClient(chatClient, agentServiceProvider), instructions: instructions, services: agentServiceProvider);
+        var agent = new ChatClientAgent(CreateFunctionInvokingChatClient(chatClient, agentServiceProvider, progressSink), instructions: instructions, services: agentServiceProvider);
         await EmitPromptStreamEvents(processContext, prompt, node.DisableStreamUser);
         var result = await CallConfiguredAgent(agent, chat, chatOptions, jsonOutput, node, progressSink, modelCallExitState);
         return result.ProviderModelName is null

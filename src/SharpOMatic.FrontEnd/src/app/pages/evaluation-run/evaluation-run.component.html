@@ -1,6 +1,14 @@
 <div class="d-flex flex-column bg-body-secondary h-100 evaluation-run-page">
   <div class="flex-shrink-0">
     <div class="d-flex align-items-center gap-2 p-3 pt-2 pb-0">
+      <button
+        type="button"
+        class="btn btn-primary btn-sm run-back-button"
+        (click)="goBackToRuns()"
+      >
+        <i class="bi bi-arrow-left"></i>
+        <span>Back</span>
+      </button>
       <h2 class="">
         <i class="bi bi-clipboard-check pe-3 icon-sm"></i
         >{{ runDetail?.evalRun?.name || 'Run Detail' }}

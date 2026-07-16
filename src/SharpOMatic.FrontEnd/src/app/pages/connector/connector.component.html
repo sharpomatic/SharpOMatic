@@ -2,9 +2,19 @@
   <div
     class="d-flex justify-content-between align-items-center p-3 pt-2 pb-1 bg-body-secondary"
   >
-    <h2 class="">
-      <i class="bi bi-plug pe-3 icon-sm"></i>{{ connector.name() }}
-    </h2>
+    <div class="d-flex align-items-center gap-2">
+      <button
+        type="button"
+        class="btn btn-primary btn-sm detail-back-button"
+        (click)="goBackToConnectors()"
+      >
+        <i class="bi bi-arrow-left"></i>
+        <span>Back</span>
+      </button>
+      <h2 class="mb-0">
+        <i class="bi bi-plug pe-3 icon-sm"></i>{{ connector.name() }}
+      </h2>
+    </div>
     <button
       class="btn btn-primary"
       [disabled]="!connector.isDirty()"

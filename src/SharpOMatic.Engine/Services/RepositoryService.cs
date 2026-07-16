@@ -108,7 +108,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (workflow.WorkflowFolderId.HasValue)
             folderName = await dbContext.WorkflowFolders.AsNoTracking().Where(f => f.WorkflowFolderId == workflow.WorkflowFolderId.Value).Select(f => f.Name).FirstOrDefaultAsync();
 
-        return new WorkflowEntity()
+        var result = new WorkflowEntity()
         {
             Version = workflow.Version,
             Id = workflow.WorkflowId,
@@ -120,10 +120,13 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             Nodes = JsonSerializer.Deserialize<NodeEntity[]>(workflow.Nodes, _options)!,
             Connections = JsonSerializer.Deserialize<ConnectionEntity[]>(workflow.Connections, _options)!,
         };
+
+        return WorkflowSchemaUpgrader.Upgrade(result);
     }
 
     public async Task UpsertWorkflow(WorkflowEntity workflow)
     {
+        WorkflowSchemaUpgrader.Upgrade(workflow);
         using var dbContext = dbContextFactory.CreateDbContext();
 
         var entry = await (from w in dbContext.Workflows where w.WorkflowId == workflow.Id select w).FirstOrDefaultAsync();
@@ -152,6 +155,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await EnsureWorkflowNameIsUnique(dbContext, workflow.Id, workflow.WorkflowFolderId, normalizedName);
 
         entry.WorkflowFolderId = workflow.WorkflowFolderId;
+        entry.Version = workflow.Version;
         entry.Named = normalizedName;
         entry.Description = workflow.Description;
         entry.IsConversationEnabled = workflow.IsConversationEnabled;
@@ -891,6 +895,10 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         var masterItems = request.Scope == ModelCallMetricScope.All ? [] : BuildMetricMasterItems(metricsInRange, request.Scope, request.MasterSearch);
 
         var selectedMetrics = ApplyMetricScope(metricsInRange, request.Scope, request.ScopeKey).ToList();
+        var selectedMetricIds = selectedMetrics.Select(metric => metric.Id).ToHashSet();
+        var selectedLogicalGroups = BuildMetricLogicalGroups(metricsInRange)
+            .Where(group => group.Any(metric => selectedMetricIds.Contains(metric.Id)))
+            .ToList();
         var scopeName = request.Scope == ModelCallMetricScope.All ? null : masterItems.FirstOrDefault(item => string.Equals(item.Key, request.ScopeKey, StringComparison.Ordinal))?.Name;
 
         var dashboardRange = GetMetricDashboardRange(selectedMetrics, start, end, request.Bucket, request.AllTime);
@@ -902,17 +910,21 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             request.Scope,
             request.ScopeKey,
             scopeName,
-            BuildMetricTotals(selectedMetrics),
+            BuildMetricTotals(selectedMetrics, selectedLogicalGroups),
             masterItems,
-            BuildMetricTimeBuckets(selectedMetrics, dashboardRange.Start, dashboardRange.End, request.Bucket),
+            BuildMetricTimeBuckets(selectedMetrics, selectedLogicalGroups, dashboardRange.Start, dashboardRange.End, request.Bucket),
             BuildMetricBreakdown(selectedMetrics, metric => BuildMetricNameKey(GetMetricWorkflowName(metric)), GetMetricWorkflowName),
             BuildMetricBreakdown(selectedMetrics, metric => BuildMetricNameKey(GetMetricConnectorName(metric)), GetMetricConnectorName),
             BuildMetricBreakdown(selectedMetrics, metric => BuildMetricNameKey(GetMetricModelName(metric)), GetMetricModelName),
             BuildMetricBreakdown(selectedMetrics, metric => BuildMetricIdKey(metric.NodeEntityId), metric => metric.NodeTitle),
             BuildMetricFailures(selectedMetrics),
+            BuildMetricFailureCategories(selectedMetrics),
             selectedMetrics.OrderByDescending(metric => metric.Created).Skip(recentSkip).Take(recentTake).Select(ToMetricCallSummary).ToList(),
             selectedMetrics.Count,
-            selectedMetrics.OrderByDescending(metric => metric.Duration ?? -1).ThenByDescending(metric => metric.Created).Take(10).Select(ToMetricCallSummary).ToList()
+            selectedMetrics.OrderByDescending(metric => metric.Duration ?? -1).ThenByDescending(metric => metric.Created).Take(10).Select(ToMetricCallSummary).ToList(),
+            selectedLogicalGroups.OrderByDescending(group => group.Min(metric => metric.Created)).Skip(recentSkip).Take(recentTake).Select(ToMetricLogicalCallSummary).ToList(),
+            selectedLogicalGroups.Count,
+            selectedLogicalGroups.OrderByDescending(GetLogicalCallDuration).ThenByDescending(group => group.Min(metric => metric.Created)).Take(10).Select(ToMetricLogicalCallSummary).ToList()
         );
     }
 
@@ -981,10 +993,14 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         };
     }
 
-    private static ModelCallMetricTotals BuildMetricTotals(List<ModelCallMetric> metrics)
+    private static ModelCallMetricTotals BuildMetricTotals(List<ModelCallMetric> metrics, List<List<ModelCallMetric>>? logicalGroups = null)
     {
         var totalCalls = metrics.Count;
         var failedCalls = metrics.Count(metric => !metric.Succeeded);
+        logicalGroups ??= BuildMetricLogicalGroups(metrics);
+        var callsRequiringFallback = logicalGroups.Count(group => group.Count > 1);
+        var recoveredCalls = logicalGroups.Count(IsRecoveredLogicalCall);
+        var unrecoveredCalls = logicalGroups.Count(group => !GetFinalLogicalAttempt(group).Succeeded);
         return new ModelCallMetricTotals(
             totalCalls,
             totalCalls - failedCalls,
@@ -997,20 +1013,30 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             metrics.Count(metric => !metric.TotalCost.HasValue),
             AverageDuration(metrics),
             PercentileDuration(metrics, 0.95),
-            totalCalls == 0 ? 0 : failedCalls / (double)totalCalls
+            totalCalls == 0 ? 0 : failedCalls / (double)totalCalls,
+            logicalGroups.Count,
+            callsRequiringFallback,
+            recoveredCalls,
+            unrecoveredCalls,
+            callsRequiringFallback == 0 ? 0 : recoveredCalls / (double)callsRequiringFallback,
+            logicalGroups.Count == 0 ? 0 : unrecoveredCalls / (double)logicalGroups.Count
         );
     }
 
-    private static List<ModelCallMetricTimeBucket> BuildMetricTimeBuckets(List<ModelCallMetric> metrics, DateTime start, DateTime end, ModelCallMetricBucket bucket)
+    private static List<ModelCallMetricTimeBucket> BuildMetricTimeBuckets(List<ModelCallMetric> metrics, List<List<ModelCallMetric>> logicalGroups, DateTime start, DateTime end, ModelCallMetricBucket bucket)
     {
         var groups = metrics.GroupBy(metric => GetMetricBucketStart(metric.Created, bucket)).ToDictionary(group => group.Key, group => group.ToList());
+        var logicalBucketGroups = logicalGroups.GroupBy(group => GetMetricBucketStart(group.Min(metric => metric.Created), bucket)).ToDictionary(group => group.Key, group => group.ToList());
 
         var results = new List<ModelCallMetricTimeBucket>();
         for (var bucketStart = GetMetricBucketStart(start, bucket); bucketStart < end; bucketStart = AddMetricBucket(bucketStart, bucket))
         {
             groups.TryGetValue(bucketStart, out var bucketMetrics);
             bucketMetrics ??= [];
-            var totals = BuildMetricTotals(bucketMetrics);
+            logicalBucketGroups.TryGetValue(bucketStart, out var bucketLogicalGroups);
+            bucketLogicalGroups ??= [];
+            var totals = BuildMetricTotals(bucketMetrics, bucketLogicalGroups);
+            var fallbackAttempts = bucketMetrics.Count(metric => metric.AttemptNumber > 1);
             results.Add(
                 new ModelCallMetricTimeBucket(
                     bucketStart,
@@ -1024,7 +1050,14 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                     totals.PricedCalls,
                     totals.UnpricedCalls,
                     totals.AverageDuration,
-                    totals.P95Duration
+                    totals.P95Duration,
+                    totals.LogicalCalls,
+                    bucketMetrics.Count - fallbackAttempts,
+                    fallbackAttempts,
+                    bucketMetrics.Count(metric => metric.AttemptNumber > 1 && metric.Succeeded),
+                    bucketMetrics.Count(metric => metric.AttemptNumber > 1 && !metric.Succeeded),
+                    totals.RecoveredCalls,
+                    totals.UnrecoveredCalls
                 )
             );
         }
@@ -1049,7 +1082,10 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                     totals.TotalTokens,
                     totals.AverageDuration,
                     totals.P95Duration,
-                    totals.FailureRate
+                    totals.FailureRate,
+                    groupMetrics.Count(metric => metric.AttemptNumber <= 1),
+                    groupMetrics.Count(metric => metric.AttemptNumber > 1),
+                    groupMetrics.Count(metric => metric.AttemptNumber > 1 && metric.Succeeded)
                 );
             })
             .OrderByDescending(item => item.TotalCost)
@@ -1084,10 +1120,31 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             .ToList();
     }
 
+    private static List<ModelCallMetricFailureCategoryGroup> BuildMetricFailureCategories(List<ModelCallMetric> metrics)
+    {
+        return metrics
+            .Where(metric => !metric.Succeeded)
+            .GroupBy(metric => new { Category = metric.FailureCategory ?? ModelFallbackFailureCategory.Unknown, metric.ProviderStatusCode })
+            .Select(group => new ModelCallMetricFailureCategoryGroup(
+                group.Key.Category,
+                group.Key.ProviderStatusCode,
+                group.Count(),
+                group.Max(metric => metric.Created),
+                group.Count(metric => metric.AttemptNumber <= 1),
+                group.Count(metric => metric.AttemptNumber > 1)
+            ))
+            .OrderByDescending(group => group.Count)
+            .ThenBy(group => group.Category)
+            .ThenBy(group => group.ProviderStatusCode)
+            .ToList();
+    }
+
     private static ModelCallMetricCallSummary ToMetricCallSummary(ModelCallMetric metric)
     {
         return new ModelCallMetricCallSummary(
             metric.Id,
+            metric.LogicalCallId,
+            metric.AttemptNumber,
             metric.Created,
             metric.WorkflowName,
             metric.NodeTitle,
@@ -1099,8 +1156,48 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             metric.TotalTokens,
             metric.TotalCost,
             metric.Succeeded,
+            metric.FailureCategory,
+            metric.ProviderStatusCode,
             metric.ErrorType,
             metric.ErrorMessage
+        );
+    }
+
+    private static List<List<ModelCallMetric>> BuildMetricLogicalGroups(IEnumerable<ModelCallMetric> metrics)
+    {
+        return metrics
+            .GroupBy(metric => metric.LogicalCallId == Guid.Empty ? metric.Id : metric.LogicalCallId)
+            .Select(group => group.OrderBy(metric => metric.AttemptNumber).ThenBy(metric => metric.Created).ToList())
+            .ToList();
+    }
+
+    private static ModelCallMetric GetFinalLogicalAttempt(List<ModelCallMetric> group) => group[^1];
+
+    private static bool IsRecoveredLogicalCall(List<ModelCallMetric> group)
+    {
+        return group.Count > 1 && GetFinalLogicalAttempt(group).Succeeded && group.Take(group.Count - 1).Any(metric => !metric.Succeeded);
+    }
+
+    private static long GetLogicalCallDuration(List<ModelCallMetric> group) => group.Sum(metric => metric.Duration ?? 0);
+
+    private static ModelCallMetricLogicalCallSummary ToMetricLogicalCallSummary(List<ModelCallMetric> group)
+    {
+        var finalAttempt = GetFinalLogicalAttempt(group);
+        var durationValues = group.Where(metric => metric.Duration.HasValue).ToList();
+        return new ModelCallMetricLogicalCallSummary(
+            finalAttempt.LogicalCallId == Guid.Empty ? finalAttempt.Id : finalAttempt.LogicalCallId,
+            group.Min(metric => metric.Created),
+            group[0].WorkflowName,
+            group[0].NodeTitle,
+            finalAttempt.ConnectorName,
+            GetMetricModelName(finalAttempt),
+            group.Count,
+            durationValues.Count == 0 ? null : durationValues.Sum(metric => metric.Duration!.Value),
+            group.Sum(metric => metric.TotalTokens ?? 0),
+            group.Any(metric => metric.TotalCost.HasValue) ? group.Sum(metric => metric.TotalCost ?? 0) : null,
+            finalAttempt.Succeeded,
+            IsRecoveredLogicalCall(group),
+            group.Select(ToMetricCallSummary).ToList()
         );
     }
 
@@ -2201,6 +2298,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (columns.Count == 0)
             return;
 
+        ValidateEvalColumns(columns);
+
         var ids = columns.Select(row => row.EvalColumnId).Distinct().ToList();
         var entities = await (from run in dbContext.EvalColumns where ids.Contains(run.EvalColumnId) select run).ToListAsync();
 
@@ -2238,6 +2337,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (rows.Count == 0)
             return;
 
+        NormalizeAndValidateEvalRows(rows);
+
         var ids = rows.Select(row => row.EvalRowId).Distinct().ToList();
         var entities = await (from run in dbContext.EvalRows where ids.Contains(run.EvalRowId) select run).ToListAsync();
 
@@ -2259,6 +2360,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         if (rows.Count == 0)
             return;
+
+        NormalizeAndValidateEvalRows(rows);
 
         var rowIds = rows.Select(row => row.EvalRowId).Distinct().ToList();
         if (rowIds.Count != rows.Count)
@@ -2826,7 +2929,62 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             if (gradersByRowId.TryGetValue(row.EvalRunRowId, out var graders))
                 row.Graders = graders;
 
+        await AppendEvalRunRowRepeatSuffixes(dbContext, evalRunId, results);
+
         return results;
+    }
+
+    private static async Task AppendEvalRunRowRepeatSuffixes(SharpOMaticDbContext dbContext, Guid evalRunId, List<EvalRunRowDetail> results)
+    {
+        if (results.Count == 0)
+            return;
+
+        var runRows = await dbContext
+            .EvalRunRows.AsNoTracking()
+            .Where(row => row.EvalRunId == evalRunId)
+            .OrderBy(row => row.Order)
+            .ThenBy(row => row.EvalRunRowId)
+            .Select(row => new { row.EvalRunRowId, row.EvalRowId })
+            .ToListAsync();
+
+        var repeatIndexes = runRows
+            .GroupBy(row => row.EvalRowId)
+            .Where(group => group.Count() > 1)
+            .SelectMany(group => group.Select((row, index) => new { row.EvalRunRowId, Repeat = index + 1 }))
+            .ToDictionary(row => row.EvalRunRowId, row => row.Repeat);
+
+        if (repeatIndexes.Count == 0)
+            return;
+
+        foreach (var result in results)
+            if (repeatIndexes.TryGetValue(result.EvalRunRowId, out var repeat))
+                result.Name = $"{result.Name} ({repeat})";
+    }
+
+    private static void ValidateEvalColumns(List<EvalColumn> columns)
+    {
+        foreach (var column in columns)
+        {
+            var name = column.Name.Trim();
+            if (name.Length == 0)
+                throw new SharpOMaticException("Evaluation column name is required.");
+
+            if (name.Equals("Repeat", StringComparison.OrdinalIgnoreCase))
+                throw new SharpOMaticException("Evaluation column name 'Repeat' is reserved.");
+
+            if (name.Equals("Name", StringComparison.OrdinalIgnoreCase) && column.Order != 0)
+                throw new SharpOMaticException("Evaluation column name 'Name' is reserved for the fixed first column.");
+        }
+    }
+
+    private static void NormalizeAndValidateEvalRows(List<EvalRow> rows)
+    {
+        foreach (var row in rows)
+        {
+            row.Repeat ??= EvalRow.DefaultRepeat;
+            if (row.Repeat < EvalRow.MinRepeat || row.Repeat > EvalRow.MaxRepeat)
+                throw new SharpOMaticException($"Evaluation row repeat must be between {EvalRow.MinRepeat} and {EvalRow.MaxRepeat}.");
+        }
     }
 
     private static IQueryable<EvalConfig> ApplyModelSearch(IQueryable<EvalConfig> evalConfigs, string? search)

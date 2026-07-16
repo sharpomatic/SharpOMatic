@@ -34,16 +34,21 @@ It is used to identify each row in run views and result tables.
 ### Rows
 
 Rows are the individual test cases.
-Each row stores values for the configured columns.
-When you run the evaluation, each row becomes one workflow execution input.
+Each row has a fixed **Name** and **Repeat** value plus values for the configured columns.
+Repeat defaults to `1`, can be set from `0` to `10000`, and controls how many times the row is executed in a full evaluation run.
+A repeat value of `0` skips the row.
+When repeat is greater than `1`, run results append the repeat number to the row name, such as `FRED (1)`, `FRED (2)`, and `FRED (3)`.
+When you run the evaluation, each runnable row repeat becomes one workflow execution input.
 In the editor's Rows tab, rows can be deleted one at a time or cleared in bulk with **Delete all rows** from the row actions menu after confirming the action.
 Row deletion is saved when you save the evaluation.
 
 You can also import rows from a CSV file from the row actions menu.
 Save any pending evaluation changes before importing so the server uses the latest column definitions.
 CSV headers are matched to evaluation column names case-insensitively, and extra CSV columns are ignored.
+The optional `Repeat` CSV column sets the fixed repeat value; if it is omitted or blank, imported rows use repeat `1`.
 Mandatory evaluation columns must be present in the CSV and must have a value in every imported row.
 Optional columns can be missing from the CSV, or can contain empty values.
+Custom column names cannot be `Name` or `Repeat` because those names are reserved for fixed row fields.
 
 ### Graders
 
@@ -95,12 +100,13 @@ The start dialog allows:
 
 - **Run name (optional)**: give the run a readable label. If omitted, the system uses a timestamp-based default name.
 - **Run random sample**: enable this to execute only a subset of rows.
-- **Sample count**: choose how many rows to run in the random sample.
+- **Sample count**: choose how many runnable rows to run in the random sample.
 
 Sampling is useful for quick checks when you want faster feedback before running the full dataset.
-If sampling is enabled, sample count must be between `1` and the total number of rows in the evaluation.
+If sampling is enabled, sample count must be between `1` and the number of rows whose repeat value is greater than `0`.
 Rows are selected randomly each run, so two sampled runs can execute different subsets.
-If sampling is disabled, all rows are executed.
+Sampled runs execute each selected row once, regardless of that row's repeat value.
+If sampling is disabled, all rows are executed according to their repeat values.
 
 ## Runs
 

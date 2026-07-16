@@ -176,8 +176,36 @@
 
             <section class="metrics-kpis">
               <div class="metrics-kpi">
-                <span>Total Calls</span>
+                <span>Provider Attempts</span>
                 <strong>{{ formatNumber(metrics.totals.totalCalls) }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Logical Calls</span>
+                <strong>{{ formatNumber(metrics.totals.logicalCalls) }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Used Fallback</span>
+                <strong>{{
+                  formatNumber(metrics.totals.callsRequiringFallback)
+                }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Recovered</span>
+                <strong>{{
+                  formatNumber(metrics.totals.recoveredCalls)
+                }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Unrecovered</span>
+                <strong>{{
+                  formatNumber(metrics.totals.unrecoveredCalls)
+                }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Fallback Recovery</span>
+                <strong>{{
+                  formatPercent(metrics.totals.fallbackRecoveryRate)
+                }}</strong>
               </div>
               <div class="metrics-kpi">
                 <span>Total Cost</span>
@@ -188,33 +216,41 @@
                 <strong>{{ formatNumber(metrics.totals.totalTokens) }}</strong>
               </div>
               <div class="metrics-kpi">
-                <span>Avg Duration</span>
+                <span>Avg Attempt Duration</span>
                 <strong>{{
                   formatDuration(metrics.totals.averageDuration)
                 }}</strong>
               </div>
               <div class="metrics-kpi">
-                <span>P95 Duration</span>
+                <span>P95 Attempt Duration</span>
                 <strong>{{
                   formatDuration(metrics.totals.p95Duration)
                 }}</strong>
               </div>
               <div class="metrics-kpi">
-                <span>Failure Rate</span>
+                <span>Attempt Failure Rate</span>
                 <strong>{{ formatPercent(metrics.totals.failureRate) }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Logical Failure Rate</span>
+                <strong>{{
+                  formatPercent(metrics.totals.logicalFailureRate)
+                }}</strong>
               </div>
             </section>
 
             @if (metrics.totals.unpricedCalls > 0) {
               <div class="alert alert-secondary py-2 small">
-                {{ formatNumber(metrics.totals.unpricedCalls) }} calls have no
-                pricing data and are excluded from cost totals.
+                {{ formatNumber(metrics.totals.unpricedCalls) }} provider
+                attempts have no pricing data and are excluded from cost totals.
               </div>
             }
 
             <section class="metrics-charts">
               <div class="metrics-panel">
-                <div class="metrics-panel-title">Calls over time</div>
+                <div class="metrics-panel-title">
+                  Attempts and recovery over time
+                </div>
                 <div class="metrics-chart"><canvas #callsCanvas></canvas></div>
               </div>
               <div class="metrics-panel">
@@ -226,7 +262,9 @@
                 <div class="metrics-chart"><canvas #tokensCanvas></canvas></div>
               </div>
               <div class="metrics-panel">
-                <div class="metrics-panel-title">Duration over time</div>
+                <div class="metrics-panel-title">
+                  Attempt duration over time
+                </div>
                 <div class="metrics-chart">
                   <canvas #durationCanvas></canvas>
                 </div>
@@ -242,7 +280,9 @@
                       <thead>
                         <tr>
                           <th>Name</th>
-                          <th class="text-end">Calls</th>
+                          <th class="text-end">Primary</th>
+                          <th class="text-end">Fallback</th>
+                          <th class="text-end">Recovered</th>
                           <th class="text-end">Cost</th>
                           <th class="text-end">Tokens</th>
                           <th class="text-end">Failures</th>
@@ -253,7 +293,15 @@
                           <tr>
                             <td>{{ item.name }}</td>
                             <td class="text-end">
-                              {{ formatNumber(item.totalCalls) }}
+                              {{ formatNumber(item.primaryAttempts) }}
+                            </td>
+                            <td class="text-end">
+                              {{ formatNumber(item.fallbackAttempts) }}
+                            </td>
+                            <td class="text-end">
+                              {{
+                                formatNumber(item.successfulFallbackAttempts)
+                              }}
                             </td>
                             <td class="text-end">
                               {{ formatCost(item.totalCost) }}
@@ -267,7 +315,7 @@
                           </tr>
                         } @empty {
                           <tr>
-                            <td colspan="5" class="text-body-secondary">
+                            <td colspan="7" class="text-body-secondary">
                               No breakdown data.
                             </td>
                           </tr>
@@ -279,7 +327,52 @@
               }
             </section>
 
-            <section class="metrics-panel">
+            <section class="metrics-panel mt-3">
+              <div class="metrics-panel-title">Failures by category</div>
+              <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th>HTTP Status</th>
+                      <th class="text-end">Primary</th>
+                      <th class="text-end">Fallback</th>
+                      <th class="text-end">Total</th>
+                      <th>Last Seen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (
+                      failure of metrics.failureCategories;
+                      track failure.category + ":" + failure.providerStatusCode
+                    ) {
+                      <tr>
+                        <td>{{ failureCategoryLabel(failure.category) }}</td>
+                        <td>{{ failure.providerStatusCode ?? "-" }}</td>
+                        <td class="text-end">
+                          {{ formatNumber(failure.primaryAttempts) }}
+                        </td>
+                        <td class="text-end">
+                          {{ formatNumber(failure.fallbackAttempts) }}
+                        </td>
+                        <td class="text-end">
+                          {{ formatNumber(failure.count) }}
+                        </td>
+                        <td>{{ formatDateTime(failure.lastSeen) }}</td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="6" class="text-body-secondary">
+                          No failures in this range.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="metrics-panel mt-3">
               <div class="metrics-panel-title">Failures</div>
               <div class="table-responsive">
                 <table class="table table-sm table-hover align-middle mb-0">
@@ -343,7 +436,9 @@
                 <div
                   class="d-flex justify-content-between align-items-center gap-2"
                 >
-                  <div class="metrics-panel-title mb-0">Recent Calls</div>
+                  <div class="metrics-panel-title mb-0">
+                    Recent Logical Calls
+                  </div>
                   <div class="btn-group btn-group-sm">
                     <button
                       type="button"
@@ -369,16 +464,20 @@
                   Page {{ recentPage }} of {{ recentPageCount() }}
                 </div>
                 <ng-container
-                  [ngTemplateOutlet]="callsTable"
-                  [ngTemplateOutletContext]="{ calls: metrics.recentCalls }"
+                  [ngTemplateOutlet]="logicalCallsTable"
+                  [ngTemplateOutletContext]="{
+                    calls: metrics.recentLogicalCalls,
+                  }"
                 ></ng-container>
               </div>
 
               <div class="metrics-panel">
-                <div class="metrics-panel-title">Slowest Calls</div>
+                <div class="metrics-panel-title">Slowest Logical Calls</div>
                 <ng-container
-                  [ngTemplateOutlet]="callsTable"
-                  [ngTemplateOutletContext]="{ calls: metrics.slowestCalls }"
+                  [ngTemplateOutlet]="logicalCallsTable"
+                  [ngTemplateOutletContext]="{
+                    calls: metrics.slowestLogicalCalls,
+                  }"
                 ></ng-container>
               </div>
             </section>
@@ -435,12 +534,12 @@
     }
 
     <main class="metrics-main">
-    @if (isLoading && !workflowDashboard) {
-      <div class="metrics-empty text-body-secondary">
-        <div class="spinner-border spinner-border-sm" role="status"></div>
-        <div>Loading workflow run metrics</div>
-      </div>
-    } @else if (!hasWorkflowMetricData()) {
+      @if (isLoading && !workflowDashboard) {
+        <div class="metrics-empty text-body-secondary">
+          <div class="spinner-border spinner-border-sm" role="status"></div>
+          <div>Loading workflow run metrics</div>
+        </div>
+      } @else if (!hasWorkflowMetricData()) {
         <div class="metrics-empty text-body-secondary">
           <div class="empty-icon"><i class="bi bi-bar-chart-line"></i></div>
           @if (activeWorkflowScope === WorkflowRunMetricScope.All) {
@@ -452,256 +551,362 @@
               Select {{ workflowMasterTitle().slice(0, -1).toLowerCase() }}
             </div>
           }
-      </div>
-    } @else {
-      @if (workflowDashboard; as metrics) {
-        <div class="metrics-scroll">
-          @if (isLoading) {
-            <div class="metrics-loading-indicator text-body-secondary">
-              <span class="spinner-border spinner-border-sm" role="status"></span>
-              Refreshing
-            </div>
-          }
-
-          <section class="metrics-kpis">
-            <div class="metrics-kpi">
-              <span>Total Runs</span>
-              <strong>{{ formatNumber(metrics.totals.totalRuns) }}</strong>
-            </div>
-            <div class="metrics-kpi">
-              <span>Successes</span>
-              <strong>{{ formatNumber(metrics.totals.successfulRuns) }}</strong>
-            </div>
-            <div class="metrics-kpi">
-              <span>Failures</span>
-              <strong>{{ formatNumber(metrics.totals.failedRuns) }}</strong>
-            </div>
-            <div class="metrics-kpi">
-              <span>Suspended</span>
-              <strong>{{ formatNumber(metrics.totals.suspendedRuns) }}</strong>
-            </div>
-            <div class="metrics-kpi">
-              <span>Avg Duration</span>
-              <strong>{{
-                formatDuration(metrics.totals.averageDuration)
-              }}</strong>
-            </div>
-            <div class="metrics-kpi">
-              <span>P95 Duration</span>
-              <strong>{{ formatDuration(metrics.totals.p95Duration) }}</strong>
-            </div>
-            <div class="metrics-kpi">
-              <span>Failure Rate</span>
-              <strong>{{ formatPercent(metrics.totals.failureRate) }}</strong>
-            </div>
-          </section>
-
-          <section class="metrics-kpis metrics-model-summary">
-            <div class="metrics-kpi">
-              <span>Model Calls</span>
-              <strong>{{ formatNumber(metrics.totals.modelCallCount) }}</strong>
-            </div>
-            <div class="metrics-kpi">
-              <span>Model Failures</span>
-              <strong>{{
-                formatNumber(metrics.totals.modelCallFailureCount)
-              }}</strong>
-            </div>
-            <div class="metrics-kpi">
-              <span>Total Tokens</span>
-              <strong>{{ formatNumber(metrics.totals.totalTokens) }}</strong>
-            </div>
-            <div class="metrics-kpi">
-              <span>Model Cost</span>
-              <strong>{{ formatCost(metrics.totals.totalModelCost) }}</strong>
-            </div>
-          </section>
-
-          <section class="metrics-charts">
-            <div class="metrics-panel">
-              <div class="metrics-panel-title">Runs over time</div>
-              <div class="metrics-chart">
-                <canvas #workflowRunsCanvas></canvas>
+        </div>
+      } @else {
+        @if (workflowDashboard; as metrics) {
+          <div class="metrics-scroll">
+            @if (isLoading) {
+              <div class="metrics-loading-indicator text-body-secondary">
+                <span
+                  class="spinner-border spinner-border-sm"
+                  role="status"
+                ></span>
+                Refreshing
               </div>
-            </div>
-            <div class="metrics-panel">
-              <div class="metrics-panel-title">Cost over time</div>
-              <div class="metrics-chart">
-                <canvas #workflowCostCanvas></canvas>
-              </div>
-            </div>
-            <div class="metrics-panel">
-              <div class="metrics-panel-title">Tokens over time</div>
-              <div class="metrics-chart">
-                <canvas #workflowTokensCanvas></canvas>
-              </div>
-            </div>
-            <div class="metrics-panel">
-              <div class="metrics-panel-title">Duration over time</div>
-              <div class="metrics-chart">
-                <canvas #workflowDurationCanvas></canvas>
-              </div>
-            </div>
-          </section>
+            }
 
-          <section class="metrics-breakdowns metrics-breakdowns-single">
-            <div class="metrics-panel">
-              <div class="metrics-panel-title">Top Workflows</div>
+            <section class="metrics-kpis">
+              <div class="metrics-kpi">
+                <span>Total Runs</span>
+                <strong>{{ formatNumber(metrics.totals.totalRuns) }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Successes</span>
+                <strong>{{
+                  formatNumber(metrics.totals.successfulRuns)
+                }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Failures</span>
+                <strong>{{ formatNumber(metrics.totals.failedRuns) }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Suspended</span>
+                <strong>{{
+                  formatNumber(metrics.totals.suspendedRuns)
+                }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Avg Duration</span>
+                <strong>{{
+                  formatDuration(metrics.totals.averageDuration)
+                }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>P95 Duration</span>
+                <strong>{{
+                  formatDuration(metrics.totals.p95Duration)
+                }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Failure Rate</span>
+                <strong>{{ formatPercent(metrics.totals.failureRate) }}</strong>
+              </div>
+            </section>
+
+            <section class="metrics-kpis metrics-model-summary">
+              <div class="metrics-kpi">
+                <span>Provider Attempts</span>
+                <strong>{{
+                  formatNumber(metrics.totals.modelCallCount)
+                }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Failed Model Attempts</span>
+                <strong>{{
+                  formatNumber(metrics.totals.modelCallFailureCount)
+                }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Total Tokens</span>
+                <strong>{{ formatNumber(metrics.totals.totalTokens) }}</strong>
+              </div>
+              <div class="metrics-kpi">
+                <span>Model Cost</span>
+                <strong>{{ formatCost(metrics.totals.totalModelCost) }}</strong>
+              </div>
+            </section>
+
+            <section class="metrics-charts">
+              <div class="metrics-panel">
+                <div class="metrics-panel-title">Runs over time</div>
+                <div class="metrics-chart">
+                  <canvas #workflowRunsCanvas></canvas>
+                </div>
+              </div>
+              <div class="metrics-panel">
+                <div class="metrics-panel-title">Cost over time</div>
+                <div class="metrics-chart">
+                  <canvas #workflowCostCanvas></canvas>
+                </div>
+              </div>
+              <div class="metrics-panel">
+                <div class="metrics-panel-title">Tokens over time</div>
+                <div class="metrics-chart">
+                  <canvas #workflowTokensCanvas></canvas>
+                </div>
+              </div>
+              <div class="metrics-panel">
+                <div class="metrics-panel-title">Duration over time</div>
+                <div class="metrics-chart">
+                  <canvas #workflowDurationCanvas></canvas>
+                </div>
+              </div>
+            </section>
+
+            <section class="metrics-breakdowns metrics-breakdowns-single">
+              <div class="metrics-panel">
+                <div class="metrics-panel-title">Top Workflows</div>
+                <div class="table-responsive">
+                  <table class="table table-sm table-hover align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th class="text-end">Runs</th>
+                        <th class="text-end">Failures</th>
+                        <th class="text-end">Suspended</th>
+                        <th class="text-end">P95</th>
+                        <th class="text-end">Tokens</th>
+                        <th class="text-end">Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (item of metrics.workflowBreakdown; track item.key) {
+                        <tr>
+                          <td>{{ item.name }}</td>
+                          <td class="text-end">
+                            {{ formatNumber(item.totalRuns) }}
+                          </td>
+                          <td class="text-end">
+                            {{ formatNumber(item.failedRuns) }}
+                          </td>
+                          <td class="text-end">
+                            {{ formatNumber(item.suspendedRuns) }}
+                          </td>
+                          <td class="text-end">
+                            {{ formatDuration(item.p95Duration) }}
+                          </td>
+                          <td class="text-end">
+                            {{ formatNumber(item.totalTokens) }}
+                          </td>
+                          <td class="text-end">
+                            {{ formatCost(item.totalModelCost) }}
+                          </td>
+                        </tr>
+                      } @empty {
+                        <tr>
+                          <td colspan="7" class="text-body-secondary">
+                            No workflow data.
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            <section class="metrics-panel">
+              <div class="metrics-panel-title">Failures</div>
               <div class="table-responsive">
                 <table class="table table-sm table-hover align-middle mb-0">
                   <thead>
                     <tr>
-                      <th>Name</th>
-                      <th class="text-end">Runs</th>
-                      <th class="text-end">Failures</th>
-                      <th class="text-end">Suspended</th>
-                      <th class="text-end">P95</th>
-                      <th class="text-end">Tokens</th>
-                      <th class="text-end">Cost</th>
+                      <th>Message</th>
+                      <th>Type</th>
+                      <th>Node</th>
+                      <th class="text-end">Count</th>
+                      <th class="text-end">Workflows</th>
+                      <th>Last Seen</th>
                     </tr>
                   </thead>
                   <tbody>
-                    @for (item of metrics.workflowBreakdown; track item.key) {
+                    @for (
+                      failure of metrics.failures;
+                      track failure.errorType +
+                        failure.errorMessage +
+                        failure.failedNodeTitle
+                    ) {
                       <tr>
-                        <td>{{ item.name }}</td>
-                        <td class="text-end">
-                          {{ formatNumber(item.totalRuns) }}
+                        <td
+                          class="metrics-error-cell"
+                          [attr.title]="failure.errorMessage || null"
+                        >
+                          {{ failure.errorMessage }}
+                        </td>
+                        <td
+                          class="metrics-error-cell"
+                          [attr.title]="failure.errorType || null"
+                        >
+                          {{ failure.errorType }}
+                        </td>
+                        <td
+                          class="metrics-error-cell"
+                          [attr.title]="failure.failedNodeTitle || null"
+                        >
+                          {{ failure.failedNodeTitle }}
                         </td>
                         <td class="text-end">
-                          {{ formatNumber(item.failedRuns) }}
+                          {{ formatNumber(failure.count) }}
                         </td>
                         <td class="text-end">
-                          {{ formatNumber(item.suspendedRuns) }}
+                          {{ formatNumber(failure.workflowCount) }}
                         </td>
-                        <td class="text-end">
-                          {{ formatDuration(item.p95Duration) }}
-                        </td>
-                        <td class="text-end">
-                          {{ formatNumber(item.totalTokens) }}
-                        </td>
-                        <td class="text-end">
-                          {{ formatCost(item.totalModelCost) }}
-                        </td>
+                        <td>{{ formatDateTime(failure.lastSeen) }}</td>
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="7" class="text-body-secondary">
-                          No workflow data.
+                        <td colspan="6" class="text-body-secondary">
+                          No failures in this range.
                         </td>
                       </tr>
                     }
                   </tbody>
                 </table>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section class="metrics-panel">
-            <div class="metrics-panel-title">Failures</div>
-            <div class="table-responsive">
-              <table class="table table-sm table-hover align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>Message</th>
-                    <th>Type</th>
-                    <th>Node</th>
-                    <th class="text-end">Count</th>
-                    <th class="text-end">Workflows</th>
-                    <th>Last Seen</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (
-                    failure of metrics.failures;
-                    track failure.errorType +
-                      failure.errorMessage +
-                      failure.failedNodeTitle
-                  ) {
-                    <tr>
-                      <td
-                        class="metrics-error-cell"
-                        [attr.title]="failure.errorMessage || null"
-                      >
-                        {{ failure.errorMessage }}
-                      </td>
-                      <td
-                        class="metrics-error-cell"
-                        [attr.title]="failure.errorType || null"
-                      >
-                        {{ failure.errorType }}
-                      </td>
-                      <td
-                        class="metrics-error-cell"
-                        [attr.title]="failure.failedNodeTitle || null"
-                      >
-                        {{ failure.failedNodeTitle }}
-                      </td>
-                      <td class="text-end">
-                        {{ formatNumber(failure.count) }}
-                      </td>
-                      <td class="text-end">
-                        {{ formatNumber(failure.workflowCount) }}
-                      </td>
-                      <td>{{ formatDateTime(failure.lastSeen) }}</td>
-                    </tr>
-                  } @empty {
-                    <tr>
-                      <td colspan="6" class="text-body-secondary">
-                        No failures in this range.
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section class="metrics-table-grid">
-            <div class="metrics-panel">
-              <div class="d-flex justify-content-between align-items-center gap-2">
-                <div class="metrics-panel-title mb-0">Recent Runs</div>
-                <div class="btn-group btn-group-sm">
-                  <button
-                    type="button"
-                    class="btn btn-outline-secondary"
-                    [disabled]="recentPage <= 1"
-                    (click)="onRecentPageChange(recentPage - 1)"
-                    aria-label="Previous recent runs page"
-                  >
-                    <i class="bi bi-chevron-left"></i>
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-outline-secondary"
-                    [disabled]="recentPage >= workflowRecentPageCount()"
-                    (click)="onRecentPageChange(recentPage + 1)"
-                    aria-label="Next recent runs page"
-                  >
-                    <i class="bi bi-chevron-right"></i>
-                  </button>
+            <section class="metrics-table-grid">
+              <div class="metrics-panel">
+                <div
+                  class="d-flex justify-content-between align-items-center gap-2"
+                >
+                  <div class="metrics-panel-title mb-0">Recent Runs</div>
+                  <div class="btn-group btn-group-sm">
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      [disabled]="recentPage <= 1"
+                      (click)="onRecentPageChange(recentPage - 1)"
+                      aria-label="Previous recent runs page"
+                    >
+                      <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      [disabled]="recentPage >= workflowRecentPageCount()"
+                      (click)="onRecentPageChange(recentPage + 1)"
+                      aria-label="Next recent runs page"
+                    >
+                      <i class="bi bi-chevron-right"></i>
+                    </button>
+                  </div>
                 </div>
+                <div class="text-body-secondary small mb-2">
+                  Page {{ recentPage }} of {{ workflowRecentPageCount() }}
+                </div>
+                <ng-container
+                  [ngTemplateOutlet]="workflowRunsTable"
+                  [ngTemplateOutletContext]="{ runs: metrics.recentRuns }"
+                ></ng-container>
               </div>
-              <div class="text-body-secondary small mb-2">
-                Page {{ recentPage }} of {{ workflowRecentPageCount() }}
-              </div>
-              <ng-container
-                [ngTemplateOutlet]="workflowRunsTable"
-                [ngTemplateOutletContext]="{ runs: metrics.recentRuns }"
-              ></ng-container>
-            </div>
 
-            <div class="metrics-panel">
-              <div class="metrics-panel-title">Slowest Runs</div>
-              <ng-container
-                [ngTemplateOutlet]="workflowRunsTable"
-                [ngTemplateOutletContext]="{ runs: metrics.slowestRuns }"
-              ></ng-container>
-            </div>
-          </section>
-        </div>
+              <div class="metrics-panel">
+                <div class="metrics-panel-title">Slowest Runs</div>
+                <ng-container
+                  [ngTemplateOutlet]="workflowRunsTable"
+                  [ngTemplateOutletContext]="{ runs: metrics.slowestRuns }"
+                ></ng-container>
+              </div>
+            </section>
+          </div>
+        }
       }
-    }
     </main>
+  </div>
+</ng-template>
+
+<ng-template #logicalCallsTable let-calls="calls">
+  <div class="table-responsive">
+    <table
+      class="table table-sm table-hover align-middle mb-0 metrics-logical-call-table"
+    >
+      <thead>
+        <tr>
+          <th class="metrics-expand-column"></th>
+          <th>Created</th>
+          <th>Workflow</th>
+          <th>Node</th>
+          <th>Final Connector</th>
+          <th>Final Model</th>
+          <th class="text-end">Attempts</th>
+          <th class="text-end">Duration</th>
+          <th class="text-end">Tokens</th>
+          <th class="text-end">Cost</th>
+          <th>Outcome</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (call of calls; track call.logicalCallId) {
+          <tr>
+            <td>
+              <button
+                type="button"
+                class="btn btn-link btn-sm p-0"
+                (click)="toggleLogicalCall(call.logicalCallId)"
+                [attr.aria-label]="
+                  expandedLogicalCalls.has(call.logicalCallId)
+                    ? 'Collapse attempts'
+                    : 'Expand attempts'
+                "
+              >
+                <i
+                  class="bi"
+                  [class.bi-chevron-down]="
+                    expandedLogicalCalls.has(call.logicalCallId)
+                  "
+                  [class.bi-chevron-right]="
+                    !expandedLogicalCalls.has(call.logicalCallId)
+                  "
+                ></i>
+              </button>
+            </td>
+            <td>{{ formatDateTime(call.created) }}</td>
+            <td>{{ call.workflowName }}</td>
+            <td>{{ call.nodeTitle }}</td>
+            <td>{{ call.finalConnectorName ?? "No connector" }}</td>
+            <td>{{ call.finalModelName ?? "No model" }}</td>
+            <td class="text-end">{{ formatNumber(call.attemptCount) }}</td>
+            <td class="text-end">{{ formatDuration(call.duration) }}</td>
+            <td class="text-end">{{ formatNumber(call.totalTokens) }}</td>
+            <td class="text-end">
+              {{ call.totalCost === null ? "-" : formatCost(call.totalCost) }}
+            </td>
+            <td>
+              <span
+                class="badge"
+                [class.text-bg-info]="call.recoveredByFallback"
+                [class.text-bg-success]="
+                  call.succeeded && !call.recoveredByFallback
+                "
+                [class.text-bg-danger]="!call.succeeded"
+              >
+                {{ logicalCallOutcome(call) }}
+              </span>
+            </td>
+          </tr>
+          @if (expandedLogicalCalls.has(call.logicalCallId)) {
+            <tr class="metrics-attempt-detail-row">
+              <td colspan="11">
+                <div class="metrics-attempt-detail">
+                  <ng-container
+                    [ngTemplateOutlet]="callsTable"
+                    [ngTemplateOutletContext]="{ calls: call.attempts }"
+                  ></ng-container>
+                </div>
+              </td>
+            </tr>
+          }
+        } @empty {
+          <tr>
+            <td colspan="11" class="text-body-secondary">
+              No logical calls found.
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
   </div>
 </ng-template>
 
@@ -717,6 +922,7 @@
           <th>Node</th>
           <th>Connector</th>
           <th>Model</th>
+          <th class="text-end">Attempt</th>
           <th class="text-end">Duration</th>
           <th class="text-end">Tokens</th>
           <th class="text-end">Cost</th>
@@ -732,6 +938,12 @@
             <td>{{ call.nodeTitle }}</td>
             <td>{{ displayConnector(call) }}</td>
             <td>{{ displayModel(call) }}</td>
+            <td class="text-end">
+              {{ call.attemptNumber }}
+              @if (call.attemptNumber > 1) {
+                <span class="badge text-bg-secondary ms-1">Fallback</span>
+              }
+            </td>
             <td class="text-end">{{ formatDuration(call.duration) }}</td>
             <td class="text-end">{{ formatNumber(call.totalTokens) }}</td>
             <td class="text-end">
@@ -750,12 +962,17 @@
               class="metrics-error-cell"
               [attr.title]="call.errorMessage || null"
             >
-              {{ call.errorMessage ?? "" }}
+              @if (!call.succeeded) {
+                <div>{{ attemptFailureLabel(call) }}</div>
+                <small class="text-body-secondary">{{
+                  call.errorMessage ?? ""
+                }}</small>
+              }
             </td>
           </tr>
         } @empty {
           <tr>
-            <td colspan="10" class="text-body-secondary">No calls found.</td>
+            <td colspan="11" class="text-body-secondary">No calls found.</td>
           </tr>
         }
       </tbody>

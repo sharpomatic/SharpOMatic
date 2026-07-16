@@ -59,7 +59,7 @@
                 }
               </span>
               <span class="type text-muted">{{ node.type }}</span>
-              <span class="name">{{ node.name }}</span>
+              <span class="name" [title]="node.name">{{ node.name }}</span>
               <div class="value">
                 <code class="context-value">{{
                   node.showFull ? node.fullValue : node.displayValue
@@ -73,6 +73,17 @@
                     {{ node.showFull ? "Hide full" : "Show full" }} ({{
                       node.displayLength
                     }})
+                  </button>
+                }
+              </div>
+              <div class="view-action">
+                @if (isStringNode(node)) {
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary btn-sm context-view-button"
+                    (click)="openValueViewer(node)"
+                  >
+                    View
                   </button>
                 }
               </div>

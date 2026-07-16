@@ -12,8 +12,8 @@ using SharpOMatic.Engine.Repository;
 namespace SharpOMatic.Engine.SqlServer.Migrations
 {
     [DbContext(typeof(SharpOMaticDbContext))]
-    [Migration("20260605122250_WorkflowFolders")]
-    partial class WorkflowFolders
+    [Migration("20260713115435_10-0-7")]
+    partial class _1007
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -21,7 +21,7 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("SharpOMatic")
-                .HasAnnotation("ProductVersion", "10.0.7")
+                .HasAnnotation("ProductVersion", "10.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -353,6 +353,11 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<int>("Order")
                         .HasColumnType("int");
 
+                    b.Property<int?>("Repeat")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.HasKey("EvalRowId");
 
                     b.HasIndex("EvalConfigId");
@@ -596,6 +601,11 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("AttemptNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<string>("ConnectorConfigId")
                         .HasColumnType("nvarchar(max)");
 
@@ -624,12 +634,18 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<string>("ErrorType")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("FailureCategory")
+                        .HasColumnType("int");
+
                     b.Property<decimal?>("InputCost")
                         .HasPrecision(18, 8)
                         .HasColumnType("decimal(18,8)");
 
                     b.Property<long?>("InputTokens")
                         .HasColumnType("bigint");
+
+                    b.Property<Guid>("LogicalCallId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ModelConfigId")
                         .HasColumnType("nvarchar(max)");
@@ -660,6 +676,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<string>("ProviderModelName")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("ProviderStatusCode")
+                        .HasColumnType("int");
+
                     b.Property<Guid>("RunId")
                         .HasColumnType("uniqueidentifier");
 
@@ -687,6 +706,8 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.HasIndex("ConnectorId", "Created");
 
                     b.HasIndex("ConversationId", "Created");
+
+                    b.HasIndex("LogicalCallId", "AttemptNumber");
 
                     b.HasIndex("ModelId", "Created");
 

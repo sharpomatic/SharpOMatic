@@ -79,11 +79,12 @@ public sealed class TestRepositoryService : IRepositoryService
         if (!_workflows.TryGetValue(workflowId, out var workflowEntity))
             throw new SharpOMaticException($"GetWorkflow failed for '{workflowId}'");
 
-        return Task.FromResult(workflowEntity);
+        return Task.FromResult(WorkflowSchemaUpgrader.Upgrade(workflowEntity));
     }
 
     public Task UpsertWorkflow(WorkflowEntity workflow)
     {
+        WorkflowSchemaUpgrader.Upgrade(workflow);
         workflow.WorkflowFolderName = workflow.WorkflowFolderId.HasValue && _workflowFolders.TryGetValue(workflow.WorkflowFolderId.Value, out var folder) ? folder.Name : null;
         _workflows[workflow.Id] = workflow;
         return Task.CompletedTask;

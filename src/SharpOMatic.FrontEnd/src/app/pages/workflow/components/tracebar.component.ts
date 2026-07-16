@@ -11,6 +11,7 @@ import {
   computed,
   effect,
   inject,
+  signal,
 } from '@angular/core';
 import { RunStatus } from '../../../enumerations/run-status';
 import { WorkflowService } from '../services/workflow.service';
@@ -93,6 +94,30 @@ export class TracebarComponent implements OnInit, OnDestroy {
   public readonly isSuspendedConversation = computed(
     () => this.workflowService.runProgress()?.runStatus === RunStatus.Suspended,
   );
+  public readonly runDuration = computed(() => {
+    const run = this.workflowService.runProgress();
+    if (!run?.started) {
+      return '';
+    }
+
+    const startedMs = Date.parse(run.started);
+    if (!Number.isFinite(startedMs)) {
+      return '';
+    }
+
+    const stoppedMs = run.stopped ? Date.parse(run.stopped) : undefined;
+    const isLive = run.runStatus === RunStatus.Running;
+    const endMs = isLive ? this.durationNowMs() : stoppedMs;
+    if (
+      endMs === undefined ||
+      !Number.isFinite(endMs) ||
+      endMs < startedMs
+    ) {
+      return '';
+    }
+
+    return this.formatDuration(endMs - startedMs);
+  });
   public readonly jsonEditorOptions = MonacoService.editorOptionsJson;
   public resumeContextJson = '{}';
 
@@ -102,6 +127,8 @@ export class TracebarComponent implements OnInit, OnDestroy {
   private startX = 0;
   private startWidth = this.tracebarWidth;
   private readonly storageKey = 'tracebarWidth';
+  private readonly durationNowMs = signal(Date.now());
+  private durationTimerId?: number;
 
   private readonly onMouseMove = (event: MouseEvent) =>
     this.handleDrag(event.clientX);
@@ -132,6 +159,16 @@ export class TracebarComponent implements OnInit, OnDestroy {
       this.workflowService.runProgress()?.runStatus;
       this.workflowService.runProgress()?.conversationId;
       this.updateTabs();
+    });
+
+    effect(() => {
+      const run = this.workflowService.runProgress();
+      const shouldRunTimer = run?.runStatus === RunStatus.Running && !!run.started;
+      if (shouldRunTimer) {
+        this.startDurationTimer();
+      } else {
+        this.stopDurationTimer();
+      }
     });
   }
 
@@ -170,6 +207,7 @@ export class TracebarComponent implements OnInit, OnDestroy {
 
   public ngOnDestroy(): void {
     this.cleanupListeners();
+    this.stopDurationTimer();
   }
 
   public onActiveTabIdChange(tabId: string): void {
@@ -312,6 +350,40 @@ export class TracebarComponent implements OnInit, OnDestroy {
 
   private emitWidth(width: number = this.tracebarWidth): void {
     this.tracebarWidthChange.emit(width);
+  }
+
+  private startDurationTimer(): void {
+    this.durationNowMs.set(Date.now());
+    if (this.durationTimerId !== undefined) {
+      return;
+    }
+
+    this.durationTimerId = window.setInterval(() => {
+      this.durationNowMs.set(Date.now());
+    }, 1000);
+  }
+
+  private stopDurationTimer(): void {
+    if (this.durationTimerId === undefined) {
+      return;
+    }
+
+    window.clearInterval(this.durationTimerId);
+    this.durationTimerId = undefined;
+  }
+
+  private formatDuration(durationMs: number): string {
+    if (durationMs <= 0) {
+      return '00:00:00.00';
+    }
+
+    const roundedMs = Math.ceil(durationMs / 10) * 10;
+    const totalSeconds = Math.floor(roundedMs / 1000);
+    const hundredths = Math.floor((roundedMs % 1000) / 10);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${hundredths.toString().padStart(2, '0')}`;
   }
 
   public getSelectedAssetLabel(entry: ContextEntryEntity): string {

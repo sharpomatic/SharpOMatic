@@ -17,7 +17,7 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("SharpOMatic")
-                .HasAnnotation("ProductVersion", "10.0.7");
+                .HasAnnotation("ProductVersion", "10.0.9");
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Asset", b =>
                 {
@@ -346,6 +346,11 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<int>("Order")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("Repeat")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
+
                     b.HasKey("EvalRowId");
 
                     b.HasIndex("EvalConfigId");
@@ -589,6 +594,11 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("AttemptNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
+
                     b.Property<string>("ConnectorConfigId")
                         .HasColumnType("TEXT");
 
@@ -617,12 +627,18 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<string>("ErrorType")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("FailureCategory")
+                        .HasColumnType("INTEGER");
+
                     b.Property<decimal?>("InputCost")
                         .HasPrecision(18, 8)
                         .HasColumnType("TEXT");
 
                     b.Property<long?>("InputTokens")
                         .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("LogicalCallId")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("ModelConfigId")
                         .HasColumnType("TEXT");
@@ -653,6 +669,9 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<string>("ProviderModelName")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("ProviderStatusCode")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid>("RunId")
                         .HasColumnType("TEXT");
 
@@ -680,6 +699,8 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.HasIndex("ConnectorId", "Created");
 
                     b.HasIndex("ConversationId", "Created");
+
+                    b.HasIndex("LogicalCallId", "AttemptNumber");
 
                     b.HasIndex("ModelId", "Created");
 

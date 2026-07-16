@@ -15,7 +15,8 @@ public static class WorkflowSnapshotSerializer
 
     public static WorkflowEntity DeserializeWorkflow(string json)
     {
-        return JsonSerializer.Deserialize<WorkflowEntity>(json, _options)
+        var workflow = JsonSerializer.Deserialize<WorkflowEntity>(json, _options)
             ?? throw new SharpOMaticException("Workflow snapshot could not be deserialized.");
+        return WorkflowSchemaUpgrader.Upgrade(workflow);
     }
 }

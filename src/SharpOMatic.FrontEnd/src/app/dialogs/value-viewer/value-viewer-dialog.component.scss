@@ -1,0 +1,23 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.value-viewer-body {
+  flex: 1 1 auto;
+  display: flex;
+  padding: 1.5rem;
+}
+
+.value-viewer-content {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  resize: none;
+  font-family: var(--bs-font-monospace);
+}
+
+.value-viewer-editor {
+  display: block;
+}

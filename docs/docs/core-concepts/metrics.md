@@ -4,6 +4,12 @@ The editor includes a Metrics page for model call and workflow run usage. It is 
 
 Metrics are based on model call node executions. Each successful or failed model call writes a metric row that stores the workflow, node, connector, model, duration, token usage, cost, and failure details where available.
 
+Each primary or fallback provider attempt writes its own model-call metric. Attempts from one node execution share a logical call ID and use increasing attempt numbers, starting at 1. The highest attempt number is the final attempt; attempt numbers greater than 1 are fallbacks. A recovered call therefore contributes one failed primary metric and one successful fallback metric. Model-call and workflow-run model-call counts describe provider attempts, while the workflow itself can still succeed after a recovered failure.
+
+Failed attempts also store a normalized failure category and the raw HTTP provider status code when one was returned, such as 403, 429, or 503. Network failures and other errors that occur without an HTTP response have no provider status code.
+
+The dashboard derives logical-call outcomes by grouping attempts with the same logical call ID. A logical call is **recovered** when an earlier attempt failed and a later fallback succeeded. A call is **unrecovered** when its highest-numbered attempt failed. Historical metrics without a logical call ID are treated as independent logical calls using their metric row ID.
+
 Workflow run metrics are written when a run reaches a terminal status: success, failure, or suspended. These rows snapshot the workflow name/version, run status, duration, conversation turn details, failure details, and aggregated model call usage for the run. They intentionally do not use foreign keys to runs, workflows, or nodes, so metrics remain available after detailed run records are pruned.
 
 ## Views
@@ -32,18 +38,19 @@ The Workflow Runs view has three tabs:
 
 The Model Calls view shows:
 
-- Total calls, total cost, total tokens, average duration, P95 duration, and failure rate.
-- Calls, cost, tokens, and duration over time.
-- Top workflows, connectors, models, or nodes depending on the selected tab.
-- Failure groups by error type and message.
-- Recent model calls and the slowest model calls for the current filter.
+- Provider attempts, logical calls, calls requiring fallback, recovered calls, unrecovered calls, and fallback recovery rate.
+- Attempt failure rate separately from final logical-call failure rate.
+- Attempts and recovery, cost, tokens, and duration over time. Attempt charts distinguish primary success/failure from fallback recovery/failure.
+- Top workflows, connectors, models, or nodes depending on the selected tab, including primary-attempt, fallback-attempt, and successful-fallback counts.
+- Failure groups by normalized category and HTTP status as well as detailed exception type and message.
+- Recent and slowest logical calls. Each row can be expanded to inspect its ordered provider attempts, actual models/connectors, normalized failure category, HTTP status, duration, tokens, cost, and error.
 
 The Workflow Runs view shows:
 
 - Total runs, successful runs, failed runs, suspended runs, average duration, P95 duration, and failure rate.
 - Runs over time split by success, failure, and suspended.
 - Cost, tokens, and duration over time.
-- Model usage totals for calls, failures, tokens, and cost.
+- Model usage totals for provider attempts, failed model attempts, tokens, and cost.
 - Top workflows by run activity.
 - Failure groups by error type, message, and failed node.
 - Recent runs and slowest runs.

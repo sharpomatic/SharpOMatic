@@ -8,6 +8,17 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
     public OpenAIModelCaller()
         : this([]) { }
 
+    public override ModelFallbackFailure? ModelFallbackFailureOverride(Exception exception)
+    {
+        if (ModelFallbackFailureClassifier.Find<ClientResultException>(exception) is { } openAIException)
+            return ModelFallbackFailureClassifier.ClassifyStatusCode(openAIException.Status);
+
+        if (ModelFallbackFailureClassifier.Find<RequestFailedException>(exception) is { } azureException)
+            return ModelFallbackFailureClassifier.ClassifyStatusCode(azureException.Status);
+
+        return null;
+    }
+
     public override async Task<ModelCallResult> Call(
         Model model,
         ModelConfig modelConfig,
@@ -55,7 +66,7 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
             modelName,
             instructions: instructions,
             // Original (stateful): clientFactory: chatClient => CreateFunctionInvokingChatClient(chatClient, agentServiceProvider),
-            clientFactory: _ => CreateFunctionInvokingChatClient(agentClient.AsIChatClientWithStoredOutputDisabled(modelName), agentServiceProvider),
+            clientFactory: _ => CreateFunctionInvokingChatClient(agentClient.AsIChatClientWithStoredOutputDisabled(modelName), agentServiceProvider, progressSink),
             services: agentServiceProvider
         );
         await EmitPromptStreamEvents(processContext, prompt, node.DisableStreamUser);

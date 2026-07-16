@@ -5,7 +5,7 @@ import { NodeType } from '../enumerations/node-type';
 import { ModelCallToolAgUiOutputMode } from '../enumerations/model-call-tool-ag-ui-output-mode';
 
 export interface ModelCallNodeSnapshot extends NodeSnapshot {
-  modelId: string | null;
+  models: ModelCallModelSnapshot[];
   batchOutput?: boolean;
   dropToolCalls?: boolean;
   disableStreamUser?: boolean;
@@ -19,11 +19,18 @@ export interface ModelCallNodeSnapshot extends NodeSnapshot {
   textOutputPath: string;
   imageInputPath: string;
   imageOutputPath: string;
-  parameterValues: Record<string, string | null>;
   toolAgUiOutputModes?: Record<string, ModelCallToolAgUiOutputMode>;
 }
 
+export interface ModelCallModelSnapshot {
+  modelId: string;
+  disabled?: boolean;
+  parameterValues: Record<string, string | null>;
+}
+
 export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
+  public models: WritableSignal<ModelCallModelSnapshot[]>;
+  // Primary-model editing signals retained so existing editor bindings stay simple.
   public modelId: WritableSignal<string | null>;
   public batchOutput: WritableSignal<boolean>;
   public dropToolCalls: WritableSignal<boolean>;
@@ -46,13 +53,21 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
   constructor(snapshot: ModelCallNodeSnapshot) {
     super(snapshot);
 
-    this.modelId = signal(snapshot.modelId);
+    const initialModels = (snapshot.models ?? []).map((model) =>
+      ModelCallNodeEntity.cloneModel(model),
+    );
+    this.models = signal(initialModels);
+    this.modelId = signal(initialModels[0]?.modelId ?? null);
     this.batchOutput = signal(snapshot.batchOutput ?? false);
     this.dropToolCalls = signal(snapshot.dropToolCalls ?? false);
     this.disableStreamUser = signal(snapshot.disableStreamUser ?? false);
     this.disableStreamTool = signal(snapshot.disableStreamTool ?? false);
-    this.disableStreamReasoning = signal(snapshot.disableStreamReasoning ?? false);
-    this.disableStreamAssistantText = signal(snapshot.disableStreamAssistantText ?? false);
+    this.disableStreamReasoning = signal(
+      snapshot.disableStreamReasoning ?? false,
+    );
+    this.disableStreamAssistantText = signal(
+      snapshot.disableStreamAssistantText ?? false,
+    );
     this.instructions = signal(snapshot.instructions ?? '');
     this.prompt = signal(snapshot.prompt ?? '');
     this.chatInputPath = signal(snapshot.chatInputPath ?? '');
@@ -60,7 +75,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
     this.textOutputPath = signal(snapshot.textOutputPath ?? '');
     this.imageInputPath = signal(snapshot.imageInputPath ?? '');
     this.imageOutputPath = signal(snapshot.imageOutputPath ?? '');
-    this.parameterValues = signal({ ...(snapshot.parameterValues ?? {}) });
+    this.parameterValues = signal({
+      ...(initialModels[0]?.parameterValues ?? {}),
+    });
     this.toolAgUiOutputModes = signal({
       ...(snapshot.toolAgUiOutputModes ?? {}),
     });
@@ -71,13 +88,14 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
 
       // Must touch all property signals
       const currentIsDirty = baseIsDirty();
-      const currentModelId = this.modelId();
+      const currentModels = this.effectiveModels();
       const currentBatchOutput = this.batchOutput();
       const currentDropToolCalls = this.dropToolCalls();
       const currentDisableStreamUser = this.disableStreamUser();
       const currentDisableStreamTool = this.disableStreamTool();
       const currentDisableStreamReasoning = this.disableStreamReasoning();
-      const currentDisableStreamAssistantText = this.disableStreamAssistantText();
+      const currentDisableStreamAssistantText =
+        this.disableStreamAssistantText();
       const currentInstructions = this.instructions();
       const currentPrompt = this.prompt();
       const currentChatInputPath = this.chatInputPath();
@@ -85,18 +103,22 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       const currentTextOutputPath = this.textOutputPath();
       const currentImageInputPath = this.imageInputPath();
       const currentImageOutputPath = this.imageOutputPath();
-      const currentParameterValues = this.parameterValues();
       const currentToolAgUiOutputModes = this.toolAgUiOutputModes();
 
       return (
         currentIsDirty ||
-        currentModelId !== snapshot.modelId ||
+        !ModelCallNodeEntity.areModelsEqual(
+          currentModels,
+          snapshot.models ?? [],
+        ) ||
         currentBatchOutput !== (snapshot.batchOutput ?? false) ||
         currentDropToolCalls !== (snapshot.dropToolCalls ?? false) ||
         currentDisableStreamUser !== (snapshot.disableStreamUser ?? false) ||
         currentDisableStreamTool !== (snapshot.disableStreamTool ?? false) ||
-        currentDisableStreamReasoning !== (snapshot.disableStreamReasoning ?? false) ||
-        currentDisableStreamAssistantText !== (snapshot.disableStreamAssistantText ?? false) ||
+        currentDisableStreamReasoning !==
+          (snapshot.disableStreamReasoning ?? false) ||
+        currentDisableStreamAssistantText !==
+          (snapshot.disableStreamAssistantText ?? false) ||
         currentInstructions !== snapshot.instructions ||
         currentPrompt !== snapshot.prompt ||
         currentChatInputPath !== (snapshot.chatInputPath ?? '') ||
@@ -104,10 +126,6 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
         currentTextOutputPath !== snapshot.textOutputPath ||
         currentImageInputPath !== snapshot.imageInputPath ||
         currentImageOutputPath !== snapshot.imageOutputPath ||
-        !ModelCallNodeEntity.areParameterValuesEqual(
-          currentParameterValues,
-          snapshot.parameterValues,
-        ) ||
         !ModelCallNodeEntity.areRecordsEqual(
           currentToolAgUiOutputModes,
           snapshot.toolAgUiOutputModes ?? {},
@@ -119,7 +137,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
   public override toSnapshot(): ModelCallNodeSnapshot {
     return {
       ...super.toNodeSnapshot(),
-      modelId: this.modelId(),
+      models: this.effectiveModels(),
       batchOutput: this.batchOutput(),
       dropToolCalls: this.dropToolCalls(),
       disableStreamUser: this.disableStreamUser(),
@@ -133,7 +151,6 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       textOutputPath: this.textOutputPath(),
       imageInputPath: this.imageInputPath(),
       imageOutputPath: this.imageOutputPath(),
-      parameterValues: this.parameterValues(),
       toolAgUiOutputModes: this.toolAgUiOutputModes(),
     };
   }
@@ -151,7 +168,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       title: 'Model Call',
       inputs: [ConnectorEntity.defaultSnapshot()],
       outputs: [ConnectorEntity.defaultSnapshot()],
-      modelId: null,
+      models: [],
       batchOutput: false,
       dropToolCalls: false,
       disableStreamUser: false,
@@ -165,7 +182,6 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       textOutputPath: 'output.text',
       imageInputPath: '',
       imageOutputPath: 'output.image',
-      parameterValues: {},
       toolAgUiOutputModes: {},
     };
   }
@@ -178,11 +194,76 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
     });
   }
 
-  private static areParameterValuesEqual(
-    current: Record<string, string | null>,
-    snapshot: Record<string, string | null>,
+  public setFallbackModels(models: ModelCallModelSnapshot[]): void {
+    const primary = this.effectiveModels()[0];
+    this.models.set(primary ? [primary, ...models] : [...models]);
+  }
+
+  public fallbackModels(): ModelCallModelSnapshot[] {
+    return this.effectiveModels().slice(1);
+  }
+
+  public modelDisabled(index: number): boolean {
+    return this.effectiveModels()[index]?.disabled ?? false;
+  }
+
+  public setModelDisabled(index: number, disabled: boolean): void {
+    const models = this.effectiveModels();
+    const model = models[index];
+    if (!model) {
+      return;
+    }
+
+    models[index] = ModelCallNodeEntity.cloneModel({ ...model, disabled });
+    this.models.set(models);
+  }
+
+  private effectiveModels(): ModelCallModelSnapshot[] {
+    const modelId = this.modelId();
+    const fallbacks = this.models()
+      .slice(1)
+      .map((model) => ModelCallNodeEntity.cloneModel(model));
+
+    if (!modelId) {
+      return [];
+    }
+
+    return [
+      ModelCallNodeEntity.cloneModel({
+        modelId,
+        disabled: this.models()[0]?.disabled ?? false,
+        parameterValues: { ...this.parameterValues() },
+      }),
+      ...fallbacks,
+    ];
+  }
+
+  private static cloneModel(
+    model: ModelCallModelSnapshot,
+  ): ModelCallModelSnapshot {
+    return {
+      modelId: model.modelId,
+      ...(model.disabled ? { disabled: true } : {}),
+      parameterValues: { ...(model.parameterValues ?? {}) },
+    };
+  }
+
+  private static areModelsEqual(
+    current: ModelCallModelSnapshot[],
+    snapshot: ModelCallModelSnapshot[],
   ): boolean {
-    return ModelCallNodeEntity.areRecordsEqual(current, snapshot ?? {});
+    return (
+      current.length === snapshot.length &&
+      current.every(
+        (model, index) =>
+          model.modelId === snapshot[index]?.modelId &&
+          (model.disabled ?? false) === (snapshot[index]?.disabled ?? false) &&
+          ModelCallNodeEntity.areRecordsEqual(
+            model.parameterValues,
+            snapshot[index]?.parameterValues ?? {},
+          ),
+      )
+    );
   }
 
   private static areRecordsEqual<T>(

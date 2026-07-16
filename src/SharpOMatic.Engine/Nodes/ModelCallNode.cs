@@ -6,82 +6,129 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 {
     protected override async Task<NodeExecutionResult> RunInternal()
     {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-        var metric = CreateMetric();
-        metric.ModelId = Node.ModelId;
+        var logicalCallId = Guid.NewGuid();
+        var currentStopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var metric = CreateMetric(logicalCallId, attemptNumber: 1);
+        var metricWritten = false;
+        IModelCaller? currentCaller = null;
 
         try
         {
-            // Validate and load the model and connector instances
-            (var model, var modelConfig, var connector, var connectorConfig) = await LoadModelAndConnector(metric);
-            NodeActivity?.SetTag("sharpomatic.model.name", metric.ModelName);
-            NodeActivity?.SetTag("sharpomatic.model.config", metric.ModelConfigId);
-            NodeActivity?.SetTag("sharpomatic.connector.name", metric.ConnectorName);
-            NodeActivity?.SetTag("sharpomatic.connector.config", metric.ConnectorConfigId);
-            
-            var progressSink = new ModelCallNodeProgressSink(ProcessContext, Trace, Informations, Node);
+            if (Node.Models.Count == 0)
+                throw new SharpOMaticException("No model selected");
 
-            // Get the implementation for the specific connector config
-            var caller = ProcessContext.ServiceScope.ServiceProvider.GetKeyedService<IModelCaller>(connectorConfig.ConfigId);
-            if (caller is null)
-                throw new SharpOMaticException($"No implementation found for connector '{connectorConfig.ConfigId}'");
+            var enabledDefinitions = Node.Models.Where(definition => !definition.Disabled).ToList();
+            if (enabledDefinitions.Count == 0)
+                throw new SharpOMaticException("No enabled models are configured");
 
-            // Use specific implementation to perform call for us
-            var result = await caller.Call(model, modelConfig, connector, connectorConfig, ProcessContext, ThreadContext, Node, progressSink);
-            ApplyUsage(metric, result, modelConfig);
+            metric.ModelId = enabledDefinitions[0].ModelId;
+            var attempts = new List<ModelCallAttemptResources>(enabledDefinitions.Count);
+            foreach (var definition in enabledDefinitions)
+                attempts.Add(await LoadModelAndConnector(definition));
 
-            if (NodeActivity is not null)
+            ValidateFallbackCapabilities(attempts);
+
+            for (var attemptIndex = 0; attemptIndex < attempts.Count; attemptIndex += 1)
             {
-                if (metric.ProviderModelName is not null)
-                    NodeActivity.SetTag("gen_ai.request.model", metric.ProviderModelName);
-                if (metric.InputTokens.HasValue)
-                    NodeActivity.SetTag("gen_ai.usage.input_tokens", metric.InputTokens.Value);
-                if (metric.OutputTokens.HasValue)
-                    NodeActivity.SetTag("gen_ai.usage.output_tokens", metric.OutputTokens.Value);
-                if (metric.TotalCost.HasValue)
-                    NodeActivity.SetTag("sharpomatic.model_call.total_cost", (double)metric.TotalCost.Value);
+                var attempt = attempts[attemptIndex];
+                metric = CreateMetric(logicalCallId, attemptIndex + 1);
+                metricWritten = false;
+                currentCaller = attempt.Caller;
+                ApplyMetricIdentity(metric, attempt);
+                ApplyActivityIdentity(attempt, attemptIndex);
+
+                var attemptNode = CreateAttemptNode(attempt, disablePromptStream: attemptIndex > 0);
+                var progressSink = new ModelCallNodeProgressSink(ProcessContext, Trace, Informations, attemptNode);
+                currentStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                ModelCallResult result;
+                try
+                {
+                    result = await attempt.Caller.Call(
+                        attempt.Model,
+                        attempt.ModelConfig,
+                        attempt.Connector,
+                        attempt.ConnectorConfig,
+                        ProcessContext,
+                        ThreadContext,
+                        attemptNode,
+                        progressSink
+                    );
+                }
+                catch (Exception exception)
+                {
+                    currentStopwatch.Stop();
+                    var failure = ClassifyFailure(attempt.Caller, exception);
+                    ApplyFailure(metric, exception, failure, currentStopwatch.ElapsedMilliseconds);
+                    await AppendFailureMetric(metric);
+                    metricWritten = true;
+
+                    if (attemptIndex + 1 >= attempts.Count || !await ShouldUseFallback(exception, failure, progressSink, attempts, attemptIndex))
+                        throw;
+
+                    continue;
+                }
+
+                ApplyUsage(metric, result, attempt.ModelConfig);
+
+                if (NodeActivity is not null)
+                {
+                    if (metric.ProviderModelName is not null)
+                        NodeActivity.SetTag("gen_ai.request.model", metric.ProviderModelName);
+                    if (metric.InputTokens.HasValue)
+                        NodeActivity.SetTag("gen_ai.usage.input_tokens", metric.InputTokens.Value);
+                    if (metric.OutputTokens.HasValue)
+                        NodeActivity.SetTag("gen_ai.usage.output_tokens", metric.OutputTokens.Value);
+                    if (metric.TotalCost.HasValue)
+                        NodeActivity.SetTag("sharpomatic.model_call.total_cost", (double)metric.TotalCost.Value);
+                }
+
+                if (!string.IsNullOrWhiteSpace(Node.TextOutputPath) && !ThreadContext.NodeContext.TrySet(Node.TextOutputPath, result.ResultValue))
+                    throw new SharpOMaticException($"Could not set '{Node.TextOutputPath}' into context.");
+
+                if (Node.BatchOutput)
+                    WriteChatOutput(result.Chat, result.Responses);
+
+                await progressSink.ApplyBatchResponseFallbackAsync(result.Responses);
+                await progressSink.CompleteAsync();
+
+                if (!Node.BatchOutput)
+                    WriteChatOutput(result.Chat, result.Responses);
+
+                ApplyExitContext(result);
+
+                await progressSink.PersistAsync();
+
+                currentStopwatch.Stop();
+                metric.Duration = currentStopwatch.ElapsedMilliseconds;
+                metric.Succeeded = true;
+                await ProcessContext.RepositoryService.AppendModelCallMetric(metric);
+                metricWritten = true;
+
+                return NodeExecutionResult.Continue($"{attempt.Model.Name ?? "(empty)"}", ResolveOptionalSingleOutput(ThreadContext));
             }
 
-            if (!string.IsNullOrWhiteSpace(Node.TextOutputPath) && !ThreadContext.NodeContext.TrySet(Node.TextOutputPath, result.ResultValue))
-                throw new SharpOMaticException($"Could not set '{Node.TextOutputPath}' into context.");
-
-            if (Node.BatchOutput)
-                WriteChatOutput(result.Chat, result.Responses);
-
-            await progressSink.ApplyBatchResponseFallbackAsync(result.Responses);
-            await progressSink.CompleteAsync();
-
-            if (!Node.BatchOutput)
-                WriteChatOutput(result.Chat, result.Responses);
-
-            ApplyExitContext(result);
-
-            await progressSink.PersistAsync();
-
-            stopwatch.Stop();
-            metric.Duration = stopwatch.ElapsedMilliseconds;
-            metric.Succeeded = true;
-            await ProcessContext.RepositoryService.AppendModelCallMetric(metric);
-
-            return NodeExecutionResult.Continue($"{model.Name ?? "(empty)"}", ResolveOptionalSingleOutput(ThreadContext));
+            throw new SharpOMaticException("No model call attempt completed.");
         }
         catch (Exception ex)
         {
-            stopwatch.Stop();
-            metric.Duration = stopwatch.ElapsedMilliseconds;
-            metric.Succeeded = false;
-            metric.ErrorMessage = ex.Message;
-            metric.ErrorType = ex.GetType().FullName;
-            await AppendFailureMetric(metric);
+            if (!metricWritten)
+            {
+                currentStopwatch.Stop();
+                ApplyFailure(metric, ex, ClassifyFailure(currentCaller, ex), currentStopwatch.ElapsedMilliseconds);
+                await AppendFailureMetric(metric);
+            }
+
             throw;
         }
     }
 
-    private ModelCallMetric CreateMetric()
+    private ModelCallMetric CreateMetric(Guid logicalCallId, int attemptNumber)
     {
         return new ModelCallMetric()
         {
             Id = Guid.NewGuid(),
+            LogicalCallId = logicalCallId,
+            AttemptNumber = attemptNumber,
             Created = DateTime.UtcNow,
             Succeeded = false,
             WorkflowId = WorkflowContext.Workflow.Id,
@@ -91,6 +138,34 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             NodeEntityId = Node.Id,
             NodeTitle = Node.Title,
         };
+    }
+
+    private static void ApplyFailure(ModelCallMetric metric, Exception exception, ModelFallbackFailure failure, long duration)
+    {
+        metric.Duration = duration;
+        metric.Succeeded = false;
+        metric.ErrorMessage = exception.Message;
+        metric.ErrorType = exception.GetType().FullName;
+        metric.FailureCategory = failure.Category;
+        metric.ProviderStatusCode = failure.StatusCode;
+    }
+
+    private static ModelFallbackFailure ClassifyFailure(IModelCaller? caller, Exception exception)
+    {
+        if (caller is not null)
+        {
+            try
+            {
+                var providerFailure = caller.ModelFallbackFailureOverride(exception);
+                if (providerFailure is not null)
+                    return providerFailure;
+            }
+            catch
+            {
+            }
+        }
+
+        return ModelFallbackFailureClassifier.Classify(exception);
     }
 
     private static void ApplyUsage(ModelCallMetric metric, ModelCallResult result, ModelConfig modelConfig)
@@ -172,46 +247,259 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             throw new SharpOMaticException($"Could not set model call exit context at '{path}'.");
     }
 
-    private async Task<(Model, ModelConfig, Connector, ConnectorConfig)> LoadModelAndConnector(ModelCallMetric metric)
+    private async Task<ModelCallAttemptResources> LoadModelAndConnector(ModelCallModelDefinition definition)
     {
-        if (Node.ModelId is null)
-            throw new SharpOMaticException("No model selected");
-
-        var model = await ProcessContext.RepositoryService.GetModel(Node.ModelId.Value);
+        var model = await ProcessContext.RepositoryService.GetModel(definition.ModelId);
         if (model is null)
-            throw new SharpOMaticException("Cannot find model");
-
-        metric.ModelId = model.ModelId;
-        metric.ModelName = model.Name;
+            throw new SharpOMaticException($"Cannot find model '{definition.ModelId}'");
 
         if (model.ConnectorId is null)
             throw new SharpOMaticException("Model has no connector defined");
-
-        metric.ConnectorId = model.ConnectorId;
 
         var modelConfig = await ProcessContext.RepositoryService.GetModelConfig(model.ConfigId);
         if (modelConfig is null)
             throw new SharpOMaticException("Cannot find the model configuration");
 
-        metric.ModelConfigId = modelConfig.ConfigId;
-        metric.ModelConfigName = modelConfig.DisplayName;
-
         var connector = await ProcessContext.RepositoryService.GetConnector(model.ConnectorId.Value, false);
         if (connector is null)
             throw new SharpOMaticException("Cannot find the model connector");
-
-        metric.ConnectorId = connector.ConnectorId;
-        metric.ConnectorName = connector.Name;
 
         var connectorConfig = await ProcessContext.RepositoryService.GetConnectorConfig(connector.ConfigId);
         if (connectorConfig is null)
             throw new SharpOMaticException("Cannot find the connector configuration");
 
-        metric.ConnectorConfigId = connectorConfig.ConfigId;
-        metric.ConnectorConfigName = connectorConfig.DisplayName;
+        var caller = ProcessContext.ServiceScope.ServiceProvider.GetKeyedService<IModelCaller>(connectorConfig.ConfigId);
+        if (caller is null)
+            throw new SharpOMaticException($"No implementation found for connector '{connectorConfig.ConfigId}'");
 
-        return (model, modelConfig, connector, connectorConfig);
+        return new ModelCallAttemptResources(definition, model, modelConfig, connector, connectorConfig, caller);
     }
+
+    private void ValidateFallbackCapabilities(IReadOnlyList<ModelCallAttemptResources> attempts)
+    {
+        var requiredCapabilities = new HashSet<string>(StringComparer.Ordinal) { "SupportsTextIn" };
+        var primary = Node.Models[0];
+
+        if (!string.IsNullOrWhiteSpace(Node.ImageInputPath))
+            requiredCapabilities.Add("SupportsImageIn");
+
+        if (primary.ParameterValues.TryGetValue("selected_tools", out var selectedTools) && !string.IsNullOrWhiteSpace(selectedTools))
+            requiredCapabilities.Add("SupportsToolCalling");
+
+        if (
+            primary.ParameterValues.TryGetValue("structured_output", out var structuredOutput)
+            && !string.IsNullOrWhiteSpace(structuredOutput)
+            && !string.Equals(structuredOutput, "Text", StringComparison.Ordinal)
+        )
+            requiredCapabilities.Add("SupportsStructuredOutput");
+
+        foreach (var attempt in attempts.Where(attempt => !ReferenceEquals(attempt.Definition, primary)))
+        {
+            foreach (var capability in requiredCapabilities)
+            {
+                if (!HasCapability(attempt.Model, attempt.ModelConfig, capability))
+                    throw new SharpOMaticException($"Fallback model '{attempt.Model.Name}' does not support required capability '{capability}'.");
+            }
+        }
+    }
+
+    private static bool HasCapability(Model model, ModelConfig modelConfig, string capability)
+    {
+        return modelConfig.Capabilities.Any(item => item.Name == capability)
+            && (!modelConfig.IsCustom || model.CustomCapabilities.Contains(capability, StringComparer.Ordinal));
+    }
+
+    private async Task<bool> ShouldUseFallback(
+        Exception exception,
+        ModelFallbackFailure failure,
+        ModelCallNodeProgressSink progressSink,
+        IReadOnlyList<ModelCallAttemptResources> attempts,
+        int failedAttemptIndex
+    )
+    {
+        if (progressSink.ResponseStarted || progressSink.ToolInvocationStarted)
+            return false;
+
+        var defaultDecision = failure.IsTransient;
+        var context = new ModelFallbackDecisionContext(
+            ProcessContext.Run.RunId,
+            WorkflowContext.Workflow.Id,
+            ProcessContext.Run.ConversationId,
+            Node.Id,
+            Node.Title,
+            failedAttemptIndex,
+            attempts.Count,
+            CreateFallbackTarget(attempts[failedAttemptIndex]),
+            CreateFallbackTarget(attempts[failedAttemptIndex + 1]),
+            exception,
+            failure,
+            progressSink.ResponseStarted,
+            progressSink.ToolInvocationStarted,
+            defaultDecision,
+            defaultDecision ? $"Transient failure category '{failure.Category}'." : $"Failure category '{failure.Category}' is not transient."
+        );
+
+        foreach (var notification in ProcessContext.ServiceScope.ServiceProvider.GetServices<IEngineNotification>())
+        {
+            bool? decision;
+            try
+            {
+                decision = await notification.ModelFallbackOverride(context);
+            }
+            catch (Exception overrideException)
+            {
+                throw new SharpOMaticException("Model fallback override failed.", new AggregateException(exception, overrideException));
+            }
+
+            if (decision.HasValue)
+                return decision.Value;
+        }
+
+        return defaultDecision;
+    }
+
+    private static ModelFallbackTarget CreateFallbackTarget(ModelCallAttemptResources attempt)
+    {
+        return new ModelFallbackTarget(
+            attempt.Model.ModelId,
+            attempt.Model.Name,
+            attempt.ModelConfig.ConfigId,
+            attempt.Connector.ConnectorId,
+            attempt.Connector.Name,
+            attempt.ConnectorConfig.ConfigId,
+            new ReadOnlyDictionary<string, string?>(new Dictionary<string, string?>(attempt.Definition.ParameterValues, StringComparer.Ordinal))
+        );
+    }
+
+    private void ApplyMetricIdentity(ModelCallMetric metric, ModelCallAttemptResources attempt)
+    {
+        metric.ModelId = attempt.Model.ModelId;
+        metric.ModelName = attempt.Model.Name;
+        metric.ModelConfigId = attempt.ModelConfig.ConfigId;
+        metric.ModelConfigName = attempt.ModelConfig.DisplayName;
+        metric.ConnectorId = attempt.Connector.ConnectorId;
+        metric.ConnectorName = attempt.Connector.Name;
+        metric.ConnectorConfigId = attempt.ConnectorConfig.ConfigId;
+        metric.ConnectorConfigName = attempt.ConnectorConfig.DisplayName;
+    }
+
+    private void ApplyActivityIdentity(ModelCallAttemptResources attempt, int attemptIndex)
+    {
+        NodeActivity?.SetTag("sharpomatic.model.name", attempt.Model.Name);
+        NodeActivity?.SetTag("sharpomatic.model.config", attempt.ModelConfig.ConfigId);
+        NodeActivity?.SetTag("sharpomatic.connector.name", attempt.Connector.Name);
+        NodeActivity?.SetTag("sharpomatic.connector.config", attempt.ConnectorConfig.ConfigId);
+        NodeActivity?.SetTag("sharpomatic.model_call.attempt", attemptIndex + 1);
+        NodeActivity?.SetTag("sharpomatic.model_call.fallback", attemptIndex > 0);
+    }
+
+    private ModelCallNodeEntity CreateAttemptNode(ModelCallAttemptResources attempt, bool disablePromptStream)
+    {
+        var definition = attempt.Definition;
+        var parameterValues = new Dictionary<string, string?>(definition.ParameterValues, StringComparer.Ordinal);
+        var primaryParameterValues = Node.Models[0].ParameterValues;
+
+        foreach (var field in attempt.ModelConfig.ParameterFields.Where(field => field.CallDefined && field.Capability is "SupportsToolCalling" or "SupportsStructuredOutput"))
+        {
+            if (primaryParameterValues.TryGetValue(field.Name, out var value) && IsCompatibleFieldValue(field, value))
+                parameterValues[field.Name] = value;
+        }
+
+        if (HasCapability(attempt.Model, attempt.ModelConfig, "SupportsToolCalling") && primaryParameterValues.TryGetValue("selected_tools", out var selectedTools))
+            parameterValues["selected_tools"] = selectedTools;
+
+        if (
+            parameterValues.TryGetValue("structured_output", out var structuredOutput)
+            && string.Equals(structuredOutput, primaryParameterValues.GetValueOrDefault("structured_output"), StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(structuredOutput)
+            && !string.Equals(structuredOutput, "Text", StringComparison.Ordinal)
+        )
+        {
+            foreach (var sharedField in new[] { "structured_output_schema", "structured_output_schema_name", "structured_output_schema_description", "structured_output_configured_type" })
+            {
+                if (primaryParameterValues.TryGetValue(sharedField, out var value))
+                    parameterValues[sharedField] = value;
+            }
+        }
+
+#pragma warning disable CS0618
+        return new ModelCallNodeEntity
+        {
+            Version = Node.Version,
+            Id = Node.Id,
+            NodeType = Node.NodeType,
+            Title = Node.Title,
+            Top = Node.Top,
+            Left = Node.Left,
+            Width = Node.Width,
+            Height = Node.Height,
+            Inputs = Node.Inputs,
+            Outputs = Node.Outputs,
+            Models = Node.Models,
+            ModelId = definition.ModelId,
+            ParameterValues = parameterValues,
+            BatchOutput = Node.BatchOutput,
+            DropToolCalls = Node.DropToolCalls,
+            DisableStreamUser = Node.DisableStreamUser || disablePromptStream,
+            DisableStreamTool = Node.DisableStreamTool,
+            DisableStreamReasoning = Node.DisableStreamReasoning,
+            DisableStreamAssistantText = Node.DisableStreamAssistantText,
+            ToolAgUiOutputModes = new Dictionary<string, ModelCallToolAgUiOutputMode>(Node.ToolAgUiOutputModes, StringComparer.Ordinal),
+            Instructions = Node.Instructions,
+            Prompt = Node.Prompt,
+            ChatInputPath = Node.ChatInputPath,
+            ChatOutputPath = Node.ChatOutputPath,
+            TextOutputPath = Node.TextOutputPath,
+            ImageInputPath = Node.ImageInputPath,
+            ImageOutputPath = Node.ImageOutputPath,
+        };
+#pragma warning restore CS0618
+    }
+
+    private static bool IsCompatibleFieldValue(FieldDescriptor field, string? value)
+    {
+        if (value is null)
+            return !field.IsRequired;
+
+        if (field.EnumOptions is { Count: > 0 } && !field.EnumOptions.Contains(value, StringComparer.Ordinal))
+            return false;
+
+        if (field.Type == FieldDescriptorType.Boolean && !bool.TryParse(value, out _))
+            return false;
+
+        double? numericValue = null;
+        if (field.Type == FieldDescriptorType.Integer)
+        {
+            if (!long.TryParse(value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var integerValue))
+                return false;
+
+            numericValue = integerValue;
+        }
+        else if (field.Type is FieldDescriptorType.Double or FieldDescriptorType.Currency)
+        {
+            if (!double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var doubleValue))
+                return false;
+
+            numericValue = doubleValue;
+        }
+
+        if (numericValue.HasValue && field.Min.HasValue && numericValue.Value < field.Min.Value)
+            return false;
+
+        if (numericValue.HasValue && field.Max.HasValue && numericValue.Value > field.Max.Value)
+            return false;
+
+        return true;
+    }
+
+    private sealed record ModelCallAttemptResources(
+        ModelCallModelDefinition Definition,
+        Model Model,
+        ModelConfig ModelConfig,
+        Connector Connector,
+        ConnectorConfig ConnectorConfig,
+        IModelCaller Caller
+    );
 
     private static string? SerializeToolCall(FunctionCallContent functionCallContent)
     {
@@ -286,8 +574,12 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         private bool _hasToolCallUpdates;
         private bool _hasToolCallResultUpdates;
 
+        public bool ResponseStarted { get; private set; }
+        public bool ToolInvocationStarted { get; private set; }
+
         public async Task OnTextStartAsync(string messageId)
         {
+            ResponseStarted = true;
             if (string.IsNullOrWhiteSpace(messageId))
                 throw new SharpOMaticException("MessageId must be a non-empty string.");
 
@@ -316,6 +608,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             if (string.IsNullOrWhiteSpace(textDelta))
                 return;
 
+            ResponseStarted = true;
             _hasTextUpdates = true;
             await OnTextStartAsync(messageId);
             _pendingAssistantText.Append(textDelta);
@@ -352,17 +645,20 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
         public Task OnReasoningAsync(string reasoningId, string text)
         {
+            ResponseStarted = true;
             return OnReasoningCoreAsync(reasoningId, text, isStreamingUpdate: true);
         }
 
         public Task OnToolCallAsync(string toolCallId, string? toolName, string? argsSnapshot = null, string? parentMessageId = null, string? data = null)
         {
+            ResponseStarted = true;
             _hasToolCallUpdates = true;
             return OnToolCallCoreAsync(toolCallId, toolName, argsSnapshot, parentMessageId, data);
         }
 
         public async Task OnToolCallResultAsync(string messageId, string toolCallId, string content)
         {
+            ResponseStarted = true;
             _hasToolCallResultUpdates = true;
 
             await CloseAllOpenTextAsync();
@@ -381,6 +677,13 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                     TextDelta = content,
                 }
             );
+        }
+
+        public Task OnToolInvocationStartedAsync(string? toolName)
+        {
+            ResponseStarted = true;
+            ToolInvocationStarted = true;
+            return Task.CompletedTask;
         }
 
         public async Task CompleteAsync()

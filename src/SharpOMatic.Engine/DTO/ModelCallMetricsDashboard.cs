@@ -42,9 +42,13 @@ public sealed record ModelCallMetricsDashboard(
     List<ModelCallMetricBreakdownItem> ModelBreakdown,
     List<ModelCallMetricBreakdownItem> NodeBreakdown,
     List<ModelCallMetricFailureGroup> Failures,
+    List<ModelCallMetricFailureCategoryGroup> FailureCategories,
     List<ModelCallMetricCallSummary> RecentCalls,
     int RecentCallsTotal,
-    List<ModelCallMetricCallSummary> SlowestCalls
+    List<ModelCallMetricCallSummary> SlowestCalls,
+    List<ModelCallMetricLogicalCallSummary> RecentLogicalCalls,
+    int RecentLogicalCallsTotal,
+    List<ModelCallMetricLogicalCallSummary> SlowestLogicalCalls
 );
 
 public sealed record ModelCallMetricTotals(
@@ -59,7 +63,13 @@ public sealed record ModelCallMetricTotals(
     int UnpricedCalls,
     double? AverageDuration,
     long? P95Duration,
-    double FailureRate
+    double FailureRate,
+    int LogicalCalls,
+    int CallsRequiringFallback,
+    int RecoveredCalls,
+    int UnrecoveredCalls,
+    double FallbackRecoveryRate,
+    double LogicalFailureRate
 );
 
 public sealed record ModelCallMetricMasterItem(
@@ -86,7 +96,14 @@ public sealed record ModelCallMetricTimeBucket(
     int PricedCalls,
     int UnpricedCalls,
     double? AverageDuration,
-    long? P95Duration
+    long? P95Duration,
+    int LogicalCalls,
+    int PrimaryAttempts,
+    int FallbackAttempts,
+    int SuccessfulFallbackAttempts,
+    int FailedFallbackAttempts,
+    int RecoveredCalls,
+    int UnrecoveredCalls
 );
 
 public sealed record ModelCallMetricBreakdownItem(
@@ -98,7 +115,19 @@ public sealed record ModelCallMetricBreakdownItem(
     long TotalTokens,
     double? AverageDuration,
     long? P95Duration,
-    double FailureRate
+    double FailureRate,
+    int PrimaryAttempts,
+    int FallbackAttempts,
+    int SuccessfulFallbackAttempts
+);
+
+public sealed record ModelCallMetricFailureCategoryGroup(
+    ModelFallbackFailureCategory Category,
+    int? ProviderStatusCode,
+    int Count,
+    DateTime LastSeen,
+    int PrimaryAttempts,
+    int FallbackAttempts
 );
 
 public sealed record ModelCallMetricFailureGroup(
@@ -114,6 +143,8 @@ public sealed record ModelCallMetricFailureGroup(
 
 public sealed record ModelCallMetricCallSummary(
     Guid Id,
+    Guid LogicalCallId,
+    int AttemptNumber,
     DateTime Created,
     string WorkflowName,
     string NodeTitle,
@@ -125,6 +156,24 @@ public sealed record ModelCallMetricCallSummary(
     long? TotalTokens,
     decimal? TotalCost,
     bool Succeeded,
+    ModelFallbackFailureCategory? FailureCategory,
+    int? ProviderStatusCode,
     string? ErrorType,
     string? ErrorMessage
+);
+
+public sealed record ModelCallMetricLogicalCallSummary(
+    Guid LogicalCallId,
+    DateTime Created,
+    string WorkflowName,
+    string NodeTitle,
+    string? FinalConnectorName,
+    string? FinalModelName,
+    int AttemptCount,
+    long? Duration,
+    long TotalTokens,
+    decimal? TotalCost,
+    bool Succeeded,
+    bool RecoveredByFallback,
+    List<ModelCallMetricCallSummary> Attempts
 );

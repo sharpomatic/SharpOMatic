@@ -10,7 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ConnectorSummary } from '../../metadata/definitions/connector-summary';
 import { FieldDescriptor } from '../../metadata/definitions/field-descriptor';
 import { Model } from '../../metadata/definitions/model';
@@ -44,6 +44,7 @@ import { FieldDescriptorType } from '../../metadata/enumerations/field-descripto
 })
 export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly serverRepository = inject(ServerRepositoryService);
   private readonly metadataService = inject(MetadataService);
 
@@ -144,6 +145,10 @@ export class ModelComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
   save(): void {
     this.saveChanges().subscribe();
+  }
+
+  goBackToModels(): void {
+    void this.router.navigate(['/models']);
   }
 
   public onModelConfigChange(configId: string | null): void {

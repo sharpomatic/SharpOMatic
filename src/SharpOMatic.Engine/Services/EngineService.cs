@@ -331,6 +331,7 @@ public class EngineService(
         var evalConfigDetail = await RepositoryService.GetEvalConfigDetail(evalConfigId);
         var allRows = evalConfigDetail.Rows.OrderBy(r => r.Order).ToList();
         var selectedRows = ResolveEvalRowsForRun(allRows, sampleCount);
+        var executionRows = BuildEvalRunWorkItems(selectedRows, sampleCount.HasValue);
         var started = DateTime.Now;
 
         var evalRun = new EvalRun
@@ -345,7 +346,7 @@ public class EngineService(
             Message = "Starting",
             Error = null,
             CancelRequested = false,
-            TotalRows = selectedRows.Count,
+            TotalRows = executionRows.Count,
             CompletedRows = 0,
             FailedRows = 0,
             AveragePassRate = null,
@@ -354,12 +355,12 @@ public class EngineService(
         };
 
         await RepositoryService.UpsertEvalRun(evalRun);
-        _ = Task.Run(() => PerformEvalRun(evalConfigDetail, evalRun, selectedRows));
+        _ = Task.Run(() => PerformEvalRun(evalConfigDetail, evalRun, executionRows));
 
         return evalRun;
     }
 
-    private async Task PerformEvalRun(EvalConfigDetail evalConfigDetail, EvalRun evalRun, IReadOnlyList<EvalRow> selectedRows)
+    private async Task PerformEvalRun(EvalConfigDetail evalConfigDetail, EvalRun evalRun, IReadOnlyList<EvalRunWorkItem> executionRows)
     {
         using var serviceScope = ScopeFactory.CreateScope();
         var provider = serviceScope.ServiceProvider;
@@ -371,7 +372,7 @@ public class EngineService(
         var progressServices = provider.GetServices<IProgressService>();
 
         var configuredMaxParallel = evalConfigDetail.EvalConfig.MaxParallel;
-        var normalizedMaxParallel = Math.Max(1, Math.Min(selectedRows.Count, Math.Max(1, configuredMaxParallel)));
+        var normalizedMaxParallel = Math.Max(1, Math.Min(Math.Max(1, executionRows.Count), Math.Max(1, configuredMaxParallel)));
         using var progressUpdateGate = new SemaphoreSlim(1, 1);
         var cancelRequested = 0;
         var runDeleted = 0;
@@ -379,9 +380,9 @@ public class EngineService(
         try
         {
             await Parallel.ForEachAsync(
-                selectedRows,
+                executionRows,
                 new ParallelOptions { MaxDegreeOfParallelism = normalizedMaxParallel },
-                async (row, cancellationToken) =>
+                async (workItem, cancellationToken) =>
                 {
                     if (Volatile.Read(ref cancelRequested) == 1 || Volatile.Read(ref runDeleted) == 1)
                         return;
@@ -404,7 +405,7 @@ public class EngineService(
                         return;
                     }
 
-                    var evalRunRow = await PerformEvalRow(provider, repository, jsonConverterService, assetStore, scriptOptionsService, evalRun.EvalRunId, evalConfigDetail, row);
+                    var evalRunRow = await PerformEvalRow(provider, repository, jsonConverterService, assetStore, scriptOptionsService, evalRun.EvalRunId, evalConfigDetail, workItem);
                     if (evalRunRow is null)
                     {
                         Interlocked.Exchange(ref runDeleted, 1);
@@ -577,15 +578,16 @@ public class EngineService(
         IScriptOptionsService scriptOptionsService,
         Guid evalRunId,
         EvalConfigDetail evalConfigDetail,
-        EvalRow evalRow
+        EvalRunWorkItem workItem
     )
     {
+        var evalRow = workItem.Row;
         var evalRunRow = new EvalRunRow
         {
             EvalRunRowId = Guid.NewGuid(),
             EvalRunId = evalRunId,
             EvalRowId = evalRow.EvalRowId,
-            Order = evalRow.Order,
+            Order = workItem.Order,
             Started = DateTime.Now,
             Status = EvalRunStatus.Running,
         };
@@ -965,21 +967,38 @@ public class EngineService(
 
     private static List<EvalRow> ResolveEvalRowsForRun(List<EvalRow> allRows, int? sampleCount)
     {
+        var runnableRows = allRows.Where(row => row.EffectiveRepeat > 0).ToList();
+
         if (!sampleCount.HasValue)
             return allRows;
 
-        if (allRows.Count == 0)
+        if (runnableRows.Count == 0)
             throw new SharpOMaticException("Sample count cannot be provided when there are no rows to run.");
 
         var requestedSampleCount = sampleCount.Value;
-        if (requestedSampleCount < 1 || requestedSampleCount > allRows.Count)
-            throw new SharpOMaticException($"Sample count must be between 1 and {allRows.Count}.");
+        if (requestedSampleCount < 1 || requestedSampleCount > runnableRows.Count)
+            throw new SharpOMaticException($"Sample count must be between 1 and {runnableRows.Count}.");
 
-        if (requestedSampleCount == allRows.Count)
-            return allRows;
+        if (requestedSampleCount == runnableRows.Count)
+            return runnableRows;
 
-        var selectedRowIds = BuildRandomSampleRowIds(allRows, requestedSampleCount);
-        return allRows.Where(row => selectedRowIds.Contains(row.EvalRowId)).ToList();
+        var selectedRowIds = BuildRandomSampleRowIds(runnableRows, requestedSampleCount);
+        return runnableRows.Where(row => selectedRowIds.Contains(row.EvalRowId)).ToList();
+    }
+
+    private static List<EvalRunWorkItem> BuildEvalRunWorkItems(List<EvalRow> selectedRows, bool isSampleRun)
+    {
+        var workItems = new List<EvalRunWorkItem>();
+        var order = 0;
+
+        foreach (var row in selectedRows.OrderBy(row => row.Order))
+        {
+            var repeat = isSampleRun ? 1 : row.EffectiveRepeat;
+            for (var repeatIndex = 0; repeatIndex < repeat; repeatIndex++)
+                workItems.Add(new EvalRunWorkItem(row, order++));
+        }
+
+        return workItems;
     }
 
     private static HashSet<Guid> BuildRandomSampleRowIds(List<EvalRow> allRows, int requestedSampleCount)
@@ -1010,6 +1029,8 @@ public class EngineService(
 
         return started.ToString("yyyy-MM-dd HH:mm:ss");
     }
+
+    private sealed record EvalRunWorkItem(EvalRow Row, int Order);
 
     private async Task<NextNodeData> BuildFreshTurnStart(
         ProcessContext processContext,

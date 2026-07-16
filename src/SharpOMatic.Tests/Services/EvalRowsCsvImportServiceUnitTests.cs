@@ -38,11 +38,49 @@ public sealed class EvalRowsCsvImportServiceUnitTests
         Assert.NotNull(insertedData);
         Assert.Equal([5, 6], insertedRows.Select(row => row.Order).ToArray());
         Assert.All(insertedRows, row => Assert.Equal(evalConfigId, row.EvalConfigId));
+        Assert.All(insertedRows, row => Assert.Equal(EvalRow.DefaultRepeat, row.Repeat));
         Assert.Contains(insertedData, data => data.EvalRowId == insertedRows[0].EvalRowId && data.EvalColumnId == nameColumn.EvalColumnId && data.StringValue == "Alice");
         Assert.Contains(insertedData, data => data.EvalRowId == insertedRows[0].EvalRowId && data.EvalColumnId == ageColumn.EvalColumnId && data.IntValue == 42);
         Assert.Contains(insertedData, data => data.EvalRowId == insertedRows[0].EvalRowId && data.EvalColumnId == scoreColumn.EvalColumnId && data.DoubleValue == 3.5);
         Assert.Contains(insertedData, data => data.EvalRowId == insertedRows[1].EvalRowId && data.EvalColumnId == flagColumn.EvalColumnId && data.BoolValue == false);
         Assert.DoesNotContain(insertedData, data => data.EvalRowId == insertedRows[1].EvalRowId && data.EvalColumnId == scoreColumn.EvalColumnId);
+    }
+
+    [Fact]
+    public async Task Import_uses_optional_repeat_column_when_provided()
+    {
+        var evalConfigId = Guid.NewGuid();
+        var nameColumn = CreateColumn(evalConfigId, "Name", ContextEntryType.String, false, 0);
+        var repository = CreateRepository(evalConfigId, [nameColumn], []);
+        List<EvalRow>? insertedRows = null;
+        repository
+            .Setup(service => service.InsertEvalRowsWithData(It.IsAny<List<EvalRow>>(), It.IsAny<List<EvalData>>()))
+            .Callback<List<EvalRow>, List<EvalData>>((rows, _) => insertedRows = rows)
+            .Returns(Task.CompletedTask);
+        var service = new TransferService(repository.Object, new Mock<IAssetStore>().Object);
+
+        var result = await service.ImportEvalRowsCsvAsync(evalConfigId, CsvStream("Name,Repeat\nAlice,0\nBob,3\nCara,"), "rows.csv");
+
+        Assert.Equal(3, result.RowsImported);
+        Assert.NotNull(insertedRows);
+        Assert.Equal([0, 3, 1], insertedRows.Select(row => row.Repeat.GetValueOrDefault()).ToArray());
+    }
+
+    [Theory]
+    [InlineData("-1")]
+    [InlineData("10001")]
+    [InlineData("1.5")]
+    public async Task Import_rejects_invalid_repeat_values_without_insert(string repeat)
+    {
+        var evalConfigId = Guid.NewGuid();
+        var repository = CreateRepository(evalConfigId, [CreateColumn(evalConfigId, "Name", ContextEntryType.String, false, 0)], []);
+        var service = new TransferService(repository.Object, new Mock<IAssetStore>().Object);
+
+        await Assert.ThrowsAsync<SharpOMaticException>(() =>
+            service.ImportEvalRowsCsvAsync(evalConfigId, CsvStream($"Name,Repeat\nAlice,{repeat}"), "rows.csv")
+        );
+
+        repository.Verify(service => service.InsertEvalRowsWithData(It.IsAny<List<EvalRow>>(), It.IsAny<List<EvalData>>()), Times.Never);
     }
 
     [Fact]

@@ -69,6 +69,7 @@ Each workflow run creates a record in the database that tracks:
 Each run also includes trace records that capture node-level execution details.
 These help you identify which node raised an error and view the context at the time of failure.
 You can see traces in the editor by selecting a run.
+The editor trace panel shows the current run status and duration; while a run is live, the duration updates from the run start time until completion.
 Trace records include a `ThreadId`, which is useful when diagnosing fan-out/fan-in and batch parallel execution.
 Traces can also include parent-child relationships across nested workflow calls such as **Gosub**.
 

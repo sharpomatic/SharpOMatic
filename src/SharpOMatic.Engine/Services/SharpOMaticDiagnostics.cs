@@ -92,7 +92,7 @@ public static class SharpOMaticDiagnostics
         return activity;
     }
 
-    internal static void CompleteNodeActivity(Activity? activity, NodeStatus nodeStatus, string? error)
+    internal static void CompleteNodeActivity(Activity? activity, NodeStatus nodeStatus, Exception? exception, string? error)
     {
         if (activity is null)
             return;
@@ -100,7 +100,15 @@ public static class SharpOMaticDiagnostics
         activity.SetTag("sharpomatic.node.status", nodeStatus.ToString());
 
         if (nodeStatus == NodeStatus.Failed)
+        {
+            if (exception is not null)
+            {
+                activity.SetTag("error.type", exception.GetType().FullName);
+                activity.AddException(exception);
+            }
+
             activity.SetStatus(ActivityStatusCode.Error, error);
+        }
         else
             activity.SetStatus(ActivityStatusCode.Ok);
 

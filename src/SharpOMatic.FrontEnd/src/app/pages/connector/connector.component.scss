@@ -15,6 +15,12 @@
   font-size: 1.5rem;
 }
 
+.detail-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .details {
   flex: 1;
   min-height: 0;

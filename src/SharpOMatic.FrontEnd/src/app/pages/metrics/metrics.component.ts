@@ -24,9 +24,11 @@ import {
   ModelCallMetricBreakdownItem,
   ModelCallMetricBucket,
   ModelCallMetricCallSummary,
+  ModelCallMetricLogicalCallSummary,
   ModelCallMetricMasterItem,
   ModelCallMetricScope,
   ModelCallMetricsDashboard,
+  ModelFallbackFailureCategory,
 } from './interfaces/model-call-metrics-dashboard';
 import {
   WorkflowRunMetricMasterItem,
@@ -79,7 +81,10 @@ export class MetricsComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly serverRepository = inject(ServerRepositoryService);
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly selectedKeys = new Map<ModelCallMetricScope, string>();
-  private readonly workflowSelectedKeys = new Map<WorkflowRunMetricScope, string>();
+  private readonly workflowSelectedKeys = new Map<
+    WorkflowRunMetricScope,
+    string
+  >();
   private readonly charts: Chart[] = [];
   private chartRenderId: ReturnType<typeof setTimeout> | undefined;
   private masterSearchDebounceId: ReturnType<typeof setTimeout> | undefined;
@@ -110,6 +115,7 @@ export class MetricsComponent implements OnInit, AfterViewInit, OnDestroy {
   public masterSearch = '';
   public recentPage = 1;
   public readonly recentPageSize = 25;
+  public readonly expandedLogicalCalls = new Set<string>();
 
   ngOnInit(): void {
     this.tabs = [
@@ -251,7 +257,7 @@ export class MetricsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   recentPageCount(): number {
-    const total = this.dashboard?.recentCallsTotal ?? 0;
+    const total = this.dashboard?.recentLogicalCallsTotal ?? 0;
     return Math.max(1, Math.ceil(total / this.recentPageSize));
   }
 
@@ -356,6 +362,56 @@ export class MetricsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   displayModel(call: ModelCallMetricCallSummary): string {
     return call.modelName ?? 'No model';
+  }
+
+  toggleLogicalCall(logicalCallId: string): void {
+    if (this.expandedLogicalCalls.has(logicalCallId)) {
+      this.expandedLogicalCalls.delete(logicalCallId);
+    } else {
+      this.expandedLogicalCalls.add(logicalCallId);
+    }
+  }
+
+  logicalCallOutcome(call: ModelCallMetricLogicalCallSummary): string {
+    if (call.recoveredByFallback) {
+      return 'Recovered';
+    }
+
+    return call.succeeded ? 'Success' : 'Failure';
+  }
+
+  failureCategoryLabel(category: ModelFallbackFailureCategory | null): string {
+    switch (category) {
+      case ModelFallbackFailureCategory.RateLimited:
+        return 'Rate limited';
+      case ModelFallbackFailureCategory.ProviderUnavailable:
+        return 'Provider unavailable';
+      case ModelFallbackFailureCategory.Timeout:
+        return 'Timeout';
+      case ModelFallbackFailureCategory.Network:
+        return 'Network';
+      case ModelFallbackFailureCategory.Authentication:
+        return 'Authentication';
+      case ModelFallbackFailureCategory.InvalidRequest:
+        return 'Invalid request';
+      case ModelFallbackFailureCategory.Configuration:
+        return 'Configuration';
+      case ModelFallbackFailureCategory.Cancellation:
+        return 'Cancellation';
+      default:
+        return 'Unknown';
+    }
+  }
+
+  attemptFailureLabel(call: ModelCallMetricCallSummary): string {
+    if (call.succeeded) {
+      return '';
+    }
+
+    const category = this.failureCategoryLabel(call.failureCategory);
+    return call.providerStatusCode === null
+      ? category
+      : `${category} (${call.providerStatusCode})`;
   }
 
   runStatusLabel(status: RunStatus): string {
@@ -552,14 +608,28 @@ export class MetricsComponent implements OnInit, AfterViewInit, OnDestroy {
         labels,
         datasets: [
           this.barDataset(
-            'Succeeded',
-            this.dashboard.timeBuckets.map((b) => b.successfulCalls),
+            'Primary succeeded',
+            this.dashboard.timeBuckets.map(
+              (b) => b.successfulCalls - b.successfulFallbackAttempts,
+            ),
             '#198754',
           ),
           this.barDataset(
-            'Failed',
-            this.dashboard.timeBuckets.map((b) => b.failedCalls),
+            'Primary failed',
+            this.dashboard.timeBuckets.map(
+              (b) => b.failedCalls - b.failedFallbackAttempts,
+            ),
             '#dc3545',
+          ),
+          this.barDataset(
+            'Recovered by fallback',
+            this.dashboard.timeBuckets.map((b) => b.successfulFallbackAttempts),
+            '#0dcaf0',
+          ),
+          this.barDataset(
+            'Fallback failed',
+            this.dashboard.timeBuckets.map((b) => b.failedFallbackAttempts),
+            '#fd7e14',
           ),
         ],
       },

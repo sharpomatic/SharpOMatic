@@ -16,6 +16,8 @@ public abstract class BaseModelCaller : IModelCaller
         IModelCallProgressSink progressSink
     );
 
+    public virtual ModelFallbackFailure? ModelFallbackFailureOverride(Exception exception) => null;
+
     protected virtual async Task<ModelCallResult> CallAgent(AIAgent agent, List<ChatMessage> chat, ChatOptions? chatOptions, bool jsonOutput, ModelCallNodeEntity node)
     {
         AgentResponse response;
@@ -169,7 +171,11 @@ public abstract class BaseModelCaller : IModelCaller
         };
     }
 
-    protected virtual IChatClient CreateFunctionInvokingChatClient(IChatClient chatClient, IServiceProvider? toolServiceProvider)
+    protected virtual IChatClient CreateFunctionInvokingChatClient(
+        IChatClient chatClient,
+        IServiceProvider? toolServiceProvider,
+        IModelCallProgressSink? progressSink = null
+    )
     {
         var telemetryOptions = toolServiceProvider?.GetService<IOptions<SharpOMaticTelemetryOptions>>()?.Value ?? new SharpOMaticTelemetryOptions();
         if (telemetryOptions.Enabled)
@@ -195,6 +201,9 @@ public abstract class BaseModelCaller : IModelCaller
             {
                 try
                 {
+                    if (progressSink is not null)
+                        await progressSink.OnToolInvocationStartedAsync(context.Function.Name);
+
                     return await context.Function.InvokeAsync(context.Arguments, cancellationToken);
                 }
                 catch (Exception ex) when (TryGetModelCallExitException(ex, out var modelCallExitException))
@@ -441,10 +450,10 @@ public abstract class BaseModelCaller : IModelCaller
 
                 case "Schema":
                     // Json formatted output with manually defined schema provided by the user
-                    if (node.ParameterValues.TryGetValue("structured_output_schema", out var outputSchema) && !string.IsNullOrWhiteSpace(outputSchema))
+                    if ((node.ParameterValues ?? []).TryGetValue("structured_output_schema", out var outputSchema) && !string.IsNullOrWhiteSpace(outputSchema))
                     {
-                        node.ParameterValues.TryGetValue("structured_output_schema_name", out var schemaName);
-                        node.ParameterValues.TryGetValue("structured_output_schema_description", out var schemaDescription);
+                        (node.ParameterValues ?? []).TryGetValue("structured_output_schema_name", out var schemaName);
+                        (node.ParameterValues ?? []).TryGetValue("structured_output_schema_description", out var schemaDescription);
 
                         if (string.IsNullOrWhiteSpace(schemaName))
                             schemaName = null;
@@ -463,10 +472,10 @@ public abstract class BaseModelCaller : IModelCaller
                     break;
                 case "Configured Type":
                     // Json formatted output with C# type as the definition to match
-                    if (node.ParameterValues.TryGetValue("structured_output_configured_type", out var configuredType) && !string.IsNullOrWhiteSpace(configuredType))
+                    if ((node.ParameterValues ?? []).TryGetValue("structured_output_configured_type", out var configuredType) && !string.IsNullOrWhiteSpace(configuredType))
                     {
-                        node.ParameterValues.TryGetValue("structured_output_schema_name", out var schemaName);
-                        node.ParameterValues.TryGetValue("structured_output_schema_description", out var schemaDescription);
+                        (node.ParameterValues ?? []).TryGetValue("structured_output_schema_name", out var schemaName);
+                        (node.ParameterValues ?? []).TryGetValue("structured_output_schema_description", out var schemaDescription);
 
                         var configuredSchema = processContext.SchemaTypeRegistry.GetSchema(configuredType);
                         if (string.IsNullOrWhiteSpace(configuredSchema))
@@ -744,7 +753,7 @@ public abstract class BaseModelCaller : IModelCaller
             {
                 string? paramString;
                 if (
-                    (fieldDescription.CallDefined && node.ParameterValues.TryGetValue(field, out paramString) && !string.IsNullOrWhiteSpace(paramString))
+                    (fieldDescription.CallDefined && (node.ParameterValues ?? []).TryGetValue(field, out paramString) && !string.IsNullOrWhiteSpace(paramString))
                     || (!fieldDescription.CallDefined && model.ParameterValues.TryGetValue(field, out paramString) && !string.IsNullOrWhiteSpace(paramString))
                 )
                 {
@@ -764,7 +773,7 @@ public abstract class BaseModelCaller : IModelCaller
             (model is not null)
             && (modelConfig is not null)
             && HasCapability(model, modelConfig, capability)
-            && node.ParameterValues.TryGetValue(field, out var paramString)
+            && (node.ParameterValues ?? []).TryGetValue(field, out var paramString)
             && !string.IsNullOrWhiteSpace(paramString)
         )
         {
@@ -786,7 +795,7 @@ public abstract class BaseModelCaller : IModelCaller
                 string? paramString;
                 int paramInteger;
                 if (
-                    (fieldDescription.CallDefined && node.ParameterValues.TryGetValue(field, out paramString) && int.TryParse(paramString, out paramInteger))
+                    (fieldDescription.CallDefined && (node.ParameterValues ?? []).TryGetValue(field, out paramString) && int.TryParse(paramString, out paramInteger))
                     || (!fieldDescription.CallDefined && model.ParameterValues.TryGetValue(field, out paramString) && int.TryParse(paramString, out paramInteger))
                 )
                 {
@@ -810,7 +819,7 @@ public abstract class BaseModelCaller : IModelCaller
                 string? paramString;
                 float paramFloat;
                 if (
-                    (fieldDescription.CallDefined && node.ParameterValues.TryGetValue(field, out paramString) && float.TryParse(paramString, out paramFloat))
+                    (fieldDescription.CallDefined && (node.ParameterValues ?? []).TryGetValue(field, out paramString) && float.TryParse(paramString, out paramFloat))
                     || (!fieldDescription.CallDefined && model.ParameterValues.TryGetValue(field, out paramString) && float.TryParse(paramString, out paramFloat))
                 )
                 {
@@ -834,7 +843,7 @@ public abstract class BaseModelCaller : IModelCaller
                 string? paramString;
                 bool paramBool;
                 if (
-                    (fieldDescription.CallDefined && node.ParameterValues.TryGetValue(field, out paramString) && bool.TryParse(paramString, out paramBool))
+                    (fieldDescription.CallDefined && (node.ParameterValues ?? []).TryGetValue(field, out paramString) && bool.TryParse(paramString, out paramBool))
                     || (!fieldDescription.CallDefined && model.ParameterValues.TryGetValue(field, out paramString) && bool.TryParse(paramString, out paramBool))
                 )
                 {

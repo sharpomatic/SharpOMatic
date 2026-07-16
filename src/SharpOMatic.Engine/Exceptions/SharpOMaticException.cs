@@ -1,13 +1,26 @@
 
 namespace SharpOMatic.Engine.Exceptions;
 
-public class SharpOMaticException(Location location, string message) : Exception(message)
+public class SharpOMaticException : Exception
 {
+    public SharpOMaticException(Location location, string message)
+        : base(message)
+    {
+        Location = location;
+    }
+
     [SetsRequiredMembers]
     public SharpOMaticException(string message)
         : this(Location.Empty, message) { }
 
-    public Location Location { get; init; } = location;
+    [SetsRequiredMembers]
+    public SharpOMaticException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+        Location = Location.Empty;
+    }
+
+    public Location Location { get; init; }
 }
 
 public class SharpOMaticExceptions(IEnumerable<SharpOMaticException> innerExceptions) : Exception("Aggregate SharpOMaticExceptions")

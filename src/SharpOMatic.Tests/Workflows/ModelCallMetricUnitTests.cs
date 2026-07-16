@@ -25,6 +25,10 @@ public class ModelCallMetricUnitTests
             Assert.Equal(RunStatus.Success, run.RunStatus);
             var metric = Assert.Single(repository.GetModelCallMetrics());
             Assert.True(metric.Succeeded);
+            Assert.NotEqual(Guid.Empty, metric.LogicalCallId);
+            Assert.Equal(1, metric.AttemptNumber);
+            Assert.Null(metric.FailureCategory);
+            Assert.Null(metric.ProviderStatusCode);
             Assert.Equal(workflow.Id, metric.WorkflowId);
             Assert.Equal("Metric Workflow", metric.WorkflowName);
             Assert.Equal(run.RunId, metric.RunId);
@@ -77,6 +81,9 @@ public class ModelCallMetricUnitTests
             Assert.Equal(RunStatus.Failed, run.RunStatus);
             var metric = Assert.Single(repository.GetModelCallMetrics());
             Assert.False(metric.Succeeded);
+            Assert.NotEqual(Guid.Empty, metric.LogicalCallId);
+            Assert.Equal(1, metric.AttemptNumber);
+            Assert.Equal(ModelFallbackFailureCategory.Configuration, metric.FailureCategory);
             Assert.Equal(workflow.Id, metric.WorkflowId);
             Assert.Equal("Metric Workflow", metric.WorkflowName);
             Assert.Equal(run.RunId, metric.RunId);
@@ -362,6 +369,104 @@ public class ModelCallMetricUnitTests
         Assert.Equal(1, oldModelDashboard.Totals.TotalCalls);
         Assert.Single(oldModelDashboard.RecentCalls);
         Assert.Equal("Old Model", oldModelDashboard.RecentCalls[0].ModelName);
+    }
+
+    [Fact]
+    public async Task ModelCallMetricsDashboardDerivesFallbackRecoveryAndLogicalCallGroups()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<SharpOMaticDbContext>().UseSqlite(connection).Options;
+        await using (var dbContext = new SharpOMaticDbContext(options, Options.Create(new SharpOMaticDbOptions())))
+            await dbContext.Database.EnsureCreatedAsync();
+
+        var repository = new RepositoryService(new TestDbContextFactory(options));
+        var now = DateTime.UtcNow.Date.AddHours(12);
+        var workflowId = Guid.NewGuid();
+        var logicalCallId = Guid.NewGuid();
+        var primaryConnectorId = Guid.NewGuid();
+        var fallbackConnectorId = Guid.NewGuid();
+        var primaryModelId = Guid.NewGuid();
+        var fallbackModelId = Guid.NewGuid();
+
+        var failedPrimary = CreateModelCallMetric(now.AddMinutes(-3), workflowId, "Workflow", primaryConnectorId, "Primary connector", primaryModelId, "Primary model", 0, 0);
+        failedPrimary.LogicalCallId = logicalCallId;
+        failedPrimary.AttemptNumber = 1;
+        failedPrimary.Succeeded = false;
+        failedPrimary.Duration = 100;
+        failedPrimary.FailureCategory = ModelFallbackFailureCategory.ProviderUnavailable;
+        failedPrimary.ProviderStatusCode = 503;
+        failedPrimary.ErrorMessage = "unavailable";
+        await repository.AppendModelCallMetric(failedPrimary);
+
+        var successfulFallback = CreateModelCallMetric(now.AddMinutes(-2), workflowId, "Workflow", fallbackConnectorId, "Fallback connector", fallbackModelId, "Fallback model", 100, 0.02m);
+        successfulFallback.LogicalCallId = logicalCallId;
+        successfulFallback.AttemptNumber = 2;
+        successfulFallback.Duration = 200;
+        await repository.AppendModelCallMetric(successfulFallback);
+
+        var unrecovered = CreateModelCallMetric(now.AddMinutes(-1), workflowId, "Workflow", primaryConnectorId, "Primary connector", primaryModelId, "Primary model", 0, 0);
+        unrecovered.Succeeded = false;
+        unrecovered.Duration = 50;
+        unrecovered.FailureCategory = ModelFallbackFailureCategory.RateLimited;
+        unrecovered.ProviderStatusCode = 429;
+        unrecovered.ErrorMessage = "rate limited";
+        await repository.AppendModelCallMetric(unrecovered);
+
+        var dashboard = await repository.GetModelCallMetricsDashboard(
+            new ModelCallMetricsDashboardRequest(now.Date, now.Date.AddDays(1), ModelCallMetricBucket.Day, ModelCallMetricScope.All, null, null, 0, 25)
+        );
+
+        Assert.Equal(3, dashboard.Totals.TotalCalls);
+        Assert.Equal(2, dashboard.Totals.LogicalCalls);
+        Assert.Equal(1, dashboard.Totals.CallsRequiringFallback);
+        Assert.Equal(1, dashboard.Totals.RecoveredCalls);
+        Assert.Equal(1, dashboard.Totals.UnrecoveredCalls);
+        Assert.Equal(1, dashboard.Totals.FallbackRecoveryRate);
+        Assert.Equal(0.5, dashboard.Totals.LogicalFailureRate);
+        Assert.Equal(2d / 3d, dashboard.Totals.FailureRate, 10);
+
+        Assert.Equal(2, dashboard.RecentLogicalCallsTotal);
+        var recoveredCall = Assert.Single(dashboard.RecentLogicalCalls, call => call.LogicalCallId == logicalCallId);
+        Assert.True(recoveredCall.Succeeded);
+        Assert.True(recoveredCall.RecoveredByFallback);
+        Assert.Equal(2, recoveredCall.AttemptCount);
+        Assert.Equal(300, recoveredCall.Duration);
+        Assert.Equal([1, 2], recoveredCall.Attempts.Select(attempt => attempt.AttemptNumber));
+
+        Assert.Equal(2, dashboard.FailureCategories.Count);
+        Assert.Contains(dashboard.FailureCategories, group => group.Category == ModelFallbackFailureCategory.ProviderUnavailable && group.ProviderStatusCode == 503);
+        Assert.Contains(dashboard.FailureCategories, group => group.Category == ModelFallbackFailureCategory.RateLimited && group.ProviderStatusCode == 429);
+
+        var primaryBreakdown = Assert.Single(dashboard.ConnectorBreakdown, item => item.Name == "Primary connector");
+        Assert.Equal(2, primaryBreakdown.PrimaryAttempts);
+        Assert.Equal(0, primaryBreakdown.FallbackAttempts);
+        var fallbackBreakdown = Assert.Single(dashboard.ConnectorBreakdown, item => item.Name == "Fallback connector");
+        Assert.Equal(0, fallbackBreakdown.PrimaryAttempts);
+        Assert.Equal(1, fallbackBreakdown.FallbackAttempts);
+        Assert.Equal(1, fallbackBreakdown.SuccessfulFallbackAttempts);
+
+        var bucket = Assert.Single(dashboard.TimeBuckets);
+        Assert.Equal(2, bucket.PrimaryAttempts);
+        Assert.Equal(1, bucket.FallbackAttempts);
+        Assert.Equal(1, bucket.SuccessfulFallbackAttempts);
+        Assert.Equal(1, bucket.RecoveredCalls);
+        Assert.Equal(1, bucket.UnrecoveredCalls);
+
+        var primaryConnectorDashboard = await repository.GetModelCallMetricsDashboard(
+            new ModelCallMetricsDashboardRequest(now.Date, now.Date.AddDays(1), ModelCallMetricBucket.Day, ModelCallMetricScope.Connector, "name:Primary connector", null, 0, 25)
+        );
+        Assert.Equal(2, primaryConnectorDashboard.Totals.TotalCalls);
+        Assert.Equal(2, primaryConnectorDashboard.Totals.LogicalCalls);
+        Assert.Equal(1, primaryConnectorDashboard.Totals.RecoveredCalls);
+
+        var fallbackConnectorDashboard = await repository.GetModelCallMetricsDashboard(
+            new ModelCallMetricsDashboardRequest(now.Date, now.Date.AddDays(1), ModelCallMetricBucket.Day, ModelCallMetricScope.Connector, "name:Fallback connector", null, 0, 25)
+        );
+        Assert.Equal(1, fallbackConnectorDashboard.Totals.TotalCalls);
+        Assert.Equal(1, fallbackConnectorDashboard.Totals.LogicalCalls);
+        Assert.Equal(1, fallbackConnectorDashboard.Totals.RecoveredCalls);
+        Assert.Equal(2, Assert.Single(fallbackConnectorDashboard.RecentLogicalCalls).Attempts.Count);
     }
 
     private static WorkflowEntity CreateWorkflow(Guid? modelId)
