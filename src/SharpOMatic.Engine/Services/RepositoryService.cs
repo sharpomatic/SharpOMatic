@@ -3247,6 +3247,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
     public async Task UpsertAsset(Asset asset)
     {
+        if (!AssetNameParser.IsValidAssetName(asset.Name))
+            throw new SharpOMaticException("Asset name is required and cannot contain ','.");
+
         if (asset.Scope != AssetScope.Library && asset.FolderId.HasValue)
             throw new SharpOMaticException($"{asset.Scope} assets cannot be assigned to folders.");
 
@@ -3327,6 +3330,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
     public async Task UpsertAssetFolder(AssetFolder folder)
     {
+        if (!AssetNameParser.IsValidFolderName(folder.Name))
+            throw new SharpOMaticException("Asset folder name is required and cannot contain '/', '\\', or ','.");
+
         using var dbContext = dbContextFactory.CreateDbContext();
         var entity = await dbContext.AssetFolders.FirstOrDefaultAsync(f => f.FolderId == folder.FolderId);
 

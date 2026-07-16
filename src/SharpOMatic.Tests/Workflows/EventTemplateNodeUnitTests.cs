@@ -71,13 +71,7 @@ public sealed class EventTemplateNodeUnitTests
 
             var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
             Assert.Equal(
-                [
-                    StreamEventKind.ReasoningStart,
-                    StreamEventKind.ReasoningMessageStart,
-                    StreamEventKind.ReasoningMessageContent,
-                    StreamEventKind.ReasoningMessageEnd,
-                    StreamEventKind.ReasoningEnd,
-                ],
+                [StreamEventKind.ReasoningStart, StreamEventKind.ReasoningMessageStart, StreamEventKind.ReasoningMessageContent, StreamEventKind.ReasoningMessageEnd, StreamEventKind.ReasoningEnd],
                 streamEvents.Select(e => e.EventKind).ToArray()
             );
             Assert.Equal(StreamMessageRole.Reasoning, streamEvents[1].MessageRole);
@@ -92,7 +86,7 @@ public sealed class EventTemplateNodeUnitTests
     }
 
     [Fact]
-    public async Task Blank_expanded_output_emits_no_stream_events_and_continues()
+    public async Task Missing_context_path_fails_without_emitting_stream_events()
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
@@ -106,7 +100,6 @@ public sealed class EventTemplateNodeUnitTests
 
         using var provider = WorkflowRunner.BuildProvider();
         var repositoryService = provider.GetRequiredService<IRepositoryService>();
-        var jsonConverters = provider.GetRequiredService<IJsonConverterService>();
         await repositoryService.UpsertWorkflow(workflow);
 
         using var cts = new CancellationTokenSource();
@@ -119,9 +112,8 @@ public sealed class EventTemplateNodeUnitTests
             var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
             var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
 
-            Assert.Equal(RunStatus.Success, run.RunStatus);
-            var output = ContextObject.Deserialize(run.OutputContext, jsonConverters.GetConverters());
-            Assert.Equal("continued", output.Get<string>("output.route"));
+            Assert.Equal(RunStatus.Failed, run.RunStatus);
+            Assert.Contains("None of the context paths", run.Error);
             Assert.Empty(await repositoryService.GetRunStreamEvents(run.RunId));
         }
         finally
@@ -134,13 +126,7 @@ public sealed class EventTemplateNodeUnitTests
     [Fact]
     public async Task Silent_mode_persists_events_and_marks_live_progress_silent()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEventTemplate("event", "Hello", silent: true)
-            .AddEnd()
-            .Connect("start", "event")
-            .Connect("event", "end")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEventTemplate("event", "Hello", silent: true).AddEnd().Connect("start", "event").Connect("event", "end").Build();
         var progress = new CapturingProgressService();
 
         using var provider = WorkflowRunner.BuildProvider(services => services.AddSingleton<IProgressService>(progress));
@@ -216,11 +202,7 @@ public sealed class EventTemplateNodeUnitTests
     [Fact]
     public async Task Text_mode_rejects_reasoning_role()
     {
-        var workflow = new WorkflowBuilder()
-            .AddStart()
-            .AddEventTemplate("event", "Hello", textRole: StreamMessageRole.Reasoning)
-            .Connect("start", "event")
-            .Build();
+        var workflow = new WorkflowBuilder().AddStart().AddEventTemplate("event", "Hello", textRole: StreamMessageRole.Reasoning).Connect("start", "event").Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 

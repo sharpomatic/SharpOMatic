@@ -29,7 +29,10 @@ If you disable one of those categories in the **AG-UI** tab, only the matching s
 The **Instructions** and **User** fields can use template substitution to insert parameterized content.
 
 To insert a value from the context, use this pattern **\{\{\$path\}\}**, where **path** is the context path.
-If the path does not exist or has no value, nothing is inserted and no runtime error occurs.
+To define fallbacks, provide a comma-separated list such as **\{\{\$tenant.path, \$fallback.path\}\}**.
+SharpOMatic tries each path from left to right and inserts the value from the first path that exists.
+Context entry names are valid C# identifiers and cannot contain commas, so commas are reserved as fallback separators.
+If none of the listed paths exist, template expansion fails and the workflow node exits with an error.
 All values are converted to a string, so effectively **.ToString()** is called on the value.
 This allows you to insert integers, floats, booleans, and other types because they can always be converted to a string.
 If the context value is itself a string, SharpOMatic recursively expands any context or asset substitution markers inside that string.
@@ -39,8 +42,13 @@ Non-string values such as objects and lists are serialized or converted as befor
 
 ## Asset substitution **&lt;&lt;$name&gt;&gt;**
 
-You can also substitute text assets by using the **&lt;&lt;$name&gt;&gt;** pattern, where the **name** is the library, conversation, or run asset name.
-If no matching asset is found, nothing is inserted and no runtime error occurs.
+You can also substitute text assets by using the **&lt;&lt;$name&gt;&gt;** or **&lt;&lt;name&gt;&gt;** pattern, where the **name** is the library, conversation, or run asset name.
+The leading **$** is optional and is not treated as part of the asset name.
+Use **&lt;&lt;$folder/name&gt;&gt;** to select a library asset from a named folder.
+To define fallbacks, provide a comma-separated list such as **&lt;&lt;$override.txt, $default.txt&gt;&gt;**.
+SharpOMatic tries each name from left to right and inserts the first asset it finds.
+Commas are reserved as separators, so SharpOMatic does not allow commas in asset or asset-folder names.
+If no listed asset can be found, template expansion fails and the workflow node exits with an error.
 Note that only text media types such as **text/plain** can be inserted.
 You cannot insert images, PDF documents, or binary data, only text.
 Text asset content is also recursively expanded, so assets can contain context markers such as **\{\{\$path\}\}** or other text asset markers such as **&lt;&lt;shared-instructions.txt&gt;&gt;**.

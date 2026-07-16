@@ -53,13 +53,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             request.Evaluations,
             async () =>
             {
-                var summaries = await repositoryService.GetEvalConfigSummaries(
-                    search: null,
-                    sortBy: EvalConfigSortField.Name,
-                    sortDirection: SortDirection.Ascending,
-                    skip: 0,
-                    take: 0
-                );
+                var summaries = await repositoryService.GetEvalConfigSummaries(search: null, sortBy: EvalConfigSortField.Name, sortDirection: SortDirection.Ascending, skip: 0, take: 0);
                 return summaries.Select(summary => summary.EvalConfigId);
             }
         );
@@ -77,14 +71,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         {
             var workflow = await repositoryService.GetWorkflow(workflowId);
             workflow.FolderName = workflow.WorkflowFolderName;
-            await WriteEnvelopeEntryAsync(
-                archive,
-                BuildJsonEntryName(WorkflowDirectory, workflow.Name, workflow.Id),
-                WorkflowType,
-                workflow,
-                exportedUtc,
-                cancellationToken
-            );
+            await WriteEnvelopeEntryAsync(archive, BuildJsonEntryName(WorkflowDirectory, workflow.Name, workflow.Id), WorkflowType, workflow, exportedUtc, cancellationToken);
         }
 
         foreach (var connectorId in connectorIds)
@@ -93,14 +80,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             if (!request.IncludeSecrets)
                 await StripConnectorSecrets(connector);
 
-            await WriteEnvelopeEntryAsync(
-                archive,
-                BuildJsonEntryName(ConnectorDirectory, connector.Name, connector.ConnectorId),
-                ConnectorType,
-                connector,
-                exportedUtc,
-                cancellationToken
-            );
+            await WriteEnvelopeEntryAsync(archive, BuildJsonEntryName(ConnectorDirectory, connector.Name, connector.ConnectorId), ConnectorType, connector, exportedUtc, cancellationToken);
         }
 
         foreach (var modelId in modelIds)
@@ -109,14 +89,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             if (!request.IncludeSecrets)
                 await StripModelSecrets(model);
 
-            await WriteEnvelopeEntryAsync(
-                archive,
-                BuildJsonEntryName(ModelDirectory, model.Name, model.ModelId),
-                ModelType,
-                model,
-                exportedUtc,
-                cancellationToken
-            );
+            await WriteEnvelopeEntryAsync(archive, BuildJsonEntryName(ModelDirectory, model.Name, model.ModelId), ModelType, model, exportedUtc, cancellationToken);
         }
 
         foreach (var evaluationPackage in evaluationPackages)
@@ -133,9 +106,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
 
         foreach (var asset in assets)
         {
-            var folderName = asset.FolderId.HasValue
-                ? (await repositoryService.GetAssetFolder(asset.FolderId.Value)).Name
-                : null;
+            var folderName = asset.FolderId.HasValue ? (await repositoryService.GetAssetFolder(asset.FolderId.Value)).Name : null;
 
             await using var assetStream = await assetStore.OpenReadAsync(asset.StorageKey, cancellationToken);
             using var memory = new MemoryStream();
@@ -152,14 +123,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                 ContentBase64 = Convert.ToBase64String(memory.ToArray()),
             };
 
-            await WriteEnvelopeEntryAsync(
-                archive,
-                BuildJsonEntryName(AssetDirectory, asset.Name, asset.AssetId),
-                AssetType,
-                payload,
-                exportedUtc,
-                cancellationToken
-            );
+            await WriteEnvelopeEntryAsync(archive, BuildJsonEntryName(AssetDirectory, asset.Name, asset.AssetId), AssetType, payload, exportedUtc, cancellationToken);
         }
     }
 
@@ -315,11 +279,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         await repositoryService.UpsertEvalRunRowGraders(remapped.RunRowGraders);
         await repositoryService.UpsertEvalRunGraderSummaries(remapped.RunGraderSummaries);
 
-        return new TransferImportResult
-        {
-            EvaluationsImported = 1,
-            EvaluationRunsImported = remapped.Runs.Count,
-        };
+        return new TransferImportResult { EvaluationsImported = 1, EvaluationRunsImported = remapped.Runs.Count };
     }
 
     private async Task<TransferImportResult> ImportAssetAsync(TransferAssetPayload payload, string sourceName, CancellationToken cancellationToken)
@@ -327,14 +287,14 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         if (payload.AssetId == Guid.Empty)
             throw new SharpOMaticException($"Transfer file '{sourceName}' has an invalid asset id.");
 
-        if (string.IsNullOrWhiteSpace(payload.Name))
+        if (!AssetNameParser.IsValidAssetName(payload.Name))
             throw new SharpOMaticException($"Transfer file '{sourceName}' has an invalid asset name.");
 
         var folderName = payload.FolderName?.Trim();
         if (string.IsNullOrWhiteSpace(folderName))
             folderName = null;
 
-        if (folderName?.Contains('/', StringComparison.Ordinal) == true || folderName?.Contains('\\', StringComparison.Ordinal) == true)
+        if (folderName is not null && !AssetNameParser.IsValidFolderName(folderName))
             throw new SharpOMaticException($"Transfer file '{sourceName}' has an invalid asset folder name.");
 
         Guid? folderId = null;
@@ -423,13 +383,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         return [.. (selection.Ids ?? []).Distinct()];
     }
 
-    private static async Task WriteEnvelopeEntryAsync<T>(
-        ZipArchive archive,
-        string entryName,
-        string type,
-        T payload,
-        DateTime exportedUtc,
-        CancellationToken cancellationToken)
+    private static async Task WriteEnvelopeEntryAsync<T>(ZipArchive archive, string entryName, string type, T payload, DateTime exportedUtc, CancellationToken cancellationToken)
     {
         var envelope = new TransferEnvelope<T>
         {
@@ -488,10 +442,12 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
     private static bool IsReservedWindowsFileName(string fileName)
     {
         var name = fileName.Split('.')[0];
-        if (name.Equals("CON", StringComparison.OrdinalIgnoreCase) ||
-            name.Equals("PRN", StringComparison.OrdinalIgnoreCase) ||
-            name.Equals("AUX", StringComparison.OrdinalIgnoreCase) ||
-            name.Equals("NUL", StringComparison.OrdinalIgnoreCase))
+        if (
+            name.Equals("CON", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("PRN", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("AUX", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("NUL", StringComparison.OrdinalIgnoreCase)
+        )
             return true;
 
         if (name.Length == 4 && (name.StartsWith("COM", StringComparison.OrdinalIgnoreCase) || name.StartsWith("LPT", StringComparison.OrdinalIgnoreCase)))
@@ -638,7 +594,9 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                 throw new SharpOMaticException($"Evaluation entry '{entryName}' contains run row grader '{runRowGrader.EvalRunRowGraderId}' referencing missing run '{runRowGrader.EvalRunId}'.");
 
             if (!runRowIds.Contains(runRowGrader.EvalRunRowId))
-                throw new SharpOMaticException($"Evaluation entry '{entryName}' contains run row grader '{runRowGrader.EvalRunRowGraderId}' referencing missing run row '{runRowGrader.EvalRunRowId}'.");
+                throw new SharpOMaticException(
+                    $"Evaluation entry '{entryName}' contains run row grader '{runRowGrader.EvalRunRowGraderId}' referencing missing run row '{runRowGrader.EvalRunRowId}'."
+                );
 
             if (!graderIds.Contains(runRowGrader.EvalGraderId))
                 throw new SharpOMaticException($"Evaluation entry '{entryName}' contains run row grader '{runRowGrader.EvalRunRowGraderId}' referencing missing grader '{runRowGrader.EvalGraderId}'.");
@@ -678,8 +636,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             RunScoreMode = source.EvalConfig.RunScoreMode,
         };
 
-        var graders = source.Graders
-            .Select(grader => new EvalGrader
+        var graders = source
+            .Graders.Select(grader => new EvalGrader
             {
                 EvalGraderId = graderIdMap[grader.EvalGraderId],
                 EvalConfigId = targetEvalConfigId,
@@ -691,8 +649,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             })
             .ToList();
 
-        var columns = source.Columns
-            .Select(column => new EvalColumn
+        var columns = source
+            .Columns.Select(column => new EvalColumn
             {
                 EvalColumnId = columnIdMap[column.EvalColumnId],
                 EvalConfigId = targetEvalConfigId,
@@ -704,8 +662,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             })
             .ToList();
 
-        var rows = source.Rows
-            .Select(row => new EvalRow
+        var rows = source
+            .Rows.Select(row => new EvalRow
             {
                 EvalRowId = rowIdMap[row.EvalRowId],
                 EvalConfigId = targetEvalConfigId,
@@ -713,8 +671,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             })
             .ToList();
 
-        var data = source.Data
-            .Select(item => new EvalData
+        var data = source
+            .Data.Select(item => new EvalData
             {
                 EvalDataId = Guid.NewGuid(),
                 EvalRowId = rowIdMap[item.EvalRowId],
@@ -726,8 +684,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             })
             .ToList();
 
-        var runs = source.Runs
-            .Select(run => new EvalRun
+        var runs = source
+            .Runs.Select(run => new EvalRun
             {
                 EvalRunId = runIdMap[run.EvalRunId],
                 EvalConfigId = targetEvalConfigId,
@@ -748,8 +706,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             })
             .ToList();
 
-        var runRows = source.RunRows
-            .Select(row => new EvalRunRow
+        var runRows = source
+            .RunRows.Select(row => new EvalRunRow
             {
                 EvalRunRowId = runRowIdMap[row.EvalRunRowId],
                 EvalRunId = runIdMap[row.EvalRunId],
@@ -765,8 +723,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             })
             .ToList();
 
-        var runRowGraders = source.RunRowGraders
-            .Select(grader => new EvalRunRowGrader
+        var runRowGraders = source
+            .RunRowGraders.Select(grader => new EvalRunRowGrader
             {
                 EvalRunRowGraderId = Guid.NewGuid(),
                 EvalRunRowId = runRowIdMap[grader.EvalRunRowId],
@@ -782,8 +740,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             })
             .ToList();
 
-        var runGraderSummaries = source.RunGraderSummaries
-            .Select(summary => new EvalRunGraderSummary
+        var runGraderSummaries = source
+            .RunGraderSummaries.Select(summary => new EvalRunGraderSummary
             {
                 EvalRunGraderSummaryId = Guid.NewGuid(),
                 EvalRunId = runIdMap[summary.EvalRunId],
@@ -922,12 +880,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         }
     }
 
-    public async Task<EvalRowsCsvImportResult> ImportEvalRowsCsvAsync(
-        Guid evalConfigId,
-        Stream input,
-        string fileName,
-        CancellationToken cancellationToken = default
-    )
+    public async Task<EvalRowsCsvImportResult> ImportEvalRowsCsvAsync(Guid evalConfigId, Stream input, string fileName, CancellationToken cancellationToken = default)
     {
         if (input is null)
             throw new SharpOMaticException("CSV file is required.");
@@ -935,12 +888,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         if (string.IsNullOrWhiteSpace(fileName) || !fileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
             throw new SharpOMaticException("Import file must have a .csv extension.");
 
-        using var reader = new StreamReader(
-            input,
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true),
-            detectEncodingFromByteOrderMarks: true,
-            leaveOpen: true
-        );
+        using var reader = new StreamReader(input, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true), detectEncodingFromByteOrderMarks: true, leaveOpen: true);
 
         var csvText = await reader.ReadToEndAsync(cancellationToken);
         var records = ParseCsvRows(csvText);
@@ -968,12 +916,14 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                 continue;
 
             var evalRowId = Guid.NewGuid();
-            importedRows.Add(new EvalRow
-            {
-                EvalRowId = evalRowId,
-                EvalConfigId = evalConfigId,
-                Order = nextOrder++,
-            });
+            importedRows.Add(
+                new EvalRow
+                {
+                    EvalRowId = evalRowId,
+                    EvalConfigId = evalConfigId,
+                    Order = nextOrder++,
+                }
+            );
 
             foreach (var column in columns)
             {
@@ -1003,27 +953,12 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
     public async Task<Stream> ExportEvalRowsCsvAsync(Guid evalConfigId, CancellationToken cancellationToken = default)
     {
         var detail = await repositoryService.GetEvalConfigDetail(evalConfigId);
-        var columns = detail
-            .Columns.Where(column =>
-                column.EntryType != ContextEntryType.AssetRef
-                && column.EntryType != ContextEntryType.AssetRefList
-            )
-            .OrderBy(column => column.Order)
-            .ToList();
+        var columns = detail.Columns.Where(column => column.EntryType != ContextEntryType.AssetRef && column.EntryType != ContextEntryType.AssetRefList).OrderBy(column => column.Order).ToList();
 
-        var dataByRow = detail
-            .Data.GroupBy(data => data.EvalRowId)
-            .ToDictionary(
-                group => group.Key,
-                group => group.ToDictionary(data => data.EvalColumnId)
-            );
+        var dataByRow = detail.Data.GroupBy(data => data.EvalRowId).ToDictionary(group => group.Key, group => group.ToDictionary(data => data.EvalColumnId));
 
         var memoryStream = new MemoryStream();
-        var writer = new StreamWriter(
-            memoryStream,
-            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
-            leaveOpen: true
-        );
+        var writer = new StreamWriter(memoryStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), leaveOpen: true);
 
         await using (writer)
         {
@@ -1039,9 +974,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                     writer,
                     columns.Select(column =>
                     {
-                        var data = rowData is not null && rowData.TryGetValue(column.EvalColumnId, out var cellData)
-                            ? cellData
-                            : null;
+                        var data = rowData is not null && rowData.TryGetValue(column.EvalColumnId, out var cellData) ? cellData : null;
                         return FormatCsvValue(column.EntryType, data);
                     })
                 );
@@ -1147,15 +1080,9 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
 
         return entryType switch
         {
-            ContextEntryType.Bool => data.BoolValue.HasValue
-                ? data.BoolValue.Value.ToString().ToLowerInvariant()
-                : string.Empty,
-            ContextEntryType.Int => data.IntValue.HasValue
-                ? data.IntValue.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)
-                : string.Empty,
-            ContextEntryType.Double => data.DoubleValue.HasValue
-                ? data.DoubleValue.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)
-                : string.Empty,
+            ContextEntryType.Bool => data.BoolValue.HasValue ? data.BoolValue.Value.ToString().ToLowerInvariant() : string.Empty,
+            ContextEntryType.Int => data.IntValue.HasValue ? data.IntValue.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty,
+            ContextEntryType.Double => data.DoubleValue.HasValue ? data.DoubleValue.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty,
             _ => data.StringValue ?? string.Empty,
         };
     }

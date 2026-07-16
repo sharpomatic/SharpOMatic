@@ -2,6 +2,16 @@ namespace SharpOMatic.Engine.Helpers;
 
 public static class AssetNameParser
 {
+    public static bool IsValidAssetName(string? raw)
+    {
+        return !string.IsNullOrWhiteSpace(raw) && !raw.Contains(',', StringComparison.Ordinal);
+    }
+
+    public static bool IsValidFolderName(string? raw)
+    {
+        return !string.IsNullOrWhiteSpace(raw) && !raw.Contains(',', StringComparison.Ordinal) && !raw.Contains('/', StringComparison.Ordinal) && !raw.Contains('\\', StringComparison.Ordinal);
+    }
+
     public static bool TryParseFolderQualifiedName(string raw, out string folderName, out string assetName)
     {
         folderName = string.Empty;
@@ -20,10 +30,7 @@ public static class AssetNameParser
 
         var folder = trimmed[..separator].Trim();
         var name = trimmed[(separator + 1)..].Trim();
-        if (string.IsNullOrWhiteSpace(folder) || string.IsNullOrWhiteSpace(name))
-            return false;
-
-        if (folder.Contains('\\', StringComparison.Ordinal))
+        if (!IsValidFolderName(folder) || !IsValidAssetName(name))
             return false;
 
         folderName = folder;

@@ -40,18 +40,16 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         var assets = await repositoryService.GetAssetsByScope(scope, normalizedSearch, sortBy, sortDirection, skip, take, runId, conversationId, folderId, topLevelOnly);
         var folderLookup = await BuildFolderNameLookup(assets);
         var summaries = assets
-            .Select(asset =>
-                new AssetSummary(
-                    asset.AssetId,
-                    asset.Name,
-                    asset.MediaType,
-                    asset.SizeBytes,
-                    asset.Scope,
-                    asset.Created,
-                    asset.FolderId,
-                    asset.FolderId.HasValue && folderLookup.TryGetValue(asset.FolderId.Value, out var folderName) ? folderName : null
-                )
-            )
+            .Select(asset => new AssetSummary(
+                asset.AssetId,
+                asset.Name,
+                asset.MediaType,
+                asset.SizeBytes,
+                asset.Scope,
+                asset.Created,
+                asset.FolderId,
+                asset.FolderId.HasValue && folderLookup.TryGetValue(asset.FolderId.Value, out var folderName) ? folderName : null
+            ))
             .ToList();
 
         return Ok(summaries);
@@ -173,6 +171,9 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         if (string.IsNullOrWhiteSpace(name))
             return BadRequest("Name is required.");
 
+        if (!AssetNameParser.IsValidAssetName(name))
+            return BadRequest("Asset name cannot contain ','.");
+
         var assetId = Guid.NewGuid();
         var storageKey = AssetStorageKey.ForLibrary(assetId, request.FolderId);
 
@@ -288,7 +289,12 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         if (existingByName is not null)
             return Conflict("A folder with this name already exists.");
 
-        var folder = new AssetFolder { FolderId = Guid.NewGuid(), Name = normalizedName, Created = DateTime.Now };
+        var folder = new AssetFolder
+        {
+            FolderId = Guid.NewGuid(),
+            Name = normalizedName,
+            Created = DateTime.Now,
+        };
         await repositoryService.UpsertAssetFolder(folder);
 
         return CreatedAtAction(nameof(GetFolder), new { id = folder.FolderId }, ToSummary(folder));
@@ -308,7 +314,12 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
                 return Conflict("A folder with this name already exists.");
         }
 
-        var updated = new AssetFolder { FolderId = existing.FolderId, Name = normalizedName, Created = existing.Created };
+        var updated = new AssetFolder
+        {
+            FolderId = existing.FolderId,
+            Name = normalizedName,
+            Created = existing.Created,
+        };
         await repositoryService.UpsertAssetFolder(updated);
         return ToSummary(updated);
     }
@@ -336,9 +347,9 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         }
 
         var trimmed = name.Trim();
-        if (trimmed.Contains('/', StringComparison.Ordinal) || trimmed.Contains('\\', StringComparison.Ordinal))
+        if (!AssetNameParser.IsValidFolderName(trimmed))
         {
-            error = "Folder name cannot contain '/' or '\\'.";
+            error = "Folder name cannot contain '/', '\\', or ','.";
             return false;
         }
 
