@@ -48,6 +48,7 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
                     asset.SizeBytes,
                     asset.Scope,
                     asset.Created,
+                    asset.Modified ?? asset.Created,
                     asset.FolderId,
                     asset.FolderId.HasValue && folderLookup.TryGetValue(asset.FolderId.Value, out var folderName) ? folderName : null
                 )
@@ -94,7 +95,7 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         if (asset.FolderId.HasValue)
             folderName = (await repositoryService.GetAssetFolder(asset.FolderId.Value)).Name;
 
-        return new AssetSummary(asset.AssetId, asset.Name, asset.MediaType, asset.SizeBytes, asset.Scope, asset.Created, asset.FolderId, folderName);
+        return new AssetSummary(asset.AssetId, asset.Name, asset.MediaType, asset.SizeBytes, asset.Scope, asset.Created, asset.Modified ?? asset.Created, asset.FolderId, folderName);
     }
 
     [HttpGet("{id}/content")]
@@ -200,7 +201,7 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         return CreatedAtAction(
             nameof(GetAsset),
             new { id = asset.AssetId },
-            new AssetSummary(asset.AssetId, asset.Name, asset.MediaType, asset.SizeBytes, asset.Scope, asset.Created, asset.FolderId, folderName)
+            new AssetSummary(asset.AssetId, asset.Name, asset.MediaType, asset.SizeBytes, asset.Scope, asset.Created, asset.Modified ?? asset.Created, asset.FolderId, folderName)
         );
     }
 

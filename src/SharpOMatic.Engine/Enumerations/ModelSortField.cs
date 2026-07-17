@@ -4,4 +4,6 @@ public enum ModelSortField
 {
     Name = 0,
     Description = 1,
+    Created = 2,
+    Modified = 3,
 }

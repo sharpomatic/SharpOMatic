@@ -50,6 +50,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             {
                 Version = workflow.Version,
                 Id = workflow.WorkflowId,
+                Created = workflow.Created,
+                Modified = workflow.Modified,
                 WorkflowFolderId = workflow.WorkflowFolderId,
                 WorkflowFolderName = folder == null ? null : folder.Name,
                 Name = workflow.Named,
@@ -84,6 +86,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             {
                 Version = item.workflow.Version,
                 Id = item.workflow.WorkflowId,
+                Created = item.workflow.Created,
+                Modified = item.workflow.Modified,
                 WorkflowFolderId = item.workflow.WorkflowFolderId,
                 WorkflowFolderName = item.folder == null ? null : item.folder.Name,
                 Name = item.workflow.Named,
@@ -128,6 +132,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     {
         WorkflowSchemaUpgrader.Upgrade(workflow);
         using var dbContext = dbContextFactory.CreateDbContext();
+        var now = DateTime.UtcNow;
 
         var entry = await (from w in dbContext.Workflows where w.WorkflowId == workflow.Id select w).FirstOrDefaultAsync();
 
@@ -137,6 +142,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             {
                 Version = workflow.Version,
                 WorkflowId = workflow.Id,
+                Created = now,
+                Modified = now,
                 WorkflowFolderId = null,
                 Named = "",
                 Description = "",
@@ -146,6 +153,10 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             };
 
             dbContext.Workflows.Add(entry);
+        }
+        else
+        {
+            entry.Modified = now;
         }
 
         var normalizedName = NormalizeWorkflowName(workflow.Name);
@@ -231,10 +242,13 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             }
         }
 
+        var now = DateTime.UtcNow;
         var newWorkflow = new Workflow
         {
             WorkflowId = Guid.NewGuid(),
             Version = workflow.Version,
+            Created = now,
+            Modified = now,
             WorkflowFolderId = workflow.WorkflowFolderId,
             Named = copyName,
             Description = workflow.Description,
@@ -264,6 +278,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         await EnsureWorkflowNameIsUnique(dbContext, workflowId, folderId, workflow.Named);
         workflow.WorkflowFolderId = folderId;
+        workflow.Modified = DateTime.UtcNow;
         await dbContext.SaveChangesAsync();
     }
 
@@ -415,6 +430,12 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             WorkflowSortField.Description => sortDirection == SortDirection.Ascending
                 ? workflows.OrderBy(workflow => workflow.Description).ThenBy(workflow => workflow.Named)
                 : workflows.OrderByDescending(workflow => workflow.Description).ThenByDescending(workflow => workflow.Named),
+            WorkflowSortField.Created => sortDirection == SortDirection.Ascending
+                ? workflows.OrderBy(workflow => workflow.Created).ThenBy(workflow => workflow.Named)
+                : workflows.OrderByDescending(workflow => workflow.Created).ThenBy(workflow => workflow.Named),
+            WorkflowSortField.Modified => sortDirection == SortDirection.Ascending
+                ? workflows.OrderBy(workflow => workflow.Modified ?? workflow.Created).ThenBy(workflow => workflow.Named)
+                : workflows.OrderByDescending(workflow => workflow.Modified ?? workflow.Created).ThenBy(workflow => workflow.Named),
             _ => sortDirection == SortDirection.Ascending
                 ? workflows.OrderBy(workflow => workflow.Named).ThenBy(workflow => workflow.Description)
                 : workflows.OrderByDescending(workflow => workflow.Named).ThenByDescending(workflow => workflow.Description),
@@ -1713,6 +1734,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             .Select(connector => new ConnectorSummary
             {
                 ConnectorId = connector.ConnectorId,
+                Created = connector.Created,
+                Modified = connector.Modified,
                 Name = connector.Name,
                 Description = connector.Description,
             })
@@ -1735,6 +1758,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (connector is null)
             throw new SharpOMaticException($"Connector '{connectorId}' configuration is invalid.");
 
+        connector.Created = metadata.Created;
+        connector.Modified = metadata.Modified;
+
         // We need to ensure that any field that is a secret, is replaced to prevent it being available to clients
         if (hideSecrets && (connector.FieldValues.Count > 0) && !string.IsNullOrWhiteSpace(connector.ConfigId))
         {
@@ -1756,6 +1782,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     public async Task UpsertConnector(Connector connector, bool hideSecrets = true)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
+        var now = DateTime.UtcNow;
 
         var entry = await (from c in dbContext.ConnectorMetadata where c.ConnectorId == connector.ConnectorId select c).FirstOrDefaultAsync();
 
@@ -1765,6 +1792,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             {
                 ConnectorId = connector.ConnectorId,
                 Version = connector.Version,
+                Created = now,
+                Modified = now,
                 Name = "",
                 Description = "",
                 Config = "",
@@ -1772,27 +1801,32 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
             dbContext.ConnectorMetadata.Add(entry);
         }
-        else if (hideSecrets)
+        else
         {
-            // If any provided secrets are the obfuscated value then we do not want to overwrite the existing value
-            var entryConfig = JsonSerializer.Deserialize<Connector>(entry.Config);
-            if (entryConfig is not null)
+            entry.Modified = now;
+
+            if (hideSecrets)
             {
-                var config = await GetConnectorConfig(connector.ConfigId);
-                if (config is not null)
+                // If any provided secrets are the obfuscated value then we do not want to overwrite the existing value
+                var entryConfig = JsonSerializer.Deserialize<Connector>(entry.Config);
+                if (entryConfig is not null)
                 {
-                    foreach (var authModes in config.AuthModes)
+                    var config = await GetConnectorConfig(connector.ConfigId);
+                    if (config is not null)
                     {
-                        foreach (var field in authModes.Fields)
+                        foreach (var authModes in config.AuthModes)
                         {
-                            if (
-                                (field.Type == FieldDescriptorType.Secret)
-                                && connector.FieldValues.ContainsKey(field.Name)
-                                && entryConfig.FieldValues.ContainsKey(field.Name)
-                                && (connector.FieldValues[field.Name] == SECRET_OBFUSCATION)
-                            )
+                            foreach (var field in authModes.Fields)
                             {
-                                connector.FieldValues[field.Name] = entryConfig.FieldValues[field.Name];
+                                if (
+                                    (field.Type == FieldDescriptorType.Secret)
+                                    && connector.FieldValues.ContainsKey(field.Name)
+                                    && entryConfig.FieldValues.ContainsKey(field.Name)
+                                    && (connector.FieldValues[field.Name] == SECRET_OBFUSCATION)
+                                )
+                                {
+                                    connector.FieldValues[field.Name] = entryConfig.FieldValues[field.Name];
+                                }
                             }
                         }
                     }
@@ -1802,6 +1836,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         entry.Name = connector.Name;
         entry.Description = connector.Description;
+        connector.Created = entry.Created;
+        connector.Modified = entry.Modified;
         entry.Config = JsonSerializer.Serialize(connector);
 
         await dbContext.SaveChangesAsync();
@@ -1836,6 +1872,12 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             ConnectorSortField.Description => sortDirection == SortDirection.Ascending
                 ? connectors.OrderBy(connector => connector.Description).ThenBy(connector => connector.Name)
                 : connectors.OrderByDescending(connector => connector.Description).ThenByDescending(connector => connector.Name),
+            ConnectorSortField.Created => sortDirection == SortDirection.Ascending
+                ? connectors.OrderBy(connector => connector.Created).ThenBy(connector => connector.Name)
+                : connectors.OrderByDescending(connector => connector.Created).ThenBy(connector => connector.Name),
+            ConnectorSortField.Modified => sortDirection == SortDirection.Ascending
+                ? connectors.OrderBy(connector => connector.Modified ?? connector.Created).ThenBy(connector => connector.Name)
+                : connectors.OrderByDescending(connector => connector.Modified ?? connector.Created).ThenBy(connector => connector.Name),
             _ => sortDirection == SortDirection.Ascending
                 ? connectors.OrderBy(connector => connector.Name).ThenBy(connector => connector.Description)
                 : connectors.OrderByDescending(connector => connector.Name).ThenByDescending(connector => connector.Description),
@@ -1955,6 +1997,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             .Select(model => new ModelSummary
             {
                 ModelId = model.ModelId,
+                Created = model.Created,
+                Modified = model.Modified,
                 Name = model.Name,
                 Description = model.Description,
             })
@@ -1977,6 +2021,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (model is null)
             throw new SharpOMaticException($"Model '{modelId}' configuration is invalid.");
 
+        model.Created = metadata.Created;
+        model.Modified = metadata.Modified;
+
         // We need to ensure that any parameter that is a secret, is replaced to prevent it being available in the client
         if (hideSecrets && (model.ParameterValues.Count > 0) && !string.IsNullOrWhiteSpace(model.ConfigId))
         {
@@ -1995,6 +2042,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     public async Task UpsertModel(Model model)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
+        var now = DateTime.UtcNow;
 
         var entry = await (from m in dbContext.ModelMetadata where m.ModelId == model.ModelId select m).FirstOrDefaultAsync();
 
@@ -2004,6 +2052,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             {
                 ModelId = model.ModelId,
                 Version = model.Version,
+                Created = now,
+                Modified = now,
                 Name = "",
                 Description = "",
                 Config = "",
@@ -2011,9 +2061,15 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
             dbContext.ModelMetadata.Add(entry);
         }
+        else
+        {
+            entry.Modified = now;
+        }
 
         entry.Name = model.Name;
         entry.Description = model.Description;
+        model.Created = entry.Created;
+        model.Modified = entry.Modified;
         entry.Config = JsonSerializer.Serialize(model);
 
         await dbContext.SaveChangesAsync();
@@ -2048,6 +2104,12 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             ModelSortField.Description => sortDirection == SortDirection.Ascending
                 ? models.OrderBy(model => model.Description).ThenBy(model => model.Name)
                 : models.OrderByDescending(model => model.Description).ThenByDescending(model => model.Name),
+            ModelSortField.Created => sortDirection == SortDirection.Ascending
+                ? models.OrderBy(model => model.Created).ThenBy(model => model.Name)
+                : models.OrderByDescending(model => model.Created).ThenBy(model => model.Name),
+            ModelSortField.Modified => sortDirection == SortDirection.Ascending
+                ? models.OrderBy(model => model.Modified ?? model.Created).ThenBy(model => model.Name)
+                : models.OrderByDescending(model => model.Modified ?? model.Created).ThenBy(model => model.Name),
             _ => sortDirection == SortDirection.Ascending
                 ? models.OrderBy(model => model.Name).ThenBy(model => model.Description)
                 : models.OrderByDescending(model => model.Name).ThenByDescending(model => model.Description),
@@ -2086,6 +2148,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             .Select(config => new EvalConfigSummary
             {
                 EvalConfigId = config.EvalConfigId,
+                Created = config.Created,
+                Modified = config.Modified,
                 Name = config.Name,
                 Description = config.Description,
             })
@@ -2229,13 +2293,25 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
     public async Task UpsertEvalConfig(EvalConfig evalConfig)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
+        var now = DateTime.UtcNow;
 
         var entity = await (from m in dbContext.EvalConfigs where m.EvalConfigId == evalConfig.EvalConfigId select m).FirstOrDefaultAsync();
 
         if (entity is null)
+        {
+            evalConfig.Created = now;
+            evalConfig.Modified = now;
             dbContext.EvalConfigs.Add(evalConfig);
+        }
         else
+        {
+            var created = entity.Created;
             dbContext.Entry(entity).CurrentValues.SetValues(evalConfig);
+            entity.Created = created;
+            entity.Modified = now;
+            evalConfig.Created = entity.Created;
+            evalConfig.Modified = entity.Modified;
+        }
 
         await dbContext.SaveChangesAsync();
     }
@@ -3003,6 +3079,12 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             EvalConfigSortField.Description => sortDirection == SortDirection.Ascending
                 ? models.OrderBy(model => model.Description).ThenBy(model => model.Name)
                 : models.OrderByDescending(model => model.Description).ThenByDescending(model => model.Name),
+            EvalConfigSortField.Created => sortDirection == SortDirection.Ascending
+                ? models.OrderBy(model => model.Created).ThenBy(model => model.Name)
+                : models.OrderByDescending(model => model.Created).ThenBy(model => model.Name),
+            EvalConfigSortField.Modified => sortDirection == SortDirection.Ascending
+                ? models.OrderBy(model => model.Modified ?? model.Created).ThenBy(model => model.Name)
+                : models.OrderByDescending(model => model.Modified ?? model.Created).ThenBy(model => model.Name),
             _ => sortDirection == SortDirection.Ascending
                 ? models.OrderBy(model => model.Name).ThenBy(model => model.Description)
                 : models.OrderByDescending(model => model.Name).ThenByDescending(model => model.Description),
@@ -3333,6 +3415,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
                 ? assets.OrderBy(a => a.SizeBytes).ThenByDescending(a => a.Created)
                 : assets.OrderByDescending(a => a.SizeBytes).ThenByDescending(a => a.Created),
             AssetSortField.Created => sortDirection == SortDirection.Ascending ? assets.OrderBy(a => a.Created).ThenBy(a => a.Name) : assets.OrderByDescending(a => a.Created).ThenBy(a => a.Name),
+            AssetSortField.Modified => sortDirection == SortDirection.Ascending
+                ? assets.OrderBy(a => a.Modified ?? a.Created).ThenBy(a => a.Name)
+                : assets.OrderByDescending(a => a.Modified ?? a.Created).ThenBy(a => a.Name),
             _ => sortDirection == SortDirection.Ascending ? assets.OrderBy(a => a.Name).ThenByDescending(a => a.Created) : assets.OrderByDescending(a => a.Name).ThenByDescending(a => a.Created),
         };
     }
@@ -3409,13 +3494,24 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             throw new SharpOMaticException($"{asset.Scope} assets cannot be assigned to folders.");
 
         using var dbContext = dbContextFactory.CreateDbContext();
+        var now = DateTime.UtcNow;
 
         var entity = await (from a in dbContext.Assets where a.AssetId == asset.AssetId select a).FirstOrDefaultAsync();
 
         if (entity is null)
+        {
+            asset.Modified = asset.Created;
             dbContext.Assets.Add(asset);
+        }
         else
+        {
+            var created = entity.Created;
             dbContext.Entry(entity).CurrentValues.SetValues(asset);
+            entity.Created = created;
+            entity.Modified = now;
+            asset.Created = entity.Created;
+            asset.Modified = entity.Modified;
+        }
 
         await dbContext.SaveChangesAsync();
     }

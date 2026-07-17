@@ -2,6 +2,8 @@ import { computed, Signal, signal, WritableSignal } from '@angular/core';
 import { Entity, EntitySnapshot } from './entity.entity';
 
 export interface WorkflowSummarySnapshot extends EntitySnapshot {
+  created?: string | null;
+  modified?: string | null;
   workflowFolderId?: string | null;
   workflowFolderName?: string | null;
   name: string;
@@ -11,6 +13,8 @@ export interface WorkflowSummarySnapshot extends EntitySnapshot {
 
 export class WorkflowSummaryEntity extends Entity<WorkflowSummarySnapshot> {
   public name: WritableSignal<string>;
+  public readonly created: string | null;
+  public readonly modified: string | null;
   public workflowFolderId: WritableSignal<string | null>;
   public workflowFolderName: WritableSignal<string | null>;
   public description: WritableSignal<string>;
@@ -20,6 +24,8 @@ export class WorkflowSummaryEntity extends Entity<WorkflowSummarySnapshot> {
   constructor(snapshot: WorkflowSummarySnapshot) {
     super(snapshot);
 
+    this.created = snapshot.created ?? null;
+    this.modified = snapshot.modified ?? null;
     this.workflowFolderId = signal(snapshot.workflowFolderId ?? null);
     this.workflowFolderName = signal(snapshot.workflowFolderName ?? null);
     this.name = signal(snapshot.name);
@@ -48,6 +54,8 @@ export class WorkflowSummaryEntity extends Entity<WorkflowSummarySnapshot> {
     return {
       id: this.id,
       version: this.version,
+      created: this.created,
+      modified: this.modified,
       workflowFolderId: this.workflowFolderId(),
       workflowFolderName: this.workflowFolderName(),
       name: this.name(),
@@ -59,6 +67,8 @@ export class WorkflowSummaryEntity extends Entity<WorkflowSummarySnapshot> {
   public static override defaultSnapshot() {
     return {
       ...Entity.defaultSnapshot(),
+      created: null,
+      modified: null,
       workflowFolderId: null,
       workflowFolderName: null,
       name: 'Untitled',

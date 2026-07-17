@@ -154,6 +154,7 @@ public class ConversationController : ControllerBase
                     asset.SizeBytes,
                     asset.Scope,
                     asset.Created,
+                    asset.Modified ?? asset.Created,
                     asset.FolderId,
                     asset.FolderId.HasValue && folderLookup.TryGetValue(asset.FolderId.Value, out var folderName) ? folderName : null
                 )

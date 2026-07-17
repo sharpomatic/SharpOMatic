@@ -16,6 +16,7 @@ public class Asset
     public required string Name { get; set; }
     public required AssetScope Scope { get; set; }
     public required DateTime Created { get; set; }
+    public DateTime? Modified { get; set; }
     public required string MediaType { get; set; }
     public required long SizeBytes { get; set; }
     public required string StorageKey { get; set; }

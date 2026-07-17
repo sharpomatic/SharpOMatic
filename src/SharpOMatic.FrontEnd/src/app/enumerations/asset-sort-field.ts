@@ -3,4 +3,5 @@ export enum AssetSortField {
   Type = 'Type',
   Size = 'Size',
   Created = 'Created',
+  Modified = 'Modified',
 }

@@ -10,13 +10,188 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropColumn(
+                name: "LeaseExpires",
+                schema: "SharpOMatic",
+                table: "Conversations");
 
+            migrationBuilder.DropColumn(
+                name: "LeaseOwner",
+                schema: "SharpOMatic",
+                table: "Conversations");
+
+            migrationBuilder.CreateTable(
+                name: "ModelCallMetrics",
+                schema: "SharpOMatic",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Created = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Duration = table.Column<long>(type: "INTEGER", nullable: true),
+                    Succeeded = table.Column<bool>(type: "INTEGER", nullable: false),
+                    ErrorMessage = table.Column<string>(type: "TEXT", nullable: true),
+                    ErrorType = table.Column<string>(type: "TEXT", nullable: true),
+                    WorkflowId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    WorkflowName = table.Column<string>(type: "TEXT", nullable: false),
+                    RunId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    ConversationId = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    NodeEntityId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    NodeTitle = table.Column<string>(type: "TEXT", nullable: false),
+                    ConnectorId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    ConnectorName = table.Column<string>(type: "TEXT", nullable: true),
+                    ConnectorConfigId = table.Column<string>(type: "TEXT", nullable: true),
+                    ConnectorConfigName = table.Column<string>(type: "TEXT", nullable: true),
+                    ModelId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    ModelName = table.Column<string>(type: "TEXT", nullable: true),
+                    ModelConfigId = table.Column<string>(type: "TEXT", nullable: true),
+                    ModelConfigName = table.Column<string>(type: "TEXT", nullable: true),
+                    ProviderModelName = table.Column<string>(type: "TEXT", nullable: true),
+                    InputTokens = table.Column<long>(type: "INTEGER", nullable: true),
+                    OutputTokens = table.Column<long>(type: "INTEGER", nullable: true),
+                    TotalTokens = table.Column<long>(type: "INTEGER", nullable: true),
+                    InputCost = table.Column<decimal>(type: "TEXT", precision: 18, scale: 8, nullable: true),
+                    OutputCost = table.Column<decimal>(type: "TEXT", precision: 18, scale: 8, nullable: true),
+                    TotalCost = table.Column<decimal>(type: "TEXT", precision: 18, scale: 8, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ModelCallMetrics", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "WorkflowRunMetrics",
+                schema: "SharpOMatic",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Created = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Started = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Finished = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    Duration = table.Column<long>(type: "INTEGER", nullable: true),
+                    RunId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    WorkflowId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    WorkflowName = table.Column<string>(type: "TEXT", nullable: false),
+                    WorkflowVersion = table.Column<int>(type: "INTEGER", nullable: false),
+                    Succeeded = table.Column<bool>(type: "INTEGER", nullable: false),
+                    RunStatus = table.Column<int>(type: "INTEGER", nullable: false),
+                    ErrorType = table.Column<string>(type: "TEXT", nullable: true),
+                    ErrorMessage = table.Column<string>(type: "TEXT", nullable: true),
+                    FailedNodeEntityId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    FailedNodeTitle = table.Column<string>(type: "TEXT", nullable: true),
+                    FailedNodeType = table.Column<int>(type: "INTEGER", nullable: true),
+                    ConversationId = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
+                    TurnNumber = table.Column<int>(type: "INTEGER", nullable: true),
+                    IsConversationRun = table.Column<bool>(type: "INTEGER", nullable: false),
+                    ModelCallCount = table.Column<int>(type: "INTEGER", nullable: false),
+                    ModelCallFailureCount = table.Column<int>(type: "INTEGER", nullable: false),
+                    InputTokens = table.Column<long>(type: "INTEGER", nullable: false),
+                    OutputTokens = table.Column<long>(type: "INTEGER", nullable: false),
+                    TotalTokens = table.Column<long>(type: "INTEGER", nullable: false),
+                    TotalModelCost = table.Column<decimal>(type: "TEXT", precision: 18, scale: 8, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WorkflowRunMetrics", x => x.Id);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModelCallMetrics_ConnectorId_Created",
+                schema: "SharpOMatic",
+                table: "ModelCallMetrics",
+                columns: new[] { "ConnectorId", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModelCallMetrics_ConversationId_Created",
+                schema: "SharpOMatic",
+                table: "ModelCallMetrics",
+                columns: new[] { "ConversationId", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModelCallMetrics_Created",
+                schema: "SharpOMatic",
+                table: "ModelCallMetrics",
+                column: "Created");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModelCallMetrics_ModelId_Created",
+                schema: "SharpOMatic",
+                table: "ModelCallMetrics",
+                columns: new[] { "ModelId", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModelCallMetrics_Succeeded_Created",
+                schema: "SharpOMatic",
+                table: "ModelCallMetrics",
+                columns: new[] { "Succeeded", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ModelCallMetrics_WorkflowId_Created",
+                schema: "SharpOMatic",
+                table: "ModelCallMetrics",
+                columns: new[] { "WorkflowId", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkflowRunMetrics_ConversationId_Created",
+                schema: "SharpOMatic",
+                table: "WorkflowRunMetrics",
+                columns: new[] { "ConversationId", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkflowRunMetrics_Created",
+                schema: "SharpOMatic",
+                table: "WorkflowRunMetrics",
+                column: "Created");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkflowRunMetrics_RunId",
+                schema: "SharpOMatic",
+                table: "WorkflowRunMetrics",
+                column: "RunId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkflowRunMetrics_RunStatus_Created",
+                schema: "SharpOMatic",
+                table: "WorkflowRunMetrics",
+                columns: new[] { "RunStatus", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkflowRunMetrics_Succeeded_Created",
+                schema: "SharpOMatic",
+                table: "WorkflowRunMetrics",
+                columns: new[] { "Succeeded", "Created" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WorkflowRunMetrics_WorkflowId_Created",
+                schema: "SharpOMatic",
+                table: "WorkflowRunMetrics",
+                columns: new[] { "WorkflowId", "Created" });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "ModelCallMetrics",
+                schema: "SharpOMatic");
 
+            migrationBuilder.DropTable(
+                name: "WorkflowRunMetrics",
+                schema: "SharpOMatic");
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "LeaseExpires",
+                schema: "SharpOMatic",
+                table: "Conversations",
+                type: "TEXT",
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "LeaseOwner",
+                schema: "SharpOMatic",
+                table: "Conversations",
+                type: "TEXT",
+                nullable: true);
         }
     }
 }

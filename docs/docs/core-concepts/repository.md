@@ -26,6 +26,10 @@ The major types of data stored are:
 
 Repository operations are exposed through **IRepositoryService**, which handles upserts, deletions, and queries.
 
+Workflows, connector instances, model instances, and evaluation configurations expose nullable **Created** and **Modified** timestamps. The repository sets both timestamps to the current UTC time when it creates a record. On later upserts it preserves **Created** and updates **Modified**. The fields remain nullable so databases upgraded from an earlier SharpOMatic version can retain existing records without assigning an inaccurate creation time; an updated legacy record receives **Modified**, while its unknown **Created** value remains null.
+
+Assets have an existing required **Created** timestamp and a nullable **Modified** timestamp. The repository initializes **Modified** from **Created** and refreshes it on later upserts. For legacy assets without a stored **Modified** value, asset summaries and sorting fall back to **Created**.
+
 ## Configuration
 
 Add one of the provider packages:
@@ -64,4 +68,5 @@ Entity Framework migrations are used to update the repository database schema an
 By default, migrations are applied automatically on engine startup.
 You can disable this by setting **ApplyMigrationsOnStartup** to **false**.
 SQLite and SQL Server use separate provider-specific migration chains, each packaged with its provider extension package.
+Version 10.0.8 starts a new migration baseline for both providers. Databases created with an earlier migration chain must be recreated before running 10.0.8; later migrations can then be applied normally from that baseline.
 All persisted data types, such as workflows and metadata, have an embedded version number so that version changes can be detected on load and upgrades are applied automatically.

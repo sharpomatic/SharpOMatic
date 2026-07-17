@@ -2,6 +2,8 @@ namespace SharpOMatic.Engine.Entities.Definitions;
 
 public class WorkflowSummary : Entity
 {
+    public DateTime? Created { get; set; }
+    public DateTime? Modified { get; set; }
     public Guid? WorkflowFolderId { get; set; }
     public string? WorkflowFolderName { get; set; }
     public required string Name { get; set; }

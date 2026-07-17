@@ -10,6 +10,8 @@ import { EvalRunScoreMode } from '../enumerations/eval-run-score-mode';
 
 export interface EvalConfigSnapshot {
   evalConfigId: string;
+  created?: string | null;
+  modified?: string | null;
   workflowId: string | null;
   name: string;
   description: string;
@@ -27,6 +29,8 @@ export class EvalConfig {
   public static readonly REPEAT_FIELD_NAME = 'Repeat';
 
   public readonly evalConfigId: string;
+  public readonly created: string | null;
+  public readonly modified: string | null;
   public workflowId: WritableSignal<string | null>;
   public name: WritableSignal<string>;
   public description: WritableSignal<string>;
@@ -55,6 +59,8 @@ export class EvalConfig {
     dataSnapshots: EvalDataSnapshot[] = [],
   ) {
     this.evalConfigId = snapshot.evalConfigId;
+    this.created = snapshot.created ?? null;
+    this.modified = snapshot.modified ?? null;
     this.initialWorkflowId = snapshot.workflowId ?? null;
     this.initialName = snapshot.name;
     this.initialDescription = snapshot.description;
@@ -151,6 +157,8 @@ export class EvalConfig {
   public toSnapshot(): EvalConfigSnapshot {
     return {
       evalConfigId: this.evalConfigId,
+      created: this.created,
+      modified: this.modified,
       workflowId: this.workflowId() ?? null,
       name: this.name(),
       description: this.description(),
@@ -287,6 +295,8 @@ export class EvalConfig {
     nameColumn.name = EvalConfig.REQUIRED_NAME_COLUMN_NAME;
     return {
       evalConfigId,
+      created: null,
+      modified: null,
       workflowId: null,
       name: '',
       description: '',
@@ -481,7 +491,8 @@ export class EvalConfig {
         left.evalRowId !== right.evalRowId ||
         left.evalConfigId !== right.evalConfigId ||
         left.order !== right.order ||
-        EvalRow.normalizeRepeat(left.repeat) !== EvalRow.normalizeRepeat(right.repeat)
+        EvalRow.normalizeRepeat(left.repeat) !==
+          EvalRow.normalizeRepeat(right.repeat)
       ) {
         return false;
       }

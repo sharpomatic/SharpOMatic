@@ -5,6 +5,8 @@ public class Workflow
     [Key]
     public required Guid WorkflowId { get; set; }
     public required int Version { get; set; }
+    public DateTime? Created { get; set; }
+    public DateTime? Modified { get; set; }
     public Guid? WorkflowFolderId { get; set; }
     public required string Named { get; set; }
     public required string Description { get; set; }

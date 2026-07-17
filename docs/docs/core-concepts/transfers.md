@@ -14,6 +14,7 @@ It is recommended to store important data in a source control system for change 
 
 Exports are generated from the editor Transfer page.
 You can select all items or choose specific workflows, evaluations, connectors, models, and library assets.
+The workflow, connector, model, evaluation, and asset selection tables can be sorted by created or modified date.
 The export is a zip package with one JSON file for each exported item.
 The zip uses folders such as `workflows`, `connectors`, `models`, `evaluations`, and `assets` to make the package easy to browse, but import behavior is based on the JSON content rather than the file path.
 Each JSON file uses a standard envelope with `schemaVersion`, `type`, `exportedUtc`, and `payload` fields.

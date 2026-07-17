@@ -1,3 +1,3 @@
 namespace SharpOMatic.Editor.DTO;
 
-public record class AssetSummary(Guid AssetId, string Name, string MediaType, long SizeBytes, AssetScope Scope, DateTime Created, Guid? FolderId, string? FolderName);
+public record class AssetSummary(Guid AssetId, string Name, string MediaType, long SizeBytes, AssetScope Scope, DateTime Created, DateTime Modified, Guid? FolderId, string? FolderName);

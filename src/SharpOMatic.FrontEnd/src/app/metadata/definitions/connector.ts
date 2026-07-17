@@ -3,6 +3,8 @@ import { Signal, computed, signal, WritableSignal } from '@angular/core';
 export interface ConnectorSnapshot {
   connectorId: string;
   version: number;
+  created?: string | null;
+  modified?: string | null;
   name: string;
   description: string;
   configId: string;
@@ -15,6 +17,8 @@ export class Connector {
 
   public readonly connectorId: string;
   public readonly version: number;
+  public readonly created: string | null;
+  public readonly modified: string | null;
   public name: WritableSignal<string>;
   public description: WritableSignal<string>;
   public configId: WritableSignal<string>;
@@ -32,6 +36,8 @@ export class Connector {
   constructor(snapshot: ConnectorSnapshot) {
     this.connectorId = snapshot.connectorId;
     this.version = snapshot.version;
+    this.created = snapshot.created ?? null;
+    this.modified = snapshot.modified ?? null;
     this.initialName = snapshot.name;
     this.initialDescription = snapshot.description;
     this.initialConfigId = snapshot.configId;
@@ -72,6 +78,8 @@ export class Connector {
     return {
       connectorId: this.connectorId,
       version: this.version,
+      created: this.created,
+      modified: this.modified,
       name: this.name(),
       description: this.description(),
       configId: this.configId(),
@@ -88,6 +96,8 @@ export class Connector {
     return {
       connectorId: crypto.randomUUID(),
       version: Connector.DEFAULT_VERSION,
+      created: null,
+      modified: null,
       name: '',
       description: '',
       configId: '',

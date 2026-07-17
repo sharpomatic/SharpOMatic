@@ -81,7 +81,7 @@
 
 .workflows-table .table {
   table-layout: fixed;
-  min-width: 980px;
+  min-width: 1140px;
   width: 100%;
 }
 
@@ -130,6 +130,12 @@
 
 .col-description {
   min-width: 300px;
+}
+
+.col-modified {
+  width: 160px;
+  min-width: 160px;
+  max-width: 160px;
 }
 
 .col-conversation {

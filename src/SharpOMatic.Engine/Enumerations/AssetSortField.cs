@@ -6,4 +6,5 @@ public enum AssetSortField
     Type = 1,
     Size = 2,
     Created = 3,
+    Modified = 4,
 }

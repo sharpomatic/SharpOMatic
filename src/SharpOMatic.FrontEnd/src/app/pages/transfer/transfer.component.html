@@ -202,6 +202,50 @@
                     }
                   </button>
                 </th>
+                <th scope="col" class="col-created">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="
+                      onWorkflowsSortChange(WorkflowSortField.Created)
+                    "
+                  >
+                    Created
+                    @if (workflowsSortField === WorkflowSortField.Created) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          workflowsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          workflowsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
+                    }
+                  </button>
+                </th>
+                <th scope="col" class="col-modified">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="
+                      onWorkflowsSortChange(WorkflowSortField.Modified)
+                    "
+                  >
+                    Modified
+                    @if (workflowsSortField === WorkflowSortField.Modified) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          workflowsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          workflowsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
+                    }
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -233,6 +277,12 @@
                     title="{{ workflow.description() }}"
                   >
                     {{ workflow.description() }}
+                  </td>
+                  <td class="col-created">
+                    {{ workflow.created | date: "short" }}
+                  </td>
+                  <td class="col-modified">
+                    {{ workflow.modified | date: "short" }}
                   </td>
                 </tr>
               }
@@ -440,6 +490,50 @@
                     }
                   </button>
                 </th>
+                <th scope="col" class="col-created">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="
+                      onConnectorsSortChange(ConnectorSortField.Created)
+                    "
+                  >
+                    Created
+                    @if (connectorsSortField === ConnectorSortField.Created) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          connectorsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          connectorsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
+                    }
+                  </button>
+                </th>
+                <th scope="col" class="col-modified">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="
+                      onConnectorsSortChange(ConnectorSortField.Modified)
+                    "
+                  >
+                    Modified
+                    @if (connectorsSortField === ConnectorSortField.Modified) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          connectorsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          connectorsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
+                    }
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -471,6 +565,12 @@
                     title="{{ connector.description }}"
                   >
                     {{ connector.description }}
+                  </td>
+                  <td class="col-created">
+                    {{ connector.created | date: "short" }}
+                  </td>
+                  <td class="col-modified">
+                    {{ connector.modified | date: "short" }}
                   </td>
                 </tr>
               }
@@ -674,6 +774,46 @@
                     }
                   </button>
                 </th>
+                <th scope="col" class="col-created">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="onModelsSortChange(ModelSortField.Created)"
+                  >
+                    Created
+                    @if (modelsSortField === ModelSortField.Created) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          modelsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          modelsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
+                    }
+                  </button>
+                </th>
+                <th scope="col" class="col-modified">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="onModelsSortChange(ModelSortField.Modified)"
+                  >
+                    Modified
+                    @if (modelsSortField === ModelSortField.Modified) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          modelsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          modelsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
+                    }
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -698,6 +838,12 @@
                     title="{{ model.description }}"
                   >
                     {{ model.description }}
+                  </td>
+                  <td class="col-created">
+                    {{ model.created | date: "short" }}
+                  </td>
+                  <td class="col-modified">
+                    {{ model.modified | date: "short" }}
                   </td>
                 </tr>
               }
@@ -905,6 +1051,54 @@
                     }
                   </button>
                 </th>
+                <th scope="col" class="col-created">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="
+                      onEvaluationsSortChange(EvalConfigSortField.Created)
+                    "
+                  >
+                    Created
+                    @if (
+                      evaluationsSortField === EvalConfigSortField.Created
+                    ) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          evaluationsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          evaluationsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
+                    }
+                  </button>
+                </th>
+                <th scope="col" class="col-modified">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="
+                      onEvaluationsSortChange(EvalConfigSortField.Modified)
+                    "
+                  >
+                    Modified
+                    @if (
+                      evaluationsSortField === EvalConfigSortField.Modified
+                    ) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          evaluationsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          evaluationsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
+                    }
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -938,6 +1132,12 @@
                     title="{{ evaluation.description }}"
                   >
                     {{ evaluation.description }}
+                  </td>
+                  <td class="col-created">
+                    {{ evaluation.created | date: "short" }}
+                  </td>
+                  <td class="col-modified">
+                    {{ evaluation.modified | date: "short" }}
                   </td>
                 </tr>
               }
@@ -1182,6 +1382,26 @@
                     }
                   </button>
                 </th>
+                <th scope="col" class="col-modified">
+                  <button
+                    class="btn btn-link p-0 export-sort"
+                    type="button"
+                    (click)="onAssetsSortChange(AssetSortField.Modified)"
+                  >
+                    Modified
+                    @if (assetsSortField === AssetSortField.Modified) {
+                      <i
+                        class="bi"
+                        [class.bi-arrow-down]="
+                          assetsSortDirection === SortDirection.Descending
+                        "
+                        [class.bi-arrow-up]="
+                          assetsSortDirection === SortDirection.Ascending
+                        "
+                      ></i>
+                    }
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -1213,6 +1433,9 @@
                   <td class="col-size">{{ formatSize(asset.sizeBytes) }}</td>
                   <td class="col-created">
                     {{ asset.created | date: "short" }}
+                  </td>
+                  <td class="col-modified">
+                    {{ asset.modified | date: "short" }}
                   </td>
                 </tr>
               }

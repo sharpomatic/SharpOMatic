@@ -6,6 +6,7 @@ sidebar_position: 1
 A workflow is a directed graph of nodes connected by links that control execution flow.
 Create and configure workflows in the browser-based editor, run them there to review results, and iterate quickly.
 Once complete, you can invoke workflows programmatically in your deployed environment.
+The editor workflow list shows each workflow's last modified date and can sort by it, making recently changed workflows easy to find. Workflows created before timestamp tracking was added show a blank date until they are next saved or moved.
 
 ## Folders
 

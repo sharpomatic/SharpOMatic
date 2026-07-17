@@ -29,6 +29,7 @@ Assets are scoped in three ways:
 Library assets allow for reuse and are not tied to a specific workflow or workflow run.
 They are typically added via the editor where you can list, add, move, and delete them.
 Library assets can be organized into folders, and those folders are preserved during transfer export/import.
+The editor asset list shows created and modified dates and allows sorting by either date. New assets initially use their created date as their modified date; editing an asset's contents or moving it updates the modified date. Assets created before modified-date tracking was added display and sort using their created date until they are changed.
 Programmatic changes are also possible.
 
 ### Run Assets

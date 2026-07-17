@@ -7,6 +7,7 @@ export interface AssetSummary {
   sizeBytes: number;
   scope: AssetScope;
   created: string;
+  modified: string;
   folderId?: string | null;
   folderName?: string | null;
 }

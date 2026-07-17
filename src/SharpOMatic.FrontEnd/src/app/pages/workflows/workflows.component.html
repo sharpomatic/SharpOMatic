@@ -217,6 +217,28 @@
                       }
                     </button>
                   </th>
+                  <th scope="col" class="col-modified">
+                    <button
+                      class="btn btn-link p-0 workflows-sort"
+                      type="button"
+                      (click)="
+                        onWorkflowsSortChange(WorkflowSortField.Modified)
+                      "
+                    >
+                      Modified
+                      @if (workflowsSortField === WorkflowSortField.Modified) {
+                        <i
+                          class="bi"
+                          [class.bi-arrow-down]="
+                            workflowsSortDirection === SortDirection.Descending
+                          "
+                          [class.bi-arrow-up]="
+                            workflowsSortDirection === SortDirection.Ascending
+                          "
+                        ></i>
+                      }
+                    </button>
+                  </th>
                   <th scope="col" class="col-conversation text-center">Chat</th>
                   <th scope="col" class="col-actions text-end"></th>
                 </tr>
@@ -253,6 +275,9 @@
                       title="{{ workflow.description() }}"
                     >
                       {{ workflow.description() }}
+                    </td>
+                    <td class="col-modified">
+                      {{ workflow.modified | date: "short" }}
                     </td>
                     <td class="col-conversation text-center">
                       @if (workflow.isConversationEnabled()) {
