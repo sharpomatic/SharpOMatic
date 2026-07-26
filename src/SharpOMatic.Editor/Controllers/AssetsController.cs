@@ -120,6 +120,42 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         return new AssetTextRequest { Content = content };
     }
 
+    [HttpPut("{id}/name")]
+    public async Task<ActionResult<AssetSummary>> RenameAsset(Guid id, [FromBody] AssetNameRequest request)
+    {
+        var asset = await repositoryService.GetAsset(id);
+        if (asset.Scope != AssetScope.Library)
+            return BadRequest("Only library assets can be renamed in the editor.");
+
+        var normalizedName = request.Name?.Trim() ?? string.Empty;
+        if (!AssetNameParser.IsValidAssetName(normalizedName))
+            return BadRequest("Asset name is required and cannot contain ','.");
+
+        if (string.Equals(asset.Name, normalizedName, StringComparison.Ordinal))
+            return await ToSummary(asset);
+
+        var existing = await repositoryService.GetLibraryAssetByLocationAndName(asset.FolderId, normalizedName);
+        if (existing is not null && existing.AssetId != asset.AssetId)
+            return Conflict("An asset with this name already exists in this folder.");
+
+        var updated = new Asset
+        {
+            AssetId = asset.AssetId,
+            RunId = asset.RunId,
+            ConversationId = asset.ConversationId,
+            FolderId = asset.FolderId,
+            Name = normalizedName,
+            Scope = asset.Scope,
+            Created = asset.Created,
+            MediaType = asset.MediaType,
+            SizeBytes = asset.SizeBytes,
+            StorageKey = asset.StorageKey,
+        };
+
+        await repositoryService.UpsertAsset(updated);
+        return await ToSummary(updated);
+    }
+
     [HttpPut("{id}/text")]
     public async Task<IActionResult> UpdateAssetText(Guid id, [FromBody] AssetTextRequest request)
     {
@@ -174,8 +210,12 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         if (string.IsNullOrWhiteSpace(name))
             return BadRequest("Name is required.");
 
-        var assetId = Guid.NewGuid();
-        var storageKey = AssetStorageKey.ForLibrary(assetId, request.FolderId);
+        if (!AssetNameParser.IsValidAssetName(name))
+            return BadRequest("Asset name cannot contain ','.");
+
+        var existing = await repositoryService.GetLibraryAssetByLocationAndName(request.FolderId, name);
+        var assetId = existing?.AssetId ?? Guid.NewGuid();
+        var storageKey = existing?.StorageKey ?? AssetStorageKey.ForLibrary(assetId, request.FolderId);
 
         await using (var stream = request.File.OpenReadStream())
             await assetStore.SaveAsync(storageKey, stream, HttpContext.RequestAborted);
@@ -190,7 +230,8 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
             FolderId = request.FolderId,
             Name = name,
             Scope = AssetScope.Library,
-            Created = DateTime.Now,
+            Created = existing?.Created ?? DateTime.Now,
+            Modified = existing?.Modified,
             MediaType = mediaType,
             SizeBytes = request.File.Length,
             StorageKey = storageKey,
@@ -198,11 +239,19 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
 
         await repositoryService.UpsertAsset(asset);
         string? folderName = request.FolderId.HasValue ? (await repositoryService.GetAssetFolder(request.FolderId.Value)).Name : null;
-        return CreatedAtAction(
-            nameof(GetAsset),
-            new { id = asset.AssetId },
-            new AssetSummary(asset.AssetId, asset.Name, asset.MediaType, asset.SizeBytes, asset.Scope, asset.Created, asset.Modified ?? asset.Created, asset.FolderId, folderName)
+        var summary = new AssetSummary(
+            asset.AssetId,
+            asset.Name,
+            asset.MediaType,
+            asset.SizeBytes,
+            asset.Scope,
+            asset.Created,
+            asset.Modified ?? asset.Created,
+            asset.FolderId,
+            folderName
         );
+
+        return existing is null ? CreatedAtAction(nameof(GetAsset), new { id = asset.AssetId }, summary) : Ok(summary);
     }
 
     [HttpPut("{id}/folder")]
@@ -289,7 +338,12 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         if (existingByName is not null)
             return Conflict("A folder with this name already exists.");
 
-        var folder = new AssetFolder { FolderId = Guid.NewGuid(), Name = normalizedName, Created = DateTime.Now };
+        var folder = new AssetFolder
+        {
+            FolderId = Guid.NewGuid(),
+            Name = normalizedName,
+            Created = DateTime.Now,
+        };
         await repositoryService.UpsertAssetFolder(folder);
 
         return CreatedAtAction(nameof(GetFolder), new { id = folder.FolderId }, ToSummary(folder));
@@ -309,7 +363,12 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
                 return Conflict("A folder with this name already exists.");
         }
 
-        var updated = new AssetFolder { FolderId = existing.FolderId, Name = normalizedName, Created = existing.Created };
+        var updated = new AssetFolder
+        {
+            FolderId = existing.FolderId,
+            Name = normalizedName,
+            Created = existing.Created,
+        };
         await repositoryService.UpsertAssetFolder(updated);
         return ToSummary(updated);
     }
@@ -337,9 +396,9 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
         }
 
         var trimmed = name.Trim();
-        if (trimmed.Contains('/', StringComparison.Ordinal) || trimmed.Contains('\\', StringComparison.Ordinal))
+        if (!AssetNameParser.IsValidFolderName(trimmed))
         {
-            error = "Folder name cannot contain '/' or '\\'.";
+            error = "Folder name cannot contain '/', '\\', or ','.";
             return false;
         }
 
@@ -348,6 +407,12 @@ public class AssetsController(IRepositoryService repositoryService, IAssetStore 
     }
 
     private static AssetFolderSummary ToSummary(AssetFolder folder) => new(folder.FolderId, folder.Name, folder.Created);
+
+    private async Task<AssetSummary> ToSummary(Asset asset)
+    {
+        string? folderName = asset.FolderId.HasValue ? (await repositoryService.GetAssetFolder(asset.FolderId.Value)).Name : null;
+        return new AssetSummary(asset.AssetId, asset.Name, asset.MediaType, asset.SizeBytes, asset.Scope, asset.Created, asset.Modified ?? asset.Created, asset.FolderId, folderName);
+    }
 
     private async Task<Dictionary<Guid, string>> BuildFolderNameLookup(List<Asset> assets)
     {

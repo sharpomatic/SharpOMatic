@@ -179,6 +179,7 @@ public interface IRepositoryService
     Task<Asset?> GetRunAssetByName(Guid runId, string name);
     Task<Asset?> GetConversationAssetByName(string conversationId, string name);
     Task<Asset?> GetLibraryAssetByFolderAndName(string folderName, string name);
+    Task<Asset?> GetLibraryAssetByLocationAndName(Guid? folderId, string name);
     Task<Asset?> GetLibraryAssetByName(string name);
     Task UpsertAsset(Asset asset);
     Task DeleteAsset(Guid assetId);

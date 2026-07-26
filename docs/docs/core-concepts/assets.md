@@ -27,9 +27,13 @@ Assets are scoped in three ways:
 ### Library Assets
 
 Library assets allow for reuse and are not tied to a specific workflow or workflow run.
-They are typically added via the editor where you can list, add, move, and delete them.
+They are typically added via the editor where you can list, add, rename, move, and delete them.
 Library assets can be organized into folders, and those folders are preserved during transfer export/import.
-The editor asset list shows created and modified dates and allows sorting by either date. New assets initially use their created date as their modified date; editing an asset's contents or moving it updates the modified date. Assets created before modified-date tracking was added display and sort using their created date until they are changed.
+Renaming is available when one asset is selected and edits the complete name, including its extension.
+Renaming refuses a name already used by another asset in the same folder; leaving the name unchanged is a no-op.
+Uploading an asset with the same name in the same folder, matched case-insensitively, overwrites that existing asset so repeat uploads are idempotent.
+Asset and asset-folder names cannot contain commas because commas separate fallback names in asset templates.
+The editor asset list shows created and modified dates and allows sorting by either date. New assets initially use their created date as their modified date; editing an asset's contents, renaming it, moving it, or overwriting it through upload updates the modified date. Assets created before modified-date tracking was added display and sort using their created date until they are changed.
 Programmatic changes are also possible.
 
 ### Run Assets

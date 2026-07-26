@@ -4,7 +4,7 @@ public static class ContextHelpers
 {
     private const int MaxTemplateExpansionDepth = 10;
     private static readonly System.Text.RegularExpressions.Regex ContextTemplateRegex = new(@"\{\{\s*(?:\$\s*)?(.*?)\s*\}\}", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
-    private static readonly System.Text.RegularExpressions.Regex AssetTemplateRegex = new(@"<<\s*(.*?)\s*>>", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+    private static readonly System.Text.RegularExpressions.Regex AssetTemplateRegex = new(@"<<\s*(?:\$\s*)?(.*?)\s*>>", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
     private static readonly JsonSerializerOptions ContextJsonOptions = new JsonSerializerOptions().BuildOptions();
     private static readonly JsonSerializerOptions AssetRefJsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -189,7 +189,14 @@ public static class ContextHelpers
         return SubstituteValues(input, context, new TemplateExpansionState(), 0);
     }
 
-    public static async Task<string> SubstituteValuesAsync(string input, ContextObject context, IRepositoryService repositoryService, IAssetStore assetStore, Guid? runId, string? conversationId = null)
+    public static async Task<string> SubstituteValuesAsync(
+        string input,
+        ContextObject context,
+        IRepositoryService repositoryService,
+        IAssetStore assetStore,
+        Guid? runId,
+        string? conversationId = null
+    )
     {
         return await SubstituteValuesAsync(input, context, repositoryService, assetStore, runId, conversationId, new TemplateExpansionState(), 0);
     }
@@ -205,12 +212,8 @@ public static class ContextHelpers
             input,
             match =>
             {
-                var path = match.Groups[1].Value.Trim();
-                if (string.IsNullOrWhiteSpace(path))
-                    return string.Empty;
-
-                if (!ContextPathResolver.TryGetValue(context, path, false, false, out var value))
-                    return string.Empty;
+                var paths = match.Groups[1].Value.Trim();
+                var (path, value) = ResolveContextValue(paths, context);
 
                 if (value is string stringValue)
                 {
@@ -282,15 +285,30 @@ public static class ContextHelpers
         {
             sb.Append(input, lastIndex, match.Index - lastIndex);
 
-            var path = match.Groups[1].Value.Trim();
-            if (!string.IsNullOrWhiteSpace(path) && ContextPathResolver.TryGetValue(context, path, false, false, out var value))
-                sb.Append(await ResolveContextReplacementAsync(path, value, context, repositoryService, assetStore, runId, conversationId, state, depth));
+            var paths = match.Groups[1].Value.Trim();
+            var (path, value) = ResolveContextValue(paths, context);
+            sb.Append(await ResolveContextReplacementAsync(path, value, context, repositoryService, assetStore, runId, conversationId, state, depth));
 
             lastIndex = match.Index + match.Length;
         }
 
         sb.Append(input, lastIndex, input.Length - lastIndex);
         return sb.ToString();
+    }
+
+    private static (string Path, object? Value) ResolveContextValue(string paths, ContextObject context)
+    {
+        foreach (var candidate in paths.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var path = candidate.StartsWith('$') ? candidate[1..].TrimStart() : candidate;
+            if (string.IsNullOrWhiteSpace(path))
+                continue;
+
+            if (ContextPathResolver.TryGetValue(context, path, false, false, out var value))
+                return (path, value);
+        }
+
+        throw new SharpOMaticException($"None of the context paths in template '{paths}' could be resolved.");
     }
 
     private static async Task<string> ResolveContextReplacementAsync(
@@ -356,8 +374,8 @@ public static class ContextHelpers
         {
             sb.Append(input, lastIndex, match.Index - lastIndex);
 
-            var assetName = match.Groups[1].Value.Trim();
-            var replacement = await ResolveAssetTextAsync(assetName, context, repositoryService, assetStore, runId, conversationId, state, depth);
+            var assetNames = match.Groups[1].Value.Trim();
+            var replacement = await ResolveAssetTextAsync(assetNames, context, repositoryService, assetStore, runId, conversationId, state, depth);
             sb.Append(replacement);
 
             lastIndex = match.Index + match.Length;
@@ -368,7 +386,7 @@ public static class ContextHelpers
     }
 
     private static async Task<string> ResolveAssetTextAsync(
-        string assetName,
+        string assetNames,
         ContextObject context,
         IRepositoryService repositoryService,
         IAssetStore assetStore,
@@ -378,12 +396,25 @@ public static class ContextHelpers
         int depth
     )
     {
-        if (string.IsNullOrWhiteSpace(assetName))
+        if (string.IsNullOrWhiteSpace(assetNames))
             return string.Empty;
 
-        var asset = await ResolveAssetAsync(assetName, repositoryService, runId, conversationId);
+        Asset? asset = null;
+        foreach (var candidate in assetNames.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            var assetName = candidate.StartsWith('$') ? candidate[1..].TrimStart() : candidate;
+            if (string.IsNullOrWhiteSpace(assetName))
+                continue;
 
-        if (asset is null || !AssetMediaTypePolicy.IsTextLike(asset.MediaType))
+            asset = await ResolveAssetAsync(assetName, repositoryService, runId, conversationId);
+            if (asset is not null)
+                break;
+        }
+
+        if (asset is null)
+            throw new SharpOMaticException($"None of the assets in template '{assetNames}' could be found.");
+
+        if (!AssetMediaTypePolicy.IsTextLike(asset.MediaType))
             return string.Empty;
 
         var key = BuildAssetExpansionKey(asset.AssetId);

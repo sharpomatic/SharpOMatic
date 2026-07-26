@@ -12,9 +12,10 @@ The node expands the **Template** field with the same syntax used by Model Call 
 
 - `{{path}}` or `{{$path}}` inserts a value from workflow context.
 - `<<asset-name>>` inserts the contents of a text-like asset.
+- A comma-separated list, such as `{{$preferred, $fallback}}` or `<<preferred.txt, fallback.txt>>`, tries each context path or asset name from left to right.
 - String context values and text asset contents are expanded recursively.
 
-Missing context paths or missing assets insert nothing.
+If none of the listed context paths or assets can be resolved, template expansion fails and the workflow run records the error.
 If the expanded template is empty or only whitespace, the node does nothing and continues to the next node.
 
 ## Output Type

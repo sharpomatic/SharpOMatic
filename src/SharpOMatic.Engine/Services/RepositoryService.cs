@@ -917,9 +917,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
         var selectedMetrics = ApplyMetricScope(metricsInRange, request.Scope, request.ScopeKey).ToList();
         var selectedMetricIds = selectedMetrics.Select(metric => metric.Id).ToHashSet();
-        var selectedLogicalGroups = BuildMetricLogicalGroups(metricsInRange)
-            .Where(group => group.Any(metric => selectedMetricIds.Contains(metric.Id)))
-            .ToList();
+        var selectedLogicalGroups = BuildMetricLogicalGroups(metricsInRange).Where(group => group.Any(metric => selectedMetricIds.Contains(metric.Id))).ToList();
         var scopeName = request.Scope == ModelCallMetricScope.All ? null : masterItems.FirstOrDefault(item => string.Equals(item.Key, request.ScopeKey, StringComparison.Ordinal))?.Name;
 
         var dashboardRange = GetMetricDashboardRange(selectedMetrics, start, end, request.Bucket, request.AllTime);
@@ -1044,7 +1042,13 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         );
     }
 
-    private static List<ModelCallMetricTimeBucket> BuildMetricTimeBuckets(List<ModelCallMetric> metrics, List<List<ModelCallMetric>> logicalGroups, DateTime start, DateTime end, ModelCallMetricBucket bucket)
+    private static List<ModelCallMetricTimeBucket> BuildMetricTimeBuckets(
+        List<ModelCallMetric> metrics,
+        List<List<ModelCallMetric>> logicalGroups,
+        DateTime start,
+        DateTime end,
+        ModelCallMetricBucket bucket
+    )
     {
         var groups = metrics.GroupBy(metric => GetMetricBucketStart(metric.Created, bucket)).ToDictionary(group => group.Key, group => group.ToList());
         var logicalBucketGroups = logicalGroups.GroupBy(group => GetMetricBucketStart(group.Min(metric => metric.Created), bucket)).ToDictionary(group => group.Key, group => group.ToList());
@@ -3477,6 +3481,21 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         ).FirstOrDefaultAsync();
     }
 
+    public async Task<Asset?> GetLibraryAssetByLocationAndName(Guid? folderId, string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var normalizedName = name.Trim().ToLower();
+
+        return await dbContext
+            .Assets.AsNoTracking()
+            .Where(asset => asset.Scope == AssetScope.Library && asset.FolderId == folderId && asset.Name.ToLower() == normalizedName)
+            .OrderByDescending(asset => asset.Created)
+            .FirstOrDefaultAsync();
+    }
+
     public async Task<Asset?> GetLibraryAssetByName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -3490,6 +3509,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
     public async Task UpsertAsset(Asset asset)
     {
+        if (!AssetNameParser.IsValidAssetName(asset.Name))
+            throw new SharpOMaticException("Asset name is required and cannot contain ','.");
+
         if (asset.Scope != AssetScope.Library && asset.FolderId.HasValue)
             throw new SharpOMaticException($"{asset.Scope} assets cannot be assigned to folders.");
 
@@ -3581,6 +3603,9 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
 
     public async Task UpsertAssetFolder(AssetFolder folder)
     {
+        if (!AssetNameParser.IsValidFolderName(folder.Name))
+            throw new SharpOMaticException("Asset folder name is required and cannot contain '/', '\\', or ','.");
+
         using var dbContext = dbContextFactory.CreateDbContext();
         var entity = await dbContext.AssetFolders.FirstOrDefaultAsync(f => f.FolderId == folder.FolderId);
 

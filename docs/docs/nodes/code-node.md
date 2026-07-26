@@ -58,6 +58,7 @@ Context.Set("output.asset", outputAsset);
 ### Templates
 
 Use the **Templates** helper to expand the same `{{$path}}`, `{{path}}`, and `<<asset-name>>` markers used by Model Call text fields.
+Comma-separated context paths or asset names provide left-to-right fallbacks.
 String context values and text asset contents are expanded recursively.
 
 ```csharp
@@ -66,7 +67,7 @@ Context.Set("output.prompt", prompt);
 ```
 
 Template expansion is read-only.
-Missing context paths or missing assets insert nothing.
+If none of the listed context paths or assets can be resolved, expansion fails the node execution.
 Cycles and runaway recursive expansion fail the node execution.
 
 ### ImageHelper

@@ -2,7 +2,16 @@ namespace SharpOMatic.Engine.Services;
 
 public class AssetService(IRepositoryService repositoryService, IAssetStore assetStore) : IAssetService
 {
-    public async Task<AssetRef> CreateFromStreamAsync(Stream content, long sizeBytes, string name, string mediaType, AssetScope scope, Guid? runId = null, string? conversationId = null, Guid? folderId = null)
+    public async Task<AssetRef> CreateFromStreamAsync(
+        Stream content,
+        long sizeBytes,
+        string name,
+        string mediaType,
+        AssetScope scope,
+        Guid? runId = null,
+        string? conversationId = null,
+        Guid? folderId = null
+    )
     {
         if (content is null)
             throw new SharpOMaticException("Asset content is required.");
@@ -12,6 +21,9 @@ public class AssetService(IRepositoryService repositoryService, IAssetStore asse
 
         if (string.IsNullOrWhiteSpace(name))
             throw new SharpOMaticException("Asset name is required.");
+
+        if (!AssetNameParser.IsValidAssetName(name))
+            throw new SharpOMaticException("Asset name cannot contain ','.");
 
         if (string.IsNullOrWhiteSpace(mediaType))
             throw new SharpOMaticException("Asset media type is required.");

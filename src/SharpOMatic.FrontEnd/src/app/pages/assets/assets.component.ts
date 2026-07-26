@@ -20,7 +20,10 @@ import { TextInputDialogComponent } from '../../dialogs/text-input/text-input-di
 import { AssetScope } from '../../enumerations/asset-scope';
 import { AssetSortField } from '../../enumerations/asset-sort-field';
 import { SortDirection } from '../../enumerations/sort-direction';
-import { isTextLikeMediaType, normalizeMediaType } from '../../helper/asset-media-type';
+import {
+  isTextLikeMediaType,
+  normalizeMediaType,
+} from '../../helper/asset-media-type';
 import { formatByteSize } from '../../helper/format-size';
 import { ServerRepositoryService } from '../../services/server.repository.service';
 import { AssetFolderSummary } from './interfaces/asset-folder-summary';
@@ -41,6 +44,7 @@ export class AssetsComponent implements AfterViewInit {
   private confirmModalRef: BsModalRef<ConfirmDialogComponent> | undefined;
   private infoModalRef: BsModalRef<InformationDialogComponent> | undefined;
   private folderNameModalRef: BsModalRef<TextInputDialogComponent> | undefined;
+  private assetNameModalRef: BsModalRef<TextInputDialogComponent> | undefined;
   private moveAssetsModalRef: BsModalRef<MoveAssetsDialogComponent> | undefined;
   private textModalRef: BsModalRef<AssetTextDialogComponent> | undefined;
   @ViewChild('searchInput') private searchInput?: ElementRef<HTMLInputElement>;
@@ -62,6 +66,7 @@ export class AssetsComponent implements AfterViewInit {
   private folderOrder: string[] = this.readStoredFolderOrder();
   public isDeletingSelected = false;
   public isMovingSelected = false;
+  public isRenamingSelected = false;
 
   ngOnInit(): void {
     this.refreshFolders();
@@ -163,14 +168,16 @@ export class AssetsComponent implements AfterViewInit {
         return;
       }
 
-      this.serverRepository.renameAssetFolder(folderId, name).subscribe((updated) => {
-        if (!updated) {
-          return;
-        }
+      this.serverRepository
+        .renameAssetFolder(folderId, name)
+        .subscribe((updated) => {
+          if (!updated) {
+            return;
+          }
 
-        this.refreshFolders();
-        this.refreshAssets();
-      });
+          this.refreshFolders();
+          this.refreshAssets();
+        });
     });
   }
 
@@ -186,7 +193,14 @@ export class AssetsComponent implements AfterViewInit {
     }
 
     this.serverRepository
-      .getAssetsCount(AssetScope.Library, '', undefined, undefined, folderId, false)
+      .getAssetsCount(
+        AssetScope.Library,
+        '',
+        undefined,
+        undefined,
+        folderId,
+        false,
+      )
       .subscribe((assetCount) => {
         if (assetCount > 0) {
           this.showInfoDialog(
@@ -208,15 +222,17 @@ export class AssetsComponent implements AfterViewInit {
             return;
           }
 
-          this.serverRepository.deleteAssetFolder(folderId).subscribe((success) => {
-            if (!success) {
-              return;
-            }
+          this.serverRepository
+            .deleteAssetFolder(folderId)
+            .subscribe((success) => {
+              if (!success) {
+                return;
+              }
 
-            this.selectedFolderFilter = 'all';
-            this.refreshFolders();
-            this.refreshAssets();
-          });
+              this.selectedFolderFilter = 'all';
+              this.refreshFolders();
+              this.refreshAssets();
+            });
         });
       });
   }
@@ -264,7 +280,9 @@ export class AssetsComponent implements AfterViewInit {
       return false;
     }
 
-    const index = this.folders.findIndex((folder) => folder.folderId === folderId);
+    const index = this.folders.findIndex(
+      (folder) => folder.folderId === folderId,
+    );
     return index > 0;
   }
 
@@ -274,7 +292,9 @@ export class AssetsComponent implements AfterViewInit {
       return false;
     }
 
-    const index = this.folders.findIndex((folder) => folder.folderId === folderId);
+    const index = this.folders.findIndex(
+      (folder) => folder.folderId === folderId,
+    );
     return index > -1 && index < this.folders.length - 1;
   }
 
@@ -284,7 +304,9 @@ export class AssetsComponent implements AfterViewInit {
       return;
     }
 
-    const index = this.folders.findIndex((folder) => folder.folderId === folderId);
+    const index = this.folders.findIndex(
+      (folder) => folder.folderId === folderId,
+    );
     if (index <= 0) {
       return;
     }
@@ -301,7 +323,9 @@ export class AssetsComponent implements AfterViewInit {
       return;
     }
 
-    const index = this.folders.findIndex((folder) => folder.folderId === folderId);
+    const index = this.folders.findIndex(
+      (folder) => folder.folderId === folderId,
+    );
     if (index < 0 || index >= this.folders.length - 1) {
       return;
     }
@@ -384,7 +408,8 @@ export class AssetsComponent implements AfterViewInit {
     if (
       this.selectedAssetIds.size === 0 ||
       this.isDeletingSelected ||
-      this.isMovingSelected
+      this.isMovingSelected ||
+      this.isRenamingSelected
     ) {
       return;
     }
@@ -432,7 +457,8 @@ export class AssetsComponent implements AfterViewInit {
     if (
       this.selectedAssetIds.size === 0 ||
       this.isDeletingSelected ||
-      this.isMovingSelected
+      this.isMovingSelected ||
+      this.isRenamingSelected
     ) {
       return;
     }
@@ -446,15 +472,18 @@ export class AssetsComponent implements AfterViewInit {
       return;
     }
 
-    this.moveAssetsModalRef = this.modalService.show(MoveAssetsDialogComponent, {
-      initialState: {
-        folders: this.folders.map((folder) => ({
-          folderId: folder.folderId,
-          name: folder.name,
-        })),
-        selectedFolderId: null,
+    this.moveAssetsModalRef = this.modalService.show(
+      MoveAssetsDialogComponent,
+      {
+        initialState: {
+          folders: this.folders.map((folder) => ({
+            folderId: folder.folderId,
+            name: folder.name,
+          })),
+          selectedFolderId: null,
+        },
       },
-    });
+    );
 
     this.moveAssetsModalRef.onHidden?.subscribe(() => {
       const targetFolderValue = this.moveAssetsModalRef?.content?.result;
@@ -482,6 +511,55 @@ export class AssetsComponent implements AfterViewInit {
           }),
         )
         .subscribe();
+    });
+  }
+
+  renameSelectedAsset(): void {
+    if (
+      this.selectedAssetIds.size !== 1 ||
+      this.isDeletingSelected ||
+      this.isMovingSelected ||
+      this.isRenamingSelected
+    ) {
+      return;
+    }
+
+    const selectedAsset = this.assets.find((asset) =>
+      this.selectedAssetIds.has(asset.assetId),
+    );
+    if (!selectedAsset) {
+      this.clearSelectedAssets();
+      return;
+    }
+
+    this.assetNameModalRef = this.modalService.show(TextInputDialogComponent, {
+      initialState: {
+        title: 'Rename Asset',
+        label: 'Asset name',
+        value: selectedAsset.name,
+        placeholder: 'Enter asset name including extension',
+        confirmText: 'Rename',
+      },
+    });
+
+    this.assetNameModalRef.onHidden?.subscribe(() => {
+      const name = this.assetNameModalRef?.content?.result;
+      if (!name || name === selectedAsset.name) {
+        return;
+      }
+
+      this.isRenamingSelected = true;
+      this.serverRepository
+        .renameAsset(selectedAsset.assetId, name)
+        .pipe(finalize(() => (this.isRenamingSelected = false)))
+        .subscribe((updated) => {
+          if (!updated) {
+            return;
+          }
+
+          this.clearSelectedAssets();
+          this.refreshAssets();
+        });
     });
   }
 
@@ -712,7 +790,9 @@ export class AssetsComponent implements AfterViewInit {
 
   private syncFolderOrder(folders: AssetFolderSummary[]): void {
     const validIds = new Set(folders.map((folder) => folder.folderId));
-    const nextOrder = this.folderOrder.filter((folderId) => validIds.has(folderId));
+    const nextOrder = this.folderOrder.filter((folderId) =>
+      validIds.has(folderId),
+    );
     const seen = new Set(nextOrder);
 
     for (const folder of folders) {
@@ -745,7 +825,9 @@ export class AssetsComponent implements AfterViewInit {
         return [];
       }
 
-      return parsed.filter((entry): entry is string => typeof entry === 'string');
+      return parsed.filter(
+        (entry): entry is string => typeof entry === 'string',
+      );
     } catch {
       return [];
     }
