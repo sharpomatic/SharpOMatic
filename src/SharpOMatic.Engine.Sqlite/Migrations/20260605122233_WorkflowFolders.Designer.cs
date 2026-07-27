@@ -11,8 +11,8 @@ using SharpOMatic.Engine.Repository;
 namespace SharpOMatic.Engine.Sqlite.Migrations
 {
     [DbContext(typeof(SharpOMaticDbContext))]
-    [Migration("20260717131225_10-0-8")]
-    partial class _1008
+    [Migration("20260605122233_WorkflowFolders")]
+    partial class WorkflowFolders
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -20,7 +20,7 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("SharpOMatic")
-                .HasAnnotation("ProductVersion", "10.0.9");
+                .HasAnnotation("ProductVersion", "10.0.7");
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Asset", b =>
                 {
@@ -40,9 +40,6 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 
                     b.Property<string>("MediaType")
                         .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("Modified")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
@@ -127,14 +124,8 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("Created")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("Modified")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
@@ -256,18 +247,12 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("Created")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<int>("MaxParallel")
                         .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("Modified")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -363,11 +348,6 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 
                     b.Property<int>("Order")
                         .HasColumnType("INTEGER");
-
-                    b.Property<int?>("Repeat")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(1);
 
                     b.HasKey("EvalRowId");
 
@@ -612,11 +592,6 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("AttemptNumber")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(1);
-
                     b.Property<string>("ConnectorConfigId")
                         .HasColumnType("TEXT");
 
@@ -645,18 +620,12 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<string>("ErrorType")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("FailureCategory")
-                        .HasColumnType("INTEGER");
-
                     b.Property<decimal?>("InputCost")
                         .HasPrecision(18, 8)
                         .HasColumnType("TEXT");
 
                     b.Property<long?>("InputTokens")
                         .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("LogicalCallId")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("ModelConfigId")
                         .HasColumnType("TEXT");
@@ -687,9 +656,6 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<string>("ProviderModelName")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("ProviderStatusCode")
-                        .HasColumnType("INTEGER");
-
                     b.Property<Guid>("RunId")
                         .HasColumnType("TEXT");
 
@@ -717,8 +683,6 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.HasIndex("ConnectorId", "Created");
 
                     b.HasIndex("ConversationId", "Created");
-
-                    b.HasIndex("LogicalCallId", "AttemptNumber");
 
                     b.HasIndex("ModelId", "Created");
 
@@ -756,14 +720,8 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("Created")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("Modified")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
@@ -1008,18 +966,12 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("Created")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsConversationEnabled")
                         .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("Modified")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("Named")
                         .IsRequired()

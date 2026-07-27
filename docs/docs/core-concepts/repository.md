@@ -68,5 +68,4 @@ Entity Framework migrations are used to update the repository database schema an
 By default, migrations are applied automatically on engine startup.
 You can disable this by setting **ApplyMigrationsOnStartup** to **false**.
 SQLite and SQL Server use separate provider-specific migration chains, each packaged with its provider extension package.
-Version 10.0.8 starts a new migration baseline for both providers. Databases created with an earlier migration chain must be recreated before running 10.0.8; later migrations can then be applied normally from that baseline.
 All persisted data types, such as workflows and metadata, have an embedded version number so that version changes can be detected on load and upgrades are applied automatically.

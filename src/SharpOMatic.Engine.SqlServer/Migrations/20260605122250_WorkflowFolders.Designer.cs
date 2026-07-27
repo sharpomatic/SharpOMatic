@@ -12,8 +12,8 @@ using SharpOMatic.Engine.Repository;
 namespace SharpOMatic.Engine.SqlServer.Migrations
 {
     [DbContext(typeof(SharpOMaticDbContext))]
-    [Migration("20260717131308_10-0-8")]
-    partial class _1008
+    [Migration("20260605122250_WorkflowFolders")]
+    partial class WorkflowFolders
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -21,7 +21,7 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("SharpOMatic")
-                .HasAnnotation("ProductVersion", "10.0.9")
+                .HasAnnotation("ProductVersion", "10.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -45,9 +45,6 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<string>("MediaType")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("Modified")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -131,15 +128,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("Created")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("Modified")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -260,18 +251,12 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<DateTime?>("Created")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("MaxParallel")
                         .HasColumnType("int");
-
-                    b.Property<DateTime?>("Modified")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -367,11 +352,6 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
                     b.Property<int>("Order")
                         .HasColumnType("int");
-
-                    b.Property<int?>("Repeat")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(1);
 
                     b.HasKey("EvalRowId");
 
@@ -616,11 +596,6 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("AttemptNumber")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(1);
-
                     b.Property<string>("ConnectorConfigId")
                         .HasColumnType("nvarchar(max)");
 
@@ -649,18 +624,12 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<string>("ErrorType")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("FailureCategory")
-                        .HasColumnType("int");
-
                     b.Property<decimal?>("InputCost")
                         .HasPrecision(18, 8)
                         .HasColumnType("decimal(18,8)");
 
                     b.Property<long?>("InputTokens")
                         .HasColumnType("bigint");
-
-                    b.Property<Guid>("LogicalCallId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ModelConfigId")
                         .HasColumnType("nvarchar(max)");
@@ -691,9 +660,6 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<string>("ProviderModelName")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("ProviderStatusCode")
-                        .HasColumnType("int");
-
                     b.Property<Guid>("RunId")
                         .HasColumnType("uniqueidentifier");
 
@@ -721,8 +687,6 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.HasIndex("ConnectorId", "Created");
 
                     b.HasIndex("ConversationId", "Created");
-
-                    b.HasIndex("LogicalCallId", "AttemptNumber");
 
                     b.HasIndex("ModelId", "Created");
 
@@ -760,15 +724,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("Created")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("Modified")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1012,18 +970,12 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("Created")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsConversationEnabled")
                         .HasColumnType("bit");
-
-                    b.Property<DateTime?>("Modified")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("Named")
                         .IsRequired()
