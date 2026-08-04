@@ -4,67 +4,41 @@ internal static class ChatHistoryReplayHelper
 {
     public static ContextList CreatePortableOutputMessages(IEnumerable<ChatMessage> messages, bool dropToolCalls)
     {
+        List<ChatMessage> sourceMessages = [.. messages];
         ContextList portableMessages = [];
-        Dictionary<string, FunctionCallContent> toolCallsById = new(StringComparer.Ordinal);
-        Queue<FunctionCallContent> anonymousToolCalls = [];
 
-        foreach (var message in messages)
+        // Tool calls are written as native FunctionCallContent/FunctionResultContent, preserving the roles and
+        // the per-message grouping the provider produced. Only matched pairs are portable: an unanswered call is
+        // rejected by every provider ("An assistant message with 'tool_calls' must be followed by tool messages
+        // responding to each 'tool_call_id'"), and a result with no call is invalid for the same reason. The
+        // engine creates the unanswered shape itself whenever RemoveModelCallExitToolResults strips an exit
+        // sentinel result, so this filter is load-bearing rather than defensive. When DropToolCalls is set the
+        // pair set stays empty, which removes all tool content through the same code path.
+        HashSet<string> pairedCallIds = dropToolCalls ? [] : FindPairedCallIds(sourceMessages);
+
+        foreach (var message in sourceMessages)
         {
             List<AIContent> portableContents = [];
-            List<ChatMessage> toolResultMessages = [];
 
             foreach (var content in message.Contents)
             {
-                switch (content)
+                var portableContent = ClonePortableOutputContent(content, message.Role, pairedCallIds);
+                if (portableContent is not null)
+                    portableContents.Add(portableContent);
+            }
+
+            if (portableContents.Count == 0)
+                continue;
+
+            portableMessages.Add(
+                new ChatMessage(message.Role, portableContents)
                 {
-                    case TextReasoningContent:
-                        break;
-
-                    case TextContent textContent when IsPortableOutputRole(message.Role) && !string.IsNullOrWhiteSpace(textContent.Text):
-                        portableContents.Add(new TextContent(textContent.Text));
-                        break;
-
-                    case DataContent dataContent when IsPortableOutputRole(message.Role):
-                        portableContents.Add(CloneDataContent(dataContent));
-                        break;
-
-                    case UriContent uriContent when IsPortableOutputRole(message.Role):
-                        portableContents.Add(CloneUriContent(uriContent));
-                        break;
-
-                    case FunctionCallContent functionCallContent when !dropToolCalls:
-                        TrackToolCall(functionCallContent, toolCallsById, anonymousToolCalls);
-                        break;
-
-                    case FunctionResultContent functionResultContent when !dropToolCalls:
-                        toolResultMessages.Add(CreateToolResultAssistantMessage(functionResultContent, toolCallsById, anonymousToolCalls));
-                        break;
+                    AuthorName = message.AuthorName,
+                    CreatedAt = message.CreatedAt,
+                    MessageId = message.MessageId,
                 }
-            }
-
-            if (portableContents.Count > 0)
-            {
-                portableMessages.Add(
-                    new ChatMessage(message.Role, portableContents)
-                    {
-                        AuthorName = message.AuthorName,
-                        CreatedAt = message.CreatedAt,
-                        MessageId = message.MessageId,
-                    }
-                );
-            }
-
-            foreach (var toolResultMessage in toolResultMessages)
-                portableMessages.Add(toolResultMessage);
+            );
         }
-
-        // Emit any tool calls that were tracked but never paired with a result.
-        // This happens when a model-call exit removes the sentinel FunctionResultContent,
-        // leaving the preceding FunctionCallContent with no matching result to consume it.
-        foreach (var orphanedCall in toolCallsById.Values)
-            portableMessages.Add(CreateOrphanedToolCallMessage(orphanedCall));
-        while (anonymousToolCalls.Count > 0)
-            portableMessages.Add(CreateOrphanedToolCallMessage(anonymousToolCalls.Dequeue()));
 
         return portableMessages;
     }
@@ -129,114 +103,68 @@ internal static class ChatHistoryReplayHelper
         return role == ChatRole.User || role == ChatRole.Assistant;
     }
 
-    private static void TrackToolCall(
-        FunctionCallContent functionCallContent,
-        Dictionary<string, FunctionCallContent> toolCallsById,
-        Queue<FunctionCallContent> anonymousToolCalls
-    )
+    private static HashSet<string> FindPairedCallIds(List<ChatMessage> messages)
     {
-        if (!string.IsNullOrWhiteSpace(functionCallContent.CallId))
+        HashSet<string> callIds = new(StringComparer.Ordinal);
+        HashSet<string> resultIds = new(StringComparer.Ordinal);
+
+        foreach (var message in messages)
         {
-            toolCallsById[functionCallContent.CallId.Trim()] = functionCallContent;
-            return;
+            foreach (var content in message.Contents)
+            {
+                switch (content)
+                {
+                    case FunctionCallContent functionCallContent when NormalizeCallId(functionCallContent.CallId) is { } callId:
+                        callIds.Add(callId);
+                        break;
+
+                    case FunctionResultContent functionResultContent when NormalizeCallId(functionResultContent.CallId) is { } resultId:
+                        resultIds.Add(resultId);
+                        break;
+                }
+            }
         }
 
-        anonymousToolCalls.Enqueue(functionCallContent);
+        // A call without an id cannot be matched to its result, so it is never portable and never lands here.
+        callIds.IntersectWith(resultIds);
+        return callIds;
     }
 
-    private static ChatMessage CreateToolResultAssistantMessage(
-        FunctionResultContent functionResultContent,
-        Dictionary<string, FunctionCallContent> toolCallsById,
-        Queue<FunctionCallContent> anonymousToolCalls
-    )
+    private static bool IsPairedCallId(string? callId, HashSet<string> pairedCallIds)
     {
-        var functionCallContent = ResolveToolCall(functionResultContent, toolCallsById, anonymousToolCalls);
-        var toolName = ResolveToolName(functionResultContent, functionCallContent);
-        var resultText = SerializeToolResult(functionResultContent.Result);
-        var argumentsText = SerializeToolArguments(functionCallContent);
-
-        StringBuilder sb = new();
-        sb.Append($"Invoked Tool Call, Name = {toolName}");
-
-        if (!string.IsNullOrWhiteSpace(argumentsText))
-            sb.Append($", Arguments = {argumentsText}");
-
-        if (!string.IsNullOrWhiteSpace(resultText))
-            sb.Append($", Result = {resultText}");
-
-        return new ChatMessage(ChatRole.Assistant, [new TextContent(sb.ToString())]);
+        return (NormalizeCallId(callId) is { } normalizedCallId) && pairedCallIds.Contains(normalizedCallId);
     }
 
-    private static ChatMessage CreateOrphanedToolCallMessage(FunctionCallContent functionCallContent)
+    private static string? NormalizeCallId(string? callId)
     {
-        var toolName = functionCallContent.Name?.Trim() ?? "unknown";
-        var argumentsText = SerializeToolArguments(functionCallContent);
-
-        StringBuilder sb = new();
-        sb.Append($"Invoked Tool Call, Name = {toolName}");
-
-        if (!string.IsNullOrWhiteSpace(argumentsText))
-            sb.Append($", Arguments = {argumentsText}");
-
-        return new ChatMessage(ChatRole.Assistant, [new TextContent(sb.ToString())]);
+        return string.IsNullOrWhiteSpace(callId)
+            ? null
+            : callId.Trim();
     }
 
-    private static FunctionCallContent? ResolveToolCall(
-        FunctionResultContent functionResultContent,
-        Dictionary<string, FunctionCallContent> toolCallsById,
-        Queue<FunctionCallContent> anonymousToolCalls
-    )
+    // The output side drops reasoning content and restricts text/data/uri content to conversational roles,
+    // because a stored transcript is replayed to a model that may not be the one that produced it. The input
+    // side (ClonePortableContent) is deliberately more permissive: it round-trips whatever a workflow chose to
+    // store, including tool content written by the Frontend/Backend Tool Call nodes.
+    private static AIContent? ClonePortableOutputContent(AIContent content, ChatRole role, HashSet<string> pairedCallIds)
     {
-        if (!string.IsNullOrWhiteSpace(functionResultContent.CallId) && toolCallsById.Remove(functionResultContent.CallId.Trim(), out var functionCallContent))
-            return functionCallContent;
-
-        return anonymousToolCalls.Count > 0
-            ? anonymousToolCalls.Dequeue()
-            : null;
-    }
-
-    private static string ResolveToolName(FunctionResultContent functionResultContent, FunctionCallContent? functionCallContent)
-    {
-        if (!string.IsNullOrWhiteSpace(functionCallContent?.Name))
-            return functionCallContent.Name.Trim();
-
-        if (!string.IsNullOrWhiteSpace(functionResultContent.CallId))
-            return functionResultContent.CallId.Trim();
-
-        return "unknown";
-    }
-
-    private static string? SerializeToolArguments(FunctionCallContent? functionCallContent)
-    {
-        if ((functionCallContent?.Arguments is null) || (functionCallContent.Arguments.Count == 0))
-            return null;
-
-        try
+        return content switch
         {
-            return JsonSerializer.Serialize(functionCallContent.Arguments);
-        }
-        catch
-        {
-            return functionCallContent.Arguments.ToString();
-        }
-    }
-
-    private static string SerializeToolResult(object? result)
-    {
-        if (result is null)
-            return string.Empty;
-
-        if (result is string resultText)
-            return resultText;
-
-        try
-        {
-            return JsonSerializer.Serialize(result);
-        }
-        catch
-        {
-            return result.ToString() ?? string.Empty;
-        }
+            TextReasoningContent => null,
+            TextContent textContent when IsPortableOutputRole(role) && !string.IsNullOrWhiteSpace(textContent.Text) => new TextContent(textContent.Text),
+            DataContent dataContent when IsPortableOutputRole(role) => CloneDataContent(dataContent),
+            UriContent uriContent when IsPortableOutputRole(role) => CloneUriContent(uriContent),
+            FunctionCallContent functionCallContent when IsPairedCallId(functionCallContent.CallId, pairedCallIds) => new FunctionCallContent(
+                functionCallContent.CallId,
+                functionCallContent.Name,
+                CloneDictionary(functionCallContent.Arguments)
+            ),
+            FunctionResultContent functionResultContent when IsPairedCallId(functionResultContent.CallId, pairedCallIds) => new FunctionResultContent(
+                functionResultContent.CallId,
+                CloneValue(functionResultContent.Result)
+            ),
+            _ => null,
+        };
     }
 
     private static AIContent? ClonePortableContent(AIContent content)

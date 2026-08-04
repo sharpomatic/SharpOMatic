@@ -305,10 +305,11 @@ Incoming frontend tool results are also not appended by the controller; the wait
 ### Workflow-owned writers
 
 `ModelCall` reads **Chat Input Path** to build the provider request, then writes **Chat Output Path** only after the model call has produced responses.
-When that output path is `input.chat`, the written list includes portable input chat, prompt text, image messages, assistant responses, and synthetic assistant messages for model tool results.
+When that output path is `input.chat`, the written list includes portable input chat, prompt text, image messages, assistant responses, and native `FunctionCallContent`/`FunctionResultContent` for model tool calls.
+Only matched call/result pairs are written; an unanswered tool call is dropped because it cannot be replayed to any provider.
 If **Drop Tool Calls** is enabled on the model call, model tool calls and tool results are omitted from the written chat history.
 
-`Frontend Tool Call` and `Backend Tool Call` are the only non-model nodes that can write tool-call `ChatMessage` entries into `input.chat`.
+`Frontend Tool Call` and `Backend Tool Call` are the only non-model nodes that can write tool-call `ChatMessage` entries into `input.chat` independently of a model call.
 Both are controlled by **Chat Persistence**:
 
 - `None`: no chat messages are written

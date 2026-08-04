@@ -42,28 +42,19 @@ public sealed class ModelCallChatReplayUnitTests
             Assert.Empty(capture.CapturedChats[0]);
 
             var replayedChat = capture.CapturedChats[1];
-            Assert.Equal(3, replayedChat.Count);
 
-            Assert.Equal(ChatRole.Assistant, replayedChat[0].Role);
-            Assert.Equal("Portable text", Assert.IsType<TextContent>(replayedChat[0].Contents.Single()).Text);
+            // Reasoning is still stripped, but matched tool calls now replay as native content in the same
+            // message and the same order the model produced them. The reasoning-only message is dropped whole.
+            var replayedMessage = Assert.Single(replayedChat);
+            Assert.Equal(ChatRole.Assistant, replayedMessage.Role);
+            Assert.Equal(5, replayedMessage.Contents.Count);
+            Assert.DoesNotContain(replayedMessage.Contents, content => content is TextReasoningContent);
 
-            Assert.Equal(ChatRole.Assistant, replayedChat[1].Role);
-            Assert.Equal(
-                "Invoked Tool Call, Name = lookup_weather, Arguments = {\"city\":\"Sydney\"}, Result = Sunny",
-                Assert.IsType<TextContent>(replayedChat[1].Contents.Single()).Text
-            );
-
-            Assert.Equal(ChatRole.Assistant, replayedChat[2].Role);
-            Assert.Equal(
-                "Invoked Tool Call, Name = get_time, Result = Noon",
-                Assert.IsType<TextContent>(replayedChat[2].Contents.Single()).Text
-            );
-
-            Assert.All(replayedChat, message =>
-            {
-                Assert.True(message.Role == ChatRole.User || message.Role == ChatRole.Assistant);
-                Assert.DoesNotContain(message.Contents, content => content is TextReasoningContent or FunctionCallContent or FunctionResultContent);
-            });
+            Assert.Equal("Portable text", Assert.IsType<TextContent>(replayedMessage.Contents[0]).Text);
+            AssertToolCall(replayedMessage.Contents[1], "call-1", "lookup_weather", "city", "Sydney");
+            AssertToolResult(replayedMessage.Contents[2], "call-1", "Sunny");
+            AssertToolCall(replayedMessage.Contents[3], "call-2", "get_time");
+            AssertToolResult(replayedMessage.Contents[4], "call-2", "Noon");
         }
         finally
         {
@@ -114,20 +105,19 @@ public sealed class ModelCallChatReplayUnitTests
 
             Assert.Equal(2, capture.CapturedChats.Count);
             var replayedChat = capture.CapturedChats[1];
-            Assert.Equal(3, replayedChat.Count);
 
-            var sanitizedMessage = replayedChat[0];
+            // Changing the model must not change what is portable: reasoning is stripped, matched tool calls
+            // survive as native content so the new model receives the same tool history the old one produced.
+            var sanitizedMessage = Assert.Single(replayedChat);
             Assert.Equal(ChatRole.Assistant, sanitizedMessage.Role);
-            Assert.Equal("Portable text", Assert.IsType<TextContent>(sanitizedMessage.Contents.Single()).Text);
-            Assert.Equal(ChatRole.Assistant, replayedChat[1].Role);
-            Assert.Equal("Invoked Tool Call, Name = lookup_weather, Arguments = {\"city\":\"Sydney\"}, Result = Sunny", Assert.IsType<TextContent>(replayedChat[1].Contents.Single()).Text);
-            Assert.Equal(ChatRole.Assistant, replayedChat[2].Role);
-            Assert.Equal("Invoked Tool Call, Name = get_time, Result = Noon", Assert.IsType<TextContent>(replayedChat[2].Contents.Single()).Text);
-            Assert.All(replayedChat, message =>
-            {
-                Assert.True(message.Role == ChatRole.User || message.Role == ChatRole.Assistant);
-                Assert.DoesNotContain(message.Contents, content => content is TextReasoningContent or FunctionCallContent or FunctionResultContent);
-            });
+            Assert.Equal(5, sanitizedMessage.Contents.Count);
+            Assert.DoesNotContain(sanitizedMessage.Contents, content => content is TextReasoningContent);
+
+            Assert.Equal("Portable text", Assert.IsType<TextContent>(sanitizedMessage.Contents[0]).Text);
+            AssertToolCall(sanitizedMessage.Contents[1], "call-1", "lookup_weather", "city", "Sydney");
+            AssertToolResult(sanitizedMessage.Contents[2], "call-1", "Sunny");
+            AssertToolCall(sanitizedMessage.Contents[3], "call-2", "get_time");
+            AssertToolResult(sanitizedMessage.Contents[4], "call-2", "Noon");
         }
         finally
         {
@@ -183,6 +173,41 @@ public sealed class ModelCallChatReplayUnitTests
             cts.Cancel();
             await queueTask;
         }
+    }
+
+    private static void AssertToolCall(AIContent content, string expectedCallId, string expectedName, string? expectedArgumentName = null, string? expectedArgumentValue = null)
+    {
+        var functionCallContent = Assert.IsType<FunctionCallContent>(content);
+        Assert.Equal(expectedCallId, functionCallContent.CallId);
+        Assert.Equal(expectedName, functionCallContent.Name);
+
+        if (expectedArgumentName is null)
+        {
+            Assert.Empty(functionCallContent.Arguments ?? new Dictionary<string, object?>());
+            return;
+        }
+
+        Assert.NotNull(functionCallContent.Arguments);
+        Assert.Equal(expectedArgumentValue, ReadScalar(functionCallContent.Arguments[expectedArgumentName]));
+    }
+
+    private static void AssertToolResult(AIContent content, string expectedCallId, string expectedResult)
+    {
+        var functionResultContent = Assert.IsType<FunctionResultContent>(content);
+        Assert.Equal(expectedCallId, functionResultContent.CallId);
+        Assert.Equal(expectedResult, ReadScalar(functionResultContent.Result));
+    }
+
+    // A conversation transcript is persisted as JSON between turns, so tool arguments and results that started
+    // life as CLR strings come back as JsonElement on replay. Both forms are portable; only the text matters here.
+    private static string? ReadScalar(object? value)
+    {
+        return value switch
+        {
+            JsonElement { ValueKind: JsonValueKind.String } jsonElement => jsonElement.GetString(),
+            JsonElement jsonElement => jsonElement.ToString(),
+            _ => value?.ToString(),
+        };
     }
 
     private static WorkflowEntity CreateReplayWorkflow(Guid workflowId, Guid modelId, bool dropToolCalls = false)

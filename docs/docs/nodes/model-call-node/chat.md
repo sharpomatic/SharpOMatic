@@ -81,11 +81,15 @@ Reading **Chat Input Path** alone does not mutate `input.chat`; only writing **C
 In batch output mode, the returned model messages are the canonical transcript written to **Chat Output Path**.
 Stream events are generated from that transcript for UI display, but they are not the source of persisted chat history.
 
-When writing **Chat Output Path**, SharpOMatic removes reasoning and provider-specific tool content so later model calls can replay the history across different providers.
+When writing **Chat Output Path**, SharpOMatic removes model reasoning so later model calls can replay the history without carrying provider-specific reasoning payloads.
 Assistant text is stored as assistant messages.
-Tool results are stored as assistant messages such as `Result of calling tool lookup_weather with arguments {"city":"Sydney"} = Sunny`, or `Result of calling tool get_time with no arguments = Noon`.
-If **Drop Tool Calls** is enabled on the **Details** tab, model tool calls and tool results are omitted from **Chat Output Path** instead.
-The next model call receives only user and assistant messages from this stored history.
+
+Tool calls are stored as native tool content: the assistant message keeps its `FunctionCallContent` and the tool result keeps its `FunctionResultContent`, in the roles, order, and grouping the provider produced.
+Only matched call/result pairs are stored. A tool call with no matching result is dropped, because replaying an unanswered call is rejected by every provider. This happens when a workflow uses a tool to exit the model call, since the exit result is removed before the transcript is written.
+If **Drop Tool Calls** is enabled on the **Details** tab, model tool calls and tool results are omitted from **Chat Output Path** entirely.
+
+Storing native tool content means a resumed conversation replays real tool calls to the next model.
+Resuming against a *different* provider than the one that produced the calls is not guaranteed to work, because no upstream library normalises tool-call ids or message layout between providers. See `OPEN_ISSUES.md` in the repository root for the current state of that.
 
 The first three are the ones we sent to the model.
 

@@ -416,13 +416,16 @@ public sealed class ModelCallStreamingUnitTests
             Assert.Equal("Hello world", output.Get<string>("output.text"));
 
             var chatOutput = output.Get<ContextList>("output.chat");
-            Assert.Equal(3, chatOutput.Count);
+            Assert.Equal(2, chatOutput.Count);
             Assert.Equal(ChatRole.User, ((ChatMessage)chatOutput[0]!).Role);
             Assert.Equal(ChatRole.Assistant, ((ChatMessage)chatOutput[1]!).Role);
-            Assert.Equal(ChatRole.Assistant, ((ChatMessage)chatOutput[2]!).Role);
-            Assert.Equal(
-                "Invoked Tool Call, Name = lookup_weather, Arguments = {\"city\":\"Sydney\"}",
-                Assert.IsType<TextContent>(((ChatMessage)chatOutput[2]!).Contents.Single()).Text
+            Assert.Equal("Hello world", Assert.IsType<TextContent>(((ChatMessage)chatOutput[1]!).Contents.Single()).Text);
+
+            // The model called lookup_weather but this run produced no matching result. An unanswered call is not
+            // portable to any provider, so it is omitted from the transcript rather than replayed unpaired.
+            Assert.DoesNotContain(
+                chatOutput.OfType<ChatMessage>().SelectMany(message => message.Contents),
+                content => content is FunctionCallContent or FunctionResultContent
             );
         }
         finally
