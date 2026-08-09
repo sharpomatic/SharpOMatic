@@ -105,6 +105,8 @@ export class EvaluationComponent
     { value: EvalRunScoreMode.PassRate, label: 'Average pass rate' },
   ];
   public readonly evalRunStatus = EvalRunStatus;
+  // Matches EngineService.DefaultAgUiOutputPath, used when the path is left blank.
+  public readonly defaultAgUiOutputPath = 'agui.messages';
   public readonly repeatMin = EvalRow.MIN_REPEAT;
   public readonly repeatMax = EvalRow.MAX_REPEAT;
   private readonly tabIds = new Set([
@@ -297,6 +299,14 @@ export class EvaluationComponent
     }
 
     this.evalConfig.runScoreMode.set(numeric as EvalRunScoreMode);
+  }
+
+  onIncludeAgUiOutputChange(value: boolean): void {
+    this.evalConfig.includeAgUiOutput.set(Boolean(value));
+  }
+
+  onAgUiOutputPathChange(value: string): void {
+    this.evalConfig.agUiOutputPath.set(value ?? '');
   }
 
   onPassThresholdChange(grader: EvalGrader, value: string | number): void {

@@ -18,6 +18,8 @@ export interface EvalConfigSnapshot {
   maxParallel: number;
   rowScoreMode?: EvalRunRowScoreMode;
   runScoreMode?: EvalRunScoreMode;
+  includeAgUiOutput?: boolean;
+  agUiOutputPath?: string | null;
   graders?: EvalGraderSnapshot[];
   columns?: EvalColumnSnapshot[];
   rows?: EvalRowSnapshot[];
@@ -37,6 +39,8 @@ export class EvalConfig {
   public maxParallel: WritableSignal<number>;
   public rowScoreMode: WritableSignal<EvalRunRowScoreMode>;
   public runScoreMode: WritableSignal<EvalRunScoreMode>;
+  public includeAgUiOutput: WritableSignal<boolean>;
+  public agUiOutputPath: WritableSignal<string>;
   public graders: WritableSignal<EvalGrader[]>;
   public columns: WritableSignal<EvalColumn[]>;
   public rows: WritableSignal<EvalRow[]>;
@@ -49,6 +53,8 @@ export class EvalConfig {
   private initialMaxParallel: number;
   private initialRowScoreMode: EvalRunRowScoreMode;
   private initialRunScoreMode: EvalRunScoreMode;
+  private initialIncludeAgUiOutput: boolean;
+  private initialAgUiOutputPath: string;
   private initialGraders: EvalGraderSnapshot[];
   private initialColumns: EvalColumnSnapshot[];
   private initialRows: EvalRowSnapshot[];
@@ -69,6 +75,8 @@ export class EvalConfig {
       snapshot.rowScoreMode ?? EvalRunRowScoreMode.FirstGrader;
     this.initialRunScoreMode =
       snapshot.runScoreMode ?? EvalRunScoreMode.AverageScore;
+    this.initialIncludeAgUiOutput = snapshot.includeAgUiOutput ?? false;
+    this.initialAgUiOutputPath = snapshot.agUiOutputPath ?? '';
 
     this.workflowId = signal(snapshot.workflowId ?? null);
     this.name = signal(snapshot.name);
@@ -80,6 +88,8 @@ export class EvalConfig {
     this.runScoreMode = signal(
       snapshot.runScoreMode ?? EvalRunScoreMode.AverageScore,
     );
+    this.includeAgUiOutput = signal(snapshot.includeAgUiOutput ?? false);
+    this.agUiOutputPath = signal(snapshot.agUiOutputPath ?? '');
     this.graders = signal(
       EvalConfig.gradersFromSnapshots(snapshot.graders ?? []),
     );
@@ -110,6 +120,8 @@ export class EvalConfig {
       const currentMaxParallel = this.maxParallel();
       const currentRowScoreMode = this.rowScoreMode();
       const currentRunScoreMode = this.runScoreMode();
+      const currentIncludeAgUiOutput = this.includeAgUiOutput();
+      const currentAgUiOutputPath = this.agUiOutputPath();
       const currentGraders = this.graders();
       const currentColumns = this.columns();
       const currentRows = this.rows();
@@ -146,6 +158,8 @@ export class EvalConfig {
         currentMaxParallel !== this.initialMaxParallel ||
         currentRowScoreMode !== this.initialRowScoreMode ||
         currentRunScoreMode !== this.initialRunScoreMode ||
+        currentIncludeAgUiOutput !== this.initialIncludeAgUiOutput ||
+        currentAgUiOutputPath !== this.initialAgUiOutputPath ||
         gradersChanged ||
         columnsChanged ||
         rowsChanged ||
@@ -165,6 +179,8 @@ export class EvalConfig {
       maxParallel: this.maxParallel(),
       rowScoreMode: this.rowScoreMode(),
       runScoreMode: this.runScoreMode(),
+      includeAgUiOutput: this.includeAgUiOutput(),
+      agUiOutputPath: this.agUiOutputPath().trim() || null,
       graders: EvalConfig.snapshotsFromGraders(
         this.graders(),
         this.evalConfigId,
@@ -184,6 +200,8 @@ export class EvalConfig {
     this.initialMaxParallel = this.maxParallel();
     this.initialRowScoreMode = this.rowScoreMode();
     this.initialRunScoreMode = this.runScoreMode();
+    this.initialIncludeAgUiOutput = this.includeAgUiOutput();
+    this.initialAgUiOutputPath = this.agUiOutputPath();
     this.initialGraders = EvalConfig.snapshotsFromGraders(
       this.graders(),
       this.evalConfigId,
@@ -303,6 +321,8 @@ export class EvalConfig {
       maxParallel: EvalConfig.DEFAULT_MAX_PARALLEL,
       rowScoreMode: EvalRunRowScoreMode.FirstGrader,
       runScoreMode: EvalRunScoreMode.AverageScore,
+      includeAgUiOutput: false,
+      agUiOutputPath: null,
       graders: [],
       columns: [nameColumn],
       rows: [],

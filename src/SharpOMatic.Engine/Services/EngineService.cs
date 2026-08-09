@@ -9,6 +9,8 @@ public class EngineService(
     IJsonConverterService JsonConverterService
 ) : IEngineService
 {
+    private const string DefaultAgUiOutputPath = "agui.messages";
+
     private static void ValidateWorkflowExecutionMode(WorkflowEntity workflow, bool allowConversation)
     {
         if (allowConversation)
@@ -748,6 +750,7 @@ public class EngineService(
                 inputContext = ContextObject.Deserialize(serializedInput, jsonConverterService);
                 var resultContext = ContextObject.Deserialize(runResult.OutputContext, jsonConverterService);
                 ContextHelpers.OverwriteContexts(inputContext, resultContext);
+                await AddAgUiOutputToGraderContext(repository, evalConfigDetail.EvalConfig, run.RunId, inputContext);
                 var graderContext = inputContext.Serialize(jsonConverterService);
                 List<EvalRunRowGrader> graderResults = [];
 
@@ -775,6 +778,22 @@ public class EngineService(
         }
 
         return evalRunRow;
+    }
+
+    private static async Task AddAgUiOutputToGraderContext(IRepositoryService repository, EvalConfig evalConfig, Guid runId, ContextObject graderContext)
+    {
+        if (!evalConfig.IncludeAgUiOutput)
+            return;
+
+        var streamEvents = await repository.GetRunStreamEvents(runId);
+        var messages = AgUiMessageBuilder.BuildMessages(streamEvents);
+        var contextValue = ContextHelpers.FastDeserializeString(JsonSerializer.Serialize(messages));
+        graderContext.Set(ResolveAgUiOutputPath(evalConfig.AgUiOutputPath), contextValue);
+    }
+
+    private static string ResolveAgUiOutputPath(string? agUiOutputPath)
+    {
+        return string.IsNullOrWhiteSpace(agUiOutputPath) ? DefaultAgUiOutputPath : agUiOutputPath.Trim();
     }
 
     private static async Task MarkGradersAsFailedForRow(IRepositoryService repository, Guid evalRunId, Guid evalRunRowId, IEnumerable<EvalGrader> graders, string? error)

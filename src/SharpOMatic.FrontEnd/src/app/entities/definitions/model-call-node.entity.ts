@@ -20,6 +20,7 @@ export interface ModelCallNodeSnapshot extends NodeSnapshot {
   imageInputPath: string;
   imageOutputPath: string;
   toolAgUiOutputModes?: Record<string, ModelCallToolAgUiOutputMode>;
+  toolContextPaths?: Record<string, string>;
 }
 
 export interface ModelCallModelSnapshot {
@@ -49,6 +50,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
   public toolAgUiOutputModes: WritableSignal<
     Record<string, ModelCallToolAgUiOutputMode>
   >;
+  public toolContextPaths: WritableSignal<Record<string, string>>;
 
   constructor(snapshot: ModelCallNodeSnapshot) {
     super(snapshot);
@@ -81,6 +83,9 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
     this.toolAgUiOutputModes = signal({
       ...(snapshot.toolAgUiOutputModes ?? {}),
     });
+    this.toolContextPaths = signal({
+      ...(snapshot.toolContextPaths ?? {}),
+    });
 
     const baseIsDirty = this.isDirty;
     this.isDirty = computed(() => {
@@ -104,6 +109,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       const currentImageInputPath = this.imageInputPath();
       const currentImageOutputPath = this.imageOutputPath();
       const currentToolAgUiOutputModes = this.toolAgUiOutputModes();
+      const currentToolContextPaths = this.toolContextPaths();
 
       return (
         currentIsDirty ||
@@ -129,6 +135,10 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
         !ModelCallNodeEntity.areRecordsEqual(
           currentToolAgUiOutputModes,
           snapshot.toolAgUiOutputModes ?? {},
+        ) ||
+        !ModelCallNodeEntity.areRecordsEqual(
+          currentToolContextPaths,
+          snapshot.toolContextPaths ?? {},
         )
       );
     });
@@ -152,6 +162,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       imageInputPath: this.imageInputPath(),
       imageOutputPath: this.imageOutputPath(),
       toolAgUiOutputModes: this.toolAgUiOutputModes(),
+      toolContextPaths: this.toolContextPaths(),
     };
   }
 
@@ -183,6 +194,7 @@ export class ModelCallNodeEntity extends NodeEntity<ModelCallNodeSnapshot> {
       imageInputPath: '',
       imageOutputPath: 'output.image',
       toolAgUiOutputModes: {},
+      toolContextPaths: {},
     };
   }
 

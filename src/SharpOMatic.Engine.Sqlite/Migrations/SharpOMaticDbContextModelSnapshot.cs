@@ -253,12 +253,18 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AgUiOutputPath")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("Created")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IncludeAgUiOutput")
+                        .HasColumnType("INTEGER");
 
                     b.Property<int>("MaxParallel")
                         .HasColumnType("INTEGER");

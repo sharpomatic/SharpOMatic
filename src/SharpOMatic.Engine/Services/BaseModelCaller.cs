@@ -523,6 +523,9 @@ public abstract class BaseModelCaller : IModelCaller
                     if (string.IsNullOrWhiteSpace(normalizedToolName))
                         continue;
 
+                    if (!IsToolProvided(threadContext, node, normalizedToolName))
+                        continue;
+
                     var toolDelegate = processContext.ToolMethodRegistry.GetToolFromDisplayName(normalizedToolName);
                     if (toolDelegate is null)
                         continue;
@@ -553,6 +556,23 @@ public abstract class BaseModelCaller : IModelCaller
         }
 
         return agentServiceProvider;
+    }
+
+    private static bool IsToolProvided(ThreadContext threadContext, ModelCallNodeEntity node, string toolName)
+    {
+        if (!node.ToolContextPaths.TryGetValue(toolName, out var contextPath) || string.IsNullOrWhiteSpace(contextPath))
+            return true;
+
+        var path = contextPath.Trim();
+        if (!threadContext.NodeContext.TryGet<object?>(path, out var value))
+            throw new SharpOMaticException($"Tool '{toolName}' context path '{path}' could not be resolved.");
+
+        if (value is not bool provided)
+            throw new SharpOMaticException(
+                $"Tool '{toolName}' context path '{path}' resolved to a value of type '{value?.GetType().FullName ?? "null"}' instead of a boolean."
+            );
+
+        return provided;
     }
 
     protected virtual void AddChatInputPathMessages(List<ChatMessage> chat, ThreadContext threadContext, ModelCallNodeEntity node)

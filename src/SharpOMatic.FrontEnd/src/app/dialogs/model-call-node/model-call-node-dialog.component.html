@@ -506,7 +506,7 @@
           <label class="form-label field-label align-top"
             >Available Tools</label
           >
-          <div class="flex-fill control-column long">
+          <div class="flex-fill control-column extra-long">
             @if (toolDisplayNames.length) {
               <table
                 class="table table-sm table-hover align-middle tool-calling-table"
@@ -515,6 +515,7 @@
                   <tr>
                     <th scope="col">Tool</th>
                     <th scope="col">AG-UI Output</th>
+                    <th scope="col">Context Path</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -561,6 +562,19 @@
                               </option>
                             }
                           </select>
+                        }
+                      </td>
+                      <td>
+                        @if (isToolSelected(toolName)) {
+                          <input
+                            type="text"
+                            class="form-control form-control-sm tool-context-path-input"
+                            [id]="toolContextPathId(toolName)"
+                            [ngModel]="getToolContextPath(toolName)"
+                            (ngModelChange)="
+                              onToolContextPathChange(toolName, $event)
+                            "
+                          />
                         }
                       </td>
                     </tr>

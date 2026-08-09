@@ -59,6 +59,62 @@ After the run completes, grader summaries provide statistics such as minimum sco
 Evaluation workflows and grader workflows must be standard one-shot workflows.
 Conversation-enabled workflows are intentionally excluded from the evaluation workflow selectors because evaluations do not provide a way to answer suspend events during row execution.
 
+### Grader Input Context
+
+Each grader workflow starts with the row's input context merged with the output context produced by the
+evaluation workflow run. Values written by the workflow overwrite the row inputs of the same name.
+
+### Passing AG-UI Output to Graders
+
+By default a grader only sees context values.
+Anything the workflow streamed as AG-UI output — the assistant text a user would have read, tool calls and
+their results, reasoning, activity snapshots — is invisible unless the workflow deliberately wrote it into the
+context.
+
+Enable **AG-UI Output** on the evaluation's Details tab to pass that stream into every grader for the row.
+The **AG-UI Path** field chooses the context path it is written to; leave it blank to use `agui.messages`.
+
+The payload is the assembled AG-UI **message list**, not the raw stream of protocol events.
+Text deltas are folded into whole messages and tool call argument fragments are joined into complete
+arguments, so a grader can read a reply directly instead of reassembling hundreds of fragments.
+It is the same shape returned by the AG-UI history endpoint and posted back by an AG-UI client:
+
+```json
+[
+  {
+    "id": "call-1",
+    "role": "assistant",
+    "toolCalls": [
+      {
+        "id": "call-1",
+        "type": "function",
+        "function": { "name": "GetWeather", "arguments": "{\"city\":\"Perth\"}" }
+      }
+    ]
+  },
+  { "id": "tool:m1", "role": "tool", "toolCallId": "call-1", "content": "Sunny" },
+  { "id": "m2", "role": "assistant", "content": "It is sunny in Perth." }
+]
+```
+
+Reasoning messages appear with role `reasoning` under a `reason:` prefixed id, and activity snapshots appear
+with role `activity` carrying an `activityType` and a JSON `content` object.
+Events that were hidden from replay — for example a frontend tool call the workflow marked as handled — are
+excluded, matching what a client would see on reconnect.
+Run-level events that do not form messages, such as step and state events, are not included.
+
+The messages are added to the context after the workflow run completes and before any grader starts, so all
+graders for the row see the same value.
+When the box is unticked nothing is added, which is how evaluations created before this setting existed
+continue to behave.
+
+:::note
+The payload reflects what the workflow actually streamed.
+If a model call node has **Disable Tool Events** enabled, or a tool's per-tool
+[AG-UI Output](../nodes/model-call-node/tool-calling.md) mode is **Never**, those events are never recorded and
+therefore cannot appear in the grader's context.
+:::
+
 ### Grader Output Contract
 
 A grader workflow is expected to write its score to the context path `score`.
@@ -152,5 +208,6 @@ Common causes of evaluation run failures:
 - **Missing mandatory row data**: a required column has no value for one or more rows.
 - **Invalid sample count**: the sample count is outside the valid range for the current row total.
 - **Missing grader score**: the grader workflow does not output a numeric value at `score`, so score summaries may look incomplete.
+- **Empty AG-UI output**: **AG-UI Output** is enabled but the grader finds nothing at the configured path because the evaluation workflow suppressed its stream events, or because it produced none.
 
 When troubleshooting, open the run details and inspect row-level errors and grader results to identify the exact failure point.

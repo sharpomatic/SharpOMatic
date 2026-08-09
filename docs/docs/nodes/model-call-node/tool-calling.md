@@ -12,6 +12,7 @@ If the model supports tool calling, this tab is available.
 During program setup, you can use the **AddToolMethods** extension to specify a list of C# static methods available for calling.
 Use a comma-separated list if you need to specify more than one method.
 You do not have to provide all the tools for every call. Use the checkbox in the tool table to select only those you want to make available during this model call.
+Each selected tool also has an **AG-UI Output** and a **Context Path** column, described below.
 
 ```csharp
   builder.Services.AddSharpOMaticEngine()
@@ -68,6 +69,30 @@ The available modes are:
 
 When a tool is deselected, its per-tool AG-UI output setting is removed.
 Existing workflows that do not have per-tool settings behave as though every selected tool is set to **Inherit**.
+
+## Per-tool context path
+
+Selecting a tool normally means it is provided to the model on every call.
+The **Context Path** column makes that conditional: leave it blank and the tool is always provided, or enter a context path and the boolean found there decides whether the tool is included in this particular call.
+
+This lets a workflow open up capabilities progressively, for example only offering a `submit_order` tool once an earlier node has validated the cart.
+
+| Context Path | Value at the path | Result |
+| --- | --- | --- |
+| blank | not evaluated | the tool is provided |
+| a path | `true` | the tool is provided |
+| a path | `false` | the tool is **not** provided |
+| a path | the path does not resolve | the model call **fails** |
+| a path | the value is not a boolean | the model call **fails** |
+
+An unresolvable path or a non-boolean value is treated as a configuration error rather than being silently ignored, so the mistake shows up in the run trace instead of quietly changing which tools the model can see.
+Write the flag from an earlier node, for example an [**Edit** node](../edit-node.md) context entry of type **Bool** targeting `flags.allowSubmitOrder`.
+
+When a tool is deselected, its context path is removed.
+Existing workflows that have no context paths behave exactly as before, with every selected tool provided.
+
+If every selected tool is filtered out, the call is made with no tools at all.
+Note that the condition only controls whether the model is *told about* the tool; it is evaluated once when the model call starts, not before each individual tool invocation.
 
 ### IServiceProvider
 

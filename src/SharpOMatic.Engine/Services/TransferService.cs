@@ -635,6 +635,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             MaxParallel = source.EvalConfig.MaxParallel,
             RowScoreMode = source.EvalConfig.RowScoreMode,
             RunScoreMode = source.EvalConfig.RunScoreMode,
+            IncludeAgUiOutput = source.EvalConfig.IncludeAgUiOutput,
+            AgUiOutputPath = source.EvalConfig.AgUiOutputPath,
         };
 
         var graders = source

@@ -161,6 +161,42 @@
           </select>
         </div>
       </div>
+      <div class="mb-3 form-line">
+        <label for="eval-include-ag-ui-output" class="form-label field-label"
+          >AG-UI Output</label
+        >
+        <div class="flex-fill control-column long">
+          <div class="form-check">
+            <input
+              id="eval-include-ag-ui-output"
+              type="checkbox"
+              class="form-check-input"
+              [ngModel]="evalConfig.includeAgUiOutput()"
+              (ngModelChange)="onIncludeAgUiOutputChange($event)"
+            />
+            <label class="form-check-label" for="eval-include-ag-ui-output">
+              Pass the run's AG-UI messages to the graders
+            </label>
+          </div>
+        </div>
+      </div>
+      @if (evalConfig.includeAgUiOutput()) {
+        <div class="mb-3 form-line">
+          <label for="eval-ag-ui-output-path" class="form-label field-label"
+            >AG-UI Path</label
+          >
+          <div class="flex-fill control-column long">
+            <input
+              id="eval-ag-ui-output-path"
+              type="text"
+              class="form-control w-100"
+              [placeholder]="defaultAgUiOutputPath"
+              [ngModel]="evalConfig.agUiOutputPath()"
+              (ngModelChange)="onAgUiOutputPathChange($event)"
+            />
+          </div>
+        </div>
+      }
     </div>
   </ng-template>
 

@@ -149,11 +149,15 @@
 }
 
 .tool-calling-table th:first-child {
-  width: 60%;
+  width: 40%;
 }
 
 .tool-ag-ui-output-select {
   max-width: 180px;
+}
+
+.tool-context-path-input {
+  max-width: 220px;
 }
 
 .tiny {

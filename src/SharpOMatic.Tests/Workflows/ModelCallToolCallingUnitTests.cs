@@ -29,25 +29,7 @@ public sealed class ModelCallToolCallingUnitTests
         using var provider = WorkflowRunner.BuildProvider(services => services.AddSingleton<IToolMethodRegistry>(new ToolMethodRegistry([(Func<string>)DefinedTool])));
         using var scope = provider.CreateScope();
 
-        var workflow = new WorkflowEntity
-        {
-            Id = Guid.NewGuid(),
-            Version = 1,
-            Name = "Tool workflow",
-            Description = "",
-            Nodes = [],
-            Connections = [],
-        };
-        var run = new Run
-        {
-            RunId = Guid.NewGuid(),
-            WorkflowId = workflow.Id,
-            Created = DateTime.UtcNow,
-            RunStatus = RunStatus.Running,
-        };
-        var processContext = new ProcessContext(scope, run, 100, null);
-        var workflowContext = new WorkflowContext(processContext, workflow);
-        var threadContext = new ThreadContext(processContext, workflowContext, []);
+        var (processContext, threadContext) = CreateToolCallingContexts(scope);
         var caller = new ToolCallingTestModelCaller();
         var chatOptions = new ChatOptions { AdditionalProperties = [] };
 
@@ -62,31 +44,109 @@ public sealed class ModelCallToolCallingUnitTests
         using var provider = WorkflowRunner.BuildProvider(services => services.AddSingleton<IToolMethodRegistry>(new ToolMethodRegistry([(Func<string>)DefinedToolWithDisplayName])));
         using var scope = provider.CreateScope();
 
-        var workflow = new WorkflowEntity
-        {
-            Id = Guid.NewGuid(),
-            Version = 1,
-            Name = "Tool workflow",
-            Description = "",
-            Nodes = [],
-            Connections = [],
-        };
-        var run = new Run
-        {
-            RunId = Guid.NewGuid(),
-            WorkflowId = workflow.Id,
-            Created = DateTime.UtcNow,
-            RunStatus = RunStatus.Running,
-        };
-        var processContext = new ProcessContext(scope, run, 100, null);
-        var workflowContext = new WorkflowContext(processContext, workflow);
-        var threadContext = new ThreadContext(processContext, workflowContext, []);
+        var (processContext, threadContext) = CreateToolCallingContexts(scope);
         var caller = new ToolCallingTestModelCaller();
         var chatOptions = new ChatOptions { AdditionalProperties = [] };
 
         caller.InvokeSetupToolCalling(chatOptions, CreateToolCallingModel(), CreateToolCallingModelConfig(), processContext, threadContext, CreateModelCallNode("defined_tool"));
 
         Assert.Single(chatOptions.Tools ?? []);
+    }
+
+    [Fact]
+    public void Setup_tool_calling_provides_tools_that_have_no_context_path()
+    {
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddSingleton<IToolMethodRegistry>(new ToolMethodRegistry([(Func<string>)DefinedTool])));
+        using var scope = provider.CreateScope();
+
+        var (processContext, threadContext) = CreateToolCallingContexts(scope);
+        var caller = new ToolCallingTestModelCaller();
+        var chatOptions = new ChatOptions { AdditionalProperties = [] };
+
+        caller.InvokeSetupToolCalling(chatOptions, CreateToolCallingModel(), CreateToolCallingModelConfig(), processContext, threadContext, CreateModelCallNode("DefinedTool"));
+
+        Assert.Single(chatOptions.Tools ?? []);
+    }
+
+    [Theory]
+    [InlineData(true, 1)]
+    [InlineData(false, 0)]
+    public void Setup_tool_calling_honours_the_boolean_at_the_tool_context_path(bool provided, int expectedToolCount)
+    {
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddSingleton<IToolMethodRegistry>(new ToolMethodRegistry([(Func<string>)DefinedTool])));
+        using var scope = provider.CreateScope();
+
+        var (processContext, threadContext) = CreateToolCallingContexts(scope);
+        threadContext.NodeContext.Set("flags.allowTool", provided);
+
+        var caller = new ToolCallingTestModelCaller();
+        var chatOptions = new ChatOptions { AdditionalProperties = [] };
+        var node = CreateModelCallNode("DefinedTool", new Dictionary<string, string> { ["DefinedTool"] = "flags.allowTool" });
+
+        caller.InvokeSetupToolCalling(chatOptions, CreateToolCallingModel(), CreateToolCallingModelConfig(), processContext, threadContext, node);
+
+        Assert.Equal(expectedToolCount, (chatOptions.Tools ?? []).Count);
+    }
+
+    [Fact]
+    public void Setup_tool_calling_only_excludes_the_tools_whose_context_path_is_false()
+    {
+        using var provider = WorkflowRunner.BuildProvider(services =>
+            services.AddSingleton<IToolMethodRegistry>(new ToolMethodRegistry([(Func<string>)DefinedTool, (Func<string>)DefinedToolWithDisplayName]))
+        );
+        using var scope = provider.CreateScope();
+
+        var (processContext, threadContext) = CreateToolCallingContexts(scope);
+        threadContext.NodeContext.Set("flags.allowTool", false);
+
+        var caller = new ToolCallingTestModelCaller();
+        var chatOptions = new ChatOptions { AdditionalProperties = [] };
+        var node = CreateModelCallNode("DefinedTool,defined_tool", new Dictionary<string, string> { ["DefinedTool"] = "flags.allowTool" });
+
+        caller.InvokeSetupToolCalling(chatOptions, CreateToolCallingModel(), CreateToolCallingModelConfig(), processContext, threadContext, node);
+
+        var tool = Assert.Single(chatOptions.Tools ?? []);
+        Assert.Equal("defined_tool", tool.Name);
+    }
+
+    [Fact]
+    public void Setup_tool_calling_throws_when_the_tool_context_path_cannot_be_resolved()
+    {
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddSingleton<IToolMethodRegistry>(new ToolMethodRegistry([(Func<string>)DefinedTool])));
+        using var scope = provider.CreateScope();
+
+        var (processContext, threadContext) = CreateToolCallingContexts(scope);
+        var caller = new ToolCallingTestModelCaller();
+        var chatOptions = new ChatOptions { AdditionalProperties = [] };
+        var node = CreateModelCallNode("DefinedTool", new Dictionary<string, string> { ["DefinedTool"] = "flags.missing" });
+
+        var exception = Assert.Throws<SharpOMaticException>(() =>
+            caller.InvokeSetupToolCalling(chatOptions, CreateToolCallingModel(), CreateToolCallingModelConfig(), processContext, threadContext, node)
+        );
+
+        Assert.Contains("flags.missing", exception.Message);
+        Assert.Null(chatOptions.Tools);
+    }
+
+    [Fact]
+    public void Setup_tool_calling_throws_when_the_tool_context_path_is_not_a_boolean()
+    {
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddSingleton<IToolMethodRegistry>(new ToolMethodRegistry([(Func<string>)DefinedTool])));
+        using var scope = provider.CreateScope();
+
+        var (processContext, threadContext) = CreateToolCallingContexts(scope);
+        threadContext.NodeContext.Set("flags.allowTool", "true");
+
+        var caller = new ToolCallingTestModelCaller();
+        var chatOptions = new ChatOptions { AdditionalProperties = [] };
+        var node = CreateModelCallNode("DefinedTool", new Dictionary<string, string> { ["DefinedTool"] = "flags.allowTool" });
+
+        var exception = Assert.Throws<SharpOMaticException>(() =>
+            caller.InvokeSetupToolCalling(chatOptions, CreateToolCallingModel(), CreateToolCallingModelConfig(), processContext, threadContext, node)
+        );
+
+        Assert.Contains("boolean", exception.Message);
+        Assert.Null(chatOptions.Tools);
     }
 
     [Fact]
@@ -162,10 +222,35 @@ public sealed class ModelCallToolCallingUnitTests
         };
     }
 
-    private static ModelCallNodeEntity CreateModelCallNode(string selectedTools)
+    private static (ProcessContext ProcessContext, ThreadContext ThreadContext) CreateToolCallingContexts(IServiceScope scope)
+    {
+        var workflow = new WorkflowEntity
+        {
+            Id = Guid.NewGuid(),
+            Version = 1,
+            Name = "Tool workflow",
+            Description = "",
+            Nodes = [],
+            Connections = [],
+        };
+        var run = new Run
+        {
+            RunId = Guid.NewGuid(),
+            WorkflowId = workflow.Id,
+            Created = DateTime.UtcNow,
+            RunStatus = RunStatus.Running,
+        };
+        var processContext = new ProcessContext(scope, run, 100, null);
+        var workflowContext = new WorkflowContext(processContext, workflow);
+
+        return (processContext, new ThreadContext(processContext, workflowContext, []));
+    }
+
+    private static ModelCallNodeEntity CreateModelCallNode(string selectedTools, Dictionary<string, string>? toolContextPaths = null)
     {
         return new ModelCallNodeEntity
         {
+            ToolContextPaths = toolContextPaths ?? [],
             Id = Guid.NewGuid(),
             Version = 1,
             NodeType = NodeType.ModelCall,

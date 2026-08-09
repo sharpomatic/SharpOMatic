@@ -25,6 +25,7 @@ public class ModelCallNodeEntity : NodeEntity
     public bool DisableStreamReasoning { get; set; }
     public bool DisableStreamAssistantText { get; set; }
     public Dictionary<string, ModelCallToolAgUiOutputMode> ToolAgUiOutputModes { get; set; } = [];
+    public Dictionary<string, string> ToolContextPaths { get; set; } = [];
     public required string Instructions { get; set; }
     public required string Prompt { get; set; }
     public required string ChatInputPath { get; set; }

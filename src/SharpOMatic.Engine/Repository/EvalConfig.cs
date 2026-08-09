@@ -12,4 +12,6 @@ public class EvalConfig
     public required int MaxParallel { get; set; }
     public EvalRunRowScoreMode RowScoreMode { get; set; } = EvalRunRowScoreMode.FirstGrader;
     public EvalRunScoreMode RunScoreMode { get; set; } = EvalRunScoreMode.AverageScore;
+    public bool IncludeAgUiOutput { get; set; }
+    public string? AgUiOutputPath { get; set; }
 }

@@ -445,6 +445,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             DisableStreamReasoning = Node.DisableStreamReasoning,
             DisableStreamAssistantText = Node.DisableStreamAssistantText,
             ToolAgUiOutputModes = new Dictionary<string, ModelCallToolAgUiOutputMode>(Node.ToolAgUiOutputModes, StringComparer.Ordinal),
+            ToolContextPaths = new Dictionary<string, string>(Node.ToolContextPaths, StringComparer.Ordinal),
             Instructions = Node.Instructions,
             Prompt = Node.Prompt,
             ChatInputPath = Node.ChatInputPath,

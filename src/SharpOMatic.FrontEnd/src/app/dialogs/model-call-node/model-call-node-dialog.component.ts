@@ -854,6 +854,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
     } else {
       selectedTools.delete(toolName);
       this.removeToolAgUiOutputMode(toolName);
+      this.removeToolContextPath(toolName);
     }
 
     const ordered = this.toolDisplayNames.filter((name) =>
@@ -895,12 +896,35 @@ export class ModelCallNodeDialogComponent implements OnInit {
     });
   }
 
+  public getToolContextPath(toolName: string): string {
+    return this.node.toolContextPaths()[toolName] ?? '';
+  }
+
+  public onToolContextPathChange(toolName: string, path: string): void {
+    const trimmed = (path ?? '').trim();
+
+    this.node.toolContextPaths.update((current) => {
+      const next = { ...current };
+      if (trimmed.length === 0) {
+        delete next[toolName];
+      } else {
+        next[toolName] = trimmed;
+      }
+
+      return next;
+    });
+  }
+
   public toolId(toolName: string): string {
     return `tool-${toolName.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
   }
 
   public toolAgUiOutputId(toolName: string): string {
     return `tool-ag-ui-output-${toolName.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+  }
+
+  public toolContextPathId(toolName: string): string {
+    return `tool-context-path-${toolName.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
   }
 
   private getSelectedTools(): Set<string> {
@@ -914,6 +938,18 @@ export class ModelCallNodeDialogComponent implements OnInit {
 
   private removeToolAgUiOutputMode(toolName: string): void {
     this.node.toolAgUiOutputModes.update((current) => {
+      if (!(toolName in current)) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[toolName];
+      return next;
+    });
+  }
+
+  private removeToolContextPath(toolName: string): void {
+    this.node.toolContextPaths.update((current) => {
       if (!(toolName in current)) {
         return current;
       }
