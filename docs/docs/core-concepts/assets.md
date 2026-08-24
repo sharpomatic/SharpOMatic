@@ -132,6 +132,12 @@ These examples assume you have resolved **IAssetService** and **IRepositoryServi
   context.Set("input.transcript", conversationAssetRef);
 ```
 
+## Viewing assets in the editor
+
+Asset content is always served by the editor API at `api/assets/{id}/content`, whichever store is configured. No store ever hands the browser a direct link to the underlying file or blob, so a store reachable only by the server works exactly like a local one.
+
+The editor reads that endpoint through its HTTP client rather than pointing an image tag at it, and renders the bytes it receives. This matters for hosts that require authentication, because only requests made through the HTTP client carry the bearer token supplied by `window.sharpomaticAuth`; an image tag pointing at the API would make an unauthenticated browser request and fail to display.
+
 ## Storage
 
 During application configuration, you need to specify how assets will be stored.

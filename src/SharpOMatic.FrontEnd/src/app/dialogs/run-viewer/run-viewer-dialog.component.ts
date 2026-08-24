@@ -196,7 +196,6 @@ export class RunViewerDialogComponent implements OnInit {
         assetId: asset.assetId,
         title: asset.name,
         fileName: asset.name,
-        imageUrl: this.serverRepository.getAssetContentUrl(asset.assetId),
         altText: asset.name,
       },
       class: 'modal-fullscreen asset-preview-modal',

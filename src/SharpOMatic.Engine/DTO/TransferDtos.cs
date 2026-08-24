@@ -65,7 +65,12 @@ public class TransferAssetPayload
     public required string MediaType { get; set; }
     public required DateTime Created { get; set; }
     public required long SizeBytes { get; set; }
-    public required string ContentBase64 { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ContentBase64 { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ContentText { get; set; }
 }
 
 public class TransferImportFile

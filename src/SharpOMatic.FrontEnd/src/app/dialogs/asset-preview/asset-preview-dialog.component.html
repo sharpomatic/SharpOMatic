@@ -3,7 +3,12 @@
 >
   <h4 class="modal-title">{{ title }}</h4>
   <div class="d-flex align-items-center gap-2">
-    <button type="button" class="btn btn-primary" (click)="download()">
+    <button
+      type="button"
+      class="btn btn-primary"
+      [disabled]="isLoading || loadFailed"
+      (click)="download()"
+    >
       Download
     </button>
     <button type="button" class="btn btn-primary" (click)="close()">
@@ -12,5 +17,11 @@
   </div>
 </div>
 <div class="modal-body asset-preview-body bg-body-tertiary">
-  <img [src]="imageUrl" [alt]="altText" />
+  @if (isLoading) {
+    <em>Loading...</em>
+  } @else if (loadFailed) {
+    <em>The image could not be loaded.</em>
+  } @else {
+    <img [src]="imageUrl" [alt]="altText" />
+  }
 </div>

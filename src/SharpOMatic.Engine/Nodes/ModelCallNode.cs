@@ -1100,10 +1100,9 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             if (string.IsNullOrWhiteSpace(toolName))
                 return ModelCallToolAgUiOutputMode.Inherit;
 
-            var modes = node.ToolAgUiOutputModes;
-            return (modes is not null) && modes.TryGetValue(toolName.Trim(), out var mode)
-                ? mode
-                : ModelCallToolAgUiOutputMode.Inherit;
+            // The model reports the bare tool name, so the lookup has to tolerate a node whose keys are class
+            // qualified as well as one saved before class names existed.
+            return ToolSelectionHelper.TryGetToolSetting(node.ToolAgUiOutputModes, toolName, out var mode) ? mode : ModelCallToolAgUiOutputMode.Inherit;
         }
 
         private async Task UpsertInformationAsync(string key, InformationType informationType, string text, string? data)

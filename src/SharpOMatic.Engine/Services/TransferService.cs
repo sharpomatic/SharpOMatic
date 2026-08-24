@@ -16,6 +16,35 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
     private const string AssetType = "asset";
     private const string RepeatCsvColumnName = "Repeat";
 
+    private static readonly HashSet<string> TextTransferExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".cfg",
+        ".conf",
+        ".csv",
+        ".css",
+        ".env",
+        ".gql",
+        ".graphql",
+        ".htm",
+        ".html",
+        ".ini",
+        ".js",
+        ".json",
+        ".jsonl",
+        ".log",
+        ".md",
+        ".ndjson",
+        ".properties",
+        ".sql",
+        ".toml",
+        ".ts",
+        ".tsv",
+        ".txt",
+        ".xml",
+        ".yaml",
+        ".yml",
+    };
+    private static readonly Encoding StrictUtf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { Converters = { new NodeEntityConverter() } };
 
     public async Task ExportAsync(TransferExportRequest request, Stream output, CancellationToken cancellationToken = default)
@@ -112,6 +141,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             await using var assetStream = await assetStore.OpenReadAsync(asset.StorageKey, cancellationToken);
             using var memory = new MemoryStream();
             await assetStream.CopyToAsync(memory, cancellationToken);
+            var content = memory.ToArray();
+            var contentText = IsTextTransferAsset(asset.Name) ? DecodeUtf8OrNull(content) : null;
 
             var payload = new TransferAssetPayload
             {
@@ -121,7 +152,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                 MediaType = asset.MediaType,
                 Created = asset.Created,
                 SizeBytes = asset.SizeBytes,
-                ContentBase64 = Convert.ToBase64String(memory.ToArray()),
+                ContentBase64 = contentText is null ? Convert.ToBase64String(content) : null,
+                ContentText = contentText,
             };
 
             await WriteEnvelopeEntryAsync(archive, BuildJsonEntryName(AssetDirectory, asset.Name, asset.AssetId), AssetType, payload, exportedUtc, cancellationToken);
@@ -316,14 +348,26 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             folderId = folder.FolderId;
         }
 
+        var hasBase64Content = payload.ContentBase64 is not null;
+        var hasTextContent = payload.ContentText is not null;
+        if (hasBase64Content == hasTextContent)
+            throw new SharpOMaticException($"Transfer file '{sourceName}' must specify exactly one of contentBase64 or contentText.");
+
         byte[] content;
-        try
+        if (hasTextContent)
         {
-            content = Convert.FromBase64String(payload.ContentBase64);
+            content = Encoding.UTF8.GetBytes(payload.ContentText!);
         }
-        catch (FormatException exception)
+        else
         {
-            throw new SharpOMaticException($"Transfer file '{sourceName}' has invalid asset content: {exception.Message}");
+            try
+            {
+                content = Convert.FromBase64String(payload.ContentBase64!);
+            }
+            catch (FormatException exception)
+            {
+                throw new SharpOMaticException($"Transfer file '{sourceName}' has invalid asset content: {exception.Message}");
+            }
         }
 
         var storageKey = AssetStorageKey.ForLibrary(payload.AssetId, folderId);
@@ -348,6 +392,23 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
 
         await repositoryService.UpsertAsset(asset);
         return new TransferImportResult { AssetsImported = 1 };
+    }
+
+    private static bool IsTextTransferAsset(string name)
+    {
+        return TextTransferExtensions.Contains(Path.GetExtension(name));
+    }
+
+    private static string? DecodeUtf8OrNull(byte[] content)
+    {
+        try
+        {
+            return StrictUtf8.GetString(content);
+        }
+        catch (DecoderFallbackException)
+        {
+            return null;
+        }
     }
 
     private async Task<List<Asset>> ResolveAssetsAsync(TransferSelection? selection)

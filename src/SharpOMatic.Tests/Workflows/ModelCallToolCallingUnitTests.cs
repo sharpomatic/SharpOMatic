@@ -16,11 +16,137 @@ public sealed class ModelCallToolCallingUnitTests
     }
 
     [Fact]
-    public void Tool_registry_rejects_duplicate_display_names()
+    public void Tool_registry_rejects_duplicate_tool_names_in_the_same_class()
     {
         var exception = Assert.Throws<InvalidOperationException>(() => new ToolMethodRegistry([(Func<string>)DefinedToolWithDisplayName, (Func<string>)DuplicateDefinedToolWithDisplayName]));
 
         Assert.Contains("defined_tool", exception.Message);
+    }
+
+    [Fact]
+    public void Tool_registry_allows_the_same_tool_name_from_different_classes()
+    {
+        var registry = new ToolMethodRegistry([(Func<string>)DefinedToolWithDisplayName, (Func<string>)AlternateTools.DefinedToolWithDisplayName]);
+
+        var descriptors = registry.GetToolMethods();
+
+        Assert.Equal(2, descriptors.Count);
+        Assert.Equal("defined_tool", Assert.Single(registry.GetToolDisplayNames()));
+        Assert.Contains(descriptors, descriptor => (descriptor.QualifiedName == "ModelCallToolCallingUnitTests.defined_tool") && descriptor.IsUnqualifiedMatch);
+        Assert.Contains(descriptors, descriptor => (descriptor.QualifiedName == "AlternateTools.defined_tool") && !descriptor.IsUnqualifiedMatch);
+    }
+
+    [Fact]
+    public void Tool_registry_resolves_a_qualified_selection_to_the_matching_class()
+    {
+        var registry = new ToolMethodRegistry([(Func<string>)DefinedToolWithDisplayName, (Func<string>)AlternateTools.DefinedToolWithDisplayName]);
+
+        var resolution = registry.ResolveTool("AlternateTools.defined_tool");
+
+        Assert.NotNull(resolution);
+        Assert.Equal("AlternateTools", resolution.Descriptor.ClassName);
+        Assert.Equal("defined_tool", resolution.Descriptor.ToolName);
+        Assert.Equal("alternate", Assert.IsType<Func<string>>(resolution.Method)());
+    }
+
+    [Fact]
+    public void Tool_registry_resolves_an_unqualified_selection_to_the_first_registered_tool()
+    {
+        var registry = new ToolMethodRegistry([(Func<string>)AlternateTools.DefinedToolWithDisplayName, (Func<string>)DefinedToolWithDisplayName]);
+
+        var resolution = registry.ResolveTool("defined_tool");
+
+        Assert.NotNull(resolution);
+        Assert.Equal("AlternateTools", resolution.Descriptor.ClassName);
+        Assert.Equal("alternate", Assert.IsType<Func<string>>(resolution.Method)());
+    }
+
+    [Fact]
+    public void Tool_registry_leaves_a_lambda_tool_unqualified()
+    {
+        var registry = new ToolMethodRegistry([(Func<string>)(() => "lambda")]);
+
+        var descriptor = Assert.Single(registry.GetToolMethods());
+
+        Assert.Equal(string.Empty, descriptor.ClassName);
+        Assert.Equal(descriptor.ToolName, descriptor.QualifiedName);
+    }
+
+    [Fact]
+    public void Setup_tool_calling_presents_the_unqualified_tool_name_to_the_model()
+    {
+        using var provider = WorkflowRunner.BuildProvider(services =>
+            services.AddSingleton<IToolMethodRegistry>(new ToolMethodRegistry([(Func<string>)DefinedToolWithDisplayName, (Func<string>)AlternateTools.DefinedToolWithDisplayName]))
+        );
+        using var scope = provider.CreateScope();
+
+        var (processContext, threadContext) = CreateToolCallingContexts(scope);
+        var caller = new ToolCallingTestModelCaller();
+        var chatOptions = new ChatOptions { AdditionalProperties = [] };
+
+        caller.InvokeSetupToolCalling(chatOptions, CreateToolCallingModel(), CreateToolCallingModelConfig(), processContext, threadContext, CreateModelCallNode("AlternateTools.defined_tool"));
+
+        var tool = Assert.Single(chatOptions.Tools ?? []);
+        Assert.Equal("defined_tool", tool.Name);
+    }
+
+    [Fact]
+    public void Setup_tool_calling_throws_when_two_selected_tools_share_a_tool_name()
+    {
+        using var provider = WorkflowRunner.BuildProvider(services =>
+            services.AddSingleton<IToolMethodRegistry>(new ToolMethodRegistry([(Func<string>)DefinedToolWithDisplayName, (Func<string>)AlternateTools.DefinedToolWithDisplayName]))
+        );
+        using var scope = provider.CreateScope();
+
+        var (processContext, threadContext) = CreateToolCallingContexts(scope);
+        var caller = new ToolCallingTestModelCaller();
+        var chatOptions = new ChatOptions { AdditionalProperties = [] };
+        var node = CreateModelCallNode("ModelCallToolCallingUnitTests.defined_tool,AlternateTools.defined_tool");
+
+        var exception = Assert.Throws<SharpOMaticException>(() =>
+            caller.InvokeSetupToolCalling(chatOptions, CreateToolCallingModel(), CreateToolCallingModelConfig(), processContext, threadContext, node)
+        );
+
+        Assert.Contains("defined_tool", exception.Message);
+        Assert.Null(chatOptions.Tools);
+    }
+
+    [Fact]
+    public void Setup_tool_calling_honours_a_context_path_keyed_by_the_unqualified_tool_name()
+    {
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddSingleton<IToolMethodRegistry>(new ToolMethodRegistry([(Func<string>)DefinedTool])));
+        using var scope = provider.CreateScope();
+
+        var (processContext, threadContext) = CreateToolCallingContexts(scope);
+        threadContext.NodeContext.Set("flags.allowTool", false);
+
+        var caller = new ToolCallingTestModelCaller();
+        var chatOptions = new ChatOptions { AdditionalProperties = [] };
+        var node = CreateModelCallNode("ModelCallToolCallingUnitTests.DefinedTool", new Dictionary<string, string> { ["DefinedTool"] = "flags.allowTool" });
+
+        caller.InvokeSetupToolCalling(chatOptions, CreateToolCallingModel(), CreateToolCallingModelConfig(), processContext, threadContext, node);
+
+        Assert.Null(chatOptions.Tools);
+    }
+
+    [Theory]
+    [InlineData("Weather.get_time", "get_time")]
+    [InlineData("get_time", "Weather.get_time")]
+    [InlineData("get_time", "get_time")]
+    public void Tool_setting_lookup_matches_across_qualified_and_unqualified_keys(string settingKey, string lookup)
+    {
+        var settings = new Dictionary<string, string> { [settingKey] = "flags.allowTool" };
+
+        Assert.True(ToolSelectionHelper.TryGetToolSetting(settings, lookup, out var value));
+        Assert.Equal("flags.allowTool", value);
+    }
+
+    [Fact]
+    public void Tool_setting_lookup_does_not_match_a_different_tool_name()
+    {
+        var settings = new Dictionary<string, string> { ["Weather.get_time"] = "flags.allowTool" };
+
+        Assert.False(ToolSelectionHelper.TryGetToolSetting(settings, "Weather.get_forecast", out _));
     }
 
     [Fact]
@@ -184,6 +310,12 @@ public sealed class ModelCallToolCallingUnitTests
 
     [System.ComponentModel.DisplayName("defined_tool")]
     private static string DuplicateDefinedToolWithDisplayName() => "duplicate";
+
+    private static class AlternateTools
+    {
+        [System.ComponentModel.DisplayName("defined_tool")]
+        public static string DefinedToolWithDisplayName() => "alternate";
+    }
 
     private static string NeedsUserInput()
     {

@@ -55,6 +55,31 @@ Tool methods can use `System.ComponentModel.DisplayNameAttribute` to expose a di
     }
 ```
 
+## Tools that share a name
+
+The tool table lists the declaring **Class** alongside each tool, so two tools with the same name coming from different classes can be told apart. This lets one class provide a `get_status` intended for one model call node while another class provides its own `get_status` for a different node.
+
+```csharp
+  builder.Services.AddSharpOMaticEngine()
+     .AddToolMethods(EstimateTools.GetStatus, OrderTools.GetStatus);
+```
+
+The selection is stored as `Class.Tool`, so the example above records either `EstimateTools.GetStatus` or `OrderTools.GetStatus`. The class name is a configuration detail only; the model is always told the plain tool name, because model providers restrict function names to letters, digits, underscores and hyphens.
+
+Two tools may share a tool name only if they come from different classes. Registering the same tool name twice from the same class is a setup error and fails at startup.
+
+Because the model only ever sees the plain tool name, a single model call node cannot offer two tools that share a name. Selecting both is a configuration error and the model call fails with a message naming the two selections. Tools authored as lambdas or local functions have no useful class name, so they stay unqualified.
+
+### Existing workflows
+
+Workflows saved before class names were recorded store the plain tool name, and keep working:
+
+- A selection with no class name matches the first tool registered with that name, in `AddToolMethods` order.
+- A selection with a class name must match that exact class.
+- Per-tool **AG-UI Output** and **Context Path** settings are found whether they were saved against the plain name or the class qualified name.
+
+Nothing is rewritten when a node is merely opened. The next time the tool selection on a node is changed, that node's selections and per-tool settings are saved in the class qualified form. Selections that match no registered tool are left untouched, so a workflow imported into a host that defines only some of the original tools does not lose the rest of its configuration.
+
 ## Per-tool AG-UI output
 
 Each selected tool has an **AG-UI Output** dropdown in the tool table.

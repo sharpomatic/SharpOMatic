@@ -5,8 +5,8 @@ namespace SharpOMatic.Editor.Controllers;
 public class ToolController : ControllerBase
 {
     [HttpGet]
-    public IEnumerable<string> GetToolDisplayNames(IToolMethodRegistry toolMethodRegistry)
+    public IEnumerable<ToolMethodDescriptor> GetToolMethods(IToolMethodRegistry toolMethodRegistry)
     {
-        return toolMethodRegistry.GetToolDisplayNames();
+        return toolMethodRegistry.GetToolMethods();
     }
 }

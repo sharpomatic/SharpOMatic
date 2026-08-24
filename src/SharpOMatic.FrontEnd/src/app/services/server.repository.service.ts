@@ -20,6 +20,7 @@ import { InformationProgressModel } from '../pages/workflow/interfaces/informati
 import { StreamEventModel } from '../pages/workflow/interfaces/stream-event-model';
 import { Setting } from '../pages/settings/interfaces/setting';
 import { ContextEntryListEntity } from '../entities/definitions/context-entry-list.entity';
+import { ToolMethodDescriptor } from '../dto/tool-method-descriptor';
 import {
   ConnectorConfig,
   ConnectorConfigSnapshot,
@@ -1368,11 +1369,11 @@ export class ServerRepositoryService {
     );
   }
 
-  public getToolDisplayNames(): Observable<string[]> {
+  public getToolMethods(): Observable<ToolMethodDescriptor[]> {
     const apiUrl = this.settingsService.apiUrl();
-    return this.http.get<string[]>(`${apiUrl}/api/tool`).pipe(
+    return this.http.get<ToolMethodDescriptor[]>(`${apiUrl}/api/tool`).pipe(
       catchError((error) => {
-        this.notifyError('Loading tool display names', error);
+        this.notifyError('Loading tool methods', error);
         return of([]);
       }),
     );
@@ -1686,11 +1687,6 @@ export class ServerRepositoryService {
           return of(false);
         }),
       );
-  }
-
-  public getAssetContentUrl(assetId: string): string {
-    const apiUrl = this.settingsService.apiUrl();
-    return `${apiUrl}/api/assets/${encodeURIComponent(assetId)}/content`;
   }
 
   public importTransferZip(file: File): Observable<TransferImportResult> {

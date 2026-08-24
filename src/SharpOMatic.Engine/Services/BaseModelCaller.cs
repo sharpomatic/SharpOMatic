@@ -515,22 +515,27 @@ public abstract class BaseModelCaller : IModelCaller
                     : [threadContext.NodeContext, new StreamEventHelper(processContext, threadContext.NodeContext), modelCallExitState];
                 agentServiceProvider = new OverlayServiceProvider(agentServiceProvider, localServices);
 
-                var toolNames = selectedTools.Split(',');
                 List<AITool> tools = [];
-                foreach (var toolName in toolNames)
+                var selectionsByToolName = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var selectedTool in ToolSelectionHelper.ParseSelectedTools(selectedTools))
                 {
-                    var normalizedToolName = toolName.Trim();
-                    if (string.IsNullOrWhiteSpace(normalizedToolName))
+                    if (!IsToolProvided(threadContext, node, selectedTool))
                         continue;
 
-                    if (!IsToolProvided(threadContext, node, normalizedToolName))
+                    var resolution = processContext.ToolMethodRegistry.ResolveTool(selectedTool);
+                    if (resolution is null)
                         continue;
 
-                    var toolDelegate = processContext.ToolMethodRegistry.GetToolFromDisplayName(normalizedToolName);
-                    if (toolDelegate is null)
-                        continue;
+                    // Providers restrict function names to letters, digits, underscores and hyphens, so the model is
+                    // always given the bare tool name even when the selection is class qualified.
+                    var toolName = resolution.Descriptor.ToolName;
+                    if (selectionsByToolName.TryGetValue(toolName, out var existingSelection))
+                        throw new SharpOMaticException(
+                            $"Selected tools '{existingSelection}' and '{selectedTool}' both present the tool name '{toolName}' to the model. Select only one of them on this model call node."
+                        );
 
-                    tools.Add(AIFunctionFactory.Create(toolDelegate, normalizedToolName));
+                    selectionsByToolName[toolName] = selectedTool;
+                    tools.Add(AIFunctionFactory.Create(resolution.Method, toolName));
                 }
 
                 if (tools.Count > 0)
@@ -560,7 +565,7 @@ public abstract class BaseModelCaller : IModelCaller
 
     private static bool IsToolProvided(ThreadContext threadContext, ModelCallNodeEntity node, string toolName)
     {
-        if (!node.ToolContextPaths.TryGetValue(toolName, out var contextPath) || string.IsNullOrWhiteSpace(contextPath))
+        if (!ToolSelectionHelper.TryGetToolSetting(node.ToolContextPaths, toolName, out var contextPath) || string.IsNullOrWhiteSpace(contextPath))
             return true;
 
         var path = contextPath.Trim();

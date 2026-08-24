@@ -346,7 +346,6 @@ export class AssetsComponent implements AfterViewInit {
         assetId: asset.assetId,
         title: asset.name,
         fileName: asset.name,
-        imageUrl: this.serverRepository.getAssetContentUrl(asset.assetId),
         altText: asset.name,
       },
       class: 'modal-fullscreen asset-preview-modal',

@@ -59,7 +59,14 @@ Runs that are still running at export time are skipped because they cannot be re
 
 Transfers only include library assets.
 Run-scoped and conversation-scoped assets are excluded.
-Asset binaries are included as base64 content inside each asset transfer JSON file.
+Assets with the following extensions are included as readable text in the `contentText` field when they contain valid UTF-8:
+
+`.txt`, `.md`, `.json`, `.jsonl`, `.ndjson`, `.yaml`, `.yml`, `.toml`, `.xml`, `.csv`, `.tsv`, `.html`, `.htm`, `.css`, `.js`, `.ts`, `.graphql`, `.gql`, `.sql`, `.ini`, `.cfg`, `.conf`, `.properties`, `.env`, and `.log`.
+
+Extension matching is case-insensitive.
+All other assets are included as base64 content in the `contentBase64` field.
+If an asset with a recognized text extension does not contain valid UTF-8, it is exported as base64 so its original bytes are preserved.
+Each asset payload contains exactly one of `contentText` or `contentBase64`.
 When an imported asset specifies a folder name, the existing folder with that name is used or a new folder is created.
 
 ## Program Setup
@@ -96,7 +103,44 @@ Each exported file is self-describing:
 
 Workflow and asset payloads can include `folderName`.
 On import, missing workflow or library asset folders are created automatically.
-Asset payloads also include `mediaType`, `sizeBytes`, and `contentBase64`.
+Asset payloads also include `mediaType`, `sizeBytes`, and exactly one of `contentText` or `contentBase64`.
+Existing schema version 1 files that contain `contentBase64` remain supported.
+
+A UTF-8 text asset uses readable text:
+
+```json
+{
+  "schemaVersion": 1,
+  "type": "asset",
+  "exportedUtc": "2026-05-30T00:00:00Z",
+  "payload": {
+    "assetId": "00000000-0000-0000-0000-000000000001",
+    "name": "instructions.md",
+    "mediaType": "text/markdown",
+    "created": "2026-05-30T00:00:00Z",
+    "sizeBytes": 22,
+    "contentText": "First line\nSecond line"
+  }
+}
+```
+
+Binary content and non-UTF-8 text use base64:
+
+```json
+{
+  "schemaVersion": 1,
+  "type": "asset",
+  "exportedUtc": "2026-05-30T00:00:00Z",
+  "payload": {
+    "assetId": "00000000-0000-0000-0000-000000000002",
+    "name": "logo.png",
+    "mediaType": "image/png",
+    "created": "2026-05-30T00:00:00Z",
+    "sizeBytes": 4,
+    "contentBase64": "iVBORw=="
+  }
+}
+```
 
 ## Controller
 

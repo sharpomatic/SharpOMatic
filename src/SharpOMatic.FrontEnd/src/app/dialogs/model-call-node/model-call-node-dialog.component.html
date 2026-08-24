@@ -507,50 +507,65 @@
             >Available Tools</label
           >
           <div class="flex-fill control-column extra-long">
-            @if (toolDisplayNames.length) {
+            @if (toolMethods.length) {
               <table
                 class="table table-sm table-hover align-middle tool-calling-table"
               >
                 <thead>
                   <tr>
                     <th scope="col">Tool</th>
+                    <th scope="col">Class</th>
                     <th scope="col">AG-UI Output</th>
                     <th scope="col">Context Path</th>
                   </tr>
                 </thead>
                 <tbody>
-                  @for (toolName of toolDisplayNames; track toolName) {
+                  @for (tool of toolMethods; track tool.qualifiedName) {
                     <tr>
                       <td>
                         <div class="form-check">
                           <input
                             class="form-check-input"
                             type="checkbox"
-                            [id]="toolId(toolName)"
-                            [checked]="isToolSelected(toolName)"
+                            [id]="toolId(tool.qualifiedName)"
+                            [checked]="isToolSelected(tool.qualifiedName)"
                             (change)="
                               onToolSelectionChange(
-                                toolName,
+                                tool.qualifiedName,
                                 $any($event.target).checked
                               )
                             "
                           />
                           <label
                             class="form-check-label"
-                            [for]="toolId(toolName)"
+                            [for]="toolId(tool.qualifiedName)"
                           >
-                            {{ toolName }}
+                            {{ tool.toolName }}
                           </label>
                         </div>
                       </td>
                       <td>
-                        @if (isToolSelected(toolName)) {
+                        @if (tool.className) {
+                          <span class="text-body-secondary">{{
+                            tool.className
+                          }}</span>
+                        } @else {
+                          <span class="text-body-secondary">&mdash;</span>
+                        }
+                      </td>
+                      <td>
+                        @if (isToolSelected(tool.qualifiedName)) {
                           <select
                             class="form-select form-select-sm tool-ag-ui-output-select"
-                            [id]="toolAgUiOutputId(toolName)"
-                            [ngModel]="getToolAgUiOutputMode(toolName)"
+                            [id]="toolAgUiOutputId(tool.qualifiedName)"
+                            [ngModel]="
+                              getToolAgUiOutputMode(tool.qualifiedName)
+                            "
                             (ngModelChange)="
-                              onToolAgUiOutputModeChange(toolName, $event)
+                              onToolAgUiOutputModeChange(
+                                tool.qualifiedName,
+                                $event
+                              )
                             "
                           >
                             @for (
@@ -565,14 +580,17 @@
                         }
                       </td>
                       <td>
-                        @if (isToolSelected(toolName)) {
+                        @if (isToolSelected(tool.qualifiedName)) {
                           <input
                             type="text"
                             class="form-control form-control-sm tool-context-path-input"
-                            [id]="toolContextPathId(toolName)"
-                            [ngModel]="getToolContextPath(toolName)"
+                            [id]="toolContextPathId(tool.qualifiedName)"
+                            [ngModel]="getToolContextPath(tool.qualifiedName)"
                             (ngModelChange)="
-                              onToolContextPathChange(toolName, $event)
+                              onToolContextPathChange(
+                                tool.qualifiedName,
+                                $event
+                              )
                             "
                           />
                         }

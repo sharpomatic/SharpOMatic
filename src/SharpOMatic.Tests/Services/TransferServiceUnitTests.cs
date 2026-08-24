@@ -60,7 +60,71 @@ public sealed class TransferServiceUnitTests
         Assert.Equal("fast", exportedModel.ParameterValues["mode"]);
         Assert.Equal(asset.AssetId, exportedAsset.AssetId);
         Assert.Equal(folder.Name, exportedAsset.FolderName);
-        Assert.Equal(assetBytes, Convert.FromBase64String(exportedAsset.ContentBase64));
+        Assert.Null(exportedAsset.ContentBase64);
+        Assert.Equal("asset-content", exportedAsset.ContentText);
+        Assert.DoesNotContain("\"contentBase64\"", JsonSerializer.Serialize(exportedAsset, JsonOptions));
+    }
+
+    [Theory]
+    [InlineData("notes.TXT")]
+    [InlineData("instructions.Md")]
+    [InlineData("settings.json")]
+    [InlineData("events.jsonl")]
+    [InlineData("events.ndjson")]
+    [InlineData("settings.yaml")]
+    [InlineData("settings.yml")]
+    [InlineData("settings.toml")]
+    [InlineData("document.xml")]
+    [InlineData("data.csv")]
+    [InlineData("data.tsv")]
+    [InlineData("page.html")]
+    [InlineData("page.htm")]
+    [InlineData("styles.css")]
+    [InlineData("script.js")]
+    [InlineData("script.ts")]
+    [InlineData("query.graphql")]
+    [InlineData("query.gql")]
+    [InlineData("query.sql")]
+    [InlineData("settings.ini")]
+    [InlineData("settings.cfg")]
+    [InlineData("settings.conf")]
+    [InlineData("messages.properties")]
+    [InlineData("local.env")]
+    [InlineData("application.log")]
+    public async Task Export_writes_utf8_text_assets_as_text(string name)
+    {
+        const string text = "First line\r\nSecond line café 😀";
+        var folder = CreateAssetFolder();
+        var asset = CreateAsset(folder.FolderId, name);
+        var exportedAsset = await ExportAsset(asset, folder, Encoding.UTF8.GetBytes(text));
+
+        Assert.Equal(text, exportedAsset.ContentText);
+        Assert.Null(exportedAsset.ContentBase64);
+    }
+
+    [Fact]
+    public async Task Export_falls_back_to_base64_when_text_asset_is_not_valid_utf8()
+    {
+        var content = new byte[] { 0xC3, 0x28 };
+        var folder = CreateAssetFolder();
+        var asset = CreateAsset(folder.FolderId, "invalid.txt");
+        var exportedAsset = await ExportAsset(asset, folder, content);
+
+        Assert.Null(exportedAsset.ContentText);
+        Assert.Equal(content, Convert.FromBase64String(exportedAsset.ContentBase64!));
+        Assert.DoesNotContain("\"contentText\"", JsonSerializer.Serialize(exportedAsset, JsonOptions));
+    }
+
+    [Fact]
+    public async Task Export_keeps_binary_assets_as_base64()
+    {
+        var content = new byte[] { 0x00, 0x01, 0x02, 0xFF };
+        var folder = CreateAssetFolder();
+        var asset = CreateAsset(folder.FolderId, "content.bin", "application/octet-stream");
+        var exportedAsset = await ExportAsset(asset, folder, content);
+
+        Assert.Null(exportedAsset.ContentText);
+        Assert.Equal(content, Convert.FromBase64String(exportedAsset.ContentBase64!));
     }
 
     [Fact]
@@ -154,6 +218,72 @@ public sealed class TransferServiceUnitTests
         Assert.Equal(importedFolder?.FolderId, importedAsset?.FolderId);
         Assert.Equal(AssetStorageKey.ForLibrary(asset.AssetId, importedFolder?.FolderId), importedAsset?.StorageKey);
         Assert.Equal(assetBytes, savedAssetBytes);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("First line\r\nSecond line café 😀")]
+    public async Task Import_accepts_text_content_and_saves_utf8_bytes(string text)
+    {
+        var assetId = Guid.NewGuid();
+        var payload = new TransferAssetPayload
+        {
+            AssetId = assetId,
+            Name = "instructions.md",
+            MediaType = "text/markdown",
+            Created = DateTime.UtcNow,
+            SizeBytes = 999,
+            ContentText = text,
+        };
+        await using var input = CreateEnvelopeStream("asset", payload);
+
+        Asset? importedAsset = null;
+        byte[]? savedAssetBytes = null;
+        var repository = new Mock<IRepositoryService>();
+        repository.Setup(service => service.UpsertAsset(It.IsAny<Asset>())).Callback<Asset>(asset => importedAsset = asset).Returns(Task.CompletedTask);
+        var assetStore = new Mock<IAssetStore>();
+        assetStore
+            .Setup(store => store.SaveAsync(It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .Callback<string, Stream, CancellationToken>(
+                (_, stream, _) =>
+                {
+                    using var memory = new MemoryStream();
+                    stream.CopyTo(memory);
+                    savedAssetBytes = memory.ToArray();
+                }
+            )
+            .Returns(Task.CompletedTask);
+
+        var transferService = new TransferService(repository.Object, assetStore.Object);
+        var result = await transferService.ImportJsonAsync(input);
+        var expectedBytes = Encoding.UTF8.GetBytes(text);
+
+        Assert.Equal(1, result.AssetsImported);
+        Assert.Equal(expectedBytes, savedAssetBytes);
+        Assert.Equal(expectedBytes.LongLength, importedAsset?.SizeBytes);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task Import_rejects_assets_without_exactly_one_content_representation(bool includeBase64, bool includeText)
+    {
+        var payload = new TransferAssetPayload
+        {
+            AssetId = Guid.NewGuid(),
+            Name = "instructions.txt",
+            MediaType = "text/plain",
+            Created = DateTime.UtcNow,
+            SizeBytes = 7,
+            ContentBase64 = includeBase64 ? Convert.ToBase64String("content"u8) : null,
+            ContentText = includeText ? "content" : null,
+        };
+        await using var input = CreateEnvelopeStream("asset", payload);
+        var transferService = new TransferService(Mock.Of<IRepositoryService>(), Mock.Of<IAssetStore>());
+
+        var exception = await Assert.ThrowsAsync<SharpOMaticException>(() => transferService.ImportJsonAsync(input));
+
+        Assert.Contains("exactly one of contentBase64 or contentText", exception.Message);
     }
 
     [Fact]
@@ -688,7 +818,24 @@ public sealed class TransferServiceUnitTests
         };
     }
 
-    private static Asset CreateAsset(Guid folderId)
+    private static async Task<TransferAssetPayload> ExportAsset(Asset asset, AssetFolder folder, byte[] content)
+    {
+        var repository = new Mock<IRepositoryService>();
+        repository.Setup(service => service.GetAsset(asset.AssetId)).ReturnsAsync(asset);
+        repository.Setup(service => service.GetAssetFolder(folder.FolderId)).ReturnsAsync(folder);
+        var assetStore = new Mock<IAssetStore>();
+        assetStore.Setup(store => store.OpenReadAsync(asset.StorageKey, It.IsAny<CancellationToken>())).ReturnsAsync(() => new MemoryStream(content));
+
+        var transferService = new TransferService(repository.Object, assetStore.Object);
+        await using var output = new MemoryStream();
+        await transferService.ExportAsync(new TransferExportRequest { Assets = new TransferSelection { Ids = [asset.AssetId] } }, output);
+
+        output.Position = 0;
+        using var archive = new ZipArchive(output, ZipArchiveMode.Read, leaveOpen: true);
+        return ReadEnvelopePayload<TransferAssetPayload>(archive, "assets/", "asset");
+    }
+
+    private static Asset CreateAsset(Guid folderId, string name = "input.txt", string mediaType = "text/plain")
     {
         var assetId = Guid.NewGuid();
         return new Asset
@@ -697,10 +844,10 @@ public sealed class TransferServiceUnitTests
             RunId = null,
             ConversationId = null,
             FolderId = folderId,
-            Name = "input.txt",
+            Name = name,
             Scope = AssetScope.Library,
             Created = DateTime.UtcNow,
-            MediaType = "text/plain",
+            MediaType = mediaType,
             SizeBytes = 13,
             StorageKey = AssetStorageKey.ForLibrary(assetId, folderId),
         };

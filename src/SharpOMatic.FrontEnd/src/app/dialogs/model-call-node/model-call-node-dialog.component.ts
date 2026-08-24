@@ -40,6 +40,7 @@ import { ModelPickerComponent } from '../../components/model-picker/model-picker
 import { ModelPickerOption } from '../../components/model-picker/model-picker-option';
 import { forkJoin } from 'rxjs';
 import { ModelCallToolAgUiOutputMode } from '../../entities/enumerations/model-call-tool-ag-ui-output-mode';
+import { ToolMethodDescriptor } from '../../dto/tool-method-descriptor';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import { ConfirmDialogComponent } from '../confirm/confirm-dialog.component';
 
@@ -85,7 +86,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
   public showTextOutFields = false;
   public structuredSchemaEditorOptions = MonacoService.editorOptionsJson;
   public typeSchemaNames: string[] = [];
-  public toolDisplayNames: string[] = [];
+  public toolMethods: ToolMethodDescriptor[] = [];
   public readonly toolAgUiOutputModeOptions = [
     { value: ModelCallToolAgUiOutputMode.Inherit, label: 'Inherit' },
     { value: ModelCallToolAgUiOutputMode.Always, label: 'Always' },
@@ -112,7 +113,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
   private readonly modelDetailsCache = new Map<string, Model>();
   private modelConfigsCache: ModelConfig[] = [];
   private typeSchemaNamesLoaded = false;
-  private toolDisplayNamesLoaded = false;
+  private toolMethodsLoaded = false;
 
   private readonly serverRepository = inject(ServerRepositoryService);
   private readonly modalService = inject(BsModalService);
@@ -637,7 +638,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
   public onParameterValuesChange(values: Record<string, string | null>): void {
     this.node.parameterValues.set(values);
     this.ensureTypeSchemaNamesLoaded();
-    this.ensureToolDisplayNamesLoaded();
+    this.ensureToolMethodsLoaded();
   }
 
   public get structuredOutputMode(): string {
@@ -828,55 +829,72 @@ export class ModelCallNodeDialogComponent implements OnInit {
     });
   }
 
-  private ensureToolDisplayNamesLoaded(): void {
+  private ensureToolMethodsLoaded(): void {
     if (!this.supportsToolCalling) {
       return;
     }
 
-    if (this.toolDisplayNamesLoaded) {
+    if (this.toolMethodsLoaded) {
       return;
     }
 
-    this.toolDisplayNamesLoaded = true;
-    this.serverRepository.getToolDisplayNames().subscribe((names) => {
-      this.toolDisplayNames = names ?? [];
+    this.toolMethodsLoaded = true;
+    this.serverRepository.getToolMethods().subscribe((methods) => {
+      this.toolMethods = methods ?? [];
     });
   }
 
-  public isToolSelected(toolName: string): boolean {
-    return this.getSelectedTools().has(toolName);
+  public isToolSelected(qualifiedName: string): boolean {
+    return this.getSelectedTools().has(qualifiedName);
   }
 
-  public onToolSelectionChange(toolName: string, selected: boolean): void {
+  public onToolSelectionChange(qualifiedName: string, selected: boolean): void {
     const selectedTools = this.getSelectedTools();
     if (selected) {
-      selectedTools.add(toolName);
+      selectedTools.add(qualifiedName);
     } else {
-      selectedTools.delete(toolName);
-      this.removeToolAgUiOutputMode(toolName);
-      this.removeToolContextPath(toolName);
+      selectedTools.delete(qualifiedName);
     }
 
-    const ordered = this.toolDisplayNames.filter((name) =>
-      selectedTools.has(name),
+    const known = new Set(
+      this.toolMethods.map((method) => method.qualifiedName),
     );
-    const value = ordered.join(',');
+    const ordered = this.toolMethods
+      .map((method) => method.qualifiedName)
+      .filter((name) => selectedTools.has(name));
+
+    // Entries that no registered tool matches are kept so a workflow imported into a host defining only a subset of
+    // the original tools does not lose the rest of its selection.
+    for (const entry of selectedTools) {
+      if (!known.has(entry)) {
+        ordered.push(entry);
+      }
+    }
 
     this.node.parameterValues.update((v) => ({
       ...v,
-      selected_tools: value,
+      selected_tools: ordered.join(','),
     }));
+
+    this.node.toolAgUiOutputModes.update((current) =>
+      this.rekeyToolSettings(current, selectedTools),
+    );
+    this.node.toolContextPaths.update((current) =>
+      this.rekeyToolSettings(current, selectedTools),
+    );
   }
 
-  public getToolAgUiOutputMode(toolName: string): ModelCallToolAgUiOutputMode {
+  public getToolAgUiOutputMode(
+    qualifiedName: string,
+  ): ModelCallToolAgUiOutputMode {
     return (
-      this.node.toolAgUiOutputModes()[toolName] ??
+      this.findToolSetting(this.node.toolAgUiOutputModes(), qualifiedName) ??
       ModelCallToolAgUiOutputMode.Inherit
     );
   }
 
   public onToolAgUiOutputModeChange(
-    toolName: string,
+    qualifiedName: string,
     mode: ModelCallToolAgUiOutputMode | string,
   ): void {
     const selectedMode =
@@ -885,79 +903,125 @@ export class ModelCallNodeDialogComponent implements OnInit {
         : mode;
 
     this.node.toolAgUiOutputModes.update((current) => {
-      const next = { ...current };
-      if (selectedMode === ModelCallToolAgUiOutputMode.Inherit) {
-        delete next[toolName];
-      } else {
-        next[toolName] = selectedMode;
+      const next = this.removeToolSetting(current, qualifiedName);
+      if (selectedMode !== ModelCallToolAgUiOutputMode.Inherit) {
+        next[qualifiedName] = selectedMode;
       }
 
       return next;
     });
   }
 
-  public getToolContextPath(toolName: string): string {
-    return this.node.toolContextPaths()[toolName] ?? '';
+  public getToolContextPath(qualifiedName: string): string {
+    return (
+      this.findToolSetting(this.node.toolContextPaths(), qualifiedName) ?? ''
+    );
   }
 
-  public onToolContextPathChange(toolName: string, path: string): void {
+  public onToolContextPathChange(qualifiedName: string, path: string): void {
     const trimmed = (path ?? '').trim();
 
     this.node.toolContextPaths.update((current) => {
-      const next = { ...current };
-      if (trimmed.length === 0) {
-        delete next[toolName];
-      } else {
-        next[toolName] = trimmed;
+      const next = this.removeToolSetting(current, qualifiedName);
+      if (trimmed.length > 0) {
+        next[qualifiedName] = trimmed;
       }
 
       return next;
     });
   }
 
-  public toolId(toolName: string): string {
-    return `tool-${toolName.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+  public toolId(qualifiedName: string): string {
+    return `tool-${qualifiedName.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
   }
 
-  public toolAgUiOutputId(toolName: string): string {
-    return `tool-ag-ui-output-${toolName.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+  public toolAgUiOutputId(qualifiedName: string): string {
+    return `tool-ag-ui-output-${qualifiedName.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
   }
 
-  public toolContextPathId(toolName: string): string {
-    return `tool-context-path-${toolName.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+  public toolContextPathId(qualifiedName: string): string {
+    return `tool-context-path-${qualifiedName.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
   }
 
   private getSelectedTools(): Set<string> {
     const raw = this.node.parameterValues()['selected_tools'] ?? '';
-    const parts = raw
+    const entries = raw
       .split(',')
       .map((p) => p.trim())
       .filter((p) => p.length > 0);
-    return new Set(parts);
+    return new Set(entries.map((entry) => this.resolveSelectedTool(entry)));
   }
 
-  private removeToolAgUiOutputMode(toolName: string): void {
-    this.node.toolAgUiOutputModes.update((current) => {
-      if (!(toolName in current)) {
-        return current;
-      }
+  /**
+   * Maps a stored selection entry onto the qualified name of a registered tool. Entries saved before class names
+   * existed are unqualified, and resolve the same way the engine resolves them. An entry that matches nothing is
+   * returned unchanged so it survives editing in a host that does not define that tool.
+   */
+  private resolveSelectedTool(entry: string): string {
+    const exact = this.toolMethods.find(
+      (method) => method.qualifiedName === entry,
+    );
+    if (exact) {
+      return exact.qualifiedName;
+    }
 
-      const next = { ...current };
-      delete next[toolName];
-      return next;
-    });
+    const unqualified = this.toolMethods.find(
+      (method) => method.toolName === entry && method.isUnqualifiedMatch,
+    );
+    return unqualified ? unqualified.qualifiedName : entry;
   }
 
-  private removeToolContextPath(toolName: string): void {
-    this.node.toolContextPaths.update((current) => {
-      if (!(toolName in current)) {
-        return current;
+  private getToolNamePart(entry: string): string {
+    const separator = entry.lastIndexOf('.');
+    return separator < 0 || separator === entry.length - 1
+      ? entry
+      : entry.slice(separator + 1);
+  }
+
+  private findToolSetting<TValue>(
+    settings: Record<string, TValue>,
+    qualifiedName: string,
+  ): TValue | undefined {
+    // Falls back to the unqualified key so a node saved before class names existed still shows its per-tool settings.
+    return (
+      settings[qualifiedName] ?? settings[this.getToolNamePart(qualifiedName)]
+    );
+  }
+
+  private removeToolSetting<TValue>(
+    settings: Record<string, TValue>,
+    qualifiedName: string,
+  ): Record<string, TValue> {
+    const toolName = this.getToolNamePart(qualifiedName);
+    const next: Record<string, TValue> = {};
+    for (const [key, value] of Object.entries(settings)) {
+      // Drops the exact key and any unqualified key for the same tool, leaving a same named tool from another class.
+      if (key === qualifiedName || key === toolName) {
+        continue;
       }
 
-      const next = { ...current };
-      delete next[toolName];
-      return next;
-    });
+      next[key] = value;
+    }
+
+    return next;
+  }
+
+  /**
+   * Rewrites per-tool setting keys to qualified names and drops the settings of tools that are no longer selected.
+   */
+  private rekeyToolSettings<TValue>(
+    settings: Record<string, TValue>,
+    selectedTools: Set<string>,
+  ): Record<string, TValue> {
+    const next: Record<string, TValue> = {};
+    for (const [key, value] of Object.entries(settings)) {
+      const resolved = this.resolveSelectedTool(key);
+      if (selectedTools.has(resolved)) {
+        next[resolved] = value;
+      }
+    }
+
+    return next;
   }
 
   private refreshTabs(): void {
@@ -974,7 +1038,7 @@ export class ModelCallNodeDialogComponent implements OnInit {
     }
 
     if (this.supportsToolCalling) {
-      this.ensureToolDisplayNamesLoaded();
+      this.ensureToolMethodsLoaded();
       newTabs.push({
         id: 'tool-calling',
         title: 'Tool Calling',

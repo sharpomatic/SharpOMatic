@@ -40,7 +40,6 @@ import { AssetTextDialogComponent } from '../../../dialogs/asset-text/asset-text
 import { AssetSummary } from '../../assets/interfaces/asset-summary';
 import { formatByteSize } from '../../../helper/format-size';
 import { isTextLikeMediaType, normalizeMediaType } from '../../../helper/asset-media-type';
-import { ServerRepositoryService } from '../../../services/server.repository.service';
 
 @Component({
   selector: 'app-tracebar',
@@ -68,7 +67,6 @@ export class TracebarComponent implements OnInit, OnDestroy {
   @Output() public tracebarWidthChange = new EventEmitter<number>();
 
   public readonly workflowService = inject(WorkflowService);
-  private readonly serverRepository = inject(ServerRepositoryService);
   private readonly dialogService = inject(DialogService);
   private readonly modalService = inject(BsModalService);
   public readonly contextEntryType = ContextEntryType;
@@ -462,7 +460,6 @@ export class TracebarComponent implements OnInit, OnDestroy {
         assetId: asset.assetId,
         title: asset.name,
         fileName: asset.name,
-        imageUrl: this.serverRepository.getAssetContentUrl(asset.assetId),
         altText: asset.name,
       },
       class: 'modal-fullscreen asset-preview-modal',
