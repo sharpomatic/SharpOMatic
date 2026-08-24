@@ -840,7 +840,12 @@ export class ModelCallNodeDialogComponent implements OnInit {
 
     this.toolMethodsLoaded = true;
     this.serverRepository.getToolMethods().subscribe((methods) => {
-      this.toolMethods = methods ?? [];
+      this.toolMethods = [...(methods ?? [])].sort(
+        (left, right) =>
+          left.className.localeCompare(right.className) ||
+          left.toolName.localeCompare(right.toolName) ||
+          left.qualifiedName.localeCompare(right.qualifiedName),
+      );
     });
   }
 

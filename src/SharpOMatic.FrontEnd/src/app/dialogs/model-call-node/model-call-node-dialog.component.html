@@ -513,8 +513,8 @@
               >
                 <thead>
                   <tr>
-                    <th scope="col">Tool</th>
                     <th scope="col">Class</th>
+                    <th scope="col">Tool</th>
                     <th scope="col">AG-UI Output</th>
                     <th scope="col">Context Path</th>
                   </tr>
@@ -522,6 +522,15 @@
                 <tbody>
                   @for (tool of toolMethods; track tool.qualifiedName) {
                     <tr>
+                      <td>
+                        @if (tool.className) {
+                          <span class="text-body-secondary">{{
+                            tool.className
+                          }}</span>
+                        } @else {
+                          <span class="text-body-secondary">&mdash;</span>
+                        }
+                      </td>
                       <td>
                         <div class="form-check">
                           <input
@@ -543,15 +552,6 @@
                             {{ tool.toolName }}
                           </label>
                         </div>
-                      </td>
-                      <td>
-                        @if (tool.className) {
-                          <span class="text-body-secondary">{{
-                            tool.className
-                          }}</span>
-                        } @else {
-                          <span class="text-body-secondary">&mdash;</span>
-                        }
                       </td>
                       <td>
                         @if (isToolSelected(tool.qualifiedName)) {
