@@ -197,6 +197,53 @@
           </div>
         </div>
       }
+      <div class="mb-3 form-line">
+        <label for="eval-include-chat-messages" class="form-label field-label"
+          >Chat Messages</label
+        >
+        <div class="flex-fill control-column long">
+          <div class="form-check">
+            <input
+              id="eval-include-chat-messages"
+              type="checkbox"
+              class="form-check-input"
+              [ngModel]="evalConfig.includeChatMessages()"
+              (ngModelChange)="onIncludeChatMessagesChange($event)"
+            />
+            <label class="form-check-label" for="eval-include-chat-messages">
+              Ask the host application for stored chat messages and pass them to
+              the graders
+            </label>
+          </div>
+        </div>
+      </div>
+      @if (evalConfig.includeChatMessages()) {
+        <div class="mb-3 form-line">
+          <label for="eval-chat-messages-path" class="form-label field-label"
+            >Chat Messages Path</label
+          >
+          <div class="flex-fill control-column long">
+            <input
+              id="eval-chat-messages-path"
+              type="text"
+              class="form-control w-100"
+              [placeholder]="defaultChatMessagesPath"
+              [ngModel]="evalConfig.chatMessagesPath()"
+              (ngModelChange)="onChatMessagesPathChange($event)"
+            />
+          </div>
+        </div>
+      }
+      @if (hasGraderInputPathClash()) {
+        <div class="mb-3 form-line">
+          <div class="flex-fill control-column long">
+            <div class="alert alert-warning mb-0 py-2">
+              AG-UI output and chat messages are both written to this path, so
+              only one of them will reach the graders.
+            </div>
+          </div>
+        </div>
+      }
     </div>
   </ng-template>
 

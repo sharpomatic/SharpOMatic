@@ -260,6 +260,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<string>("AgUiOutputPath")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ChatMessagesPath")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime?>("Created")
                         .HasColumnType("datetime2");
 
@@ -268,6 +271,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IncludeAgUiOutput")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IncludeChatMessages")
                         .HasColumnType("bit");
 
                     b.Property<int>("MaxParallel")

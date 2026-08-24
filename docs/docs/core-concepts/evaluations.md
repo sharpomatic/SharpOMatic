@@ -108,12 +108,95 @@ graders for the row see the same value.
 When the box is unticked nothing is added, which is how evaluations created before this setting existed
 continue to behave.
 
+The value is stored as **JSON text**, not as a context list.
+That is what makes `{{agui.messages}}` in a prompt or instructions insert the JSON exactly as shown above.
+A context list would instead be re-serialized by the template in the format the context is persisted in, which
+wraps every value in a `{"$type": ..., "value": ...}` envelope and is noise in a prompt.
+
+:::caution
+This is a change from earlier versions, which stored a context list.
+A grader that reads the value with a context path such as `agui.messages[0].content`, or that walks it as a list
+in a **Code** node, needs updating to parse the JSON text instead.
+A grader that only inserts it into a prompt with `{{agui.messages}}` keeps working and produces cleaner output
+than before.
+:::
+
 :::note
 The payload reflects what the workflow actually streamed.
 If a model call node has **Disable Tool Events** enabled, or a tool's per-tool
 [AG-UI Output](../nodes/model-call-node/tool-calling.md) mode is **Never**, those events are never recorded and
 therefore cannot appear in the grader's context.
 :::
+
+### Passing Stored Chat Messages to Graders
+
+AG-UI output covers what *this* run streamed.
+Sometimes the thing you want graded is a conversation the host application already has stored, for example the exact
+exchange a user had in your chatbot, held in your own database rather than in SharpOMatic.
+Only the host can look that up, so SharpOMatic asks it.
+
+Enable **Chat Messages** on the evaluation's Details tab.
+The **Chat Messages Path** field chooses the context path the messages are written to; leave it blank to use
+`chat.messages`.
+This setting is independent of **AG-UI Output**, so an evaluation can use either or both.
+
+The payload is **JSON text** describing the messages, so `{{chat.messages}}` in a prompt or instructions inserts it
+verbatim:
+
+```json
+[
+  { "role": "user", "contents": [{ "$type": "text", "text": "How much for the deck?" }] },
+  {
+    "role": "assistant",
+    "contents": [
+      { "$type": "functionCall", "name": "GetQuote", "arguments": { "area": 24 }, "callId": "call-1" }
+    ]
+  },
+  { "role": "tool", "contents": [{ "$type": "functionResult", "callId": "call-1", "result": "4800" }] },
+  { "role": "assistant", "contents": [{ "$type": "text", "text": "About $4,800." }] }
+]
+```
+
+Property names are camelCase and null members are omitted, so a prompt is not padded with empty fields.
+The `$type` on each content entry is part of the message model rather than a context wrapper, and tells the model
+whether it is looking at text, a tool call, or a tool result.
+
+Because the value is JSON text and not a context list, it cannot be handed to a **Model Call** node's chat input path
+to be replayed as history; it is material for a grader to read, which is what grading a stored conversation calls for.
+
+For each row, SharpOMatic calls `EvalChatMessages` on every registered `IEngineNotification` in turn and uses the first
+non-null result.
+The call happens after the workflow run completes and before any grader starts, so all graders for the row see the same
+value.
+See [Evaluations](../programmatic/evaluations.md) for the host-side implementation.
+
+The distinction between the two empty results is deliberate:
+
+| Host returns | Result |
+| --- | --- |
+| `null` from every implementation | nothing is written, so the path is absent |
+| an empty list | an empty list is written at the path |
+
+A grader can therefore tell "no host claimed this lookup" apart from "the conversation exists and has no messages".
+
+Messages are cloned on the way in, so nothing the host keeps a reference to can be changed through the grader context.
+Text, tool calls, tool results, and file content are carried across; reasoning content is dropped, matching how stored
+chat history behaves everywhere else in SharpOMatic.
+
+Template markers inside a stored message are escaped before the JSON is written, so a conversation containing
+`{{...}}` or `<<...>>` is inserted as the text the user actually typed.
+Without that, a message mentioning `{{expected.answer}}` would be substituted from the surrounding grader context and
+leak the expected answer into the prompt, and an unresolvable path would fail the row outright.
+The escapes are ordinary JSON string escapes, so anything that parses the value still reads the original text.
+The same applies to AG-UI output.
+
+:::note
+If **AG-UI Output** and **Chat Messages** are both enabled and resolve to the same path, one overwrites the other.
+The editor warns when it can see that the two paths match.
+:::
+
+When the box is unticked nothing is added and the host is never called, which is how evaluations created before this
+setting existed continue to behave.
 
 ### Grader Output Contract
 
@@ -209,5 +292,8 @@ Common causes of evaluation run failures:
 - **Invalid sample count**: the sample count is outside the valid range for the current row total.
 - **Missing grader score**: the grader workflow does not output a numeric value at `score`, so score summaries may look incomplete.
 - **Empty AG-UI output**: **AG-UI Output** is enabled but the grader finds nothing at the configured path because the evaluation workflow suppressed its stream events, or because it produced none.
+- **Missing chat messages**: **Chat Messages** is enabled but the path is absent, which means no `IEngineNotification` returned a list. Either the host does not implement `EvalChatMessages`, or it returned null because the row did not identify a conversation it could find.
+- **Failed chat message lookup**: the host's `EvalChatMessages` threw, which fails the row. The row error names the row and wraps the original exception.
+- **Grader reads the payload as a list**: both grader payloads are JSON text. A grader written against the older context-list form of `agui.messages` needs to parse the JSON instead of indexing it.
 
 When troubleshooting, open the run details and inspect row-level errors and grader results to identify the exact failure point.

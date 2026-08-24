@@ -13,10 +13,9 @@ public sealed class EvalAgUiOutputUnitTests
 
         await InvokeAddAgUiOutput(repository, CreateEvalConfig(includeAgUiOutput: true), runId, graderContext);
 
-        var messages = RequireMessages(graderContext, DefaultPath);
-        var message = Assert.IsType<ContextObject>(Assert.Single(messages));
-        Assert.Equal("assistant", message["role"]);
-        Assert.Equal("Hello there", message["content"]);
+        var message = RequireSingleMessage(graderContext, DefaultPath);
+        Assert.Equal("assistant", message.GetProperty("role").GetString());
+        Assert.Equal("Hello there", message.GetProperty("content").GetString());
     }
 
     [Fact]
@@ -28,7 +27,7 @@ public sealed class EvalAgUiOutputUnitTests
 
         await InvokeAddAgUiOutput(repository, CreateEvalConfig(includeAgUiOutput: true, agUiOutputPath: "run.agui"), runId, graderContext);
 
-        Assert.Single(RequireMessages(graderContext, "run.agui"));
+        Assert.Equal(1, MessageCount(graderContext, "run.agui"));
         Assert.False(graderContext.TryGet<object?>(DefaultPath, out _));
     }
 
@@ -41,7 +40,7 @@ public sealed class EvalAgUiOutputUnitTests
 
         await InvokeAddAgUiOutput(repository, CreateEvalConfig(includeAgUiOutput: true, agUiOutputPath: "  run.agui  "), runId, graderContext);
 
-        Assert.Single(RequireMessages(graderContext, "run.agui"));
+        Assert.Equal(1, MessageCount(graderContext, "run.agui"));
     }
 
     [Fact]
@@ -70,8 +69,8 @@ public sealed class EvalAgUiOutputUnitTests
         ContextObject graderContext = [];
         await InvokeAddAgUiOutput(repository, CreateEvalConfig(includeAgUiOutput: true), runId, graderContext);
 
-        var message = Assert.IsType<ContextObject>(Assert.Single(RequireMessages(graderContext, DefaultPath)));
-        Assert.Equal("kept", message["content"]);
+        var message = RequireSingleMessage(graderContext, DefaultPath);
+        Assert.Equal("kept", message.GetProperty("content").GetString());
     }
 
     [Fact]
@@ -87,8 +86,8 @@ public sealed class EvalAgUiOutputUnitTests
         ContextObject graderContext = [];
         await InvokeAddAgUiOutput(repository, CreateEvalConfig(includeAgUiOutput: true), runId, graderContext);
 
-        var message = Assert.IsType<ContextObject>(Assert.Single(RequireMessages(graderContext, DefaultPath)));
-        Assert.Equal("Hello there", message["content"]);
+        var message = RequireSingleMessage(graderContext, DefaultPath);
+        Assert.Equal("Hello there", message.GetProperty("content").GetString());
     }
 
     [Fact]
@@ -103,7 +102,7 @@ public sealed class EvalAgUiOutputUnitTests
 
         Assert.True(graderContext.TryGet<string>("expected.answer", out var answer));
         Assert.Equal("42", answer);
-        Assert.Single(RequireMessages(graderContext, DefaultPath));
+        Assert.Equal(1, MessageCount(graderContext, DefaultPath));
     }
 
     private static TestRepositoryService CreateRepositoryWithRun(Guid runId)
@@ -121,10 +120,26 @@ public sealed class EvalAgUiOutputUnitTests
         return repository;
     }
 
-    private static ContextList RequireMessages(ContextObject graderContext, string path)
+    private static JsonElement RequireMessages(ContextObject graderContext, string path)
     {
-        Assert.True(graderContext.TryGetList(path, out var messages));
+        Assert.True(graderContext.TryGet<string>(path, out var json));
+        Assert.NotNull(json);
+
+        var messages = JsonSerializer.Deserialize<JsonElement>(json);
+        Assert.Equal(JsonValueKind.Array, messages.ValueKind);
         return messages;
+    }
+
+    private static JsonElement RequireSingleMessage(ContextObject graderContext, string path)
+    {
+        var messages = RequireMessages(graderContext, path);
+        Assert.Equal(1, messages.GetArrayLength());
+        return messages[0];
+    }
+
+    private static int MessageCount(ContextObject graderContext, string path)
+    {
+        return RequireMessages(graderContext, path).GetArrayLength();
     }
 
     private static EvalConfig CreateEvalConfig(bool includeAgUiOutput, string? agUiOutputPath = null)

@@ -20,6 +20,8 @@ export interface EvalConfigSnapshot {
   runScoreMode?: EvalRunScoreMode;
   includeAgUiOutput?: boolean;
   agUiOutputPath?: string | null;
+  includeChatMessages?: boolean;
+  chatMessagesPath?: string | null;
   graders?: EvalGraderSnapshot[];
   columns?: EvalColumnSnapshot[];
   rows?: EvalRowSnapshot[];
@@ -41,6 +43,8 @@ export class EvalConfig {
   public runScoreMode: WritableSignal<EvalRunScoreMode>;
   public includeAgUiOutput: WritableSignal<boolean>;
   public agUiOutputPath: WritableSignal<string>;
+  public includeChatMessages: WritableSignal<boolean>;
+  public chatMessagesPath: WritableSignal<string>;
   public graders: WritableSignal<EvalGrader[]>;
   public columns: WritableSignal<EvalColumn[]>;
   public rows: WritableSignal<EvalRow[]>;
@@ -55,6 +59,8 @@ export class EvalConfig {
   private initialRunScoreMode: EvalRunScoreMode;
   private initialIncludeAgUiOutput: boolean;
   private initialAgUiOutputPath: string;
+  private initialIncludeChatMessages: boolean;
+  private initialChatMessagesPath: string;
   private initialGraders: EvalGraderSnapshot[];
   private initialColumns: EvalColumnSnapshot[];
   private initialRows: EvalRowSnapshot[];
@@ -77,6 +83,8 @@ export class EvalConfig {
       snapshot.runScoreMode ?? EvalRunScoreMode.AverageScore;
     this.initialIncludeAgUiOutput = snapshot.includeAgUiOutput ?? false;
     this.initialAgUiOutputPath = snapshot.agUiOutputPath ?? '';
+    this.initialIncludeChatMessages = snapshot.includeChatMessages ?? false;
+    this.initialChatMessagesPath = snapshot.chatMessagesPath ?? '';
 
     this.workflowId = signal(snapshot.workflowId ?? null);
     this.name = signal(snapshot.name);
@@ -90,6 +98,8 @@ export class EvalConfig {
     );
     this.includeAgUiOutput = signal(snapshot.includeAgUiOutput ?? false);
     this.agUiOutputPath = signal(snapshot.agUiOutputPath ?? '');
+    this.includeChatMessages = signal(snapshot.includeChatMessages ?? false);
+    this.chatMessagesPath = signal(snapshot.chatMessagesPath ?? '');
     this.graders = signal(
       EvalConfig.gradersFromSnapshots(snapshot.graders ?? []),
     );
@@ -122,6 +132,8 @@ export class EvalConfig {
       const currentRunScoreMode = this.runScoreMode();
       const currentIncludeAgUiOutput = this.includeAgUiOutput();
       const currentAgUiOutputPath = this.agUiOutputPath();
+      const currentIncludeChatMessages = this.includeChatMessages();
+      const currentChatMessagesPath = this.chatMessagesPath();
       const currentGraders = this.graders();
       const currentColumns = this.columns();
       const currentRows = this.rows();
@@ -160,6 +172,8 @@ export class EvalConfig {
         currentRunScoreMode !== this.initialRunScoreMode ||
         currentIncludeAgUiOutput !== this.initialIncludeAgUiOutput ||
         currentAgUiOutputPath !== this.initialAgUiOutputPath ||
+        currentIncludeChatMessages !== this.initialIncludeChatMessages ||
+        currentChatMessagesPath !== this.initialChatMessagesPath ||
         gradersChanged ||
         columnsChanged ||
         rowsChanged ||
@@ -181,6 +195,8 @@ export class EvalConfig {
       runScoreMode: this.runScoreMode(),
       includeAgUiOutput: this.includeAgUiOutput(),
       agUiOutputPath: this.agUiOutputPath().trim() || null,
+      includeChatMessages: this.includeChatMessages(),
+      chatMessagesPath: this.chatMessagesPath().trim() || null,
       graders: EvalConfig.snapshotsFromGraders(
         this.graders(),
         this.evalConfigId,
@@ -202,6 +218,8 @@ export class EvalConfig {
     this.initialRunScoreMode = this.runScoreMode();
     this.initialIncludeAgUiOutput = this.includeAgUiOutput();
     this.initialAgUiOutputPath = this.agUiOutputPath();
+    this.initialIncludeChatMessages = this.includeChatMessages();
+    this.initialChatMessagesPath = this.chatMessagesPath();
     this.initialGraders = EvalConfig.snapshotsFromGraders(
       this.graders(),
       this.evalConfigId,

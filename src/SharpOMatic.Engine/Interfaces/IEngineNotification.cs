@@ -9,6 +9,9 @@ public interface IEngineNotification
 
     public ValueTask<bool?> ModelFallbackOverride(ModelFallbackDecisionContext context, CancellationToken cancellationToken = default) => ValueTask.FromResult<bool?>(null);
 
+    public ValueTask<IList<ChatMessage>?> EvalChatMessages(EvalChatMessageContext context, CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult<IList<ChatMessage>?>(null);
+
     public void ConnectionOverride(Guid runId, Guid workflowId, string? conversationId, string connectorId, AuthenticationModeConfig authenticationModel, Dictionary<string, string?> parameters) { }
 
     public (ResponsesClient client, string modelName)? OpenAIOverride(

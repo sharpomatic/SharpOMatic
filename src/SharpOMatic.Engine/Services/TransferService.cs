@@ -698,6 +698,8 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             RunScoreMode = source.EvalConfig.RunScoreMode,
             IncludeAgUiOutput = source.EvalConfig.IncludeAgUiOutput,
             AgUiOutputPath = source.EvalConfig.AgUiOutputPath,
+            IncludeChatMessages = source.EvalConfig.IncludeChatMessages,
+            ChatMessagesPath = source.EvalConfig.ChatMessagesPath,
         };
 
         var graders = source

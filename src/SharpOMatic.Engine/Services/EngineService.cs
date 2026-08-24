@@ -10,6 +10,7 @@ public class EngineService(
 ) : IEngineService
 {
     private const string DefaultAgUiOutputPath = "agui.messages";
+    private const string DefaultChatMessagesPath = "chat.messages";
 
     private static void ValidateWorkflowExecutionMode(WorkflowEntity workflow, bool allowConversation)
     {
@@ -751,6 +752,24 @@ public class EngineService(
                 var resultContext = ContextObject.Deserialize(runResult.OutputContext, jsonConverterService);
                 ContextHelpers.OverwriteContexts(inputContext, resultContext);
                 await AddAgUiOutputToGraderContext(repository, evalConfigDetail.EvalConfig, run.RunId, inputContext);
+                await AddChatMessagesToGraderContext(
+                    serviceProvider.GetServices<IEngineNotification>(),
+                    evalConfigDetail.EvalConfig,
+                    new EvalChatMessageContext(
+                        evalConfigDetail.EvalConfig.EvalConfigId,
+                        evalRunId,
+                        evalRunRow.EvalRunRowId,
+                        evalRow.EvalRowId,
+                        rowName,
+                        evalRow.Order,
+                        workItem.Order,
+                        run.RunId,
+                        evalConfigDetail.EvalConfig.WorkflowId ?? Guid.Empty,
+                        run.ConversationId,
+                        inputContext
+                    ),
+                    inputContext
+                );
                 var graderContext = inputContext.Serialize(jsonConverterService);
                 List<EvalRunRowGrader> graderResults = [];
 
@@ -787,13 +806,58 @@ public class EngineService(
 
         var streamEvents = await repository.GetRunStreamEvents(runId);
         var messages = AgUiMessageBuilder.BuildMessages(streamEvents);
-        var contextValue = ContextHelpers.FastDeserializeString(JsonSerializer.Serialize(messages));
-        graderContext.Set(ResolveAgUiOutputPath(evalConfig.AgUiOutputPath), contextValue);
+
+        // Stored as JSON text rather than a context list so a prompt template inserts it as written. A context list
+        // would be re-serialized by the template in the persistence format, which wraps every value in a type
+        // envelope.
+        graderContext.Set(ResolveAgUiOutputPath(evalConfig.AgUiOutputPath), PromptJsonHelper.Serialize(messages));
     }
 
     private static string ResolveAgUiOutputPath(string? agUiOutputPath)
     {
         return string.IsNullOrWhiteSpace(agUiOutputPath) ? DefaultAgUiOutputPath : agUiOutputPath.Trim();
+    }
+
+    private static async Task AddChatMessagesToGraderContext(
+        IEnumerable<IEngineNotification> notifications,
+        EvalConfig evalConfig,
+        EvalChatMessageContext chatMessageContext,
+        ContextObject graderContext
+    )
+    {
+        if (!evalConfig.IncludeChatMessages)
+            return;
+
+        IList<ChatMessage>? messages = null;
+        foreach (var notification in notifications)
+        {
+            try
+            {
+                messages = await notification.EvalChatMessages(chatMessageContext);
+            }
+            catch (Exception ex)
+            {
+                throw new SharpOMaticException($"Evaluation chat message lookup failed for row '{chatMessageContext.RowName}'.", ex);
+            }
+
+            if (messages is not null)
+                break;
+        }
+
+        // A null result from every implementation means nothing claimed the lookup, so the path is left untouched and
+        // the grader can tell that apart from a conversation that was found and holds no messages.
+        if (messages is null)
+            return;
+
+        graderContext.Set(
+            ResolveChatMessagesPath(evalConfig.ChatMessagesPath),
+            PromptJsonHelper.Serialize(ChatHistoryReplayHelper.CreatePortableStoredMessages(messages))
+        );
+    }
+
+    private static string ResolveChatMessagesPath(string? chatMessagesPath)
+    {
+        return string.IsNullOrWhiteSpace(chatMessagesPath) ? DefaultChatMessagesPath : chatMessagesPath.Trim();
     }
 
     private static async Task MarkGradersAsFailedForRow(IRepositoryService repository, Guid evalRunId, Guid evalRunRowId, IEnumerable<EvalGrader> graders, string? error)

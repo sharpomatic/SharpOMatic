@@ -107,6 +107,8 @@ export class EvaluationComponent
   public readonly evalRunStatus = EvalRunStatus;
   // Matches EngineService.DefaultAgUiOutputPath, used when the path is left blank.
   public readonly defaultAgUiOutputPath = 'agui.messages';
+  // Matches EngineService.DefaultChatMessagesPath, used when the path is left blank.
+  public readonly defaultChatMessagesPath = 'chat.messages';
   public readonly repeatMin = EvalRow.MIN_REPEAT;
   public readonly repeatMax = EvalRow.MAX_REPEAT;
   private readonly tabIds = new Set([
@@ -307,6 +309,34 @@ export class EvaluationComponent
 
   onAgUiOutputPathChange(value: string): void {
     this.evalConfig.agUiOutputPath.set(value ?? '');
+  }
+
+  onIncludeChatMessagesChange(value: boolean): void {
+    this.evalConfig.includeChatMessages.set(Boolean(value));
+  }
+
+  onChatMessagesPathChange(value: string): void {
+    this.evalConfig.chatMessagesPath.set(value ?? '');
+  }
+
+  /**
+   * True when both grader inputs are enabled and would resolve to the same context path, in which case one silently
+   * overwrites the other. Surfaced as a warning rather than blocking, because only the host knows what it will return.
+   */
+  hasGraderInputPathClash(): boolean {
+    if (
+      !this.evalConfig.includeAgUiOutput() ||
+      !this.evalConfig.includeChatMessages()
+    ) {
+      return false;
+    }
+
+    const agUiPath =
+      this.evalConfig.agUiOutputPath().trim() || this.defaultAgUiOutputPath;
+    const chatPath =
+      this.evalConfig.chatMessagesPath().trim() || this.defaultChatMessagesPath;
+
+    return agUiPath === chatPath;
   }
 
   onPassThresholdChange(grader: EvalGrader, value: string | number): void {

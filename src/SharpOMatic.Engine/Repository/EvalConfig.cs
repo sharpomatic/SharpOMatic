@@ -14,4 +14,6 @@ public class EvalConfig
     public EvalRunScoreMode RunScoreMode { get; set; } = EvalRunScoreMode.AverageScore;
     public bool IncludeAgUiOutput { get; set; }
     public string? AgUiOutputPath { get; set; }
+    public bool IncludeChatMessages { get; set; }
+    public string? ChatMessagesPath { get; set; }
 }

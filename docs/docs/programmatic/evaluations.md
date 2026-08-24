@@ -106,6 +106,57 @@ public class EngineNotification : IEngineNotification
 }
 ```
 
+## Supplying stored chat messages
+
+When an evaluation has **Chat Messages** enabled, SharpOMatic asks the host application for the conversation to grade.
+Implement `EvalChatMessages` on an `IEngineNotification`.
+Every member of that interface has a default implementation, so an existing implementation only needs the new method
+added and nothing else changes.
+
+```csharp
+public class EvaluationChatMessages(IConversationStore store) : IEngineNotification
+{
+  public async ValueTask<IList<ChatMessage>?> EvalChatMessages(
+    EvalChatMessageContext context,
+    CancellationToken cancellationToken = default)
+  {
+    // The row's column values are in the grader context, so an evaluation column carrying the identifier
+    // is the usual way to point at a stored conversation.
+    if (!context.GraderContext.TryGet<string>("input.conversationId", out var conversationId))
+      return null;
+
+    var stored = await store.GetMessagesAsync(conversationId, cancellationToken);
+    return [.. stored];
+  }
+}
+```
+
+Register it like any other notification.
+
+```csharp
+  builder.Services.AddSingleton<IEngineNotification, EvaluationChatMessages>();
+```
+
+`EvalChatMessageContext` identifies the row being graded:
+
+| Member | Purpose |
+| --- | --- |
+| `EvalConfigId` | the evaluation the row belongs to |
+| `EvalRunId`, `EvalRunRowId` | the run and the row execution |
+| `EvalRowId`, `RowName`, `RowOrder` | the configured row, its `Name` column, and its order |
+| `ExecutionOrder` | distinguishes repeats of the same row |
+| `RunId`, `WorkflowId`, `ConversationId` | the workflow run just completed |
+| `GraderContext` | the row's column values merged with the workflow output, being what the graders are about to receive |
+
+Return `null` to leave the lookup to another implementation; the first non-null result is used.
+Return an empty list to state that the conversation was found and holds no messages, which writes an empty list rather
+than leaving the path absent.
+Treat `GraderContext` as read-only: return the messages instead of writing them into it, so the configured path and the
+cloning rules are applied consistently.
+
+Throwing fails that row only, with the exception wrapped in a `SharpOMaticException` naming the row.
+Other rows in the run continue.
+
 ## Progress notifications
 
 If you register `IProgressService`, eval progress updates arrive through `EvalRunProgress`.

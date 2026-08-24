@@ -43,6 +43,11 @@ internal static class ChatHistoryReplayHelper
         return portableMessages;
     }
 
+    public static List<ChatMessage> CreatePortableStoredMessages(IEnumerable<ChatMessage> messages)
+    {
+        return CreatePortableReplayMessages(messages);
+    }
+
     public static void AddPreparedInputMessages(List<ChatMessage> chat, ContextObject nodeContext, string chatInputPath)
     {
         var storedMessages = ReadStoredMessages(nodeContext, chatInputPath);
