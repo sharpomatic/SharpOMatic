@@ -1,7 +1,7 @@
 {
   "Version": 1,
-  "ConfigId": "google_gemini-3.6-flash",
-  "DisplayName": "gemini-3.6-flash",
+  "ConfigId": "google_gemini-3.7-flash",
+  "DisplayName": "gemini-3.7-flash",
   "Description": "Chat model",
   "ConnectorConfigId": "google",
   "IsCustom": false,
