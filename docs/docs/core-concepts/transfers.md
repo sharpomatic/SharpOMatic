@@ -59,14 +59,20 @@ Runs that are still running at export time are skipped because they cannot be re
 
 Transfers only include library assets.
 Run-scoped and conversation-scoped assets are excluded.
-Assets with the following extensions are included as readable text in the `contentText` field when they contain valid UTF-8:
+Assets with the following extensions are included as readable text in the `contentTextLines` field when they contain valid UTF-8:
 
 `.txt`, `.md`, `.json`, `.jsonl`, `.ndjson`, `.yaml`, `.yml`, `.toml`, `.xml`, `.csv`, `.tsv`, `.html`, `.htm`, `.css`, `.js`, `.ts`, `.graphql`, `.gql`, `.sql`, `.ini`, `.cfg`, `.conf`, `.properties`, `.env`, and `.log`.
 
 Extension matching is case-insensitive.
 All other assets are included as base64 content in the `contentBase64` field.
 If an asset with a recognized text extension does not contain valid UTF-8, it is exported as base64 so its original bytes are preserved.
-Each asset payload contains exactly one of `contentText` or `contentBase64`.
+Each asset payload contains exactly one of `contentTextLines` or `contentBase64`.
+
+`contentTextLines` holds the text split one array element per line, which keeps the exported JSON readable in an editor.
+The split is on line feeds only, so a carriage return stays at the end of its element and joining the elements back with a
+line feed reproduces the original bytes exactly.
+Transfer files written before `contentTextLines` existed carry the text as a single `contentText` string instead.
+Those files still import; `contentText` is read only when `contentTextLines` is absent, and it is no longer written on export.
 When an imported asset specifies a folder name, the existing folder with that name is used or a new folder is created.
 
 ## Program Setup
@@ -103,8 +109,8 @@ Each exported file is self-describing:
 
 Workflow and asset payloads can include `folderName`.
 On import, missing workflow or library asset folders are created automatically.
-Asset payloads also include `mediaType`, `sizeBytes`, and exactly one of `contentText` or `contentBase64`.
-Existing schema version 1 files that contain `contentBase64` remain supported.
+Asset payloads also include `mediaType`, `sizeBytes`, and exactly one of `contentTextLines` or `contentBase64`.
+Existing schema version 1 files that contain `contentBase64`, or the older `contentText` string, remain supported.
 
 A UTF-8 text asset uses readable text:
 
@@ -119,7 +125,10 @@ A UTF-8 text asset uses readable text:
     "mediaType": "text/markdown",
     "created": "2026-05-30T00:00:00Z",
     "sizeBytes": 22,
-    "contentText": "First line\nSecond line"
+    "contentTextLines": [
+      "First line",
+      "Second line"
+    ]
   }
 }
 ```

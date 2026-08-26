@@ -61,7 +61,8 @@ public sealed class TransferServiceUnitTests
         Assert.Equal(asset.AssetId, exportedAsset.AssetId);
         Assert.Equal(folder.Name, exportedAsset.FolderName);
         Assert.Null(exportedAsset.ContentBase64);
-        Assert.Equal("asset-content", exportedAsset.ContentText);
+        Assert.Null(exportedAsset.ContentText);
+        Assert.Equal(["asset-content"], exportedAsset.ContentTextLines);
         Assert.DoesNotContain("\"contentBase64\"", JsonSerializer.Serialize(exportedAsset, JsonOptions));
     }
 
@@ -98,8 +99,12 @@ public sealed class TransferServiceUnitTests
         var asset = CreateAsset(folder.FolderId, name);
         var exportedAsset = await ExportAsset(asset, folder, Encoding.UTF8.GetBytes(text));
 
-        Assert.Equal(text, exportedAsset.ContentText);
+        // The carriage return stays on the end of its element so joining with a line feed is lossless.
+        Assert.Equal(["First line\r", "Second line café 😀"], exportedAsset.ContentTextLines);
+        Assert.Equal(text, string.Join('\n', exportedAsset.ContentTextLines!));
+        Assert.Null(exportedAsset.ContentText);
         Assert.Null(exportedAsset.ContentBase64);
+        Assert.DoesNotContain("\"contentText\"", JsonSerializer.Serialize(exportedAsset, JsonOptions));
     }
 
     [Fact]
@@ -111,6 +116,7 @@ public sealed class TransferServiceUnitTests
         var exportedAsset = await ExportAsset(asset, folder, content);
 
         Assert.Null(exportedAsset.ContentText);
+        Assert.Null(exportedAsset.ContentTextLines);
         Assert.Equal(content, Convert.FromBase64String(exportedAsset.ContentBase64!));
         Assert.DoesNotContain("\"contentText\"", JsonSerializer.Serialize(exportedAsset, JsonOptions));
     }
@@ -223,6 +229,75 @@ public sealed class TransferServiceUnitTests
     [Theory]
     [InlineData("")]
     [InlineData("First line\r\nSecond line café 😀")]
+    public async Task Import_accepts_line_content_and_saves_utf8_bytes(string text)
+    {
+        var payload = new TransferAssetPayload
+        {
+            AssetId = Guid.NewGuid(),
+            Name = "instructions.md",
+            MediaType = "text/markdown",
+            Created = DateTime.UtcNow,
+            SizeBytes = 999,
+            ContentTextLines = text.Split('\n'),
+        };
+
+        var (savedAssetBytes, importedAsset, result) = await ImportAssetPayload(payload);
+        var expectedBytes = Encoding.UTF8.GetBytes(text);
+
+        Assert.Equal(1, result.AssetsImported);
+        Assert.Equal(expectedBytes, savedAssetBytes);
+        Assert.Equal(expectedBytes.LongLength, importedAsset?.SizeBytes);
+    }
+
+    [Fact]
+    public async Task Import_prefers_line_content_over_legacy_text_content()
+    {
+        var payload = new TransferAssetPayload
+        {
+            AssetId = Guid.NewGuid(),
+            Name = "instructions.md",
+            MediaType = "text/markdown",
+            Created = DateTime.UtcNow,
+            SizeBytes = 999,
+            ContentText = "stale",
+            ContentTextLines = ["current", "content"],
+        };
+
+        var (savedAssetBytes, _, result) = await ImportAssetPayload(payload);
+
+        Assert.Equal(1, result.AssetsImported);
+        Assert.Equal(Encoding.UTF8.GetBytes("current\ncontent"), savedAssetBytes);
+    }
+
+    private static async Task<(byte[]? SavedBytes, Asset? ImportedAsset, TransferImportResult Result)> ImportAssetPayload(TransferAssetPayload payload)
+    {
+        await using var input = CreateEnvelopeStream("asset", payload);
+
+        Asset? importedAsset = null;
+        byte[]? savedAssetBytes = null;
+        var repository = new Mock<IRepositoryService>();
+        repository.Setup(service => service.UpsertAsset(It.IsAny<Asset>())).Callback<Asset>(asset => importedAsset = asset).Returns(Task.CompletedTask);
+        var assetStore = new Mock<IAssetStore>();
+        assetStore
+            .Setup(store => store.SaveAsync(It.IsAny<string>(), It.IsAny<Stream>(), It.IsAny<CancellationToken>()))
+            .Callback<string, Stream, CancellationToken>(
+                (_, stream, _) =>
+                {
+                    using var memory = new MemoryStream();
+                    stream.CopyTo(memory);
+                    savedAssetBytes = memory.ToArray();
+                }
+            )
+            .Returns(Task.CompletedTask);
+
+        var transferService = new TransferService(repository.Object, assetStore.Object);
+        var result = await transferService.ImportJsonAsync(input);
+        return (savedAssetBytes, importedAsset, result);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("First line\r\nSecond line café 😀")]
     public async Task Import_accepts_text_content_and_saves_utf8_bytes(string text)
     {
         var assetId = Guid.NewGuid();
@@ -283,7 +358,7 @@ public sealed class TransferServiceUnitTests
 
         var exception = await Assert.ThrowsAsync<SharpOMaticException>(() => transferService.ImportJsonAsync(input));
 
-        Assert.Contains("exactly one of contentBase64 or contentText", exception.Message);
+        Assert.Contains("exactly one of contentBase64 or contentTextLines", exception.Message);
     }
 
     [Fact]

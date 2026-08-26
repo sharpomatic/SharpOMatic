@@ -69,8 +69,16 @@ public class TransferAssetPayload
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ContentBase64 { get; set; }
 
+    // Superseded by ContentTextLines and no longer written on export. Still read on import so transfer
+    // files produced before ContentTextLines existed keep working.
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ContentText { get; set; }
+
+    // Text content split one array element per line, so the exported JSON stays readable in an editor.
+    // Split on line feeds only, leaving any carriage return at the end of its element, so joining the
+    // elements back with a line feed reproduces the original bytes exactly.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? ContentTextLines { get; set; }
 }
 
 public class TransferImportFile

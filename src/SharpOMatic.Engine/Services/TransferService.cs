@@ -45,7 +45,12 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         ".yml",
     };
     private static readonly Encoding StrictUtf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { Converters = { new NodeEntityConverter() } };
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new NodeEntityConverter() },
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     public async Task ExportAsync(TransferExportRequest request, Stream output, CancellationToken cancellationToken = default)
     {
@@ -153,7 +158,7 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
                 Created = asset.Created,
                 SizeBytes = asset.SizeBytes,
                 ContentBase64 = contentText is null ? Convert.ToBase64String(content) : null,
-                ContentText = contentText,
+                ContentTextLines = contentText is null ? null : SplitTextLines(contentText),
             };
 
             await WriteEnvelopeEntryAsync(archive, BuildJsonEntryName(AssetDirectory, asset.Name, asset.AssetId), AssetType, payload, exportedUtc, cancellationToken);
@@ -349,14 +354,16 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
         }
 
         var hasBase64Content = payload.ContentBase64 is not null;
-        var hasTextContent = payload.ContentText is not null;
+        var hasTextContent = payload.ContentTextLines is not null || payload.ContentText is not null;
         if (hasBase64Content == hasTextContent)
-            throw new SharpOMaticException($"Transfer file '{sourceName}' must specify exactly one of contentBase64 or contentText.");
+            throw new SharpOMaticException($"Transfer file '{sourceName}' must specify exactly one of contentBase64 or contentTextLines.");
 
         byte[] content;
         if (hasTextContent)
         {
-            content = Encoding.UTF8.GetBytes(payload.ContentText!);
+            // ContentText is the pre-ContentTextLines form and is only read when no lines are present.
+            var text = payload.ContentTextLines is not null ? string.Join('\n', payload.ContentTextLines) : payload.ContentText!;
+            content = Encoding.UTF8.GetBytes(text);
         }
         else
         {
@@ -443,6 +450,11 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
             return [.. (await resolveAllIds()).Distinct()];
 
         return [.. (selection.Ids ?? []).Distinct()];
+    }
+
+    private static string[] SplitTextLines(string text)
+    {
+        return text.Split('\n');
     }
 
     private static async Task WriteEnvelopeEntryAsync<T>(ZipArchive archive, string entryName, string type, T payload, DateTime exportedUtc, CancellationToken cancellationToken)
