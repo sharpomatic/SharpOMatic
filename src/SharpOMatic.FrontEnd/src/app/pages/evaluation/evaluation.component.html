@@ -211,8 +211,7 @@
               (ngModelChange)="onIncludeChatMessagesChange($event)"
             />
             <label class="form-check-label" for="eval-include-chat-messages">
-              Ask the host application for stored chat messages and pass them to
-              the graders
+              Pass the run's chat messages to the graders
             </label>
           </div>
         </div>
@@ -560,10 +559,10 @@
               class="form-select grader-workflow"
               [ngModel]="graderWorkflowSelectionId(grader)"
               (ngModelChange)="onGraderWorkflowChange(grader, $event)"
-              [disabled]="!workflowSummaries.length"
+              [disabled]="!graderWorkflowSummaries.length"
             >
               <option [ngValue]="null">(None)</option>
-              @for (workflow of workflowSummaries; track workflow.id) {
+              @for (workflow of graderWorkflowSummaries; track workflow.id) {
                 <option [ngValue]="workflow.id">
                   {{ workflow.name() }}
                 </option>

@@ -56,8 +56,12 @@ Graders are workflows that score or assess the output from the main evaluation w
 You can define multiple graders, set a pass threshold for each one, and choose whether each grader contributes to the overall run score.
 After the run completes, grader summaries provide statistics such as minimum score, maximum score, average score, median score, standard deviation, and pass rate.
 
-Evaluation workflows and grader workflows must be standard one-shot workflows.
-Conversation-enabled workflows are intentionally excluded from the evaluation workflow selectors because evaluations do not provide a way to answer suspend events during row execution.
+Grader workflows must be standard one-shot workflows, so conversation-enabled workflows are excluded from the grader selector.
+
+The evaluation workflow itself may be conversation-enabled. Each row then runs as a single turn of its own
+private conversation, created for that row execution and never shared with another row or repeat. There is
+nothing to answer a suspend event during a row, so a row that reaches a suspend or Frontend Tool Call node
+stops there and is graded on the context it had reached. Such a row is recorded as completed, not failed.
 
 ### Grader Input Context
 
@@ -257,6 +261,9 @@ Evaluation execution creates underlying workflow runs for the main workflow and 
 Those child workflow runs are stored like normal runs, but they are treated as background execution by the editor.
 This means the evaluation pages continue to show evaluation progress, while the workflow page trace panel does not live-follow those evaluation-driven runs or show workflow completion toasts for them.
 
+A conversation-enabled evaluation workflow also creates one conversation per row execution, which is stored and
+pruned like any other conversation for that workflow.
+
 ## Transfer Import Behavior
 
 When evaluations are imported from a transfer package, SharpOMatic creates new evaluation entries with new identifiers.
@@ -287,7 +294,7 @@ Runs that are still running at export time are skipped because they cannot be re
 Common causes of evaluation run failures:
 
 - **Missing workflow reference**: the evaluation workflow or grader workflow is not set or no longer exists.
-- **Conversation workflow selected previously**: if an older configuration references a conversation-enabled workflow, SharpOMatic clears that selection because evaluations cannot execute conversation turns.
+- **Conversation grader selected previously**: if an older configuration references a conversation-enabled workflow as a grader, SharpOMatic clears that selection because graders must be one-shot workflows.
 - **Missing mandatory row data**: a required column has no value for one or more rows.
 - **Invalid sample count**: the sample count is outside the valid range for the current row total.
 - **Missing grader score**: the grader workflow does not output a numeric value at `score`, so score summaries may look incomplete.

@@ -126,6 +126,7 @@ export class EvaluationComponent
   private runsLoaded = false;
   private runSearchDebounceId: ReturnType<typeof setTimeout> | undefined;
   public workflowSummaries: WorkflowSummaryEntity[] = [];
+  public graderWorkflowSummaries: WorkflowSummaryEntity[] = [];
   public tabs: TabItem[] = [];
   public activeTabId = this.defaultTabId;
   public selectedRowId: string | null = null;
@@ -388,7 +389,7 @@ export class EvaluationComponent
       return null;
     }
 
-    const exists = this.workflowSummaries.some(
+    const exists = this.graderWorkflowSummaries.some(
       (workflow) => workflow.id === workflowId,
     );
     return exists ? workflowId : null;
@@ -1556,7 +1557,8 @@ export class EvaluationComponent
         SortDirection.Ascending,
       )
       .subscribe((workflows) => {
-        this.workflowSummaries = workflows.filter(
+        this.workflowSummaries = workflows;
+        this.graderWorkflowSummaries = workflows.filter(
           (workflow) => !workflow.isConversationEnabled(),
         );
         this.hasLoadedWorkflows = true;
@@ -1607,7 +1609,7 @@ export class EvaluationComponent
         return;
       }
 
-      const exists = this.workflowSummaries.some(
+      const exists = this.graderWorkflowSummaries.some(
         (workflow) => workflow.id === workflowId,
       );
       if (!exists) {

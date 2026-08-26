@@ -122,7 +122,22 @@ public class EngineService(
         string? streamConversationId
     )
     {
-        resumeInput ??= new ContinueResumeInput();
+        var created = await CreateConversationRunInternal(workflowId, conversationId, needsEditorEvents);
+        return await StartCreatedConversationRunInternal(
+            created,
+            workflowId,
+            resumeInput ?? new ContinueResumeInput(),
+            inputEntries,
+            completionSource,
+            waitForCompletion,
+            streamConversationId
+        );
+    }
+
+    private sealed record CreatedConversationRun(Run Run, Conversation Conversation, ConversationCheckpoint? PreviousCheckpoint, int TurnNumber);
+
+    private async Task<CreatedConversationRun> CreateConversationRunInternal(Guid workflowId, string conversationId, bool needsEditorEvents)
+    {
         if (string.IsNullOrWhiteSpace(conversationId))
             throw new SharpOMaticException("Conversation id cannot be empty or whitespace.");
 
@@ -166,6 +181,24 @@ public class EngineService(
             InputContext = JsonSerializer.Serialize(new ContextObject(), new JsonSerializerOptions().BuildOptions(JsonConverterService.GetConverters())),
         };
         await RepositoryService.UpsertRun(run);
+
+        return new CreatedConversationRun(run, conversation, previousCheckpoint, turnNumber);
+    }
+
+    private async Task<Run> StartCreatedConversationRunInternal(
+        CreatedConversationRun created,
+        Guid workflowId,
+        NodeResumeInput resumeInput,
+        ContextEntryListEntity? inputEntries,
+        TaskCompletionSource<Run> completionSource,
+        bool waitForCompletion,
+        string? streamConversationId
+    )
+    {
+        var run = created.Run;
+        var conversation = created.Conversation;
+        var previousCheckpoint = created.PreviousCheckpoint;
+        var turnNumber = created.TurnNumber;
 
         var nodeRunLimitSetting = await RepositoryService.GetSetting("RunNodeLimit");
         var nodeRunLimit = nodeRunLimitSetting?.ValueInteger ?? NodeExecutionService.DEFAULT_NODE_RUN_LIMIT;
@@ -274,6 +307,22 @@ public class EngineService(
         var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
         await StartRunInternal(run, nodeContext, inputEntries, completionSource);
         return await completionSource.Task.ConfigureAwait(false);
+    }
+
+    private async Task<Run> StartCreatedConversationRunAndWait(CreatedConversationRun created, Guid workflowId, ContextObject nodeContext)
+    {
+        var completionSource = new TaskCompletionSource<Run>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // The turn starts from an empty context, so the row's columns are supplied as the start merge input.
+        return await StartCreatedConversationRunInternal(
+            created,
+            workflowId,
+            new ContextMergeResumeInput() { Context = nodeContext },
+            inputEntries: null,
+            completionSource,
+            waitForCompletion: true,
+            streamConversationId: null
+        );
     }
 
     private async Task StartRunInternal(Run run, ContextObject? nodeContext, ContextEntryListEntity? inputEntries, TaskCompletionSource<Run>? completionSource)
@@ -611,7 +660,16 @@ public class EngineService(
                 throw new SharpOMaticException($"Row '{evalRow.Order}' does not have mandatory 'Name' column.");
 
             var rowName = nameData.StringValue ?? "Unnamed";
-            var run = await CreateRunInternal(evalConfigDetail.EvalConfig.WorkflowId ?? Guid.Empty, needsEditorEvents: false);
+            var workflowId = evalConfigDetail.EvalConfig.WorkflowId ?? Guid.Empty;
+            var workflow = await repository.GetWorkflow(workflowId) ?? throw new SharpOMaticException($"Could not load workflow {workflowId}.");
+
+            // A conversation-enabled workflow rejects the plain run path, so the row runs as a single turn of its own
+            // conversation. Keyed on the row execution so repeats of a row never share checkpoint state.
+            var conversationRun = workflow.IsConversationEnabled
+                ? await CreateConversationRunInternal(workflowId, $"eval:{evalRunRow.EvalRunRowId:D}", needsEditorEvents: false)
+                : null;
+
+            var run = conversationRun?.Run ?? await CreateRunInternal(workflowId, needsEditorEvents: false);
             ContextObject inputContext = [];
             foreach (var column in evalConfigDetail.Columns.Where(c => c.Order > 0))
             {
@@ -735,7 +793,9 @@ public class EngineService(
 
             var serializedInput = inputContext.Serialize(jsonConverterService);
             evalRunRow.InputContext = serializedInput;
-            var runResult = await StartCreatedRunAndWait(run, inputContext);
+            var runResult = conversationRun is null
+                ? await StartCreatedRunAndWait(run, inputContext)
+                : await StartCreatedConversationRunAndWait(conversationRun, workflowId, inputContext);
             if (runResult.RunStatus == RunStatus.Failed)
             {
                 evalRunRow.OutputContext = runResult.OutputContext;

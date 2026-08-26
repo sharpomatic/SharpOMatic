@@ -10,8 +10,10 @@ For evaluation concepts and editor flows, see [Evaluations](../core-concepts/eva
 
 Use the editor to design and maintain evaluation configurations (columns, rows, and graders).
 Use programmatic APIs when your application needs to start runs, monitor progress, and process run outcomes as part of automation.
-Evaluation runs must reference non-conversation workflows for both the main workflow and all graders.
-Conversation-enabled workflows are excluded from the editor selectors because evaluation execution cannot respond to suspend events.
+Grader workflows must be non-conversation workflows, so conversation-enabled workflows are excluded from the grader selector.
+The main evaluation workflow may be conversation-enabled, in which case each row runs as a single turn of a private
+conversation created for that row execution. Evaluation execution cannot respond to suspend events, so a row that
+reaches a suspend or Frontend Tool Call node stops there and is graded on the context it had reached.
 
 ## Start an evaluation run
 
@@ -145,7 +147,7 @@ Register it like any other notification.
 | `EvalRunId`, `EvalRunRowId` | the run and the row execution |
 | `EvalRowId`, `RowName`, `RowOrder` | the configured row, its `Name` column, and its order |
 | `ExecutionOrder` | distinguishes repeats of the same row |
-| `RunId`, `WorkflowId`, `ConversationId` | the workflow run just completed |
+| `RunId`, `WorkflowId`, `ConversationId` | the workflow run just completed. `ConversationId` is set only when the evaluation workflow is conversation-enabled, in which case it names the private conversation created for this row execution |
 | `GraderContext` | the row's column values merged with the workflow output, being what the graders are about to receive |
 
 Return `null` to leave the lookup to another implementation; the first non-null result is used.
