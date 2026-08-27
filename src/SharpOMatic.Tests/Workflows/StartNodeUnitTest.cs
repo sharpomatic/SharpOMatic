@@ -1,4 +1,4 @@
-namespace SharpOMatic.Tests.Workflows;
+﻿namespace SharpOMatic.Tests.Workflows;
 
 public sealed class StartNodeUnitTest
 {
@@ -201,7 +201,7 @@ public sealed class StartNodeUnitTest
 
         Assert.NotNull(run);
         Assert.Equal(RunStatus.Failed, run.RunStatus);
-        Assert.Equal("Input entry 'input.json' value could not be parsed as json.", run.Error);
+        Assert.Equal("Input entry 'input.json' value could not be parsed as json. Unrecognized keyword 'invalid'.", run.Error);
     }
 
     [Fact]

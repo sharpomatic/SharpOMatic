@@ -1,4 +1,4 @@
-
+﻿
 namespace SharpOMatic.Engine.Services;
 
 public class EngineService(
@@ -710,9 +710,9 @@ public class EngineService(
                                     var obj = ContextHelpers.FastDeserializeString(columnData.StringValue);
                                     inputContext.Set(ContextPath(column), obj);
                                 }
-                                catch
+                                catch (Exception ex)
                                 {
-                                    throw new SharpOMaticException($"Column '{column.Name}' for row '{rowName}' could not be parsed as json.");
+                                    throw new SharpOMaticException($"Column '{column.Name}' for row '{rowName}' could not be parsed as json. {ex.Message}", ex);
                                 }
                             }
                             else if (!column.Optional)

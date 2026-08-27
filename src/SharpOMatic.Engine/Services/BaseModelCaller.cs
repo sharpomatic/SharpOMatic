@@ -895,9 +895,9 @@ public abstract class BaseModelCaller : IModelCaller
             {
                 return FastDeserializeString(sb.ToString());
             }
-            catch
+            catch (Exception ex)
             {
-                throw new SharpOMaticException($"Model response could not be parsed as json.");
+                throw new SharpOMaticException($"Model response could not be parsed as json. {ex.Message}", ex);
             }
         }
 

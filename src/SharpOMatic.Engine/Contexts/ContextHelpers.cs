@@ -52,9 +52,9 @@ public static class ContextHelpers
                 {
                     entryValue = FastDeserializeString(entry.EntryValue);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    throw new SharpOMaticException($"Input entry '{entry.InputPath}' value could not be parsed as json.");
+                    throw new SharpOMaticException($"Input entry '{entry.InputPath}' value could not be parsed as json. {ex.Message}", ex);
                 }
                 break;
 
@@ -134,9 +134,9 @@ public static class ContextHelpers
             ValidateAssetRef(asset, inputPath);
             return asset;
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
-            throw new SharpOMaticException($"Input entry '{inputPath}' value could not be parsed as an asset reference.");
+            throw new SharpOMaticException($"Input entry '{inputPath}' value could not be parsed as an asset reference. {ex.Message}", ex);
         }
     }
 
@@ -161,9 +161,9 @@ public static class ContextHelpers
 
             return list;
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
-            throw new SharpOMaticException($"Input entry '{inputPath}' value could not be parsed as an asset list.");
+            throw new SharpOMaticException($"Input entry '{inputPath}' value could not be parsed as an asset list. {ex.Message}", ex);
         }
     }
 
