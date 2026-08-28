@@ -70,9 +70,9 @@ public class EngineService(
         return StartWorkflowRunAndWait(workflowId, context, inputEntries, needsEditorEvents).GetAwaiter().GetResult();
     }
 
-    public async Task<EvalRun> StartEvalRun(Guid evalConfigId, string? name = null, int? sampleCount = null)
+    public async Task<EvalRun> StartEvalRun(Guid evalConfigId, string? name = null, int? sampleCount = null, IReadOnlyList<Guid>? evalRowIds = null)
     {
-        return await StartEvalRunInternal(evalConfigId, name, sampleCount);
+        return await StartEvalRunInternal(evalConfigId, name, sampleCount, evalRowIds);
     }
 
     public Task<Run> StartOrResumeConversationAndWait(Guid workflowId, string conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false, string? streamConversationId = null)
@@ -378,11 +378,11 @@ public class EngineService(
         return inputJson;
     }
 
-    private async Task<EvalRun> StartEvalRunInternal(Guid evalConfigId, string? name, int? sampleCount)
+    private async Task<EvalRun> StartEvalRunInternal(Guid evalConfigId, string? name, int? sampleCount, IReadOnlyList<Guid>? evalRowIds = null)
     {
         var evalConfigDetail = await RepositoryService.GetEvalConfigDetail(evalConfigId);
         var allRows = evalConfigDetail.Rows.OrderBy(r => r.Order).ToList();
-        var selectedRows = ResolveEvalRowsForRun(allRows, sampleCount);
+        var selectedRows = ResolveEvalRowsForRun(allRows, sampleCount, evalRowIds);
         var executionRows = BuildEvalRunWorkItems(selectedRows, sampleCount.HasValue);
         var started = DateTime.Now;
 
@@ -1108,9 +1108,12 @@ public class EngineService(
         }
     }
 
-    private static List<EvalRow> ResolveEvalRowsForRun(List<EvalRow> allRows, int? sampleCount)
+    private static List<EvalRow> ResolveEvalRowsForRun(List<EvalRow> allRows, int? sampleCount, IReadOnlyList<Guid>? evalRowIds = null)
     {
         var runnableRows = allRows.Where(row => row.EffectiveRepeat > 0).ToList();
+
+        if (evalRowIds is { Count: > 0 })
+            return ResolveExplicitEvalRowsForRun(allRows, sampleCount, evalRowIds);
 
         if (!sampleCount.HasValue)
             return allRows;
@@ -1127,6 +1130,26 @@ public class EngineService(
 
         var selectedRowIds = BuildRandomSampleRowIds(runnableRows, requestedSampleCount);
         return runnableRows.Where(row => selectedRowIds.Contains(row.EvalRowId)).ToList();
+    }
+
+    private static List<EvalRow> ResolveExplicitEvalRowsForRun(List<EvalRow> allRows, int? sampleCount, IReadOnlyList<Guid> evalRowIds)
+    {
+        if (sampleCount.HasValue)
+            throw new SharpOMaticException("Sample count cannot be combined with an explicit row selection.");
+
+        var requestedIds = evalRowIds.ToHashSet();
+        var selectedRows = allRows.Where(row => requestedIds.Contains(row.EvalRowId)).ToList();
+
+        if (selectedRows.Count != requestedIds.Count)
+        {
+            var missingIds = requestedIds.Except(selectedRows.Select(row => row.EvalRowId));
+            throw new SharpOMaticException($"Eval rows were not found in this configuration: {string.Join(", ", missingIds)}.");
+        }
+
+        if (selectedRows.All(row => row.EffectiveRepeat <= 0))
+            throw new SharpOMaticException("The selected rows have a repeat of zero, so there is nothing to run.");
+
+        return selectedRows;
     }
 
     private static List<EvalRunWorkItem> BuildEvalRunWorkItems(List<EvalRow> selectedRows, bool isSampleRun)

@@ -382,6 +382,17 @@
                 <button
                   type="button"
                   class="dropdown-item"
+                  [disabled]="!canRunSelectedRow()"
+                  (click)="runSelectedRow()"
+                >
+                  Run selected
+                </button>
+              </li>
+              <li><hr class="dropdown-divider" /></li>
+              <li>
+                <button
+                  type="button"
+                  class="dropdown-item"
                   [disabled]="isImportingRowsCsv || isExportingRowsCsv"
                   (click)="triggerRowsCsvImport(rowsCsvImportInput)"
                 >

@@ -6,7 +6,7 @@ public interface IEngineService
     Task<Run> StartWorkflowRunAndWait(Guid workflowId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false);
     Task<Guid> StartWorkflowRunAndNotify(Guid workflowId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false);
     Run StartWorkflowRunSynchronously(Guid workflowId, ContextObject? context = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false);
-    Task<EvalRun> StartEvalRun(Guid evalConfigId, string? name = null, int? sampleCount = null);
+    Task<EvalRun> StartEvalRun(Guid evalConfigId, string? name = null, int? sampleCount = null, IReadOnlyList<Guid>? evalRowIds = null);
     Task<Run> StartOrResumeConversationAndWait(Guid workflowId, string conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false, string? streamConversationId = null);
     Task<Guid> StartOrResumeConversationAndNotify(Guid workflowId, string conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false, string? streamConversationId = null);
     Run StartOrResumeConversationSynchronously(Guid workflowId, string conversationId, NodeResumeInput? resumeInput = null, ContextEntryListEntity? inputEntries = null, bool needsEditorEvents = false, string? streamConversationId = null);

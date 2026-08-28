@@ -30,6 +30,7 @@ Optional parameters:
 
 - `name`: custom display name for the run
 - `sampleCount`: random row sample size
+- `evalRowIds`: run only these specific rows
 
 `sampleCount` is optional. If omitted, all runnable rows are run according to each row's Repeat value.
 Rows with Repeat `0` are skipped.
@@ -44,6 +45,22 @@ var evalRun = await engine.StartEvalRun(
     evalConfigId,
     name: "Nightly prompt regression",
     sampleCount: 25);
+```
+
+`evalRowIds` restricts the run to an explicit set of rows.
+It narrows which rows run without changing how many times each one runs, so every selected row still executes according to its Repeat value.
+
+Every supplied id must belong to the configuration, and at least one selected row must have a Repeat greater than `0`.
+`evalRowIds` cannot be combined with `sampleCount`; supplying both throws a `SharpOMaticException`.
+If omitted or empty, every row is run as usual.
+
+```csharp
+var engine = serviceProvider.GetRequiredService<IEngineService>();
+
+// Start a run for a single row
+var evalRun = await engine.StartEvalRun(
+    evalConfigId,
+    evalRowIds: [evalRowId]);
 ```
 
 ## Score calculation

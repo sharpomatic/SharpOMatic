@@ -4,4 +4,5 @@ public class StartEvalRunRequest
 {
     public string? Name { get; set; }
     public int? SampleCount { get; set; }
+    public List<Guid>? EvalRowIds { get; set; }
 }

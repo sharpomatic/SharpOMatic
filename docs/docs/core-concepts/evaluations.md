@@ -251,6 +251,14 @@ Rows are selected randomly each run, so two sampled runs can execute different s
 Sampled runs execute each selected row once, regardless of that row's repeat value.
 If sampling is disabled, all rows are executed according to their repeat values.
 
+### Running a single row
+
+To test a small change against one row without running the whole dataset, select the row in the **Rows** tab and choose **Run selected** from the row actions menu.
+This starts a new run immediately, with a timestamp-based name and no start dialog.
+
+Only the selected row is executed, and it honours its own repeat value, so a row with a repeat of `3` still runs three times.
+The option is unavailable while there are unsaved changes or validation errors, and for a row whose repeat is `0`.
+
 ## Runs
 
 Each run is stored with status and progress information.

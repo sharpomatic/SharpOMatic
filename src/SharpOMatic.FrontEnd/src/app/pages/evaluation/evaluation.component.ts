@@ -712,6 +712,42 @@ export class EvaluationComponent
     return this.evalConfig.rows().length > 0;
   }
 
+  canRunSelectedRow(): boolean {
+    const selectedRow = this.selectedRow;
+    return (
+      selectedRow !== null &&
+      selectedRow.repeat() > EvalRow.MIN_REPEAT &&
+      this.canStartRun()
+    );
+  }
+
+  runSelectedRow(): void {
+    if (!this.canRunSelectedRow()) {
+      return;
+    }
+
+    const selectedRow = this.selectedRow;
+    if (!selectedRow) {
+      return;
+    }
+
+    this.isStartingRun = true;
+    this.serverRepository
+      .startEvalRun(this.evalConfig.evalConfigId, null, null, [
+        selectedRow.evalRowId,
+      ])
+      .subscribe({
+        next: (evalRunId) => {
+          this.isStartingRun = false;
+          if (evalRunId) {
+            this.activeTabId = 'runs';
+            this.updateTabRoute('runs');
+            this.refreshRuns(evalRunId);
+          }
+        },
+      });
+  }
+
   triggerRowsCsvImport(fileInput: HTMLInputElement): void {
     if (this.isImportingRowsCsv) {
       return;

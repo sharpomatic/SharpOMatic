@@ -1166,9 +1166,14 @@ export class ServerRepositoryService {
     evalConfigId: string,
     name?: string | null,
     sampleCount?: number | null,
+    evalRowIds?: string[] | null,
   ): Observable<string | undefined> {
     const apiUrl = this.settingsService.apiUrl();
-    const payload = { name: name ?? null, sampleCount: sampleCount ?? null };
+    const payload = {
+      name: name ?? null,
+      sampleCount: sampleCount ?? null,
+      evalRowIds: evalRowIds?.length ? evalRowIds : null,
+    };
     return this.http
       .post<string>(`${apiUrl}/api/eval/configs/${evalConfigId}/runs`, payload)
       .pipe(
