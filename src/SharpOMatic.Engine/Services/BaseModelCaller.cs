@@ -884,6 +884,8 @@ public abstract class BaseModelCaller : IModelCaller
 
     protected virtual object? ResponseToOutputValue(bool jsonOutput, AgentResponse response)
     {
+        ThrowIfErrorResponse(response);
+
         StringBuilder sb = new();
         foreach (var message in response.Messages)
             if (!string.IsNullOrEmpty(message.Text))
@@ -902,5 +904,13 @@ public abstract class BaseModelCaller : IModelCaller
         }
 
         return sb.ToString();
+    }
+
+    private static void ThrowIfErrorResponse(AgentResponse response)
+    {
+        foreach (var message in response.Messages)
+            foreach (var content in message.Contents)
+                if (content is ErrorContent errorContent)
+                    throw new ModelResponseErrorException(errorContent.ErrorCode, errorContent.Message, errorContent.Details);
     }
 }

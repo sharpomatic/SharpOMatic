@@ -15,6 +15,7 @@ public static class ModelFallbackFailureClassifier
             _ when Find<OperationCanceledException>(exception) is not null => ModelFallbackFailureCategory.Cancellation,
             _ when Find<TimeoutException>(exception) is not null || Find<TaskCanceledException>(exception) is not null => ModelFallbackFailureCategory.Timeout,
             _ when Find<HttpRequestException>(exception) is not null || Find<IOException>(exception) is not null => ModelFallbackFailureCategory.Network,
+            _ when Find<ModelResponseErrorException>(exception) is { } modelResponseError => ClassifyModelResponseError(modelResponseError),
             _ when Find<SharpOMaticException>(exception) is not null => ModelFallbackFailureCategory.Configuration,
             _ => ModelFallbackFailureCategory.Unknown,
         };
@@ -44,10 +45,31 @@ public static class ModelFallbackFailureClassifier
         return Enumerate(exception).OfType<TException>().FirstOrDefault();
     }
 
+    private static ModelFallbackFailureCategory ClassifyModelResponseError(ModelResponseErrorException exception)
+    {
+        var text = $"{exception.ErrorCode} {exception.Message}";
+
+        if (
+            text.Contains("rate limit", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("rate_limit", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("throttl", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("quota", StringComparison.OrdinalIgnoreCase)
+        )
+            return ModelFallbackFailureCategory.RateLimited;
+
+        if (text.Contains("content filter", StringComparison.OrdinalIgnoreCase) || text.Contains("content_filter", StringComparison.OrdinalIgnoreCase))
+            return ModelFallbackFailureCategory.InvalidRequest;
+
+        return ModelFallbackFailureCategory.ProviderUnavailable;
+    }
+
     private static int? TryGetStatusCode(Exception exception)
     {
         foreach (var current in Enumerate(exception))
         {
+            if (current is ModelResponseErrorException { StatusCode: not null } modelResponseError)
+                return modelResponseError.StatusCode.Value;
+
             if (current is ClientResultException clientResultException)
                 return clientResultException.Status;
 
