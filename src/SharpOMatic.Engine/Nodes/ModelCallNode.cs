@@ -606,7 +606,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
         public async Task OnTextDeltaAsync(string messageId, string textDelta)
         {
-            if (string.IsNullOrWhiteSpace(textDelta))
+            if (string.IsNullOrEmpty(textDelta))
                 return;
 
             ResponseStarted = true;
@@ -834,7 +834,8 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
             _reasoningTextById[reasoningId] = reasoningText;
 
-            if (string.IsNullOrWhiteSpace(delta))
+            // The snapshot has already advanced past this delta, so skipping it would drop it permanently.
+            if (string.IsNullOrEmpty(delta))
                 return;
 
             await AddStreamEventAsync(
@@ -885,7 +886,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                 delta = argsSnapshot[currentArgs.Length..];
 
             _toolCallArgsById[toolCallId] = argsSnapshot ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(delta))
+            if (string.IsNullOrEmpty(delta))
                 return;
 
             await AddStreamEventAsync(
@@ -916,7 +917,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
                 {
                     switch (content)
                     {
-                        case TextContent textContent when (response.Role == ChatRole.Assistant) && !string.IsNullOrWhiteSpace(textContent.Text):
+                        case TextContent textContent when (response.Role == ChatRole.Assistant) && !string.IsNullOrEmpty(textContent.Text):
                             if ((currentAssistantMessageId is null) || !_openMessageIds.Contains(currentAssistantMessageId))
                             {
                                 currentAssistantMessageId = assistantTextSegmentIndex == 0

@@ -34,8 +34,8 @@ public class StreamEventHelper
 
     public Task<List<StreamEvent>> AddTextContentAsync(string messageId, string delta, string? metadata = null, bool silent = false)
     {
-        if (string.IsNullOrWhiteSpace(delta))
-            throw new SharpOMaticException("Text content delta cannot be empty or whitespace.");
+        if (string.IsNullOrEmpty(delta))
+            throw new SharpOMaticException("Text content delta cannot be empty.");
 
         return AddEventsAsync(
             new StreamEventWrite()
@@ -125,8 +125,8 @@ public class StreamEventHelper
 
     public Task<List<StreamEvent>> AddReasoningMessageContentAsync(string messageId, string delta, string? metadata = null, bool silent = false)
     {
-        if (string.IsNullOrWhiteSpace(delta))
-            throw new SharpOMaticException("Reasoning message delta cannot be empty or whitespace.");
+        if (string.IsNullOrEmpty(delta))
+            throw new SharpOMaticException("Reasoning message delta cannot be empty.");
 
         return AddEventsAsync(
             new StreamEventWrite()

@@ -436,7 +436,7 @@ public class ProcessContext : ExecutionContext
                 if (string.IsNullOrWhiteSpace(write.MessageId))
                     throw new SharpOMaticException("TextContent stream events require a MessageId.");
 
-                if (string.IsNullOrWhiteSpace(write.TextDelta))
+                if (string.IsNullOrEmpty(write.TextDelta))
                     throw new SharpOMaticException("TextContent stream events require a non-empty TextDelta.");
                 break;
             case StreamEventKind.TextEnd:
@@ -470,7 +470,7 @@ public class ProcessContext : ExecutionContext
                 if (string.IsNullOrWhiteSpace(write.MessageId))
                     throw new SharpOMaticException("ReasoningMessageContent stream events require a MessageId.");
 
-                if (string.IsNullOrWhiteSpace(write.TextDelta))
+                if (string.IsNullOrEmpty(write.TextDelta))
                     throw new SharpOMaticException("ReasoningMessageContent stream events require a non-empty TextDelta.");
                 break;
             case StreamEventKind.ReasoningMessageEnd:
@@ -507,7 +507,7 @@ public class ProcessContext : ExecutionContext
                 if (string.IsNullOrWhiteSpace(write.ToolCallId))
                     throw new SharpOMaticException("ToolCallArgs stream events require a ToolCallId.");
 
-                if (string.IsNullOrWhiteSpace(write.TextDelta))
+                if (string.IsNullOrEmpty(write.TextDelta))
                     throw new SharpOMaticException("ToolCallArgs stream events require a non-empty TextDelta.");
 
                 if (write.MessageRole.HasValue)

@@ -1649,6 +1649,57 @@ public sealed class ModelCallStreamingUnitTests
         }
     }
 
+    [Fact]
+    public async Task Whitespace_only_delta_is_preserved_in_stream_events()
+    {
+        var workflow = new WorkflowBuilder()
+            .AddStart()
+            .AddModelCall("model")
+            .AddEnd()
+            .Connect("start", "model")
+            .Connect("model", "end")
+            .Build();
+
+        var model = CreateModel("openai");
+        ConfigureModelNode(workflow, "model", model.ModelId);
+
+        using var provider = WorkflowRunner.BuildProvider(services =>
+            services.AddKeyedScoped<IModelCaller, SplitWhitespaceDeltaTestModelCaller>("openai")
+        );
+        var repositoryService = provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repositoryService, "openai", model);
+        await repositoryService.UpsertWorkflow(workflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engineService = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engineService.StartWorkflowRunAndWait(workflow.Id, []);
+
+            Assert.Equal(RunStatus.Success, run.RunStatus);
+
+            var streamEvents = await repositoryService.GetRunStreamEvents(run.RunId);
+            var streamed = string.Concat(
+                streamEvents.Where(e => e.EventKind == StreamEventKind.TextContent).Select(e => e.TextDelta ?? string.Empty)
+            );
+
+            Assert.Equal("Hello world\n\nSecond para.", streamed);
+
+            var informations = await repositoryService.GetRunInformations(run.RunId);
+            var assistant = Assert.Single(informations.Where(i => i.InformationType == InformationType.Assistant));
+            Assert.Equal("Hello world\n\nSecond para.", assistant.Text);
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
     private static void ConfigureModelNode(
         WorkflowEntity workflow,
         string title,
@@ -2020,6 +2071,30 @@ public sealed class ModelCallStreamingUnitTests
             await progressSink.OnTextDeltaAsync("assistant-1", " world");
             await progressSink.CompleteAsync();
             return ([], [], "Hello world");
+        }
+    }
+
+    private sealed class SplitWhitespaceDeltaTestModelCaller : IModelCaller
+    {
+        public async Task<ModelCallResult> Call(
+            Model model,
+            ModelConfig modelConfig,
+            Connector connector,
+            ConnectorConfig connectorConfig,
+            ProcessContext processContext,
+            ThreadContext threadContext,
+            ModelCallNodeEntity node,
+            IModelCallProgressSink progressSink
+        )
+        {
+            await progressSink.OnTextStartAsync("assistant-1");
+            await progressSink.OnTextDeltaAsync("assistant-1", "Hello");
+            await progressSink.OnTextDeltaAsync("assistant-1", " ");
+            await progressSink.OnTextDeltaAsync("assistant-1", "world");
+            await progressSink.OnTextDeltaAsync("assistant-1", "\n\n");
+            await progressSink.OnTextDeltaAsync("assistant-1", "Second para.");
+            await progressSink.CompleteAsync();
+            return ([], [], "Hello world\n\nSecond para.");
         }
     }
 

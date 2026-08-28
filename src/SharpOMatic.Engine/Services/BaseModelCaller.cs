@@ -91,7 +91,7 @@ public abstract class BaseModelCaller : IModelCaller
                     {
                         switch (content)
                         {
-                            case TextContent textContent when (update.Role is null || update.Role == ChatRole.Assistant) && !string.IsNullOrWhiteSpace(textContent.Text):
+                            case TextContent textContent when (update.Role is null || update.Role == ChatRole.Assistant) && !string.IsNullOrEmpty(textContent.Text):
                                 if (currentAssistantMessageId is null)
                                 {
                                     await progressSink.OnTextStartAsync(messageId);
@@ -132,7 +132,7 @@ public abstract class BaseModelCaller : IModelCaller
                     }
                 }
 
-                if ((update.Role is null || update.Role == ChatRole.Assistant) && !handledTextContent && !string.IsNullOrWhiteSpace(update.Text))
+                if ((update.Role is null || update.Role == ChatRole.Assistant) && !handledTextContent && !string.IsNullOrEmpty(update.Text))
                 {
                     if (currentAssistantMessageId is null)
                     {

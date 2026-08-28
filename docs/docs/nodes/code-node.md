@@ -150,6 +150,9 @@ For simple text or reasoning messages that come from a template, use the [Event 
 Text stream helpers support `StreamMessageRole.User`, `Assistant`, `Developer`, `System`, and `Tool`.
 Visible reasoning uses the dedicated reasoning helpers rather than `AddTextMessageAsync`.
 
+Incremental content deltas passed to `AddTextContentAsync` and `AddReasoningMessageContentAsync` must be non-empty, but they may consist entirely of whitespace.
+A delta of `" "` or `"\n\n"` is meaningful content that separates words or paragraphs, so it is streamed through unchanged.
+
 All `Events.Add*` helpers now accept an optional `silent` flag.
 Set `silent: true` when the event should still be recorded in SharpOMatic stream history but should be suppressed from AG-UI live SSE output.
 This flag is transient and is not stored in the database.

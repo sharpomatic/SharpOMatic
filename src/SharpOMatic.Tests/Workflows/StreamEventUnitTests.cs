@@ -385,14 +385,14 @@ public sealed class StreamEventUnitTests
     {
         var workflow = new WorkflowBuilder()
             .AddStart()
-            .AddCode("code", """await Events.AddReasoningMessageContentAsync("reason-1", "   ");""")
+            .AddCode("code", """await Events.AddReasoningMessageContentAsync("reason-1", "");""")
             .Connect("start", "code")
             .Build();
 
         var run = await WorkflowRunner.RunWorkflow([], workflow);
 
         Assert.Equal(RunStatus.Failed, run.RunStatus);
-        Assert.Contains("Reasoning message delta cannot be empty or whitespace.", run.Error);
+        Assert.Contains("Reasoning message delta cannot be empty.", run.Error);
     }
 
     [Fact]
