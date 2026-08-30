@@ -41,14 +41,16 @@
                   class="dropdown-item"
                   [class.disabled]="hasStartNode()"
                   (click)="onAddStartNode($event)"
-                  ><i class="dropdown-icon bi bi-chevron-bar-left"></i>Basic: Start</a
+                  ><i class="dropdown-icon bi bi-chevron-bar-left"></i>Basic:
+                  Start</a
                 >
               </li>
               <li>
                 <a
                   class="dropdown-item"
                   (click)="updateService.addEndNode(workflowService.workflow())"
-                  ><i class="dropdown-icon bi bi-chevron-bar-right"></i>Basic: End</a
+                  ><i class="dropdown-icon bi bi-chevron-bar-right"></i>Basic:
+                  End</a
                 >
               </li>
               <li>
@@ -84,8 +86,8 @@
                   (click)="
                     updateService.addFanInNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-box-arrow-in-right"></i>Basic: Fan
-                  In</a
+                  ><i class="dropdown-icon bi bi-box-arrow-in-right"></i>Basic:
+                  Fan In</a
                 >
               </li>
               <li>
@@ -94,7 +96,8 @@
                   (click)="
                     updateService.addFanOutNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-box-arrow-right"></i>Basic: Fan Out</a
+                  ><i class="dropdown-icon bi bi-box-arrow-right"></i>Basic: Fan
+                  Out</a
                 >
               </li>
               <li>
@@ -112,7 +115,8 @@
                   (click)="
                     updateService.addModelCallNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-chat-text"></i>Basic: Model Call</a
+                  ><i class="dropdown-icon bi bi-chat-text"></i>Basic: Model
+                  Call</a
                 >
               </li>
               <li>
@@ -130,7 +134,8 @@
                   (click)="
                     updateService.addSuspendNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-pause-circle"></i>Basic: Suspend</a
+                  ><i class="dropdown-icon bi bi-pause-circle"></i>Basic:
+                  Suspend</a
                 >
               </li>
               <li>
@@ -141,7 +146,8 @@
                       workflowService.workflow()
                     )
                   "
-                  ><i class="dropdown-icon bi bi-hand-index"></i>AG-UI: FE Tool Call</a
+                  ><i class="dropdown-icon bi bi-hand-index"></i>AG-UI: FE Tool
+                  Call</a
                 >
               </li>
               <li>
@@ -152,7 +158,8 @@
                       workflowService.workflow()
                     )
                   "
-                  ><i class="dropdown-icon bi bi-server"></i>AG-UI: BE Tool Call</a
+                  ><i class="dropdown-icon bi bi-server"></i>AG-UI: BE Tool
+                  Call</a
                 >
               </li>
               <li>
@@ -163,16 +170,20 @@
                       workflowService.workflow()
                     )
                   "
-                  ><i class="dropdown-icon bi bi-card-text"></i>AG-UI: Event Template</a
+                  ><i class="dropdown-icon bi bi-card-text"></i>AG-UI: Event
+                  Template</a
                 >
               </li>
               <li>
                 <a
                   class="dropdown-item"
                   (click)="
-                    updateService.addActivitySyncNode(workflowService.workflow())
+                    updateService.addActivitySyncNode(
+                      workflowService.workflow()
+                    )
                   "
-                  ><i class="dropdown-icon bi bi-arrow-repeat"></i>AG-UI: Activity Sync</a
+                  ><i class="dropdown-icon bi bi-arrow-repeat"></i>AG-UI:
+                  Activity Sync</a
                 >
               </li>
               <li>
@@ -181,7 +192,8 @@
                   (click)="
                     updateService.addStateSyncNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-arrow-repeat"></i>AG-UI: State Sync</a
+                  ><i class="dropdown-icon bi bi-arrow-repeat"></i>AG-UI: State
+                  Sync</a
                 >
               </li>
               <li>
@@ -190,7 +202,8 @@
                   (click)="
                     updateService.addStepStartNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-play-circle"></i>AG-UI: Step Start</a
+                  ><i class="dropdown-icon bi bi-play-circle"></i>AG-UI: Step
+                  Start</a
                 >
               </li>
               <li>
@@ -199,7 +212,8 @@
                   (click)="
                     updateService.addStepEndNode(workflowService.workflow())
                   "
-                  ><i class="dropdown-icon bi bi-stop-circle"></i>AG-UI: Step End</a
+                  ><i class="dropdown-icon bi bi-stop-circle"></i>AG-UI: Step
+                  End</a
                 >
               </li>
             </ul>
@@ -316,7 +330,9 @@
               class="form-check-input"
               id="workflow-conversation"
               [ngModel]="workflowService.workflow().isConversationEnabled()"
-              (ngModelChange)="workflowService.workflow().isConversationEnabled.set($event)"
+              (ngModelChange)="
+                workflowService.workflow().isConversationEnabled.set($event)
+              "
             />
             <label class="form-check-label" for="workflow-conversation">
               Enable conversations
@@ -338,7 +354,9 @@
                   <button
                     class="btn btn-link p-0 runs-sort"
                     type="button"
-                    (click)="onConversationsSortChange(ConversationSortField.Created)"
+                    (click)="
+                      onConversationsSortChange(ConversationSortField.Created)
+                    "
                   >
                     Created
                     @if (
@@ -364,7 +382,9 @@
                   <button
                     class="btn btn-link p-0 runs-sort"
                     type="button"
-                    (click)="onConversationsSortChange(ConversationSortField.Status)"
+                    (click)="
+                      onConversationsSortChange(ConversationSortField.Status)
+                    "
                   >
                     Status
                     @if (
@@ -386,6 +406,10 @@
                   </button>
                 </th>
                 <th scope="col" class="col-turns">Turns</th>
+                <th scope="col" class="col-model-calls text-end">
+                  Model calls
+                </th>
+                <th scope="col" class="col-model-cost text-end">Total cost</th>
                 <th scope="col" class="col-error">Error</th>
               </tr>
             </thead>
@@ -401,7 +425,8 @@
                   <td class="col-created">
                     {{
                       conversation.created
-                        ? (conversation.created | date: "yyyy-MM-dd HH:mm:ss.SS")
+                        ? (conversation.created
+                          | date: "yyyy-MM-dd HH:mm:ss.SS")
                         : ""
                     }}
                   </td>
@@ -414,18 +439,37 @@
                   <td class="col-status">
                     <span
                       class="run-text"
-                      [class.created]="conversation.status === ConversationStatus.Created"
-                      [class.running]="conversation.status === ConversationStatus.Running"
-                      [class.success]="conversation.status === ConversationStatus.Completed"
+                      [class.created]="
+                        conversation.status === ConversationStatus.Created
+                      "
+                      [class.running]="
+                        conversation.status === ConversationStatus.Running
+                      "
+                      [class.success]="
+                        conversation.status === ConversationStatus.Completed
+                      "
                       [class.suspended]="
                         conversation.status === ConversationStatus.Suspended
                       "
-                      [class.failed]="conversation.status === ConversationStatus.Failed"
+                      [class.failed]="
+                        conversation.status === ConversationStatus.Failed
+                      "
                     >
                       {{ getConversationStatusLabel(conversation.status) }}
                     </span>
                   </td>
-                  <td class="col-turns">{{ conversation.currentTurnNumber }}</td>
+                  <td class="col-turns">
+                    {{ conversation.currentTurnNumber }}
+                  </td>
+                  <td class="col-model-calls text-end">
+                    {{ conversation.modelCallCount.toLocaleString() }}
+                  </td>
+                  <td
+                    class="col-model-cost text-end"
+                    title="Known model cost in USD; calls without pricing metadata contribute $0."
+                  >
+                    {{ formatCost(conversation.totalModelCost) }}
+                  </td>
                   <td class="col-error">{{ conversation.lastError || "" }}</td>
                 </tr>
               }
@@ -481,7 +525,9 @@
                   @for (page of conversationsPageNumbers(); track page) {
                     <li
                       class="page-item"
-                      [class.active]="page === workflowService.conversationsPage()"
+                      [class.active]="
+                        page === workflowService.conversationsPage()
+                      "
                       [attr.aria-current]="
                         page === workflowService.conversationsPage()
                           ? 'page'
@@ -536,7 +582,9 @@
                         conversationsPageCount()
                       "
                       aria-label="Last"
-                      (click)="onConversationsPageChange(conversationsPageCount())"
+                      (click)="
+                        onConversationsPageChange(conversationsPageCount())
+                      "
                     >
                       <span aria-hidden="true">&raquo;</span>
                     </button>
@@ -601,6 +649,10 @@
                   </button>
                 </th>
                 <th scope="col" class="col-duration">Duration</th>
+                <th scope="col" class="col-model-calls text-end">
+                  Model calls
+                </th>
+                <th scope="col" class="col-model-cost text-end">Total cost</th>
                 <th scope="col" class="col-error">Error</th>
               </tr>
             </thead>
@@ -609,9 +661,9 @@
                 <tr class="run-row" (dblclick)="onRunRowDoubleClick(run)">
                   <td class="col-created">
                     {{
-                    run.created
-                      ? (run.created | date: "yyyy-MM-dd HH:mm:ss.SS")
-                      : ""
+                      run.created
+                        ? (run.created | date: "yyyy-MM-dd HH:mm:ss.SS")
+                        : ""
                     }}
                   </td>
                   <td class="col-run-id text-truncate" [title]="run.runId">
@@ -630,6 +682,15 @@
                     </span>
                   </td>
                   <td class="col-duration">{{ getRunDuration(run) }}</td>
+                  <td class="col-model-calls text-end">
+                    {{ run.modelCallCount.toLocaleString() }}
+                  </td>
+                  <td
+                    class="col-model-cost text-end"
+                    title="Known model cost in USD; calls without pricing metadata contribute $0."
+                  >
+                    {{ formatCost(run.totalModelCost) }}
+                  </td>
                   <td class="col-error">{{ run.error || "" }}</td>
                 </tr>
               }

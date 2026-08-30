@@ -943,6 +943,9 @@
               @if (call.attemptNumber > 1) {
                 <span class="badge text-bg-secondary ms-1">Fallback</span>
               }
+              @if (call.tryNumber > 1) {
+                <span class="badge text-bg-secondary ms-1">Retry {{ call.tryNumber - 1 }}</span>
+              }
             </td>
             <td class="text-end">{{ formatDuration(call.duration) }}</td>
             <td class="text-end">{{ formatNumber(call.totalTokens) }}</td>

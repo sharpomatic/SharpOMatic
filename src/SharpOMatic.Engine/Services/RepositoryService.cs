@@ -895,6 +895,14 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         await dbContext.SaveChangesAsync();
     }
 
+    public async Task<ModelCallUsageSummary> GetConversationModelCallUsage(string conversationId)
+    {
+        using var dbContext = dbContextFactory.CreateDbContext();
+        var modelCallMetrics = await dbContext.ModelCallMetrics.AsNoTracking().Where(metric => metric.ConversationId == conversationId).Select(metric => metric.TotalCost).ToListAsync();
+
+        return new ModelCallUsageSummary(modelCallMetrics.Count, modelCallMetrics.Sum(totalCost => totalCost ?? 0));
+    }
+
     public async Task<ModelCallMetricsDashboard> GetModelCallMetricsDashboard(ModelCallMetricsDashboardRequest request)
     {
         using var dbContext = dbContextFactory.CreateDbContext();
@@ -1170,6 +1178,7 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             metric.Id,
             metric.LogicalCallId,
             metric.AttemptNumber,
+            metric.TryNumber,
             metric.Created,
             metric.WorkflowName,
             metric.NodeTitle,

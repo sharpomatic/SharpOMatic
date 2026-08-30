@@ -18,6 +18,8 @@ public abstract class BaseModelCaller : IModelCaller
 
     public virtual ModelFallbackFailure? ModelFallbackFailureOverride(Exception exception) => null;
 
+    public virtual ModelRetryDecision? ModelRetryOverride(ModelRetryDecisionContext context) => null;
+
     protected virtual async Task<ModelCallResult> CallAgent(AIAgent agent, List<ChatMessage> chat, ChatOptions? chatOptions, bool jsonOutput, ModelCallNodeEntity node)
     {
         AgentResponse response;

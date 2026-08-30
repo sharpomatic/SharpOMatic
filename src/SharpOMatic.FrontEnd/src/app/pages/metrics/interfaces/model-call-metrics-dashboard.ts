@@ -141,6 +141,7 @@ export interface ModelCallMetricCallSummary {
   id: string;
   logicalCallId: string;
   attemptNumber: number;
+  tryNumber: number;
   created: string;
   workflowName: string;
   nodeTitle: string;

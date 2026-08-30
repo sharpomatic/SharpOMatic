@@ -5,6 +5,7 @@ namespace SharpOMatic.Engine.Repository;
 [Index(nameof(ConnectorId), nameof(Created))]
 [Index(nameof(ModelId), nameof(Created))]
 [Index(nameof(ConversationId), nameof(Created))]
+[Index(nameof(RunId))]
 [Index(nameof(Succeeded), nameof(Created))]
 [Index(nameof(LogicalCallId), nameof(AttemptNumber))]
 public class ModelCallMetric
@@ -13,6 +14,7 @@ public class ModelCallMetric
     public required Guid Id { get; set; }
     public Guid LogicalCallId { get; set; }
     public int AttemptNumber { get; set; } = 1;
+    public int TryNumber { get; set; } = 1;
     public required DateTime Created { get; set; }
     public long? Duration { get; set; }
     public required bool Succeeded { get; set; }
@@ -21,6 +23,7 @@ public class ModelCallMetric
     public required Guid WorkflowId { get; set; }
     public required string WorkflowName { get; set; }
     public required Guid RunId { get; set; }
+
     [MaxLength(256)]
     public string? ConversationId { get; set; }
     public required Guid NodeEntityId { get; set; }

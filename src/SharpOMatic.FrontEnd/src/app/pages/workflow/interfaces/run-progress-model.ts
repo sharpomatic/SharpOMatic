@@ -16,4 +16,6 @@ export interface RunProgressModel {
   runStatus: RunStatus;
   message: string;
   error: string;
+  modelCallCount: number;
+  totalModelCost: number;
 }

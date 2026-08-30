@@ -76,6 +76,7 @@ public interface IRepositoryService
     // Model Call Metric Operations
     // ------------------------------------------------
     Task AppendModelCallMetric(ModelCallMetric metric);
+    Task<ModelCallUsageSummary> GetConversationModelCallUsage(string conversationId);
     Task<ModelCallMetricsDashboard> GetModelCallMetricsDashboard(ModelCallMetricsDashboardRequest request);
     Task AppendWorkflowRunMetric(WorkflowRunMetric metric);
     Task<WorkflowRunMetricsDashboard> GetWorkflowRunMetricsDashboard(WorkflowRunMetricsDashboardRequest request);

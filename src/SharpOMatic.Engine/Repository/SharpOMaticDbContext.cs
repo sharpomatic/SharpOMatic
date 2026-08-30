@@ -118,6 +118,8 @@ public class SharpOMaticDbContext : DbContext
         modelBuilder.Entity<ModelCallMetric>().Property(e => e.OutputCost).HasPrecision(18, 8);
         modelBuilder.Entity<ModelCallMetric>().Property(e => e.TotalCost).HasPrecision(18, 8);
         modelBuilder.Entity<ModelCallMetric>().Property(e => e.AttemptNumber).HasDefaultValue(1);
+        modelBuilder.Entity<Run>().Property(e => e.TotalModelCost).HasPrecision(18, 8);
+        modelBuilder.Entity<Conversation>().Property(e => e.TotalModelCost).HasPrecision(18, 8);
         modelBuilder.Entity<WorkflowRunMetric>().Property(e => e.TotalModelCost).HasPrecision(18, 8);
     }
 }

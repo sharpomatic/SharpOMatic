@@ -23,6 +23,7 @@ public static class ServiceCollectionExtensions
         services.TryAddKeyedScoped<IModelCaller, FoundryAnthropicModelCaller>("azure_anthropic_foundry");
         services.AddHostedService<HostedNodeExecutionService>();
         services.AddOptions<SharpOMaticTelemetryOptions>();
+        services.AddOptions<ModelRetryOptions>();
 
         // Add empty versions of optional services
         services.TryAddSingleton<ISchemaTypeRegistry>(_ => new SchemaTypeRegistry([]));

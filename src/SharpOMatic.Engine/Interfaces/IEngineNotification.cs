@@ -9,6 +9,9 @@ public interface IEngineNotification
 
     public ValueTask<bool?> ModelFallbackOverride(ModelFallbackDecisionContext context, CancellationToken cancellationToken = default) => ValueTask.FromResult<bool?>(null);
 
+    public ValueTask<ModelRetryDecision?> ModelRetryOverride(ModelRetryDecisionContext context, CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult<ModelRetryDecision?>(null);
+
     public ValueTask<IList<ChatMessage>?> EvalChatMessages(EvalChatMessageContext context, CancellationToken cancellationToken = default) =>
         ValueTask.FromResult<IList<ChatMessage>?>(null);
 

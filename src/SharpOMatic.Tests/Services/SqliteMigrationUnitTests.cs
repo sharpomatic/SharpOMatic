@@ -9,10 +9,7 @@ public sealed class SqliteMigrationUnitTests
         await connection.OpenAsync();
 
         var options = new DbContextOptionsBuilder<SharpOMaticDbContext>()
-            .UseSqlite(
-                connection,
-                sqliteOptions => sqliteOptions.MigrationsAssembly(typeof(SqliteSharpOMaticBuilderExtensions).Assembly.FullName)
-            )
+            .UseSqlite(connection, sqliteOptions => sqliteOptions.MigrationsAssembly(typeof(SqliteSharpOMaticBuilderExtensions).Assembly.FullName))
             .Options;
 
         await using var dbContext = new SharpOMaticDbContext(options, Options.Create(new SharpOMaticDbOptions()));
@@ -28,6 +25,15 @@ public sealed class SqliteMigrationUnitTests
         var conversationColumns = await GetNames(connection, "SELECT name FROM pragma_table_info('Conversations')");
         Assert.DoesNotContain("LeaseExpires", conversationColumns);
         Assert.DoesNotContain("LeaseOwner", conversationColumns);
+        Assert.Contains("ModelCallCount", conversationColumns);
+        Assert.Contains("TotalModelCost", conversationColumns);
+
+        var runColumns = await GetNames(connection, "SELECT name FROM pragma_table_info('Runs')");
+        Assert.Contains("ModelCallCount", runColumns);
+        Assert.Contains("TotalModelCost", runColumns);
+
+        var modelCallMetricIndexes = await GetNames(connection, "SELECT name FROM pragma_index_list('ModelCallMetrics')");
+        Assert.Contains("IX_ModelCallMetrics_RunId", modelCallMetricIndexes);
     }
 
     private static async Task<List<string>> GetNames(SqliteConnection connection, string commandText)

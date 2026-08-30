@@ -120,6 +120,61 @@ public sealed class WorkflowRunMetricUnitTests
         Assert.Equal(2000, workflowMetric.OutputTokens);
         Assert.Equal(3000, workflowMetric.TotalTokens);
         Assert.Equal(0.0055m, workflowMetric.TotalModelCost);
+        Assert.Equal(1, run.ModelCallCount);
+        Assert.Equal(0.0055m, run.TotalModelCost);
+    }
+
+    [Fact]
+    public async Task GosubModelCallsPopulateParentRunUsage()
+    {
+        var model = CreateModel("openai");
+        var childWorkflow = CreateModelWorkflow(model.ModelId);
+        var parentWorkflow = new WorkflowBuilder().WithName("Parent Workflow").AddStart().AddGosub("child", childWorkflow.Id).AddEnd().Connect("start", "child").Connect("child", "end").Build();
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddKeyedScoped<IModelCaller, UsageModelCaller>("openai"));
+        var repository = (TestRepositoryService)provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repository, "openai", model);
+        await repository.UpsertWorkflow(childWorkflow);
+        await repository.UpsertWorkflow(parentWorkflow);
+
+        var run = await RunWorkflow(provider, parentWorkflow.Id);
+        var modelMetric = Assert.Single(repository.GetModelCallMetrics());
+
+        Assert.Equal(RunStatus.Success, run.RunStatus);
+        Assert.Equal(childWorkflow.Id, modelMetric.WorkflowId);
+        Assert.Equal(run.RunId, modelMetric.RunId);
+        Assert.Equal(1, run.ModelCallCount);
+        Assert.Equal(0.0055m, run.TotalModelCost);
+    }
+
+    [Fact]
+    public async Task ConversationModelUsageAccumulatesAcrossRuns()
+    {
+        var model = CreateModel("openai");
+        var workflow = CreateModelWorkflow(model.ModelId);
+        workflow.IsConversationEnabled = true;
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddKeyedScoped<IModelCaller, UsageModelCaller>("openai"));
+        var repository = (TestRepositoryService)provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repository, "openai", model);
+        await repository.UpsertWorkflow(workflow);
+        var conversationId = $"conversation-{Guid.NewGuid():N}";
+
+        var firstRun = await RunConversation(provider, workflow.Id, conversationId);
+        var firstConversation = await repository.GetConversation(conversationId);
+
+        Assert.Equal(1, firstRun.ModelCallCount);
+        Assert.Equal(0.0055m, firstRun.TotalModelCost);
+        Assert.NotNull(firstConversation);
+        Assert.Equal(1, firstConversation.ModelCallCount);
+        Assert.Equal(0.0055m, firstConversation.TotalModelCost);
+
+        var secondRun = await RunConversation(provider, workflow.Id, conversationId);
+        var secondConversation = await repository.GetConversation(conversationId);
+
+        Assert.Equal(1, secondRun.ModelCallCount);
+        Assert.Equal(0.0055m, secondRun.TotalModelCost);
+        Assert.NotNull(secondConversation);
+        Assert.Equal(2, secondConversation.ModelCallCount);
+        Assert.Equal(0.011m, secondConversation.TotalModelCost);
     }
 
     [Fact]

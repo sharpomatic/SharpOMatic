@@ -124,8 +124,9 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
 
   constructor() {
     effect(() => {
-      const isConversationEnabled =
-        this.workflowService.workflow().isConversationEnabled();
+      const isConversationEnabled = this.workflowService
+        .workflow()
+        .isConversationEnabled();
       this.updateTabs(isConversationEnabled);
     });
   }
@@ -184,9 +185,7 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
     this.dialogService.open(RunViewerDialogComponent, { run });
   }
 
-  onConversationRowDoubleClick(
-    conversation: ConversationSummaryModel,
-  ): void {
+  onConversationRowDoubleClick(conversation: ConversationSummaryModel): void {
     this.dialogService.open(ConversationViewerDialogComponent, {
       conversation,
     });
@@ -278,6 +277,15 @@ export class WorkflowComponent implements OnInit, CanLeaveWithUnsavedChanges {
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${hundredths.toString().padStart(2, '0')}`;
+  }
+
+  public formatCost(value: number): string {
+    return value.toLocaleString(undefined, {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+    });
   }
 
   public getConversationStatusLabel(status: ConversationStatus): string {

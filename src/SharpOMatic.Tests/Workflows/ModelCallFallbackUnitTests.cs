@@ -319,6 +319,8 @@ public sealed class ModelCallFallbackUnitTests
     {
         var provider = WorkflowRunner.BuildProvider(services =>
         {
+            // These tests cover fallback only, so a failed attempt must move straight to the next model.
+            services.Configure<ModelRetryOptions>(options => options.MaxTries = 1);
             services.AddKeyedSingleton<IModelCaller>("fallback-test", caller);
             if (notification is not null)
                 services.AddSingleton(notification);

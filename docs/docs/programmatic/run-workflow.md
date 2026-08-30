@@ -361,6 +361,38 @@ public override ModelFallbackFailure? ModelFallbackFailureOverride(Exception exc
 
 Returning null uses the standard classifier. This method only translates the provider error; `ModelFallbackOverride` and the engine safety gates still decide whether another model is called.
 
+### Model retry override
+
+`ModelRetryOverride` decides whether the same model is called again after a failed try, and how long to wait first. It runs before the fallback decision, so a model is retried until its tries are exhausted and only then is the next configured model considered:
+
+```csharp
+public ValueTask<ModelRetryDecision?> ModelRetryOverride(
+    ModelRetryDecisionContext context,
+    CancellationToken cancellationToken = default)
+{
+    if (context.Failure.Category == ModelFallbackFailureCategory.RateLimited)
+        return ValueTask.FromResult<ModelRetryDecision?>(new ModelRetryDecision(false, TimeSpan.Zero));
+
+    return ValueTask.FromResult<ModelRetryDecision?>(null);
+}
+```
+
+Return a `ModelRetryDecision` to set both whether to retry and the delay before the next try, or null to make no decision. Registered notifications are checked in registration order and the first non-null result wins, overriding both the provider caller's decision and SharpOMatic's built-in policy. The context includes the failed model identity, normalized failure category and status, original exception, the current try number and configured maximum, the elapsed time of the failed try, and the built-in recommendation with its reason.
+
+Provider callers can encode SDK-specific retry knowledge with the matching `IModelCaller.ModelRetryOverride`, which `BaseModelCaller` exposes as a virtual method:
+
+```csharp
+public override ModelRetryDecision? ModelRetryOverride(ModelRetryDecisionContext context)
+{
+    if (ModelFallbackFailureClassifier.Find<ServerError>(context.Exception) is { StatusCode: 504 })
+        return new ModelRetryDecision(false, TimeSpan.Zero);
+
+    return null;
+}
+```
+
+No override can retry after cancellation, provider response output, or tool invocation has started, and none can exceed the configured `MaxTries`. See [Retries](../nodes/model-call-node/retries.md) for the default policy and its configuration.
+
 ## `IProgressService`
 
 If you need run-state updates while execution is in progress, implement `IProgressService`.

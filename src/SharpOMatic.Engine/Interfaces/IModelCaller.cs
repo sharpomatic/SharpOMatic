@@ -4,6 +4,8 @@ public interface IModelCaller
 {
     ModelFallbackFailure? ModelFallbackFailureOverride(Exception exception) => null;
 
+    ModelRetryDecision? ModelRetryOverride(ModelRetryDecisionContext context) => null;
+
     Task<ModelCallResult> Call(
         Model model,
         ModelConfig modelConfig,

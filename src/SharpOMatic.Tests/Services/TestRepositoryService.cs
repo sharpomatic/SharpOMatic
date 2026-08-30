@@ -476,6 +476,12 @@ public sealed class TestRepositoryService : IRepositoryService
         return Task.CompletedTask;
     }
 
+    public Task<ModelCallUsageSummary> GetConversationModelCallUsage(string conversationId)
+    {
+        var modelCallMetrics = _modelCallMetrics.Values.Where(metric => metric.ConversationId == conversationId).ToList();
+        return Task.FromResult(new ModelCallUsageSummary(modelCallMetrics.Count, modelCallMetrics.Sum(metric => metric.TotalCost ?? 0)));
+    }
+
     public Task<ModelCallMetricsDashboard> GetModelCallMetricsDashboard(ModelCallMetricsDashboardRequest request) => throw new NotImplementedException();
 
     public Task AppendWorkflowRunMetric(WorkflowRunMetric metric)

@@ -29,6 +29,18 @@ public class GoogleGenAIModelCaller(IEnumerable<IEngineNotification> engineNotif
         return null;
     }
 
+    public override ModelRetryDecision? ModelRetryOverride(ModelRetryDecisionContext context)
+    {
+        // Google reports both capacity shedding and a genuinely overrunning request as
+        // "Deadline expired before operation could complete", separated only by the status code.
+        // A 503 is shed before generation and normally clears, but a 504 means the request could not
+        // finish inside Google's own deadline, so repeating it unchanged just spends another deadline.
+        if (ModelFallbackFailureClassifier.Find<ServerError>(context.Exception) is { StatusCode: 504 })
+            return new ModelRetryDecision(false, TimeSpan.Zero);
+
+        return null;
+    }
+
     public override async Task<ModelCallResult> Call(
         Model model,
         ModelConfig modelConfig,
@@ -194,7 +206,7 @@ public class GoogleGenAIModelCaller(IEnumerable<IEngineNotification> engineNotif
         else
             modelName = modelConfig.DisplayName;
 
-        var httpOptions = new Google.GenAI.Types.HttpOptions { Timeout = 300_000 };
+        var httpOptions = new Google.GenAI.Types.HttpOptions { Timeout = 600_000 };
         var client = new Client(apiKey: apiKey, httpOptions: httpOptions);
         return (client.AsIChatClient(modelName), modelName);
     }

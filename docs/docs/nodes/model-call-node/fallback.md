@@ -34,6 +34,8 @@ Differences such as a smaller context window, a different output-token limit, or
 
 ## When fallback is used
 
+A failed model is [retried](./retries.md) before the next configured model is considered. Fallback happens only once the current model's tries are exhausted.
+
 The default behavior allows fallback for transient availability failures:
 
 - provider rate limiting, including HTTP 429

@@ -9,4 +9,6 @@ export interface ConversationSummaryModel {
   currentTurnNumber: number;
   lastRunId?: string | null;
   lastError?: string | null;
+  modelCallCount: number;
+  totalModelCost: number;
 }

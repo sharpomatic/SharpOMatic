@@ -12,6 +12,8 @@ The dashboard derives logical-call outcomes by grouping attempts with the same l
 
 Workflow run metrics are written when a run reaches a terminal status: success, failure, or suspended. These rows snapshot the workflow name/version, run status, duration, conversation turn details, failure details, and aggregated model call usage for the run. They intentionally do not use foreign keys to runs, workflows, or nodes, so metrics remain available after detailed run records are pruned.
 
+The workflow editor's Runs tab shows the model-call count and known USD model cost for each completed run. For conversation-enabled workflows, the Conversations tab shows cumulative values across all turns. These values are persisted when each run finishes, including model calls made by Gosub workflows. Calls without pricing metadata contribute to the call count but not to the displayed cost.
+
 ## Views
 
 The page has a top-level switch:

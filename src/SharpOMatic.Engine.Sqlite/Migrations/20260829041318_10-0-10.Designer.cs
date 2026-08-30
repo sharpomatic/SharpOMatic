@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SharpOMatic.Engine.Repository;
 
@@ -10,9 +11,11 @@ using SharpOMatic.Engine.Repository;
 namespace SharpOMatic.Engine.Sqlite.Migrations
 {
     [DbContext(typeof(SharpOMaticDbContext))]
-    partial class SharpOMaticDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260829041318_10-0-10")]
+    partial class _10010
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -717,9 +720,6 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<long?>("TotalTokens")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("TryNumber")
                         .HasColumnType("INTEGER");
 
                     b.Property<Guid>("WorkflowId")

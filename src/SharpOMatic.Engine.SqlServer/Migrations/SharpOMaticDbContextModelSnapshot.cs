@@ -168,8 +168,15 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<Guid?>("LastRunId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("ModelCallCount")
+                        .HasColumnType("int");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
+
+                    b.Property<decimal>("TotalModelCost")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
 
                     b.Property<DateTime>("Updated")
                         .HasColumnType("datetime2");
@@ -716,6 +723,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<long?>("TotalTokens")
                         .HasColumnType("bigint");
 
+                    b.Property<int>("TryNumber")
+                        .HasColumnType("int");
+
                     b.Property<Guid>("WorkflowId")
                         .HasColumnType("uniqueidentifier");
 
@@ -726,6 +736,8 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Created");
+
+                    b.HasIndex("RunId");
 
                     b.HasIndex("ConnectorId", "Created");
 
@@ -819,6 +831,9 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<string>("Message")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("ModelCallCount")
+                        .HasColumnType("int");
+
                     b.Property<bool>("NeedsEditorEvents")
                         .HasColumnType("bit");
 
@@ -833,6 +848,10 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
                     b.Property<DateTime?>("Stopped")
                         .HasColumnType("datetime2");
+
+                    b.Property<decimal>("TotalModelCost")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
 
                     b.Property<int?>("TurnNumber")
                         .HasColumnType("int");

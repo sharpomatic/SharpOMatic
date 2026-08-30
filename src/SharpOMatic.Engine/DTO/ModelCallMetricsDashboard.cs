@@ -145,6 +145,7 @@ public sealed record ModelCallMetricCallSummary(
     Guid Id,
     Guid LogicalCallId,
     int AttemptNumber,
+    int TryNumber,
     DateTime Created,
     string WorkflowName,
     string NodeTitle,

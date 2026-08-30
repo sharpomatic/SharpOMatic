@@ -161,9 +161,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         // last chain has finished, so its stale context must not win over the recorded completion context.
         if (processContext.Run.OutputContext is null)
         {
-            var completionContext = threadContext.Retired
-                ? processContext.CompletionContext ?? threadContext.NodeContext
-                : threadContext.NodeContext;
+            var completionContext = threadContext.Retired ? processContext.CompletionContext ?? threadContext.NodeContext : threadContext.NodeContext;
 
             try
             {
@@ -182,12 +180,18 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             }
         }
 
+        var runMetric = await AppendWorkflowRunMetric(processContext, threadContext, exception, failedNode);
+        if (runMetric is not null)
+        {
+            processContext.Run.ModelCallCount = runMetric.ModelCallCount;
+            processContext.Run.TotalModelCost = runMetric.TotalModelCost;
+        }
+
         await UpdateConversationState(processContext, runStatus, error);
         await processContext.RunUpdated();
 
         processContext.CompletionSource?.TrySetResult(processContext.Run);
 
-        var runMetric = await AppendWorkflowRunMetric(processContext, threadContext, exception, failedNode);
         SharpOMaticDiagnostics.CompleteRunActivity(processContext.RunActivity, processContext.Run, runMetric);
 
         await PruneExecutionHistory(processContext);
@@ -269,13 +273,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
     private Task<NodeExecutionResult> RunNode(NextNodeData nextNode)
     {
         var runner = runNodeFactory.Create(nextNode.ThreadContext, nextNode.Node);
-        return runner.Execute(
-            new NodeExecutionRequest()
-            {
-                InvocationKind = nextNode.InvocationKind,
-                ResumeInput = nextNode.ResumeInput,
-            }
-        );
+        return runner.Execute(new NodeExecutionRequest() { InvocationKind = nextNode.InvocationKind, ResumeInput = nextNode.ResumeInput });
     }
 
     private async Task UpdateConversationState(ProcessContext processContext, RunStatus runStatus, string? error)
@@ -284,8 +282,11 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             return;
 
         var conversation = processContext.Conversation;
+        var modelCallUsage = await processContext.RepositoryService.GetConversationModelCallUsage(conversation.ConversationId);
         conversation.Updated = DateTime.UtcNow;
         conversation.LastRunId = processContext.Run.RunId;
+        conversation.ModelCallCount = modelCallUsage.ModelCallCount;
+        conversation.TotalModelCost = modelCallUsage.TotalModelCost;
 
         if (runStatus == RunStatus.Suspended)
         {
@@ -331,9 +332,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             if (processContext.Checkpoint is null)
                 conversation.Status = ConversationStatus.Created;
             else
-                conversation.Status = processContext.Checkpoint.ResumeMode == ConversationResumeMode.StartNode
-                    ? ConversationStatus.Completed
-                    : ConversationStatus.Suspended;
+                conversation.Status = processContext.Checkpoint.ResumeMode == ConversationResumeMode.StartNode ? ConversationStatus.Completed : ConversationStatus.Suspended;
 
             conversation.LastError = error;
         }

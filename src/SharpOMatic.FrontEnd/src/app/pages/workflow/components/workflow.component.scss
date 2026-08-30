@@ -82,7 +82,7 @@
 
 .runs-table .table {
   table-layout: fixed;
-  min-width: 1300px;
+  min-width: 1520px;
   width: 100%;
   margin-bottom: 0;
   border-collapse: separate;
@@ -157,6 +157,18 @@
   width: 90px;
   min-width: 90px;
   max-width: 90px;
+}
+
+.col-model-calls {
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
+}
+
+.col-model-cost {
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
 }
 
 .col-error {

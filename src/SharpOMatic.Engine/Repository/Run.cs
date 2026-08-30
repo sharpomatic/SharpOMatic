@@ -7,6 +7,7 @@ public class Run
     [Key]
     public required Guid RunId { get; set; }
     public required Guid WorkflowId { get; set; }
+
     [MaxLength(256)]
     public string? ConversationId { get; set; }
     public int? TurnNumber { get; set; }
@@ -21,4 +22,6 @@ public class Run
     public string? CustomData { get; set; }
     public string? Message { get; set; }
     public string? Error { get; set; }
+    public int ModelCallCount { get; set; }
+    public decimal TotalModelCost { get; set; }
 }

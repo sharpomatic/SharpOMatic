@@ -28,83 +28,98 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
             ValidateFallbackCapabilities(attempts);
 
+            var retryOptions = ResolveRetryOptions();
+            var promptStreamed = false;
+
             for (var attemptIndex = 0; attemptIndex < attempts.Count; attemptIndex += 1)
             {
                 var attempt = attempts[attemptIndex];
-                metric = CreateMetric(logicalCallId, attemptIndex + 1);
-                metricWritten = false;
                 currentCaller = attempt.Caller;
-                ApplyMetricIdentity(metric, attempt);
-                ApplyActivityIdentity(attempt, attemptIndex);
 
-                var attemptNode = CreateAttemptNode(attempt, disablePromptStream: attemptIndex > 0);
-                var progressSink = new ModelCallNodeProgressSink(ProcessContext, Trace, Informations, attemptNode);
-                currentStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                ModelCallResult result;
-                try
+                for (var tryNumber = 1; ; tryNumber += 1)
                 {
-                    result = await attempt.Caller.Call(
-                        attempt.Model,
-                        attempt.ModelConfig,
-                        attempt.Connector,
-                        attempt.ConnectorConfig,
-                        ProcessContext,
-                        ThreadContext,
-                        attemptNode,
-                        progressSink
-                    );
-                }
-                catch (Exception exception)
-                {
+                    metric = CreateMetric(logicalCallId, attemptIndex + 1, tryNumber);
+                    metricWritten = false;
+                    ApplyMetricIdentity(metric, attempt);
+                    ApplyActivityIdentity(attempt, attemptIndex, tryNumber);
+
+                    var attemptNode = CreateAttemptNode(attempt, disablePromptStream: promptStreamed);
+                    promptStreamed = true;
+                    var progressSink = new ModelCallNodeProgressSink(ProcessContext, Trace, Informations, attemptNode);
+                    currentStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                    ModelCallResult result;
+                    try
+                    {
+                        result = await attempt.Caller.Call(
+                            attempt.Model,
+                            attempt.ModelConfig,
+                            attempt.Connector,
+                            attempt.ConnectorConfig,
+                            ProcessContext,
+                            ThreadContext,
+                            attemptNode,
+                            progressSink
+                        );
+                    }
+                    catch (Exception exception)
+                    {
+                        currentStopwatch.Stop();
+                        var failure = ClassifyFailure(attempt.Caller, exception);
+                        ApplyFailure(metric, exception, failure, currentStopwatch.ElapsedMilliseconds);
+                        await AppendFailureMetric(metric);
+                        metricWritten = true;
+
+                        var retryDecision = await ShouldRetry(exception, failure, progressSink, attempts, attemptIndex, tryNumber, retryOptions, currentStopwatch.Elapsed);
+                        if (retryDecision.ShouldRetry)
+                        {
+                            await DelayRetry(retryDecision.Delay);
+                            continue;
+                        }
+
+                        if (attemptIndex + 1 >= attempts.Count || !await ShouldUseFallback(exception, failure, progressSink, attempts, attemptIndex))
+                            throw;
+
+                        break;
+                    }
+
+                    ApplyUsage(metric, result, attempt.ModelConfig);
+
+                    if (NodeActivity is not null)
+                    {
+                        if (metric.ProviderModelName is not null)
+                            NodeActivity.SetTag("gen_ai.request.model", metric.ProviderModelName);
+                        if (metric.InputTokens.HasValue)
+                            NodeActivity.SetTag("gen_ai.usage.input_tokens", metric.InputTokens.Value);
+                        if (metric.OutputTokens.HasValue)
+                            NodeActivity.SetTag("gen_ai.usage.output_tokens", metric.OutputTokens.Value);
+                        if (metric.TotalCost.HasValue)
+                            NodeActivity.SetTag("sharpomatic.model_call.total_cost", (double)metric.TotalCost.Value);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(Node.TextOutputPath) && !ThreadContext.NodeContext.TrySet(Node.TextOutputPath, result.ResultValue))
+                        throw new SharpOMaticException($"Could not set '{Node.TextOutputPath}' into context.");
+
+                    if (Node.BatchOutput)
+                        WriteChatOutput(result.Chat, result.Responses);
+
+                    await progressSink.ApplyBatchResponseFallbackAsync(result.Responses);
+                    await progressSink.CompleteAsync();
+
+                    if (!Node.BatchOutput)
+                        WriteChatOutput(result.Chat, result.Responses);
+
+                    ApplyExitContext(result);
+
+                    await progressSink.PersistAsync();
+
                     currentStopwatch.Stop();
-                    var failure = ClassifyFailure(attempt.Caller, exception);
-                    ApplyFailure(metric, exception, failure, currentStopwatch.ElapsedMilliseconds);
-                    await AppendFailureMetric(metric);
+                    metric.Duration = currentStopwatch.ElapsedMilliseconds;
+                    metric.Succeeded = true;
+                    await ProcessContext.RepositoryService.AppendModelCallMetric(metric);
                     metricWritten = true;
 
-                    if (attemptIndex + 1 >= attempts.Count || !await ShouldUseFallback(exception, failure, progressSink, attempts, attemptIndex))
-                        throw;
-
-                    continue;
+                    return NodeExecutionResult.Continue($"{attempt.Model.Name ?? "(empty)"}", ResolveOptionalSingleOutput(ThreadContext));
                 }
-
-                ApplyUsage(metric, result, attempt.ModelConfig);
-
-                if (NodeActivity is not null)
-                {
-                    if (metric.ProviderModelName is not null)
-                        NodeActivity.SetTag("gen_ai.request.model", metric.ProviderModelName);
-                    if (metric.InputTokens.HasValue)
-                        NodeActivity.SetTag("gen_ai.usage.input_tokens", metric.InputTokens.Value);
-                    if (metric.OutputTokens.HasValue)
-                        NodeActivity.SetTag("gen_ai.usage.output_tokens", metric.OutputTokens.Value);
-                    if (metric.TotalCost.HasValue)
-                        NodeActivity.SetTag("sharpomatic.model_call.total_cost", (double)metric.TotalCost.Value);
-                }
-
-                if (!string.IsNullOrWhiteSpace(Node.TextOutputPath) && !ThreadContext.NodeContext.TrySet(Node.TextOutputPath, result.ResultValue))
-                    throw new SharpOMaticException($"Could not set '{Node.TextOutputPath}' into context.");
-
-                if (Node.BatchOutput)
-                    WriteChatOutput(result.Chat, result.Responses);
-
-                await progressSink.ApplyBatchResponseFallbackAsync(result.Responses);
-                await progressSink.CompleteAsync();
-
-                if (!Node.BatchOutput)
-                    WriteChatOutput(result.Chat, result.Responses);
-
-                ApplyExitContext(result);
-
-                await progressSink.PersistAsync();
-
-                currentStopwatch.Stop();
-                metric.Duration = currentStopwatch.ElapsedMilliseconds;
-                metric.Succeeded = true;
-                await ProcessContext.RepositoryService.AppendModelCallMetric(metric);
-                metricWritten = true;
-
-                return NodeExecutionResult.Continue($"{attempt.Model.Name ?? "(empty)"}", ResolveOptionalSingleOutput(ThreadContext));
             }
 
             throw new SharpOMaticException("No model call attempt completed.");
@@ -122,13 +137,14 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         }
     }
 
-    private ModelCallMetric CreateMetric(Guid logicalCallId, int attemptNumber)
+    private ModelCallMetric CreateMetric(Guid logicalCallId, int attemptNumber, int tryNumber = 1)
     {
         return new ModelCallMetric()
         {
             Id = Guid.NewGuid(),
             LogicalCallId = logicalCallId,
             AttemptNumber = attemptNumber,
+            TryNumber = tryNumber,
             Created = DateTime.UtcNow,
             Succeeded = false,
             WorkflowId = WorkflowContext.Workflow.Id,
@@ -309,6 +325,91 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             && (!modelConfig.IsCustom || model.CustomCapabilities.Contains(capability, StringComparer.Ordinal));
     }
 
+    private ModelRetryOptions ResolveRetryOptions()
+    {
+        return ProcessContext.ServiceScope.ServiceProvider.GetService<IOptions<ModelRetryOptions>>()?.Value ?? new ModelRetryOptions();
+    }
+
+    private static async Task DelayRetry(TimeSpan delay)
+    {
+        if (delay > TimeSpan.Zero)
+            await Task.Delay(delay);
+    }
+
+    private async Task<ModelRetryDecision> ShouldRetry(
+        Exception exception,
+        ModelFallbackFailure failure,
+        ModelCallNodeProgressSink progressSink,
+        IReadOnlyList<ModelCallAttemptResources> attempts,
+        int attemptIndex,
+        int tryNumber,
+        ModelRetryOptions options,
+        TimeSpan elapsed
+    )
+    {
+        // Hard gates: retrying after visible output or a tool call would duplicate side effects, and no
+        // override may push a logical call past its configured try budget.
+        if (progressSink.ResponseStarted || progressSink.ToolInvocationStarted || options.MaxTries <= 1 || tryNumber >= options.MaxTries)
+            return new ModelRetryDecision(false, TimeSpan.Zero);
+
+        (var defaultDecision, var defaultReason) = ModelRetryPolicy.Decide(failure, tryNumber, options);
+        var context = new ModelRetryDecisionContext(
+            ProcessContext.Run.RunId,
+            WorkflowContext.Workflow.Id,
+            ProcessContext.Run.ConversationId,
+            Node.Id,
+            Node.Title,
+            attemptIndex,
+            attempts.Count,
+            CreateFallbackTarget(attempts[attemptIndex]),
+            exception,
+            failure,
+            tryNumber,
+            options.MaxTries,
+            elapsed,
+            progressSink.ResponseStarted,
+            progressSink.ToolInvocationStarted,
+            defaultDecision,
+            defaultReason
+        );
+
+        var decision = defaultDecision;
+
+        try
+        {
+            if (attempts[attemptIndex].Caller.ModelRetryOverride(context) is { } providerDecision)
+                decision = providerDecision;
+        }
+        catch
+        {
+        }
+
+        foreach (var notification in ProcessContext.ServiceScope.ServiceProvider.GetServices<IEngineNotification>())
+        {
+            ModelRetryDecision? hostDecision;
+            try
+            {
+                hostDecision = await notification.ModelRetryOverride(context);
+            }
+            catch (Exception overrideException)
+            {
+                throw new SharpOMaticException("Model retry override failed.", new AggregateException(exception, overrideException));
+            }
+
+            if (hostDecision is not null)
+            {
+                decision = hostDecision;
+                break;
+            }
+        }
+
+        if (!decision.ShouldRetry)
+            return new ModelRetryDecision(false, TimeSpan.Zero);
+
+        var delay = decision.Delay < TimeSpan.Zero ? TimeSpan.Zero : decision.Delay;
+        return new ModelRetryDecision(true, delay > options.MaxDelay ? options.MaxDelay : delay);
+    }
+
     private async Task<bool> ShouldUseFallback(
         Exception exception,
         ModelFallbackFailure failure,
@@ -383,7 +484,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         metric.ConnectorConfigName = attempt.ConnectorConfig.DisplayName;
     }
 
-    private void ApplyActivityIdentity(ModelCallAttemptResources attempt, int attemptIndex)
+    private void ApplyActivityIdentity(ModelCallAttemptResources attempt, int attemptIndex, int tryNumber)
     {
         NodeActivity?.SetTag("sharpomatic.model.name", attempt.Model.Name);
         NodeActivity?.SetTag("sharpomatic.model.config", attempt.ModelConfig.ConfigId);
@@ -391,6 +492,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         NodeActivity?.SetTag("sharpomatic.connector.config", attempt.ConnectorConfig.ConfigId);
         NodeActivity?.SetTag("sharpomatic.model_call.attempt", attemptIndex + 1);
         NodeActivity?.SetTag("sharpomatic.model_call.fallback", attemptIndex > 0);
+        NodeActivity?.SetTag("sharpomatic.model_call.try", tryNumber);
     }
 
     private ModelCallNodeEntity CreateAttemptNode(ModelCallAttemptResources attempt, bool disablePromptStream)

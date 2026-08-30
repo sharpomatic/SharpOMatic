@@ -67,6 +67,14 @@ public class SharpOMaticBuilder
         return this;
     }
 
+    public SharpOMaticBuilder AddModelRetry(Action<ModelRetryOptions> retryOptionsAction)
+    {
+        ArgumentNullException.ThrowIfNull(retryOptionsAction);
+        Services.Configure(retryOptionsAction);
+
+        return this;
+    }
+
     public SharpOMaticBuilder AddRepository(
         Action<DbContextOptionsBuilder> optionsAction,
         Action<SharpOMaticDbOptions>? dbOptionsAction = null

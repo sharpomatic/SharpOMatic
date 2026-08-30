@@ -13,4 +13,6 @@ public class Conversation
     public int CurrentTurnNumber { get; set; }
     public Guid? LastRunId { get; set; }
     public string? LastError { get; set; }
+    public int ModelCallCount { get; set; }
+    public decimal TotalModelCost { get; set; }
 }
