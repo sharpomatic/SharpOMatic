@@ -57,11 +57,15 @@ public class AnthropicModelCaller(IEnumerable<IEngineNotification> engineNotific
         (var instructions, var prompt) = await ResolveInstructionsAndPrompt(chat, processContext, threadContext, node);
         (var client, var modelName) = GetAnthropicClient(model, modelConfig, authenticationModeConfig, connectionFields);
 
-        var agent = client.AsAIAgent(
-            modelName,
-            instructions: instructions,
-            clientFactory: chatClient => CreateFunctionInvokingChatClient(chatClient, agentServiceProvider, progressSink),
-            services: agentServiceProvider
+        var agent = ApplyAgentTelemetry(
+            client.AsAIAgent(
+                modelName,
+                instructions: instructions,
+                name: node.Title,
+                clientFactory: chatClient => CreateFunctionInvokingChatClient(chatClient, agentServiceProvider, progressSink),
+                services: agentServiceProvider
+            ),
+            agentServiceProvider
         );
         await EmitPromptStreamEvents(processContext, prompt, node.DisableStreamUser);
         var result = await CallConfiguredAgent(agent, chat, chatOptions, jsonOutput, node, progressSink, modelCallExitState);

@@ -62,12 +62,16 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
         // request, breaking the strict function_call → function_call_output pairing the Responses API requires.
         // Track: https://github.com/microsoft/agent-framework/issues/3795
         // TO REVERT: replace the clientFactory lambda below with the commented-out original line.
-        var agent = agentClient.AsAIAgent(
-            modelName,
-            instructions: instructions,
-            // Original (stateful): clientFactory: chatClient => CreateFunctionInvokingChatClient(chatClient, agentServiceProvider),
-            clientFactory: _ => CreateFunctionInvokingChatClient(agentClient.AsIChatClientWithStoredOutputDisabled(modelName), agentServiceProvider, progressSink),
-            services: agentServiceProvider
+        var agent = ApplyAgentTelemetry(
+            agentClient.AsAIAgent(
+                modelName,
+                instructions: instructions,
+                name: node.Title,
+                // Original (stateful): clientFactory: chatClient => CreateFunctionInvokingChatClient(chatClient, agentServiceProvider),
+                clientFactory: _ => CreateFunctionInvokingChatClient(agentClient.AsIChatClientWithStoredOutputDisabled(modelName), agentServiceProvider, progressSink),
+                services: agentServiceProvider
+            ),
+            agentServiceProvider
         );
         await EmitPromptStreamEvents(processContext, prompt, node.DisableStreamUser);
         var result = await CallConfiguredAgent(agent, chat, chatOptions, jsonOutput, node, progressSink, modelCallExitState);

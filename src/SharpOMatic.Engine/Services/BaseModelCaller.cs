@@ -274,6 +274,34 @@ public abstract class BaseModelCaller : IModelCaller
         };
     }
 
+    /// <summary>
+    /// Wraps the agent with the Agent Framework OpenTelemetry middleware so each model call emits an
+    /// <c>invoke_agent</c> activity around the <c>chat</c> activities of its individual provider round trips.
+    /// A model call with tools runs a model-directed loop whose turn count is not known up front, so the
+    /// agent activity is what carries the whole-call duration and token totals. It is applied to every model
+    /// call, tools or not, to keep the activity shape uniform across nodes and configuration changes.
+    /// </summary>
+    protected AIAgent ApplyAgentTelemetry(AIAgent agent, IServiceProvider? serviceProvider)
+    {
+        var telemetryOptions = serviceProvider?.GetService<IOptions<SharpOMaticTelemetryOptions>>()?.Value ?? new SharpOMaticTelemetryOptions();
+        if (!telemetryOptions.Enabled)
+            return agent;
+
+        return agent
+            .AsBuilder()
+            .UseOpenTelemetry(
+                sourceName: SharpOMaticDiagnostics.SourceName,
+                configure: otel =>
+                {
+                    // Only force sensitive data on; otherwise leave the middleware default,
+                    // which honors OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT.
+                    if (telemetryOptions.EnableSensitiveData)
+                        otel.EnableSensitiveData = true;
+                }
+            )
+            .Build();
+    }
+
     protected virtual async Task<ModelCallResult> CallConfiguredAgent(
         AIAgent agent,
         List<ChatMessage> chat,

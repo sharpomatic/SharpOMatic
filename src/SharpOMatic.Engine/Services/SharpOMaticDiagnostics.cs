@@ -14,19 +14,14 @@ public static class SharpOMaticDiagnostics
         if (activity is null)
             return null;
 
-        // The GenAI semantic-convention tags classify the run as an agent invocation so
-        // backends like the Application Insights Agents view list it under Agent runs.
-        activity.SetTag("gen_ai.operation.name", "invoke_agent");
-        activity.SetTag("gen_ai.provider.name", "sharpomatic");
-        activity.SetTag("gen_ai.agent.id", run.WorkflowId);
+        // A run executes a statically authored graph, so it is not a GenAI agent invocation:
+        // control flow comes from the workflow definition rather than from a model. The GenAI
+        // spans belong to the model calls nested underneath it.
         activity.SetTag("workflow.id", run.WorkflowId);
         activity.SetTag("sharpomatic.run.id", run.RunId);
 
         if (workflowName is not null)
-        {
-            activity.SetTag("gen_ai.agent.name", workflowName);
             activity.SetTag("workflow.name", workflowName);
-        }
 
         if (!string.IsNullOrWhiteSpace(run.ConversationId))
         {
@@ -47,10 +42,9 @@ public static class SharpOMaticDiagnostics
         if (metric is not null)
         {
             activity.DisplayName = BuildRunActivityName(metric.WorkflowName);
-            activity.SetTag("gen_ai.agent.name", metric.WorkflowName);
             activity.SetTag("workflow.name", metric.WorkflowName);
-            activity.SetTag("gen_ai.usage.input_tokens", metric.InputTokens);
-            activity.SetTag("gen_ai.usage.output_tokens", metric.OutputTokens);
+            activity.SetTag("sharpomatic.usage.input_tokens", metric.InputTokens);
+            activity.SetTag("sharpomatic.usage.output_tokens", metric.OutputTokens);
             activity.SetTag("sharpomatic.model_call.count", metric.ModelCallCount);
             activity.SetTag("sharpomatic.model_call.total_cost", (double)metric.TotalModelCost);
 
@@ -117,6 +111,6 @@ public static class SharpOMaticDiagnostics
 
     private static string BuildRunActivityName(string? workflowName)
     {
-        return string.IsNullOrWhiteSpace(workflowName) ? "invoke_agent" : $"invoke_agent {workflowName}";
+        return string.IsNullOrWhiteSpace(workflowName) ? "workflow" : $"workflow {workflowName}";
     }
 }

@@ -86,12 +86,14 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
                     if (NodeActivity is not null)
                     {
+                        // The nested chat activity owns the gen_ai.* tags; the node records the same
+                        // values under sharpomatic.* so backends do not count the usage twice.
                         if (metric.ProviderModelName is not null)
-                            NodeActivity.SetTag("gen_ai.request.model", metric.ProviderModelName);
+                            NodeActivity.SetTag("sharpomatic.model.provider_name", metric.ProviderModelName);
                         if (metric.InputTokens.HasValue)
-                            NodeActivity.SetTag("gen_ai.usage.input_tokens", metric.InputTokens.Value);
+                            NodeActivity.SetTag("sharpomatic.usage.input_tokens", metric.InputTokens.Value);
                         if (metric.OutputTokens.HasValue)
-                            NodeActivity.SetTag("gen_ai.usage.output_tokens", metric.OutputTokens.Value);
+                            NodeActivity.SetTag("sharpomatic.usage.output_tokens", metric.OutputTokens.Value);
                         if (metric.TotalCost.HasValue)
                             NodeActivity.SetTag("sharpomatic.model_call.total_cost", (double)metric.TotalCost.Value);
                     }
