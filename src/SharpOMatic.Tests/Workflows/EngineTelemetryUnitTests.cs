@@ -233,11 +233,134 @@ public sealed class EngineTelemetryUnitTests
         Assert.Equal(agentActivity.TraceId, toolActivity.TraceId);
     }
 
+    [Fact]
+    public async Task Model_call_agent_activity_carries_the_node_id_so_duplicate_titles_stay_distinct()
+    {
+        var stopped = new ConcurrentBag<Activity>();
+        using var listener = CreateListener(stopped);
+
+        var caller = new TelemetryTestModelCaller();
+        var services = new ServiceCollection()
+            .AddSingleton<IOptions<SharpOMaticTelemetryOptions>>(new OptionsWrapper<SharpOMaticTelemetryOptions>(new SharpOMaticTelemetryOptions()))
+            .BuildServiceProvider();
+
+        // Two nodes deliberately share a title, which the editor allows: only the id tells them apart.
+        var first = caller.InvokeBuildAgentOptions(Guid.NewGuid(), "Ask model");
+        var second = caller.InvokeBuildAgentOptions(Guid.NewGuid(), "Ask model");
+
+        foreach (var options in new[] { first, second })
+        {
+            var agent = caller.InvokeApplyAgentTelemetry(
+                new ChatClientAgent(caller.InvokeCreateFunctionInvokingChatClient(new SingleTurnChatClient(), services), options, services: services),
+                services
+            );
+            await caller.InvokeCallConfiguredAgentWithOptions(agent, new ChatOptions());
+        }
+
+        var agentActivities = stopped.Where(activity => IsOperation(activity, "invoke_agent")).ToList();
+        Assert.Equal(2, agentActivities.Count);
+
+        // The name alone collides, so the id is what a backend can group by without merging the two nodes.
+        Assert.All(agentActivities, activity => Assert.Equal("Ask model", activity.GetTagItem("gen_ai.agent.name")?.ToString()));
+        Assert.Equal(2, agentActivities.Select(activity => activity.GetTagItem("gen_ai.agent.id")?.ToString()).Distinct().Count());
+        Assert.Contains(first.Id, agentActivities.Select(activity => activity.GetTagItem("gen_ai.agent.id")?.ToString()));
+        Assert.Contains(second.Id, agentActivities.Select(activity => activity.GetTagItem("gen_ai.agent.id")?.ToString()));
+    }
+
+    [Fact]
+    public async Task Agent_level_options_survive_the_per_run_options()
+    {
+        var services = new ServiceCollection()
+            .AddSingleton<IOptions<SharpOMaticTelemetryOptions>>(new OptionsWrapper<SharpOMaticTelemetryOptions>(new SharpOMaticTelemetryOptions()))
+            .BuildServiceProvider();
+
+        var caller = new TelemetryTestModelCaller();
+        var chatClient = new CapturingChatClient();
+
+        // The Anthropic overload has no model parameter, so the model and instructions ride on the agent's
+        // own ChatOptions. A per-run ChatOptions must merge with those rather than replace them, or the
+        // model call would silently lose the model it was configured with.
+        var options = caller.InvokeBuildAgentOptions(Guid.NewGuid(), "Ask model", "the-instructions", "the-model");
+        var agent = new ChatClientAgent(caller.InvokeCreateFunctionInvokingChatClient(chatClient, services), options, services: services);
+
+        await caller.InvokeCallConfiguredAgentWithOptions(agent, new ChatOptions { Temperature = 0.5f });
+
+        Assert.Equal("the-model", chatClient.SeenModelId);
+        Assert.Equal("the-instructions", chatClient.SeenInstructions);
+        Assert.Equal(0.5f, chatClient.SeenTemperature);
+    }
+
+    private sealed class CapturingChatClient : IChatClient
+    {
+        public string? SeenModelId;
+        public string? SeenInstructions;
+        public float? SeenTemperature;
+
+        public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+        {
+            SeenModelId = options?.ModelId;
+            SeenInstructions = options?.Instructions;
+            SeenTemperature = options?.Temperature;
+            return Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "done")));
+        }
+
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose() { }
+    }
+
+    private sealed class SingleTurnChatClient : IChatClient
+    {
+        public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "done")));
+
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose() { }
+    }
+
     private sealed class TelemetryTestModelCaller : BaseModelCaller
     {
         public AIAgent InvokeApplyAgentTelemetry(AIAgent agent, IServiceProvider serviceProvider) => ApplyAgentTelemetry(agent, serviceProvider);
 
         public IChatClient InvokeCreateFunctionInvokingChatClient(IChatClient chatClient, IServiceProvider serviceProvider) => CreateFunctionInvokingChatClient(chatClient, serviceProvider);
+
+        public ChatClientAgentOptions InvokeBuildAgentOptions(Guid nodeId, string title, string? instructions = null, string? modelId = null) =>
+            BuildAgentOptions(BuildNode(nodeId, title), instructions, modelId);
+
+        public Task<ModelCallResult> InvokeCallConfiguredAgentWithOptions(AIAgent agent, ChatOptions runOptions) =>
+            CallConfiguredAgent(agent, [], runOptions, jsonOutput: false, BuildNode(Guid.NewGuid(), "Ask model"), new TelemetryNullProgressSink());
+
+        private static ModelCallNodeEntity BuildNode(Guid nodeId, string title) =>
+            new()
+            {
+                Id = nodeId,
+                Version = 1,
+                NodeType = NodeType.ModelCall,
+                Title = title,
+                Top = 0,
+                Left = 0,
+                Width = 80,
+                Height = 80,
+                Inputs = [],
+                Outputs = [],
+                ToolContextPaths = [],
+                ModelId = Guid.NewGuid(),
+                Instructions = "",
+                Prompt = "",
+                ChatInputPath = "",
+                ChatOutputPath = "",
+                TextOutputPath = "",
+                ImageInputPath = "",
+                ImageOutputPath = "",
+                BatchOutput = true,
+            };
 
         public Task<ModelCallResult> InvokeCallConfiguredAgent(AIAgent agent, IList<AITool> tools)
         {

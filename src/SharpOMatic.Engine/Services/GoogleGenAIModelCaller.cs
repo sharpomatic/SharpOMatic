@@ -76,7 +76,7 @@ public class GoogleGenAIModelCaller(IEnumerable<IEngineNotification> engineNotif
 
         // Use the Microsoft Agent Framework by creating a chat client based agent
         var agent = ApplyAgentTelemetry(
-            new ChatClientAgent(CreateFunctionInvokingChatClient(chatClient, agentServiceProvider, progressSink), instructions: instructions, name: node.Title, services: agentServiceProvider),
+            new ChatClientAgent(CreateFunctionInvokingChatClient(chatClient, agentServiceProvider, progressSink), BuildAgentOptions(node, instructions), services: agentServiceProvider),
             agentServiceProvider
         );
         await EmitPromptStreamEvents(processContext, prompt, node.DisableStreamUser);

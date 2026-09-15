@@ -64,9 +64,8 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
         // TO REVERT: replace the clientFactory lambda below with the commented-out original line.
         var agent = ApplyAgentTelemetry(
             agentClient.AsAIAgent(
+                BuildAgentOptions(node, instructions),
                 modelName,
-                instructions: instructions,
-                name: node.Title,
                 // Original (stateful): clientFactory: chatClient => CreateFunctionInvokingChatClient(chatClient, agentServiceProvider),
                 clientFactory: _ => CreateFunctionInvokingChatClient(agentClient.AsIChatClientWithStoredOutputDisabled(modelName), agentServiceProvider, progressSink),
                 services: agentServiceProvider

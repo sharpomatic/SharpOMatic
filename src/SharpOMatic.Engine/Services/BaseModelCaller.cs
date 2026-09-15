@@ -275,16 +275,33 @@ public abstract class BaseModelCaller : IModelCaller
     }
 
     /// <summary>
+    /// Builds the agent options every provider creates its agent from, so the agent identity a model call
+    /// reports is derived the same way regardless of provider. The node id becomes the agent id because node
+    /// titles are user-authored and not unique: without it, two model call nodes sharing a title are
+    /// indistinguishable in telemetry, since the Agent Framework middleware records the agent name as
+    /// <c>gen_ai.agent.name</c> and names the activity after it.
+    /// </summary>
+    protected static ChatClientAgentOptions BuildAgentOptions(ModelCallNodeEntity node, string? instructions, string? modelId = null)
+    {
+        return new ChatClientAgentOptions
+        {
+            Id = node.Id.ToString(),
+            Name = node.Title,
+            ChatOptions = new ChatOptions { Instructions = instructions, ModelId = modelId },
+        };
+    }
+
+    /// <summary>
     /// Wraps the agent with the Agent Framework OpenTelemetry middleware so each model call emits an
     /// <c>invoke_agent</c> activity around the <c>chat</c> activities of its individual provider round trips.
     /// A model call with tools runs a model-directed loop whose turn count is not known up front, so the
     /// agent activity is what carries the whole-call duration and token totals. It is applied to every model
     /// call, tools or not, to keep the activity shape uniform across nodes and configuration changes.
     /// <para>
-    /// The agent name the middleware records as <c>gen_ai.agent.name</c> is the node title, which is
-    /// user-authored and not unique, so two model call nodes sharing a title produce agent activities a
-    /// backend will group together. The parent node activity carries the unique <c>sharpomatic.executor.id</c>
-    /// alongside <c>sharpomatic.executor.title</c>, so grouping by that tag separates them again.
+    /// The middleware records the agent name as <c>gen_ai.agent.name</c> and the agent id as
+    /// <c>gen_ai.agent.id</c>, and appends the id to the activity display name. Node titles are user-authored
+    /// and not unique, so <see cref="BuildAgentOptions"/> supplies the node id as the agent id to keep two
+    /// model call nodes sharing a title distinguishable in a backend.
     /// </para>
     /// </summary>
     protected AIAgent ApplyAgentTelemetry(AIAgent agent, IServiceProvider? serviceProvider)

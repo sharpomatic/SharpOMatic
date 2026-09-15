@@ -59,9 +59,8 @@ public class AnthropicModelCaller(IEnumerable<IEngineNotification> engineNotific
 
         var agent = ApplyAgentTelemetry(
             client.AsAIAgent(
-                modelName,
-                instructions: instructions,
-                name: node.Title,
+                // This overload takes no model parameter, so the model travels on the agent's default ChatOptions.
+                BuildAgentOptions(node, instructions, modelName),
                 clientFactory: chatClient => CreateFunctionInvokingChatClient(chatClient, agentServiceProvider, progressSink),
                 services: agentServiceProvider
             ),
