@@ -17,14 +17,17 @@ public static class SharpOMaticDiagnostics
         // A run executes a statically authored graph, so it is not a GenAI agent invocation:
         // control flow comes from the workflow definition rather than from a model. The GenAI
         // spans belong to the model calls nested underneath it.
-        activity.SetTag("workflow.id", run.WorkflowId);
+        activity.SetTag("sharpomatic.workflow.id", run.WorkflowId);
         activity.SetTag("sharpomatic.run.id", run.RunId);
 
         if (workflowName is not null)
-            activity.SetTag("workflow.name", workflowName);
+            activity.SetTag("sharpomatic.workflow.name", workflowName);
 
         if (!string.IsNullOrWhiteSpace(run.ConversationId))
         {
+            // Deliberately unprefixed: these two are OpenTelemetry semantic conventions rather than
+            // SharpOMatic attributes, and backends key their conversation and session grouping off
+            // these exact names. Everything SharpOMatic defines itself carries the sharpomatic prefix.
             activity.SetTag("gen_ai.conversation.id", run.ConversationId);
             activity.SetTag("session.id", run.ConversationId);
             if (run.TurnNumber.HasValue)
@@ -42,7 +45,7 @@ public static class SharpOMaticDiagnostics
         if (metric is not null)
         {
             activity.DisplayName = BuildRunActivityName(metric.WorkflowName);
-            activity.SetTag("workflow.name", metric.WorkflowName);
+            activity.SetTag("sharpomatic.workflow.name", metric.WorkflowName);
             activity.SetTag("sharpomatic.usage.input_tokens", metric.InputTokens);
             activity.SetTag("sharpomatic.usage.output_tokens", metric.OutputTokens);
             activity.SetTag("sharpomatic.model_call.count", metric.ModelCallCount);
@@ -80,8 +83,9 @@ public static class SharpOMaticDiagnostics
         if (activity is null)
             return null;
 
-        activity.SetTag("executor.id", node.Id);
-        activity.SetTag("executor.type", node.NodeType.ToString());
+        activity.SetTag("sharpomatic.executor.id", node.Id);
+        activity.SetTag("sharpomatic.executor.type", node.NodeType.ToString());
+        activity.SetTag("sharpomatic.executor.title", node.Title);
         activity.SetTag("sharpomatic.run.id", processContext.Run.RunId);
         return activity;
     }

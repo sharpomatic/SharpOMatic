@@ -20,8 +20,8 @@ public sealed class EngineTelemetryUnitTests
         var runActivity = await WaitForActivity(stopped, activity => activity.OperationName.StartsWith("workflow") && HasRunTag(activity, run.RunId));
         Assert.Equal(ActivityStatusCode.Ok, runActivity.Status);
         Assert.Equal($"workflow {workflow.Name}", runActivity.DisplayName);
-        Assert.Equal(run.WorkflowId.ToString(), runActivity.GetTagItem("workflow.id")?.ToString());
-        Assert.Equal(workflow.Name, runActivity.GetTagItem("workflow.name")?.ToString());
+        Assert.Equal(run.WorkflowId.ToString(), runActivity.GetTagItem("sharpomatic.workflow.id")?.ToString());
+        Assert.Equal(workflow.Name, runActivity.GetTagItem("sharpomatic.workflow.name")?.ToString());
         Assert.Equal(nameof(RunStatus.Success), runActivity.GetTagItem("sharpomatic.run.status")?.ToString());
 
         // A run drives a statically authored graph, so it must not be classified as a GenAI agent
@@ -35,6 +35,47 @@ public sealed class EngineTelemetryUnitTests
         Assert.All(nodeActivities, activity => Assert.Equal(runActivity.SpanId, activity.ParentSpanId));
         Assert.All(nodeActivities, activity => Assert.Equal(runActivity.TraceId, activity.TraceId));
         Assert.All(nodeActivities, activity => Assert.Equal(ActivityStatusCode.Ok, activity.Status));
+
+        // Node identity is what disambiguates two nodes sharing a title, so it must be present and unique.
+        Assert.All(nodeActivities, activity => Assert.NotNull(activity.GetTagItem("sharpomatic.executor.id")));
+        Assert.All(nodeActivities, activity => Assert.NotNull(activity.GetTagItem("sharpomatic.executor.title")));
+        Assert.Equal(
+            nodeActivities.Count,
+            nodeActivities.Select(activity => activity.GetTagItem("sharpomatic.executor.id")?.ToString()).Distinct().Count()
+        );
+    }
+
+    [Fact]
+    public async Task Engine_owned_span_tags_are_namespaced_to_sharpomatic()
+    {
+        var stopped = new ConcurrentBag<Activity>();
+        using var listener = CreateListener(stopped);
+
+        var workflow = new WorkflowBuilder().AddStart().AddEnd().Connect("start", "end").Build();
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+
+        Assert.NotNull(run);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+
+        var runActivity = await WaitForActivity(stopped, activity => activity.OperationName.StartsWith("workflow") && HasRunTag(activity, run.RunId));
+        var nodeActivities = stopped.Where(activity => activity.OperationName.StartsWith("executor.process") && HasRunTag(activity, run.RunId)).ToList();
+        Assert.NotEmpty(nodeActivities);
+
+        // Anything the engine defines itself must sit under the sharpomatic prefix so it cannot collide
+        // with, or be silently absorbed into, the gen_ai and other OpenTelemetry semantic conventions.
+        // The only unprefixed tags allowed are the conventions the engine deliberately participates in.
+        string[] allowedConventionTags = ["gen_ai.conversation.id", "session.id", "error.type"];
+
+        foreach (var activity in nodeActivities.Append(runActivity))
+        {
+            foreach (var tag in activity.TagObjects)
+            {
+                if (allowedConventionTags.Contains(tag.Key))
+                    continue;
+
+                Assert.StartsWith("sharpomatic.", tag.Key);
+            }
+        }
     }
 
     [Fact]

@@ -280,6 +280,12 @@ public abstract class BaseModelCaller : IModelCaller
     /// A model call with tools runs a model-directed loop whose turn count is not known up front, so the
     /// agent activity is what carries the whole-call duration and token totals. It is applied to every model
     /// call, tools or not, to keep the activity shape uniform across nodes and configuration changes.
+    /// <para>
+    /// The agent name the middleware records as <c>gen_ai.agent.name</c> is the node title, which is
+    /// user-authored and not unique, so two model call nodes sharing a title produce agent activities a
+    /// backend will group together. The parent node activity carries the unique <c>sharpomatic.executor.id</c>
+    /// alongside <c>sharpomatic.executor.title</c>, so grouping by that tag separates them again.
+    /// </para>
     /// </summary>
     protected AIAgent ApplyAgentTelemetry(AIAgent agent, IServiceProvider? serviceProvider)
     {
