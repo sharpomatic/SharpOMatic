@@ -359,6 +359,11 @@ public sealed class EngineTelemetryUnitTests
         // Everything that makes the agent activity worth keeping must survive.
         Assert.Equal("Ask model", agentActivity.GetTagItem("gen_ai.agent.name")?.ToString());
         Assert.Equal(options.Id, agentActivity.GetTagItem("gen_ai.agent.id")?.ToString());
+
+        // Tool spans arrive on the engine's own source, so a host sees them without registering the
+        // function invocation middleware's own source - which would bring duplicate usage with it.
+        var toolActivity = Assert.Single(stopped, activity => activity.OperationName.StartsWith("execute_tool"));
+        Assert.Equal(SharpOMaticDiagnostics.SourceName, toolActivity.Source.Name);
     }
 
     private sealed class UsageReportingToolChatClient : IChatClient

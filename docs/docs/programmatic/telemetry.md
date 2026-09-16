@@ -15,7 +15,7 @@ All engine spans are created on a single `ActivitySource` named `SharpOMatic.Eng
 | `executor.process {node title}` | One per node execution, parented to the run span. Failed nodes include a standard `exception` event containing the exception type, message, and stack trace. | `sharpomatic.executor.id`, `sharpomatic.executor.type`, `sharpomatic.executor.title`, `sharpomatic.node.status`, `sharpomatic.run.id`, `error.type`, plus node-specific attributes below |
 | `invoke_agent {node title}` | One per model call, emitted by the Agent Framework OpenTelemetry middleware that the engine wraps around the agent every model call runs through. A model call with tools is a model-directed loop whose number of provider round trips is not known up front, so this span is what carries the duration of the whole call. Applied to every model call, tools or not, so the span shape does not change when tools are added to a node. Its token usage is deliberately removed — see [Token Usage Is Recorded Once](#token-usage-is-recorded-once). | `gen_ai.operation.name` (`invoke_agent`), `gen_ai.agent.name` (node title), `gen_ai.agent.id` (node id) |
 | `chat {model}` | One per provider round trip, emitted by the `Microsoft.Extensions.AI` OpenTelemetry middleware that the engine wraps around every model call chat client. A tool-calling model call produces several of these under one `invoke_agent` span. Follows the OpenTelemetry GenAI semantic conventions (`gen_ai.*` attributes including token usage). | `gen_ai.*` |
-| `execute_tool {tool name}` | One per tool invocation, emitted by the `Microsoft.Extensions.AI` function invocation middleware on its own `Experimental.Microsoft.Extensions.AI` source, which the host registers separately (see below). | `gen_ai.tool.*` |
+| `execute_tool {tool name}` | One per tool invocation, emitted by the `Microsoft.Extensions.AI` function invocation middleware on the engine's own source, so registering that source is all a host needs to see tool spans. | `gen_ai.tool.*` |
 
 Node executions add type-specific attributes to their `executor.process` span:
 
@@ -45,8 +45,8 @@ The engine therefore makes the **`chat` spans the single source of GenAI token u
 
 A backend can therefore chart `sum(gen_ai.usage.input_tokens) by gen_ai.request.model` with no span filtering and get a correct, fully attributed answer.
 
-:::note Registering the function invocation source
-`Microsoft.Extensions.AI`'s function invocation middleware emits `execute_tool` spans on its own `Experimental.Microsoft.Extensions.AI` source, alongside an `orchestrate_tools` span that wraps a whole tool-calling loop and reports that loop's token usage without a model name. Registering that source with `AddSource("Experimental.Microsoft.Extensions.AI")` therefore reintroduces duplicate, unattributed usage. Register it only if you want tool-level spans, and filter `orchestrate_tools` out (or exclude its usage attributes) in the trace pipeline if you do.
+:::note Do not register the function invocation source
+`execute_tool` spans arrive on the engine's own source, so registering it is all a host needs for tool-level tracing. The `Microsoft.Extensions.AI` function invocation middleware *also* declares an `Experimental.Microsoft.Extensions.AI` source, which carries an `orchestrate_tools` span wrapping a whole tool-calling loop and reporting that loop's token usage without a model name. Adding `AddSource("Experimental.Microsoft.Extensions.AI")` therefore reintroduces duplicate, unattributed usage while adding nothing to tool visibility. Earlier versions of this page recommended registering it; remove that line if your host still has it.
 :::
 
 ## Attribute Naming
