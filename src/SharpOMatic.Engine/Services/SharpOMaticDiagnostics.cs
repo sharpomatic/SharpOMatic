@@ -6,7 +6,62 @@ public static class SharpOMaticDiagnostics
 {
     public const string SourceName = "SharpOMatic.Engine";
 
-    internal static readonly ActivitySource ActivitySource = new(SourceName);
+    internal static readonly ActivitySource ActivitySource = CreateActivitySource();
+
+    private static readonly string[] AgentUsageTagsToStrip =
+    [
+        "gen_ai.usage.input_tokens",
+        "gen_ai.usage.output_tokens",
+        "gen_ai.usage.total_tokens",
+    ];
+
+    /// <summary>
+    /// Forces this type's initialization, which installs the listener that strips the duplicate usage tags
+    /// from agent activities. Callers that only read <see cref="SourceName"/> would otherwise never touch
+    /// the type, because the compiler inlines that const and no static initialization is triggered.
+    /// </summary>
+    internal static void EnsureListenerInstalled() => _ = ActivitySource;
+
+    private static ActivitySource CreateActivitySource()
+    {
+        // Registered here rather than in a static constructor because SourceName is a const the compiler
+        // inlines, so reading it never triggers a static constructor and the listener would not be
+        // installed until something else happened to touch this type.
+        ActivitySource.AddActivityListener(
+            new ActivityListener
+            {
+                ShouldListenTo = source => source.Name == SourceName,
+                // Sample nothing on our own account: this listener exists only to edit activities the
+                // host's trace provider has already decided to record.
+                Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.None,
+                ActivityStopped = StripDuplicateAgentUsage,
+            }
+        );
+
+        return new ActivitySource(SourceName);
+    }
+
+    /// <summary>
+    /// Removes the token usage the Agent Framework middleware records on its <c>invoke_agent</c> activity.
+    /// That activity spans exactly the <c>chat</c> activities nested underneath it, which record the usage
+    /// of each provider round trip, so counting both totals the same tokens twice. The agent activity is
+    /// also the one without a model name to group by, so the duplicate lands in an unattributed bucket
+    /// rather than showing up as an obvious error.
+    ///
+    /// The chat activities win because they are the billing truth: they cover every provider round trip,
+    /// including the attempts a retry or fallback later discarded. The agent activity keeps everything
+    /// else - its duration, identity and turn structure are all still useful.
+    /// </summary>
+    private static void StripDuplicateAgentUsage(Activity activity)
+    {
+        // The agent middleware reuses the "chat" operation name for its own activity, so the operation
+        // name cannot tell the two apart; gen_ai.operation.name is what distinguishes them.
+        if (activity.GetTagItem("gen_ai.operation.name")?.ToString() != "invoke_agent")
+            return;
+
+        foreach (var tag in AgentUsageTagsToStrip)
+            activity.SetTag(tag, null);
+    }
 
     internal static Activity? StartRunActivity(Run run, string? workflowName)
     {

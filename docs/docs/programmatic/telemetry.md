@@ -13,9 +13,9 @@ All engine spans are created on a single `ActivitySource` named `SharpOMatic.Eng
 | --- | --- | --- |
 | `workflow {workflow name}` | One per workflow run, from start until success, failure, or suspension. A run executes a statically authored graph rather than a model-directed loop, so it is deliberately *not* tagged as a GenAI agent invocation — the `gen_ai.*` spans belong to the model calls nested underneath it. | `gen_ai.conversation.id` and `session.id` (conversation id), `sharpomatic.workflow.id`, `sharpomatic.workflow.name`, `sharpomatic.run.id`, `sharpomatic.run.status`, `sharpomatic.usage.input_tokens`, `sharpomatic.usage.output_tokens`, `sharpomatic.model_call.count`, `sharpomatic.model_call.total_cost`, `error.type`, `sharpomatic.failed_node.*` |
 | `executor.process {node title}` | One per node execution, parented to the run span. Failed nodes include a standard `exception` event containing the exception type, message, and stack trace. | `sharpomatic.executor.id`, `sharpomatic.executor.type`, `sharpomatic.executor.title`, `sharpomatic.node.status`, `sharpomatic.run.id`, `error.type`, plus node-specific attributes below |
-| `invoke_agent {node title}` | One per model call, emitted by the Agent Framework OpenTelemetry middleware that the engine wraps around the agent every model call runs through. A model call with tools is a model-directed loop whose number of provider round trips is not known up front, so this span is what carries the duration and token totals of the whole call. Applied to every model call, tools or not, so the span shape does not change when tools are added to a node. | `gen_ai.operation.name` (`invoke_agent`), `gen_ai.agent.name` (node title), `gen_ai.agent.id` (node id), `gen_ai.usage.*` |
+| `invoke_agent {node title}` | One per model call, emitted by the Agent Framework OpenTelemetry middleware that the engine wraps around the agent every model call runs through. A model call with tools is a model-directed loop whose number of provider round trips is not known up front, so this span is what carries the duration of the whole call. Applied to every model call, tools or not, so the span shape does not change when tools are added to a node. Its token usage is deliberately removed — see [Token Usage Is Recorded Once](#token-usage-is-recorded-once). | `gen_ai.operation.name` (`invoke_agent`), `gen_ai.agent.name` (node title), `gen_ai.agent.id` (node id) |
 | `chat {model}` | One per provider round trip, emitted by the `Microsoft.Extensions.AI` OpenTelemetry middleware that the engine wraps around every model call chat client. A tool-calling model call produces several of these under one `invoke_agent` span. Follows the OpenTelemetry GenAI semantic conventions (`gen_ai.*` attributes including token usage). | `gen_ai.*` |
-| `execute_tool {tool name}` | One per tool invocation, emitted by the `Microsoft.Extensions.AI` function invocation middleware. | `gen_ai.tool.*` |
+| `execute_tool {tool name}` | One per tool invocation, emitted by the `Microsoft.Extensions.AI` function invocation middleware on its own `Experimental.Microsoft.Extensions.AI` source, which the host registers separately (see below). | `gen_ai.tool.*` |
 
 Node executions add type-specific attributes to their `executor.process` span:
 
@@ -29,6 +29,25 @@ Node executions add type-specific attributes to their `executor.process` span:
 | Gosub | `sharpomatic.gosub.workflow_id`, `sharpomatic.gosub.workflow_name` |
 
 Custom node implementations deriving from `RunNode<T>` can stamp their own tags through the protected `NodeActivity` property (null when telemetry is disabled or nothing is listening, so always use `NodeActivity?.SetTag(...)`).
+
+## Token Usage Is Recorded Once
+
+Model call spans nest: a node span contains an `invoke_agent` span, which contains one `chat` span per provider round trip. Each layer observes the same underlying model calls, so if every layer reported its own token usage, a backend summing `gen_ai.usage.*` would count the same tokens several times over — and because the wrapper spans carry no model name, the duplicates would land in an unattributed bucket rather than showing up as an obvious error.
+
+The engine therefore makes the **`chat` spans the single source of GenAI token usage**:
+
+| Span | Token usage | Why |
+| --- | --- | --- |
+| `chat {model}` | `gen_ai.usage.*` | One per provider round trip, each carrying its own model. This is the billing truth: it includes the round trips that a retry or fallback later discarded. |
+| `invoke_agent {node title}` | none — stripped by the engine | Spans exactly the `chat` spans beneath it, so its usage is always a duplicate of their sum. |
+| `executor.process {node title}` | `sharpomatic.usage.*` | The engine's own accounting for a model call node, under the `sharpomatic` prefix so it never joins a `gen_ai` sum. Counts only the attempt that succeeded, so it is lower than the `chat` total whenever calls were retried. |
+| `workflow {workflow name}` | `sharpomatic.usage.*` | Whole-run totals, likewise outside the `gen_ai` namespace. |
+
+A backend can therefore chart `sum(gen_ai.usage.input_tokens) by gen_ai.request.model` with no span filtering and get a correct, fully attributed answer.
+
+:::note Registering the function invocation source
+`Microsoft.Extensions.AI`'s function invocation middleware emits `execute_tool` spans on its own `Experimental.Microsoft.Extensions.AI` source, alongside an `orchestrate_tools` span that wraps a whole tool-calling loop and reports that loop's token usage without a model name. Registering that source with `AddSource("Experimental.Microsoft.Extensions.AI")` therefore reintroduces duplicate, unattributed usage. Register it only if you want tool-level spans, and filter `orchestrate_tools` out (or exclude its usage attributes) in the trace pipeline if you do.
+:::
 
 ## Attribute Naming
 
@@ -55,7 +74,6 @@ builder.Services.AddOpenTelemetry()
         tracing
             .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("MyApplication"))
             .AddSource(SharpOMaticDiagnostics.SourceName)          // engine workflow/node/model spans
-            .AddSource("Experimental.Microsoft.Extensions.AI")     // execute_tool spans from function invocation
             .AddAzureMonitorTraceExporter(options => options.ConnectionString = appInsightsConnectionString);
     });
 ```

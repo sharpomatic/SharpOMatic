@@ -325,6 +325,64 @@ public sealed class EngineTelemetryUnitTests
         public void Dispose() { }
     }
 
+    [Fact]
+    public async Task Agent_activity_gives_up_its_usage_so_tokens_are_counted_once()
+    {
+        var stopped = new ConcurrentBag<Activity>();
+        using var listener = CreateListener(stopped);
+
+        var caller = new TelemetryTestModelCaller();
+        var services = new ServiceCollection()
+            .AddSingleton<IOptions<SharpOMaticTelemetryOptions>>(new OptionsWrapper<SharpOMaticTelemetryOptions>(new SharpOMaticTelemetryOptions()))
+            .BuildServiceProvider();
+
+        var options = caller.InvokeBuildAgentOptions(Guid.NewGuid(), "Ask model", "instr", "the-model");
+        var agent = caller.InvokeApplyAgentTelemetry(
+            new ChatClientAgent(caller.InvokeCreateFunctionInvokingChatClient(new UsageReportingToolChatClient(), services), options, services: services),
+            services
+        );
+
+        await caller.InvokeCallConfiguredAgent(agent, [AIFunctionFactory.Create(() => "sunny", "get_weather")]);
+
+        // The chat activities are the billing truth: one per provider round trip, each carrying a model.
+        var chatActivities = stopped.Where(activity => IsOperation(activity, "chat")).ToList();
+        Assert.Equal(2, chatActivities.Count);
+        Assert.All(chatActivities, activity => Assert.NotNull(activity.GetTagItem("gen_ai.usage.input_tokens")));
+        Assert.All(chatActivities, activity => Assert.Equal("the-model", activity.GetTagItem("gen_ai.request.model")?.ToString()));
+
+        // The agent activity spans the same round trips, so counting its usage as well would double it.
+        var agentActivity = await WaitForActivity(stopped, activity => IsOperation(activity, "invoke_agent"));
+        Assert.Null(agentActivity.GetTagItem("gen_ai.usage.input_tokens"));
+        Assert.Null(agentActivity.GetTagItem("gen_ai.usage.output_tokens"));
+        Assert.Null(agentActivity.GetTagItem("gen_ai.usage.total_tokens"));
+
+        // Everything that makes the agent activity worth keeping must survive.
+        Assert.Equal("Ask model", agentActivity.GetTagItem("gen_ai.agent.name")?.ToString());
+        Assert.Equal(options.Id, agentActivity.GetTagItem("gen_ai.agent.id")?.ToString());
+    }
+
+    private sealed class UsageReportingToolChatClient : IChatClient
+    {
+        private int _callCount;
+
+        public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+        {
+            _callCount += 1;
+            var message =
+                _callCount == 1
+                    ? new ChatMessage(ChatRole.Assistant, [new FunctionCallContent("call-1", "get_weather", new Dictionary<string, object?>())])
+                    : new ChatMessage(ChatRole.Assistant, "It is sunny.");
+            return Task.FromResult(new ChatResponse(message) { Usage = new UsageDetails { InputTokenCount = 100, OutputTokenCount = 20 } });
+        }
+
+        public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose() { }
+    }
+
     private sealed class TelemetryTestModelCaller : BaseModelCaller
     {
         public AIAgent InvokeApplyAgentTelemetry(AIAgent agent, IServiceProvider serviceProvider) => ApplyAgentTelemetry(agent, serviceProvider);

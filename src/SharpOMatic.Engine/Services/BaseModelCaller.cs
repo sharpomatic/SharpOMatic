@@ -310,6 +310,8 @@ public abstract class BaseModelCaller : IModelCaller
         if (!telemetryOptions.Enabled)
             return agent;
 
+        SharpOMaticDiagnostics.EnsureListenerInstalled();
+
         return agent
             .AsBuilder()
             .UseOpenTelemetry(
