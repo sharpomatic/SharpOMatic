@@ -38,10 +38,10 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
             throw new SharpOMaticException("Model does not support text input.");
 
         // Setup the basic capabilities, then the more specialized options
-        (var chatOptions, var responseCreationOptions) = SetupResponsesBasicCapabilities(model, modelConfig, processContext, threadContext, node);
+        (var chatOptions, var rawActions) = SetupResponsesBasicCapabilities(model, modelConfig, processContext, threadContext, node);
         var jsonOutput = SetupStrucuturedOutput(chatOptions, model, modelConfig, processContext, node);
         var modelCallExitState = new ModelCallExitState();
-        var agentServiceProvider = SetupToolCalling(chatOptions, responseCreationOptions, model, modelConfig, processContext, threadContext, node, modelCallExitState);
+        var agentServiceProvider = SetupToolCalling(chatOptions, rawActions, model, modelConfig, processContext, threadContext, node, modelCallExitState);
 
         // Generate the chat messages for input to the model
         List<ChatMessage> chat = [];
@@ -145,7 +145,7 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
         return (authenticationModel, connectionFields);
     }
 
-    protected virtual (ChatOptions, CreateResponseOptions) SetupResponsesBasicCapabilities(
+    protected virtual (ChatOptions, List<Action<CreateResponseOptions>>) SetupResponsesBasicCapabilities(
         Model model,
         ModelConfig modelConfig,
         ProcessContext processContext,
@@ -154,22 +154,39 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
         ChatOptions? chatOptions = null
     )
     {
-        // Mostly we have set the ChatOptions but sometimes we have to drop down to the Responses AI specific ResponseCreationOptions
-        var responseOptions = new CreateResponseOptions();
-        chatOptions = chatOptions ?? new ChatOptions() { AdditionalProperties = [], RawRepresentationFactory = (_) => responseOptions };
+        // Mostly we have set the ChatOptions but sometimes we have to drop down to the Responses AI specific
+        // ResponseCreationOptions. The factory must build a new instance per call: the chat client asks for one
+        // on every provider round trip and then adds the converted messages, tools and instructions to it. A tool
+        // loop makes several round trips within a single run, so handing back one captured instance lets each
+        // round trip append to the previous one's content, sending N copies of the whole request on the Nth call.
+        // The seed actions are replayed onto each new instance so configuration still applies to all of them.
+        List<Action<CreateResponseOptions>> rawActions = [];
+        chatOptions =
+            chatOptions
+            ?? new ChatOptions()
+            {
+                AdditionalProperties = [],
+                RawRepresentationFactory = (_) =>
+                {
+                    var options = new CreateResponseOptions();
+                    foreach (var rawAction in rawActions)
+                        rawAction(options);
+                    return options;
+                },
+            };
 
         // Setup common capabilites using base class
         chatOptions = SetupBasicCapabilities(model, modelConfig, processContext, threadContext, node, chatOptions);
 
         if (GetCapabilityString(model, modelConfig, node, "SupportsReasoningEffort", "reasoning_effort", out string reasoningEffort))
-            responseOptions.ReasoningOptions = new ResponseReasoningOptions() { ReasoningEffortLevel = new ResponseReasoningEffortLevel(reasoningEffort.ToLower()) };
+            rawActions.Add(options => options.ReasoningOptions = new ResponseReasoningOptions() { ReasoningEffortLevel = new ResponseReasoningEffortLevel(reasoningEffort.ToLower()) });
 
-        return (chatOptions, responseOptions);
+        return (chatOptions, rawActions);
     }
 
     protected virtual IServiceProvider SetupToolCalling(
         ChatOptions chatOptions,
-        CreateResponseOptions responseOptions,
+        List<Action<CreateResponseOptions>> rawActions,
         Model model,
         ModelConfig modelConfig,
         ProcessContext processContext,
@@ -182,7 +199,7 @@ public class OpenAIModelCaller(IEnumerable<IEngineNotification> engineNotificati
         if (HasCapability(model, modelConfig, "SupportsToolCalling"))
         {
             if (GetCapabilityBool(model, modelConfig, node, "SupportsToolCalling", "parallel_tool_calls", out bool parallelToolCalls))
-                responseOptions.ParallelToolCallsEnabled = parallelToolCalls;
+                rawActions.Add(options => options.ParallelToolCallsEnabled = parallelToolCalls);
 
             // Process all the other tool calling functionality which is common
             agentServiceProvider = SetupToolCalling(chatOptions, model, modelConfig, processContext, threadContext, node, modelCallExitState);

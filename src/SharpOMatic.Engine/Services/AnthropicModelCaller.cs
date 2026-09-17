@@ -155,16 +155,19 @@ public class AnthropicModelCaller(IEnumerable<IEngineNotification> engineNotific
             if (GetCapabilityString(model, modelConfig, node, "SupportsReasoningEffort", "effort_level", out var effortLevel) && TryMapEffort(effortLevel, out var effort))
                 outputConfig = new AnthropicMessages.OutputConfig { Effort = effort };
 
-            var messageCreateParams = new AnthropicMessages.MessageCreateParams
+            // Build a new seed per call rather than capturing one instance: the chat client asks the factory for
+            // a seed on every provider round trip and populates it, so a tool loop sharing one instance would
+            // carry the previous round trip's content into the next one.
+            var maxTokens = chatOptions.MaxOutputTokens ?? 4096;
+            chatOptions.RawRepresentationFactory = _ => new AnthropicMessages.MessageCreateParams
             {
                 // Placeholders - overwritten by the chat client from the resolved ChatOptions/messages.
                 Model = modelConfig.DisplayName,
-                MaxTokens = chatOptions.MaxOutputTokens ?? 4096,
+                MaxTokens = maxTokens,
                 Messages = [],
                 Thinking = thinking,
                 OutputConfig = outputConfig,
             };
-            chatOptions.RawRepresentationFactory = _ => messageCreateParams;
         }
 
         return chatOptions;
