@@ -167,6 +167,22 @@ public sealed class AnthropicModelCallerUnitTests
     }
 
     [Fact]
+    public void Reasoning_seed_factory_returns_a_new_instance_per_call()
+    {
+        var caller = new TestableAnthropicCaller();
+
+        var options = caller.SetupReasoning(CreateModel(), CreateReasoningModelConfig(), CreateNode(("effort_level", "High")));
+        var first = RequireSeed(options);
+        var second = RequireSeed(options);
+
+        // The chat client requests a seed per provider round trip and populates it, so sharing one instance
+        // across a tool loop would carry each round trip's content into the next.
+        Assert.NotSame(first, second);
+        Assert.NotSame(first.Messages, second.Messages);
+        Assert.Equal("high", second.OutputConfig!.Effort!.ToString().Trim('"'));
+    }
+
+    [Fact]
     public void Model_without_reasoning_capability_gets_no_anthropic_seed()
     {
         var caller = new TestableAnthropicCaller();
