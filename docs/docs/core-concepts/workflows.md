@@ -81,6 +81,10 @@ If you open a workflow while an evaluation is running in the background, you may
 Conversation-enabled workflows also keep per-conversation history in addition to individual runs.
 That includes turn-level traces and conversation-scoped assets.
 
+The workflow **Details** tab also has **Tenant Id Path** and **User Id Path** settings.
+They name the context paths, `auth.tenantId` and `auth.userId` by default, used to attribute model call and workflow run metrics to a tenant and user.
+See [Metrics](./metrics.md#tenant-and-user-attribution) for how the values are resolved.
+
 ## Workflow Completion
 
 A workflow completes when either:

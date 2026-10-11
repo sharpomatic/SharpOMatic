@@ -585,6 +585,8 @@ export class ServerRepositoryService {
     recentSkip: number,
     recentTake: number,
     allTime = false,
+    tenantId = '',
+    userId = '',
   ): Observable<ModelCallMetricsDashboard | null> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams()
@@ -605,6 +607,14 @@ export class ServerRepositoryService {
 
     if (masterSearch.trim().length > 0) {
       params = params.set('masterSearch', masterSearch.trim());
+    }
+
+    if (tenantId.trim().length > 0) {
+      params = params.set('tenantId', tenantId.trim());
+    }
+
+    if (userId.trim().length > 0) {
+      params = params.set('userId', userId.trim());
     }
 
     return this.http
@@ -629,6 +639,8 @@ export class ServerRepositoryService {
     recentSkip: number,
     recentTake: number,
     allTime = false,
+    tenantId = '',
+    userId = '',
   ): Observable<WorkflowRunMetricsDashboard | null> {
     const apiUrl = this.settingsService.apiUrl();
     let params = new HttpParams()
@@ -649,6 +661,14 @@ export class ServerRepositoryService {
 
     if (masterSearch.trim().length > 0) {
       params = params.set('masterSearch', masterSearch.trim());
+    }
+
+    if (tenantId.trim().length > 0) {
+      params = params.set('tenantId', tenantId.trim());
+    }
+
+    if (userId.trim().length > 0) {
+      params = params.set('userId', userId.trim());
     }
 
     return this.http

@@ -138,6 +138,221 @@ public class ModelCallMetricUnitTests
     }
 
     [Fact]
+    public async Task MetricsCaptureTenantAndUserFromDefaultPaths()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var context = new ContextObject();
+        context.Set("auth.tenantId", tenantId);
+        context.Set("auth.userId", userId);
+        var model = CreateModel("openai");
+        var workflow = CreateWorkflow(model.ModelId);
+
+        var (modelCallMetric, runMetric) = await RunAndGetMetrics(model, context, workflow);
+
+        Assert.Equal(tenantId.ToString(), modelCallMetric.TenantId);
+        Assert.Equal(userId.ToString(), modelCallMetric.UserId);
+        Assert.Equal(tenantId.ToString(), runMetric.TenantId);
+        Assert.Equal(userId.ToString(), runMetric.UserId);
+    }
+
+    [Fact]
+    public async Task MetricsCaptureTenantAndUserFromCustomWorkflowPaths()
+    {
+        var tenantId = Guid.NewGuid();
+        var context = new ContextObject();
+        context.Set("caller.tenant", tenantId.ToString().ToUpperInvariant());
+        context.Set("caller.user", "  user-42  ");
+        var model = CreateModel("openai");
+        var workflow = CreateWorkflow(model.ModelId);
+        workflow.TenantIdPath = "caller.tenant";
+        workflow.UserIdPath = "caller.user";
+
+        var (modelCallMetric, runMetric) = await RunAndGetMetrics(model, context, workflow);
+
+        Assert.Equal(tenantId.ToString(), modelCallMetric.TenantId);
+        Assert.Equal("user-42", modelCallMetric.UserId);
+        Assert.Equal(tenantId.ToString(), runMetric.TenantId);
+        Assert.Equal("user-42", runMetric.UserId);
+    }
+
+    [Fact]
+    public async Task MetricsBlankAttributionPathsUseDefaults()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var context = new ContextObject();
+        context.Set("auth.tenantId", tenantId);
+        context.Set("auth.userId", userId);
+        var model = CreateModel("openai");
+        var workflow = CreateWorkflow(model.ModelId);
+        workflow.TenantIdPath = "";
+        workflow.UserIdPath = "   ";
+
+        var (modelCallMetric, _) = await RunAndGetMetrics(model, context, workflow);
+
+        Assert.Equal(tenantId.ToString(), modelCallMetric.TenantId);
+        Assert.Equal(userId.ToString(), modelCallMetric.UserId);
+    }
+
+    [Fact]
+    public async Task MetricsIgnoreMissingOrUnsupportedAttributionValues()
+    {
+        var context = new ContextObject();
+        context.Set("auth.tenantId", 12345);
+        context.Set("caller.user", new string('x', MetricAttributionHelper.MaxAttributionLength + 1));
+        var model = CreateModel("openai");
+        var workflow = CreateWorkflow(model.ModelId);
+        workflow.UserIdPath = "caller.user";
+
+        var (modelCallMetric, runMetric) = await RunAndGetMetrics(model, context, workflow);
+
+        Assert.Null(modelCallMetric.TenantId);
+        Assert.Null(modelCallMetric.UserId);
+        Assert.Null(runMetric.TenantId);
+        Assert.Null(runMetric.UserId);
+    }
+
+    [Fact]
+    public async Task MetricsWithoutAttributionContextHaveNullTenantAndUser()
+    {
+        var model = CreateModel("openai");
+        var workflow = CreateWorkflow(model.ModelId);
+        workflow.TenantIdPath = "missing[";
+
+        var (modelCallMetric, runMetric) = await RunAndGetMetrics(model, [], workflow);
+
+        Assert.Null(modelCallMetric.TenantId);
+        Assert.Null(modelCallMetric.UserId);
+        Assert.Null(runMetric.TenantId);
+        Assert.Null(runMetric.UserId);
+    }
+
+    [Fact]
+    public async Task GosubModelCallUsesChildWorkflowPathsAndRunMetricUsesTopLevelPaths()
+    {
+        var parentTenantId = Guid.NewGuid();
+        var childTenantId = Guid.NewGuid();
+        var context = new ContextObject();
+        context.Set("auth.tenantId", parentTenantId);
+        context.Set("child.tenant", childTenantId);
+        var model = CreateModel("openai");
+        var childWorkflow = CreateWorkflow(model.ModelId);
+        childWorkflow.Name = "Child Workflow";
+        childWorkflow.TenantIdPath = "child.tenant";
+        var parentWorkflow = new WorkflowBuilder()
+            .WithName("Parent Workflow")
+            .AddStart()
+            .AddGosub("gosub", childWorkflow.Id)
+            .AddEnd()
+            .Connect("start", "gosub")
+            .Connect("gosub", "end")
+            .Build();
+
+        var (modelCallMetric, runMetric) = await RunAndGetMetrics(model, context, parentWorkflow, childWorkflow);
+
+        Assert.Equal(childTenantId.ToString(), modelCallMetric.TenantId);
+        Assert.Equal(parentTenantId.ToString(), runMetric.TenantId);
+    }
+
+    private static async Task<(ModelCallMetric ModelCallMetric, WorkflowRunMetric RunMetric)> RunAndGetMetrics(
+        Model model,
+        ContextObject context,
+        WorkflowEntity workflow,
+        params WorkflowEntity[] subWorkflows
+    )
+    {
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddKeyedScoped<IModelCaller, UsageModelCaller>("openai"));
+        var repository = (TestRepositoryService)provider.GetRequiredService<IRepositoryService>();
+        await SeedModelCallMetadata(repository, "openai", model);
+        await repository.UpsertWorkflow(workflow);
+        foreach (var subWorkflow in subWorkflows)
+            await repository.UpsertWorkflow(subWorkflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engine = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engine.StartWorkflowRunAndWait(workflow.Id, context);
+
+            Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+            return (Assert.Single(repository.GetModelCallMetrics()), Assert.Single(repository.GetWorkflowRunMetrics()));
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    [Fact]
+    public async Task ModelCallMetricsDashboardFiltersByTenantAndUser()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<SharpOMaticDbContext>().UseSqlite(connection).Options;
+        await using (var dbContext = new SharpOMaticDbContext(options, Options.Create(new SharpOMaticDbOptions())))
+            await dbContext.Database.EnsureCreatedAsync();
+
+        var repository = new RepositoryService(new TestDbContextFactory(options));
+        var tenantA = Guid.NewGuid();
+        var tenantB = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var workflowId = Guid.NewGuid();
+        var connectorId = Guid.NewGuid();
+        var modelId = Guid.NewGuid();
+
+        foreach (var (tenantId, userId) in new[] { (tenantA, "user-1"), (tenantA, "user-2"), (tenantB, "user-3") })
+        {
+            var metric = CreateModelCallMetric(now.AddMinutes(-10), workflowId, "Workflow", connectorId, "Connector", modelId, "Model", 100, 0.01m);
+            metric.TenantId = tenantId.ToString();
+            metric.UserId = userId;
+            await repository.AppendModelCallMetric(metric);
+        }
+
+        Task<ModelCallMetricsDashboard> Query(string? tenantId, string? userId) =>
+            repository.GetModelCallMetricsDashboard(
+                new ModelCallMetricsDashboardRequest(now.AddDays(-1), now, ModelCallMetricBucket.Hour, ModelCallMetricScope.All, null, null, 0, 25, AllTime: true, TenantId: tenantId, UserId: userId)
+            );
+
+        Assert.Equal(3, (await Query(null, null)).Totals.TotalCalls);
+        Assert.Equal(2, (await Query(tenantA.ToString().ToUpperInvariant(), null)).Totals.TotalCalls);
+        Assert.Equal(1, (await Query(tenantA.ToString(), " user-2 ")).Totals.TotalCalls);
+        Assert.Equal(1, (await Query(null, "user-3")).Totals.TotalCalls);
+        Assert.Equal(0, (await Query(Guid.NewGuid().ToString(), null)).Totals.TotalCalls);
+    }
+
+    [Fact]
+    public async Task WorkflowAttributionPathsPersistAndCopy()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<SharpOMaticDbContext>().UseSqlite(connection).Options;
+        await using var dbContext = new SharpOMaticDbContext(options, Options.Create(new SharpOMaticDbOptions()));
+        await dbContext.Database.EnsureCreatedAsync();
+        var repository = new RepositoryService(new TestDbContextFactory(options));
+
+        var workflow = CreateWorkflow(modelId: null);
+        workflow.TenantIdPath = "caller.tenant";
+        workflow.UserIdPath = "caller.user";
+        await repository.UpsertWorkflow(workflow);
+
+        var saved = await repository.GetWorkflow(workflow.Id);
+        var copy = await repository.GetWorkflow(await repository.CopyWorkflow(workflow.Id));
+
+        Assert.Equal("caller.tenant", saved.TenantIdPath);
+        Assert.Equal("caller.user", saved.UserIdPath);
+        Assert.Equal("caller.tenant", copy.TenantIdPath);
+        Assert.Equal("caller.user", copy.UserIdPath);
+    }
+
+    [Fact]
     public async Task DeletingWorkflowDoesNotDeleteModelCallMetric()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");

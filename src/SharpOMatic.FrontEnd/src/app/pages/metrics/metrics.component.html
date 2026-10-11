@@ -80,6 +80,39 @@
   </div>
   <hr class="m-0" />
 
+  <div
+    class="metrics-filters d-flex flex-wrap align-items-center gap-2 px-3 py-2 bg-body-secondary"
+  >
+    <i class="bi bi-funnel text-body-secondary" aria-hidden="true"></i>
+    <input
+      type="text"
+      class="form-control form-control-sm metrics-filter-input"
+      placeholder="Tenant Id"
+      aria-label="Filter by tenant id"
+      [(ngModel)]="tenantIdFilter"
+      (ngModelChange)="onFilterChange()"
+    />
+    <input
+      type="text"
+      class="form-control form-control-sm metrics-filter-input"
+      placeholder="User Id"
+      aria-label="Filter by user id"
+      [(ngModel)]="userIdFilter"
+      (ngModelChange)="onFilterChange()"
+    />
+    <button
+      type="button"
+      class="btn btn-outline-secondary btn-sm"
+      [disabled]="!hasFilter()"
+      (click)="clearFilters()"
+      title="Clear filters"
+      aria-label="Clear filters"
+    >
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+  <hr class="m-0" />
+
   <div class="metrics-body bg-body-tertiary">
     @if (metricsView === "model-calls") {
       <app-tab

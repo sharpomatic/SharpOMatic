@@ -15,7 +15,9 @@ public class MetricsController : ControllerBase
         [FromQuery] string? masterSearch = null,
         [FromQuery] int recentSkip = 0,
         [FromQuery] int recentTake = 25,
-        [FromQuery] bool allTime = false
+        [FromQuery] bool allTime = false,
+        [FromQuery] string? tenantId = null,
+        [FromQuery] string? userId = null
     )
     {
         var normalizedEnd = EnsureUtc(end ?? DateTime.UtcNow);
@@ -31,7 +33,9 @@ public class MetricsController : ControllerBase
             string.IsNullOrWhiteSpace(masterSearch) ? null : masterSearch.Trim(),
             recentSkip,
             recentTake,
-            allTime
+            allTime,
+            tenantId,
+            userId
         );
 
         return repositoryService.GetModelCallMetricsDashboard(request);
@@ -48,7 +52,9 @@ public class MetricsController : ControllerBase
         [FromQuery] string? masterSearch = null,
         [FromQuery] int recentSkip = 0,
         [FromQuery] int recentTake = 25,
-        [FromQuery] bool allTime = false
+        [FromQuery] bool allTime = false,
+        [FromQuery] string? tenantId = null,
+        [FromQuery] string? userId = null
     )
     {
         var normalizedEnd = EnsureUtc(end ?? DateTime.UtcNow);
@@ -64,7 +70,9 @@ public class MetricsController : ControllerBase
             string.IsNullOrWhiteSpace(masterSearch) ? null : masterSearch.Trim(),
             recentSkip,
             recentTake,
-            allTime
+            allTime,
+            tenantId,
+            userId
         );
 
         return repositoryService.GetWorkflowRunMetricsDashboard(request);

@@ -17,7 +17,7 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("SharpOMatic")
-                .HasAnnotation("ProductVersion", "10.0.9");
+                .HasAnnotation("ProductVersion", "10.0.11");
 
             modelBuilder.Entity("SharpOMatic.Engine.Repository.Asset", b =>
                 {
@@ -712,6 +712,10 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<bool>("Succeeded")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("TenantId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
                     b.Property<decimal?>("TotalCost")
                         .HasPrecision(18, 8)
                         .HasColumnType("TEXT");
@@ -721,6 +725,10 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 
                     b.Property<int>("TryNumber")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("WorkflowId")
                         .HasColumnType("TEXT");
@@ -744,6 +752,10 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.HasIndex("ModelId", "Created");
 
                     b.HasIndex("Succeeded", "Created");
+
+                    b.HasIndex("TenantId", "Created");
+
+                    b.HasIndex("UserId", "Created");
 
                     b.HasIndex("WorkflowId", "Created");
 
@@ -1057,6 +1069,12 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("TenantIdPath")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserIdPath")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Version")
                         .HasColumnType("INTEGER");
 
@@ -1152,6 +1170,10 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.Property<bool>("Succeeded")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("TenantId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
                     b.Property<decimal>("TotalModelCost")
                         .HasPrecision(18, 8)
                         .HasColumnType("TEXT");
@@ -1161,6 +1183,10 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
 
                     b.Property<int?>("TurnNumber")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
 
                     b.Property<Guid>("WorkflowId")
                         .HasColumnType("TEXT");
@@ -1184,6 +1210,10 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                     b.HasIndex("RunStatus", "Created");
 
                     b.HasIndex("Succeeded", "Created");
+
+                    b.HasIndex("TenantId", "Created");
+
+                    b.HasIndex("UserId", "Created");
 
                     b.HasIndex("WorkflowId", "Created");
 

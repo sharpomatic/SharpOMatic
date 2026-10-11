@@ -228,6 +228,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
                 failedNode = null;
             var started = run.Started ?? run.Created;
             var finished = run.Stopped ?? DateTime.Now;
+            var attribution = MetricAttributionHelper.Resolve(workflow, threadContext.NodeContext);
 
             var metric = new WorkflowRunMetric()
             {
@@ -250,6 +251,8 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
                 ConversationId = run.ConversationId,
                 TurnNumber = run.TurnNumber,
                 IsConversationRun = !string.IsNullOrWhiteSpace(run.ConversationId),
+                TenantId = attribution.TenantId,
+                UserId = attribution.UserId,
             };
 
             await processContext.RepositoryService.AppendWorkflowRunMetric(metric);

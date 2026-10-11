@@ -14,6 +14,26 @@ Workflow run metrics are written when a run reaches a terminal status: success, 
 
 The workflow editor's Runs tab shows the model-call count and known USD model cost for each completed run. For conversation-enabled workflows, the Conversations tab shows cumulative values across all turns. These values are persisted when each run finishes, including model calls made by Gosub workflows. Calls without pricing metadata contribute to the call count but not to the displayed cost.
 
+## Tenant And User Attribution
+
+Model call metrics and workflow run metrics both store an optional tenant ID and user ID, so usage and cost can be attributed to whoever triggered the work. The values are read from the context using two paths set on the workflow's **Details** tab:
+
+- **Tenant Id Path** defaults to `auth.tenantId`.
+- **User Id Path** defaults to `auth.userId`.
+
+An empty path also uses the default, so existing workflows record attribution without any changes. Set a different path when your host places the identifiers elsewhere in the context.
+
+When a metric is written, the value found at the path is stored as text:
+
+- A `Guid` is stored in its standard lowercase form.
+- A string that parses as a GUID is normalized to the same lowercase form, so values from different sources match.
+- Any other string is stored trimmed.
+- A missing path, an invalid path, an empty string, a value longer than 256 characters, or a value of any other type is stored as null. Attribution never causes a model call or run to fail.
+
+The Metrics page has a filter bar below the header with **Tenant Id** and **User Id** inputs. Entering either value limits every view, tab, chart, and table to metrics with a matching value, and entering both requires both to match. Values are matched exactly after the same normalization used when storing them, so a GUID matches regardless of letter case or surrounding whitespace. The filter is applied in the database query alongside the date range, and each metrics table has a tenant and a user index for it. Clear the inputs, or use the clear button, to show all metrics again.
+
+A model call metric uses the paths of the workflow that contains the model call node, resolved against the context at the time of the call. For a model call inside a **Gosub** workflow, that is the child workflow's paths and the child's context, so when the Gosub applies input mappings the identifiers must be mapped into the child for them to be recorded. A workflow run metric uses the paths of the workflow that was started, resolved against the context when the run finishes.
+
 ## Views
 
 The page has a top-level switch:

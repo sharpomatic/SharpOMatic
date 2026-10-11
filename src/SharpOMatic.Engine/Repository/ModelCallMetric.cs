@@ -5,6 +5,8 @@ namespace SharpOMatic.Engine.Repository;
 [Index(nameof(ConnectorId), nameof(Created))]
 [Index(nameof(ModelId), nameof(Created))]
 [Index(nameof(ConversationId), nameof(Created))]
+[Index(nameof(TenantId), nameof(Created))]
+[Index(nameof(UserId), nameof(Created))]
 [Index(nameof(RunId))]
 [Index(nameof(Succeeded), nameof(Created))]
 [Index(nameof(LogicalCallId), nameof(AttemptNumber))]
@@ -26,6 +28,12 @@ public class ModelCallMetric
 
     [MaxLength(256)]
     public string? ConversationId { get; set; }
+
+    [MaxLength(MetricAttributionHelper.MaxAttributionLength)]
+    public string? TenantId { get; set; }
+
+    [MaxLength(MetricAttributionHelper.MaxAttributionLength)]
+    public string? UserId { get; set; }
     public required Guid NodeEntityId { get; set; }
     public required string NodeTitle { get; set; }
     public Guid? ConnectorId { get; set; }

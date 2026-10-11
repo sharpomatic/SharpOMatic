@@ -121,6 +121,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             Name = workflow.Named,
             Description = workflow.Description,
             IsConversationEnabled = workflow.IsConversationEnabled,
+            TenantIdPath = workflow.TenantIdPath,
+            UserIdPath = workflow.UserIdPath,
             Nodes = JsonSerializer.Deserialize<NodeEntity[]>(workflow.Nodes, _options)!,
             Connections = JsonSerializer.Deserialize<ConnectionEntity[]>(workflow.Connections, _options)!,
         };
@@ -170,6 +172,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         entry.Named = normalizedName;
         entry.Description = workflow.Description;
         entry.IsConversationEnabled = workflow.IsConversationEnabled;
+        entry.TenantIdPath = workflow.TenantIdPath;
+        entry.UserIdPath = workflow.UserIdPath;
         entry.Nodes = JsonSerializer.Serialize(workflow.Nodes, _options);
         entry.Connections = JsonSerializer.Serialize(workflow.Connections, _options);
 
@@ -253,6 +257,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             Named = copyName,
             Description = workflow.Description,
             IsConversationEnabled = workflow.IsConversationEnabled,
+            TenantIdPath = workflow.TenantIdPath,
+            UserIdPath = workflow.UserIdPath,
             Nodes = workflow.Nodes,
             Connections = workflow.Connections,
         };
@@ -919,6 +925,14 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         if (!request.AllTime)
             metricsQuery = metricsQuery.Where(metric => metric.Created >= start && metric.Created < end);
 
+        var tenantId = MetricAttributionHelper.Normalize(request.TenantId);
+        if (tenantId is not null)
+            metricsQuery = metricsQuery.Where(metric => metric.TenantId == tenantId);
+
+        var userId = MetricAttributionHelper.Normalize(request.UserId);
+        if (userId is not null)
+            metricsQuery = metricsQuery.Where(metric => metric.UserId == userId);
+
         var metricsInRange = await metricsQuery.ToListAsync();
 
         var masterItems = request.Scope == ModelCallMetricScope.All ? [] : BuildMetricMasterItems(metricsInRange, request.Scope, request.MasterSearch);
@@ -1316,6 +1330,14 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         var metricsQuery = dbContext.WorkflowRunMetrics.AsNoTracking();
         if (!request.AllTime)
             metricsQuery = metricsQuery.Where(metric => metric.Created >= start && metric.Created < end);
+
+        var tenantId = MetricAttributionHelper.Normalize(request.TenantId);
+        if (tenantId is not null)
+            metricsQuery = metricsQuery.Where(metric => metric.TenantId == tenantId);
+
+        var userId = MetricAttributionHelper.Normalize(request.UserId);
+        if (userId is not null)
+            metricsQuery = metricsQuery.Where(metric => metric.UserId == userId);
 
         var metricsInRange = await metricsQuery.ToListAsync();
         var masterItems = request.Scope == WorkflowRunMetricScope.All ? [] : BuildWorkflowRunMetricMasterItems(metricsInRange, request.Scope, request.MasterSearch);

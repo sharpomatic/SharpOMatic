@@ -11,12 +11,16 @@ export interface WorkflowSnapshot extends EntitySnapshot {
   name: string;
   description: string;
   isConversationEnabled: boolean;
+  tenantIdPath?: string | null;
+  userIdPath?: string | null;
   nodes: NodeSnapshot[];
   connections: ConnectionSnapshot[];
 }
 
 export class WorkflowEntity extends Entity<WorkflowSnapshot> {
   public static readonly CURRENT_SCHEMA_VERSION = 2;
+  public static readonly DEFAULT_TENANT_ID_PATH = 'auth.tenantId';
+  public static readonly DEFAULT_USER_ID_PATH = 'auth.userId';
   private nodeMap: Map<string, NodeEntity<NodeSnapshot>> = new Map();
   private connectionMap: Map<string, ConnectionEntity> = new Map();
   private connectorMap: Map<string, ConnectorEntity> = new Map();
@@ -26,6 +30,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
   public workflowFolderName: WritableSignal<string | null>;
   public description: WritableSignal<string>;
   public isConversationEnabled: WritableSignal<boolean>;
+  public tenantIdPath: WritableSignal<string>;
+  public userIdPath: WritableSignal<string>;
   public nodes: WritableSignal<NodeEntity<NodeSnapshot>[]>;
   public connections: WritableSignal<ConnectionEntity[]>;
   public isDirty: Signal<boolean>;
@@ -38,6 +44,12 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
     this.name = signal(snapshot.name);
     this.description = signal(snapshot.description);
     this.isConversationEnabled = signal(snapshot.isConversationEnabled);
+    this.tenantIdPath = signal(
+      snapshot.tenantIdPath ?? WorkflowEntity.DEFAULT_TENANT_ID_PATH,
+    );
+    this.userIdPath = signal(
+      snapshot.userIdPath ?? WorkflowEntity.DEFAULT_USER_ID_PATH,
+    );
     this.nodes = signal(snapshot.nodes.map(nodeFromSnapshot));
     this.connections = signal(
       snapshot.connections.map(ConnectionEntity.fromSnapshot),
@@ -55,6 +67,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
       const currentWorkflowFolderId = this.workflowFolderId();
       const currentDescription = this.description();
       const currentIsConversationEnabled = this.isConversationEnabled();
+      const currentTenantIdPath = this.tenantIdPath();
+      const currentUserIdPath = this.userIdPath();
       const currentNodes = this.nodes();
       const currentConnections = this.connections();
 
@@ -84,7 +98,11 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
         currentWorkflowFolderId !== (snapshot.workflowFolderId ?? null) ||
         currentName !== snapshot.name ||
         currentDescription !== snapshot.description ||
-        currentIsConversationEnabled !== snapshot.isConversationEnabled;
+        currentIsConversationEnabled !== snapshot.isConversationEnabled ||
+        currentTenantIdPath !==
+          (snapshot.tenantIdPath ?? WorkflowEntity.DEFAULT_TENANT_ID_PATH) ||
+        currentUserIdPath !==
+          (snapshot.userIdPath ?? WorkflowEntity.DEFAULT_USER_ID_PATH);
 
       if (needsRefresh) {
         setTimeout(() => this.refreshCache(), 0);
@@ -103,6 +121,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
       name: this.name(),
       description: this.description(),
       isConversationEnabled: this.isConversationEnabled(),
+      tenantIdPath: this.tenantIdPath(),
+      userIdPath: this.userIdPath(),
       nodes: this.nodes().map((node) => node.toSnapshot()),
       connections: this.connections().map((connection) =>
         connection.toSnapshot(),
@@ -119,6 +139,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
       name: 'Untitled',
       description: '',
       isConversationEnabled: false,
+      tenantIdPath: WorkflowEntity.DEFAULT_TENANT_ID_PATH,
+      userIdPath: WorkflowEntity.DEFAULT_USER_ID_PATH,
       nodes: [],
       connections: [],
     };
