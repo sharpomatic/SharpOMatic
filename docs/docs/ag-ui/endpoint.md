@@ -406,6 +406,7 @@ The endpoint streams AG-UI SSE events from SharpOMatic workflow stream events:
 - activity stream events become `ACTIVITY_SNAPSHOT` and `ACTIVITY_DELTA`
 - custom stream events become `CUSTOM`
 - `TOOL_CALL_RESULT` preserves both the tool result `messageId` and the linked `toolCallId`
+- `TOOL_CALL_RESULT` content from a model-call tool replaces binary parts, such as an image `DataContent`, with a short text note naming the media type and size; the model itself still receives the full result
 - `TOOL_CALL_START` includes the tool name and can include `parentMessageId` when the underlying model output supplies it
 - reasoning events use AG-UI-specific `messageId` values prefixed with `reason:` so they cannot collide with assistant text messages when a provider reuses one underlying response id for both
 - tool result messages use AG-UI-specific `messageId` values prefixed with `tool:` so tool messages also stay distinct from assistant and reasoning messages, while the linked `toolCallId` remains unchanged

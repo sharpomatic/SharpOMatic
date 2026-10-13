@@ -169,6 +169,13 @@ The tool-call stream lifecycle is:
 
 The trace viewer still records tool calls as information entries as well, so you keep both the protocol-friendly stream events and the trace summary.
 
+### Binary tool results
+
+A tool can return binary content for the model to look at, such as an image returned as `AIContent[]` containing a `DataContent`.
+The model always receives that content unchanged.
+The `ToolCallResult` stream event, however, carries a short note in place of each binary part, for example `[image/webp, 256 KB, omitted from the stream event.]`, while every other part of the result is kept.
+Stream events are persisted with the run and replayed to AG-UI clients, so this keeps a base64 payload of hundreds of kilobytes per call out of storage and off the wire, while a client still sees that the tool ran and what it reported.
+
 ## Tool choice
 
 There are only two options for this dropdown.

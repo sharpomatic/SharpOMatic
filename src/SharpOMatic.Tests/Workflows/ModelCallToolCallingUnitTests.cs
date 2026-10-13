@@ -296,6 +296,31 @@ public sealed class ModelCallToolCallingUnitTests
     }
 
     [Fact]
+    public async Task Tool_returning_an_image_streams_a_note_while_the_model_keeps_the_image()
+    {
+        var caller = new ToolCallingTestModelCaller();
+        var sink = new RecordingProgressSink();
+        var agent = new ChatClientAgent(caller.InvokeCreateFunctionInvokingChatClient(new ImageToolChatClient(), new ServiceCollection().BuildServiceProvider()));
+
+        var result = await caller.InvokeStreamingAgent(
+            agent,
+            CreateModelCallNode("view_image"),
+            [AIFunctionFactory.Create((Func<AIContent[]>)ViewImage, "view_image")],
+            progressSink: sink
+        );
+
+        // The stream event a client receives carries the text part and a note in place of the image...
+        var streamed = Assert.Single(sink.ToolResults);
+        Assert.DoesNotContain("base64", streamed);
+        Assert.Contains("Image 1 attached.", streamed);
+        Assert.Contains("omitted from the stream event", streamed);
+
+        // ...while the tool result the model was given still holds the image itself.
+        var toolMessage = Assert.Single(result.Responses, message => message.Role == ChatRole.Tool);
+        Assert.Contains("base64", JsonSerializer.Serialize(Assert.IsType<FunctionResultContent>(toolMessage.Contents.Single()).Result));
+    }
+
+    [Fact]
     public void Model_call_exit_exception_detection_unwraps_common_exception_wrappers()
     {
         var exception = new AggregateException(new InvalidOperationException("outer", new System.Reflection.TargetInvocationException(new ModelCallExitException())));
@@ -316,6 +341,8 @@ public sealed class ModelCallToolCallingUnitTests
         [System.ComponentModel.DisplayName("defined_tool")]
         public static string DefinedToolWithDisplayName() => "alternate";
     }
+
+    private static AIContent[] ViewImage() => [new TextContent("Image 1 attached."), new DataContent(new byte[64 * 1024], "image/webp")];
 
     private static string NeedsUserInput()
     {
@@ -424,9 +451,15 @@ public sealed class ModelCallToolCallingUnitTests
             return SetupToolCalling(chatOptions, model, modelConfig, processContext, threadContext, node);
         }
 
-        public Task<ModelCallResult> InvokeStreamingAgent(AIAgent agent, ModelCallNodeEntity node, IList<AITool> tools, ModelCallExitState? modelCallExitState = null)
+        public Task<ModelCallResult> InvokeStreamingAgent(
+            AIAgent agent,
+            ModelCallNodeEntity node,
+            IList<AITool> tools,
+            ModelCallExitState? modelCallExitState = null,
+            IModelCallProgressSink? progressSink = null
+        )
         {
-            return CallConfiguredAgent(agent, [], new ChatOptions() { Tools = tools }, jsonOutput: true, node, new NullProgressSink(), modelCallExitState);
+            return CallConfiguredAgent(agent, [], new ChatOptions() { Tools = tools }, jsonOutput: true, node, progressSink ?? new NullProgressSink(), modelCallExitState);
         }
 
         public IChatClient InvokeCreateFunctionInvokingChatClient(IChatClient chatClient, IServiceProvider? toolServiceProvider = null)
@@ -480,6 +513,61 @@ public sealed class ModelCallToolCallingUnitTests
         {
             return new ChatMessage(ChatRole.Assistant, [new FunctionCallContent("call-1", "NeedsUserInput", new Dictionary<string, object?>())]);
         }
+    }
+
+    /// <summary>Asks for the image tool once, then answers, as JSON because the test caller asks for JSON output.</summary>
+    private sealed class ImageToolChatClient : IChatClient
+    {
+        private int _callCount;
+
+        public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default
+        )
+        {
+            _callCount += 1;
+            await Task.Yield();
+
+            if (_callCount == 1)
+                yield return new ChatResponseUpdate(ChatRole.Assistant, [new FunctionCallContent("call-1", "view_image", new Dictionary<string, object?>())]) { MessageId = "assistant-1" };
+            else
+                yield return new ChatResponseUpdate(ChatRole.Assistant, "{\"answer\":\"It is a picture.\"}") { MessageId = "assistant-2" };
+        }
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose() { }
+    }
+
+    private sealed class RecordingProgressSink : IModelCallProgressSink
+    {
+        public List<string> ToolResults { get; } = [];
+
+        public Task OnTextStartAsync(string messageId) => Task.CompletedTask;
+
+        public Task OnTextDeltaAsync(string messageId, string textDelta) => Task.CompletedTask;
+
+        public Task OnTextEndAsync(string messageId) => Task.CompletedTask;
+
+        public Task OnReasoningAsync(string reasoningId, string text) => Task.CompletedTask;
+
+        public Task OnToolCallAsync(string toolCallId, string? toolName, string? argsSnapshot = null, string? parentMessageId = null, string? data = null) => Task.CompletedTask;
+
+        public Task OnToolCallResultAsync(string messageId, string toolCallId, string content)
+        {
+            ToolResults.Add(content);
+            return Task.CompletedTask;
+        }
+
+        public Task CompleteAsync() => Task.CompletedTask;
+
+        public Task PersistAsync() => Task.CompletedTask;
     }
 
     private sealed class NullProgressSink : IModelCallProgressSink
