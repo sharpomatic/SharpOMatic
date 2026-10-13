@@ -446,20 +446,7 @@ public abstract class BaseModelCaller : IModelCaller
 
     protected virtual string SerializeToolResult(FunctionResultContent functionResultContent)
     {
-        if (functionResultContent.Result is null)
-            return string.Empty;
-
-        if (functionResultContent.Result is string resultText)
-            return resultText;
-
-        try
-        {
-            return JsonSerializer.Serialize(functionResultContent.Result);
-        }
-        catch
-        {
-            return functionResultContent.Result.ToString() ?? string.Empty;
-        }
+        return ToolResultStreamHelper.Serialize(functionResultContent);
     }
 
     protected virtual ChatOptions SetupBasicCapabilities(

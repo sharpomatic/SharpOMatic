@@ -644,20 +644,7 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
 
     private static string SerializeToolResult(FunctionResultContent functionResultContent)
     {
-        if (functionResultContent.Result is null)
-            return string.Empty;
-
-        if (functionResultContent.Result is string resultText)
-            return resultText;
-
-        try
-        {
-            return JsonSerializer.Serialize(functionResultContent.Result);
-        }
-        catch
-        {
-            return functionResultContent.Result.ToString() ?? string.Empty;
-        }
+        return ToolResultStreamHelper.Serialize(functionResultContent);
     }
 
     private sealed class ModelCallNodeProgressSink(ProcessContext processContext, Trace trace, List<Information> informations, ModelCallNodeEntity node) : IModelCallProgressSink
