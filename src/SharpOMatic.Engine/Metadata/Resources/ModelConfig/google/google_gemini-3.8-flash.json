@@ -1,0 +1,118 @@
+{
+  "Version": 1,
+  "ConfigId": "google_gemini-3.8-flash",
+  "DisplayName": "gemini-3.8-flash",
+  "Description": "Chat model",
+  "ConnectorConfigId": "google",
+  "IsCustom": false,
+  "Information": [
+    {
+      "Name": "ContextWindow",
+      "DisplayName": "Context Window",
+      "Type": 4,
+      "Value": 1048576
+    },
+    {
+      "Name": "InputPrice",
+      "DisplayName": "Input Price per Milion",
+      "Type": 6,
+      "Value": 0.75
+    },
+    {
+      "Name": "OutputPrice",
+      "DisplayName": "Output Price per Milion",
+      "Type": 6,
+      "Value": 3.75
+    }
+  ],
+  "Capabilities": [
+    {
+      "Name": "SupportsTextIn",
+      "DisplayName": "Supports Text Input"
+    },
+    {
+      "Name": "SupportsTextOut",
+      "DisplayName": "Supports Text Output"
+    },
+    {
+      "Name": "SupportsImageIn",
+      "DisplayName": "Supports Image Input"
+    },
+    {
+      "Name": "SupportsMaxOutputTokens",
+      "DisplayName": "Supports Max Output Tokens"
+    },
+    {
+      "Name": "SupportsThinkingLevel",
+      "DisplayName": "Supports Thinking Level"
+    },
+    {
+      "Name": "SupportsStructuredOutput",
+      "DisplayName": "Supports Structured Output"
+    },
+    {
+      "Name": "SupportsToolCalling",
+      "DisplayName": "Supports Tool Calling"
+    }
+  ],
+  "ParameterFields": [
+    {
+      "Name": "max_output_tokens",
+      "Label": "Max Output Tokens",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 5,
+      "IsRequired": true,
+      "Capability": "SupportsMaxOutputTokens",
+      "DefaultValue": 65536,
+      "Min": 0,
+      "Max": 65536,
+      "Step": 1000
+    },
+    {
+      "Name": "thinking_level",
+      "Label": "Thinking Level",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsThinkingLevel",
+      "DefaultValue": "Medium",
+      "EnumOptions": [
+        "Low",
+        "Medium",
+        "High"
+      ]
+    },
+    {
+      "Name": "structured_output",
+      "Label": "Structured Output",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsStructuredOutput",
+      "DefaultValue": "Text",
+      "EnumOptions": [
+        "Text",
+        "Json",
+        "Schema",
+        "Configured Type"
+      ]
+    },
+    {
+      "Name": "tool_choice",
+      "Label": "Tool Choice",
+      "Description": "",
+      "CallDefined": true,
+      "Type": 3,
+      "IsRequired": false,
+      "Capability": "SupportsToolCalling",
+      "DefaultValue": "Auto",
+      "EnumOptions": [
+        "None",
+        "Auto"
+      ]
+    }
+  ]
+}
