@@ -141,8 +141,12 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
         }
     }
 
+    private (string? TenantId, string? UserId)? _attribution;
+
     private ModelCallMetric CreateMetric(Guid logicalCallId, int attemptNumber, int tryNumber = 1)
     {
+        _attribution ??= MetricAttributionHelper.Resolve(WorkflowContext.Workflow, ThreadContext.NodeContext);
+
         return new ModelCallMetric()
         {
             Id = Guid.NewGuid(),
@@ -155,6 +159,8 @@ public class ModelCallNode(ThreadContext threadContext, ModelCallNodeEntity node
             WorkflowName = WorkflowContext.Workflow.Name,
             RunId = ProcessContext.Run.RunId,
             ConversationId = ProcessContext.Run.ConversationId,
+            TenantId = _attribution.Value.TenantId,
+            UserId = _attribution.Value.UserId,
             NodeEntityId = Node.Id,
             NodeTitle = Node.Title,
         };

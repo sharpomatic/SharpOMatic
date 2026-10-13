@@ -16,7 +16,9 @@ public sealed record WorkflowRunMetricsDashboardRequest(
     string? MasterSearch,
     int RecentSkip,
     int RecentTake,
-    bool AllTime = false
+    bool AllTime = false,
+    string? TenantId = null,
+    string? UserId = null
 );
 
 public sealed record WorkflowRunMetricsDashboard(

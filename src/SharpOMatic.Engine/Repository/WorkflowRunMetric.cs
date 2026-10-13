@@ -5,6 +5,8 @@ namespace SharpOMatic.Engine.Repository;
 [Index(nameof(Succeeded), nameof(Created))]
 [Index(nameof(RunStatus), nameof(Created))]
 [Index(nameof(ConversationId), nameof(Created))]
+[Index(nameof(TenantId), nameof(Created))]
+[Index(nameof(UserId), nameof(Created))]
 [Index(nameof(RunId), IsUnique = true)]
 public class WorkflowRunMetric
 {
@@ -29,6 +31,12 @@ public class WorkflowRunMetric
     public string? ConversationId { get; set; }
     public int? TurnNumber { get; set; }
     public required bool IsConversationRun { get; set; }
+
+    [MaxLength(MetricAttributionHelper.MaxAttributionLength)]
+    public string? TenantId { get; set; }
+
+    [MaxLength(MetricAttributionHelper.MaxAttributionLength)]
+    public string? UserId { get; set; }
     public int ModelCallCount { get; set; }
     public int ModelCallFailureCount { get; set; }
     public long InputTokens { get; set; }

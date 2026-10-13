@@ -340,6 +340,38 @@
           </div>
         </div>
       </div>
+      <div class="mb-3 form-line">
+        <label for="workflow-tenant-id-path" class="form-label field-label"
+          >Tenant Id Path</label
+        >
+        <div class="flex-fill control-column title">
+          <input
+            type="text"
+            class="form-control w-100"
+            id="workflow-tenant-id-path"
+            placeholder="auth.tenantId"
+            [ngModel]="workflowService.workflow().tenantIdPath()"
+            (ngModelChange)="
+              workflowService.workflow().tenantIdPath.set($event)
+            "
+          />
+        </div>
+      </div>
+      <div class="mb-3 form-line">
+        <label for="workflow-user-id-path" class="form-label field-label"
+          >User Id Path</label
+        >
+        <div class="flex-fill control-column title">
+          <input
+            type="text"
+            class="form-control w-100"
+            id="workflow-user-id-path"
+            placeholder="auth.userId"
+            [ngModel]="workflowService.workflow().userIdPath()"
+            (ngModelChange)="workflowService.workflow().userIdPath.set($event)"
+          />
+        </div>
+      </div>
     </div>
   </ng-template>
 

@@ -271,6 +271,42 @@ public sealed class WorkflowRunMetricUnitTests
     }
 
     [Fact]
+    public async Task WorkflowRunMetricsDashboardFiltersByTenantAndUser()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+
+        var options = new DbContextOptionsBuilder<SharpOMaticDbContext>().UseSqlite(connection).Options;
+        await using (var dbContext = new SharpOMaticDbContext(options, Options.Create(new SharpOMaticDbOptions())))
+            await dbContext.Database.EnsureCreatedAsync();
+
+        var repository = new RepositoryService(new TestDbContextFactory(options));
+        var tenantA = Guid.NewGuid();
+        var tenantB = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var workflowId = Guid.NewGuid();
+
+        foreach (var (tenantId, userId) in new[] { (tenantA, "user-1"), (tenantA, "user-2"), (tenantB, "user-3") })
+        {
+            var metric = CreateWorkflowRunMetric(Guid.NewGuid(), workflowId, "Workflow", now.AddMinutes(-10), RunStatus.Success, 100);
+            metric.TenantId = tenantId.ToString();
+            metric.UserId = userId;
+            await repository.AppendWorkflowRunMetric(metric);
+        }
+
+        Task<WorkflowRunMetricsDashboard> Query(string? tenantId, string? userId) =>
+            repository.GetWorkflowRunMetricsDashboard(
+                new WorkflowRunMetricsDashboardRequest(now.AddDays(-1), now, ModelCallMetricBucket.Hour, WorkflowRunMetricScope.All, null, null, 0, 25, AllTime: true, TenantId: tenantId, UserId: userId)
+            );
+
+        Assert.Equal(3, (await Query(null, null)).Totals.TotalRuns);
+        Assert.Equal(2, (await Query(tenantA.ToString().ToUpperInvariant(), null)).Totals.TotalRuns);
+        Assert.Equal(1, (await Query(tenantA.ToString(), " user-2 ")).Totals.TotalRuns);
+        Assert.Equal(1, (await Query(null, "user-3")).Totals.TotalRuns);
+        Assert.Equal(0, (await Query(Guid.NewGuid().ToString(), null)).Totals.TotalRuns);
+    }
+
+    [Fact]
     public async Task WorkflowRunMetricsDashboardScopesUseSnapshotNamesWhenWorkflowIsRenamed()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");

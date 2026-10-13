@@ -13,4 +13,6 @@ public class Workflow
     public required string Nodes { get; set; }
     public required string Connections { get; set; }
     public bool IsConversationEnabled { get; set; }
+    public string? TenantIdPath { get; set; }
+    public string? UserIdPath { get; set; }
 }

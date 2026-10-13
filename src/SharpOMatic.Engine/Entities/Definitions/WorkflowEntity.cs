@@ -10,4 +10,6 @@ public class WorkflowEntity : Entity
     public required NodeEntity[] Nodes { get; set; }
     public required ConnectionEntity[] Connections { get; set; }
     public bool IsConversationEnabled { get; set; }
+    public string? TenantIdPath { get; set; }
+    public string? UserIdPath { get; set; }
 }

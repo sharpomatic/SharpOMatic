@@ -18,7 +18,7 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("SharpOMatic")
-                .HasAnnotation("ProductVersion", "10.0.9")
+                .HasAnnotation("ProductVersion", "10.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -716,6 +716,10 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<bool>("Succeeded")
                         .HasColumnType("bit");
 
+                    b.Property<string>("TenantId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
                     b.Property<decimal?>("TotalCost")
                         .HasPrecision(18, 8)
                         .HasColumnType("decimal(18,8)");
@@ -725,6 +729,10 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
                     b.Property<int>("TryNumber")
                         .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<Guid>("WorkflowId")
                         .HasColumnType("uniqueidentifier");
@@ -748,6 +756,10 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.HasIndex("ModelId", "Created");
 
                     b.HasIndex("Succeeded", "Created");
+
+                    b.HasIndex("TenantId", "Created");
+
+                    b.HasIndex("UserId", "Created");
 
                     b.HasIndex("WorkflowId", "Created");
 
@@ -1061,6 +1073,12 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("TenantIdPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserIdPath")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("Version")
                         .HasColumnType("int");
 
@@ -1156,6 +1174,10 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.Property<bool>("Succeeded")
                         .HasColumnType("bit");
 
+                    b.Property<string>("TenantId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
                     b.Property<decimal>("TotalModelCost")
                         .HasPrecision(18, 8)
                         .HasColumnType("decimal(18,8)");
@@ -1165,6 +1187,10 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
 
                     b.Property<int?>("TurnNumber")
                         .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<Guid>("WorkflowId")
                         .HasColumnType("uniqueidentifier");
@@ -1188,6 +1214,10 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                     b.HasIndex("RunStatus", "Created");
 
                     b.HasIndex("Succeeded", "Created");
+
+                    b.HasIndex("TenantId", "Created");
+
+                    b.HasIndex("UserId", "Created");
 
                     b.HasIndex("WorkflowId", "Created");
 

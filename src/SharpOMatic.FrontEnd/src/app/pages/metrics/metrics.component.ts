@@ -88,6 +88,7 @@ export class MetricsComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly charts: Chart[] = [];
   private chartRenderId: ReturnType<typeof setTimeout> | undefined;
   private masterSearchDebounceId: ReturnType<typeof setTimeout> | undefined;
+  private filterDebounceId: ReturnType<typeof setTimeout> | undefined;
   private viewReady = false;
 
   public readonly ModelCallMetricScope = ModelCallMetricScope;
@@ -113,6 +114,8 @@ export class MetricsComponent implements OnInit, AfterViewInit, OnDestroy {
   );
   public end = this.toDateTimeLocal(new Date());
   public masterSearch = '';
+  public tenantIdFilter = '';
+  public userIdFilter = '';
   public recentPage = 1;
   public readonly recentPageSize = 25;
   public readonly expandedLogicalCalls = new Set<string>();
@@ -147,6 +150,10 @@ export class MetricsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (this.masterSearchDebounceId) {
       clearTimeout(this.masterSearchDebounceId);
+    }
+
+    if (this.filterDebounceId) {
+      clearTimeout(this.filterDebounceId);
     }
   }
 
@@ -225,6 +232,34 @@ export class MetricsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     this.masterSearchDebounceId = setTimeout(() => this.loadDashboard(), 250);
+  }
+
+  onFilterChange(): void {
+    if (this.filterDebounceId) {
+      clearTimeout(this.filterDebounceId);
+    }
+
+    this.filterDebounceId = setTimeout(() => {
+      this.recentPage = 1;
+      this.loadDashboard();
+    }, 250);
+  }
+
+  hasFilter(): boolean {
+    return (
+      this.tenantIdFilter.trim().length > 0 ||
+      this.userIdFilter.trim().length > 0
+    );
+  }
+
+  clearFilters(): void {
+    if (!this.hasFilter()) {
+      return;
+    }
+
+    this.tenantIdFilter = '';
+    this.userIdFilter = '';
+    this.onFilterChange();
   }
 
   selectMasterItem(item: ModelCallMetricMasterItem): void {
@@ -463,6 +498,8 @@ export class MetricsComponent implements OnInit, AfterViewInit, OnDestroy {
         (this.recentPage - 1) * this.recentPageSize,
         this.recentPageSize,
         allTime,
+        this.tenantIdFilter,
+        this.userIdFilter,
       )
       .subscribe((dashboard) => {
         if (!dashboard) {
@@ -507,6 +544,8 @@ export class MetricsComponent implements OnInit, AfterViewInit, OnDestroy {
         (this.recentPage - 1) * this.recentPageSize,
         this.recentPageSize,
         allTime,
+        this.tenantIdFilter,
+        this.userIdFilter,
       )
       .subscribe((dashboard) => {
         if (!dashboard) {
