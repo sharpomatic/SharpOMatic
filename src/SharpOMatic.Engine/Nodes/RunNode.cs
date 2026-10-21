@@ -41,7 +41,7 @@ public abstract class RunNode<T> : IRunNode
         await EnsureRunStarted();
         await NodeRunning();
 
-        NodeActivity = SharpOMaticDiagnostics.StartNodeActivity(ProcessContext, Node);
+        NodeActivity = SharpOMaticDiagnostics.StartNodeActivity(ThreadContext, Node);
         
         try
         {

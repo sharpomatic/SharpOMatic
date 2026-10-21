@@ -30,6 +30,25 @@ Node executions add type-specific attributes to their `executor.process` span:
 
 Custom node implementations deriving from `RunNode<T>` can stamp their own tags through the protected `NodeActivity` property (null when telemetry is disabled or nothing is listening, so always use `NodeActivity?.SetTag(...)`).
 
+## Tenant And User Attribution
+
+Every span the engine emits for a run carries the tenant and user the run is attributed to, so a backend can group usage and cost by them without joining back to the repository metrics:
+
+| Attribute | Value |
+| --- | --- |
+| `bx.tenant.id` | The tenant ID, resolved from the workflow's **Tenant Id Path** (default `auth.tenantId`). |
+| `bx.user.id` | The user ID, resolved from the workflow's **User Id Path** (default `auth.userId`). |
+
+They appear on the `workflow`, `executor.process`, `invoke_agent`, `chat`, and `execute_tool` spans. Values are resolved exactly as for the [metrics](../core-concepts/metrics.md#tenant-and-user-attribution): a GUID is written in its lowercase form, any other string is trimmed, and a missing path, an empty or oversized value, or a value of another type is **omitted** rather than written as an empty or placeholder value. Attribution never causes a node or run to fail.
+
+How each span gets them:
+
+- A node span resolves them from its own workflow and context when the node starts, so a node inside a **Gosub** uses the child workflow's paths and the child's context.
+- The `invoke_agent`, `chat`, and `execute_tool` spans are created by `Microsoft.Extensions.AI` middleware inside the model callers. The engine copies the tenant and user onto them from the node span they are created under. Because the copy follows the span hierarchy rather than the thread, it works on the engine's worker threads, where `Activity.Current` and OpenTelemetry baggage do not flow in from the caller that started the run.
+- The run span is stamped when the run finishes, from the same values stored on the run metric, using the top-level workflow's paths.
+
+A host that populates `auth.tenantId` and `auth.userId` in the run context therefore gets attributed spans for every workflow with no per-workflow change. The attributes are intended for span and log queries only; do not use them as a metric dimension, because tenant and user are unbounded-cardinality values.
+
 ## Token Usage Is Recorded Once
 
 Model call spans nest: a node span contains an `invoke_agent` span, which contains one `chat` span per provider round trip. Each layer observes the same underlying model calls, so if every layer reported its own token usage, a backend summing `gen_ai.usage.*` would count the same tokens several times over — and because the wrapper spans carry no model name, the duplicates would land in an unattributed bucket rather than showing up as an obvious error.
@@ -53,7 +72,7 @@ A backend can therefore chart `sum(gen_ai.usage.input_tokens) by gen_ai.request.
 
 Every attribute the engine defines itself is prefixed `sharpomatic.`. The prefix keeps engine attributes out of the namespaces owned by the OpenTelemetry semantic conventions, so an engine attribute can never collide with — or be silently absorbed into — a `gen_ai.*` or other convention attribute that a backend interprets specially.
 
-The only deliberately unprefixed attributes are the conventions the engine participates in on purpose: `gen_ai.conversation.id` and `session.id` (both set from the conversation id, because backends key conversation and session grouping off those exact names) and `error.type`. The `gen_ai.*` attributes on the `invoke_agent`, `chat`, and `execute_tool` spans are set by the Microsoft middleware rather than by the engine, and follow the conventions as published.
+The only deliberately unprefixed attributes are the conventions the engine participates in on purpose: `gen_ai.conversation.id` and `session.id` (both set from the conversation id, because backends key conversation and session grouping off those exact names) and `error.type`. The tenant and user attributes `bx.tenant.id` and `bx.user.id` are the one other exception: a vendor-prefixed pair that a host can share with its own spans so a backend groups by them across engine and host telemetry. The `bx.` prefix is not an OpenTelemetry convention namespace, so it cannot collide with one. The `gen_ai.*` attributes on the `invoke_agent`, `chat`, and `execute_tool` spans are set by the Microsoft middleware rather than by the engine, and follow the conventions as published.
 
 :::note Node titles are not unique
 `gen_ai.agent.name` on an `invoke_agent` span is the node title, which is user-authored and carries no uniqueness constraint. The engine therefore supplies the node's id as the agent id, so the middleware also records `gen_ai.agent.id` and appends it to the span name (`invoke_agent Ask model(3f2a…)`). Two model call nodes sharing a title stay distinct in a backend — group by `gen_ai.agent.id`, or by the parent node span's `sharpomatic.executor.id`, rather than by the agent name.
