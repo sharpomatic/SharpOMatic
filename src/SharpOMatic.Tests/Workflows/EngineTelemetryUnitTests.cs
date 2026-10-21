@@ -51,8 +51,13 @@ public sealed class EngineTelemetryUnitTests
         var stopped = new ConcurrentBag<Activity>();
         using var listener = CreateListener(stopped);
 
+        // Attribution is present so the tenant and user tags are actually exercised by the allow-list below.
+        var context = new ContextObject();
+        context.Set("auth.tenantId", Guid.NewGuid());
+        context.Set("auth.userId", Guid.NewGuid());
+
         var workflow = new WorkflowBuilder().AddStart().AddEnd().Connect("start", "end").Build();
-        var run = await WorkflowRunner.RunWorkflow([], workflow);
+        var run = await WorkflowRunner.RunWorkflow(context, workflow);
 
         Assert.NotNull(run);
         Assert.True(run.RunStatus == RunStatus.Success, run.Error);
@@ -64,7 +69,16 @@ public sealed class EngineTelemetryUnitTests
         // Anything the engine defines itself must sit under the sharpomatic prefix so it cannot collide
         // with, or be silently absorbed into, the gen_ai and other OpenTelemetry semantic conventions.
         // The only unprefixed tags allowed are the conventions the engine deliberately participates in.
-        string[] allowedConventionTags = ["gen_ai.conversation.id", "session.id", "error.type"];
+        // The tenant and user tags are the one deliberate exception: a vendor-prefixed family shared with the
+        // host's own spans, so a backend can group by them across engine and host telemetry.
+        string[] allowedConventionTags =
+        [
+            "gen_ai.conversation.id",
+            "session.id",
+            "error.type",
+            SharpOMaticDiagnostics.TenantIdTag,
+            SharpOMaticDiagnostics.UserIdTag,
+        ];
 
         foreach (var activity in nodeActivities.Append(runActivity))
         {
@@ -288,6 +302,237 @@ public sealed class EngineTelemetryUnitTests
         Assert.Equal("the-model", chatClient.SeenModelId);
         Assert.Equal("the-instructions", chatClient.SeenInstructions);
         Assert.Equal(0.5f, chatClient.SeenTemperature);
+    }
+
+    [Fact]
+    public async Task Run_node_agent_and_chat_spans_carry_tenant_and_user()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var context = new ContextObject();
+        context.Set("auth.tenantId", tenantId);
+        context.Set("auth.userId", userId);
+        var model = ModelCallMetricUnitTests.CreateModel("openai");
+        var workflow = ModelCallMetricUnitTests.CreateWorkflow(model.ModelId);
+
+        var trace = await RunAttributedModelCall(context, model, workflow);
+
+        // Every kind of span the run produces, including the chat span that carries the billed usage.
+        Assert.Contains(trace, activity => activity.OperationName.StartsWith("workflow"));
+        Assert.Contains(trace, activity => activity.OperationName.StartsWith("executor.process"));
+        Assert.Contains(trace, activity => IsOperation(activity, "invoke_agent"));
+        Assert.Contains(trace, activity => IsOperation(activity, "chat"));
+        Assert.Contains(trace, activity => activity.OperationName.StartsWith("execute_tool"));
+
+        Assert.All(trace, activity => AssertAttribution(activity, tenantId.ToString(), userId.ToString()));
+    }
+
+    [Fact]
+    public async Task Spans_omit_tenant_and_user_when_the_context_has_none()
+    {
+        var model = ModelCallMetricUnitTests.CreateModel("openai");
+        var workflow = ModelCallMetricUnitTests.CreateWorkflow(model.ModelId);
+
+        var trace = await RunAttributedModelCall([], model, workflow);
+
+        Assert.Contains(trace, activity => IsOperation(activity, "chat"));
+        Assert.All(trace, activity => AssertAttribution(activity, null, null));
+    }
+
+    [Fact]
+    public async Task Spans_use_the_workflow_attribution_paths()
+    {
+        var tenantId = Guid.NewGuid();
+        var context = new ContextObject();
+        context.Set("caller.tenant", tenantId.ToString().ToUpperInvariant());
+        context.Set("caller.user", "  user-42  ");
+        var model = ModelCallMetricUnitTests.CreateModel("openai");
+        var workflow = ModelCallMetricUnitTests.CreateWorkflow(model.ModelId);
+        workflow.TenantIdPath = "caller.tenant";
+        workflow.UserIdPath = "caller.user";
+
+        var trace = await RunAttributedModelCall(context, model, workflow);
+
+        // Same normalisation as the metrics: a GUID is lowercase, anything else is trimmed.
+        Assert.Contains(trace, activity => IsOperation(activity, "chat"));
+        Assert.All(trace, activity => AssertAttribution(activity, tenantId.ToString(), "user-42"));
+    }
+
+    [Fact]
+    public async Task Gosub_model_call_spans_use_the_child_workflow_paths_and_the_run_span_the_top_level_paths()
+    {
+        var parentTenantId = Guid.NewGuid();
+        var childTenantId = Guid.NewGuid();
+        var context = new ContextObject();
+        context.Set("auth.tenantId", parentTenantId);
+        context.Set("child.tenant", childTenantId);
+        var model = ModelCallMetricUnitTests.CreateModel("openai");
+        var childWorkflow = ModelCallMetricUnitTests.CreateWorkflow(model.ModelId);
+        childWorkflow.Name = "Child Workflow";
+        childWorkflow.TenantIdPath = "child.tenant";
+        var parentWorkflow = new WorkflowBuilder()
+            .WithName("Parent Workflow")
+            .AddStart()
+            .AddGosub("gosub", childWorkflow.Id)
+            .AddEnd()
+            .Connect("start", "gosub")
+            .Connect("gosub", "end")
+            .Build();
+
+        var trace = await RunAttributedModelCall(context, model, parentWorkflow, childWorkflow);
+
+        // Matches the metrics: the model call resolves against the child's paths, the run against the top level's.
+        var runActivity = Assert.Single(trace, activity => activity.OperationName.StartsWith("workflow"));
+        AssertAttribution(runActivity, parentTenantId.ToString(), null);
+
+        var chatActivities = trace.Where(activity => IsOperation(activity, "chat")).ToList();
+        Assert.NotEmpty(chatActivities);
+        Assert.All(chatActivities, activity => AssertAttribution(activity, childTenantId.ToString(), null));
+    }
+
+    [Fact]
+    public void Child_activity_inherits_attribution_without_overwriting_its_own()
+    {
+        var stopped = new ConcurrentBag<Activity>();
+        using var listener = CreateListener(stopped);
+
+        using var parent = SharpOMaticDiagnostics.ActivitySource.StartActivity("parent");
+        Assert.NotNull(parent);
+        parent.SetTag(SharpOMaticDiagnostics.TenantIdTag, "parent-tenant");
+        parent.SetTag(SharpOMaticDiagnostics.UserIdTag, "parent-user");
+
+        using var inheriting = SharpOMaticDiagnostics.ActivitySource.StartActivity("inheriting");
+        Assert.NotNull(inheriting);
+        AssertAttribution(inheriting, "parent-tenant", "parent-user");
+
+        // A tag the child already carries when it starts is never replaced by the parent's.
+        using var own = SharpOMaticDiagnostics.ActivitySource.StartActivity(
+            ActivityKind.Internal,
+            tags: [new KeyValuePair<string, object?>(SharpOMaticDiagnostics.TenantIdTag, "own-tenant")],
+            name: "own"
+        );
+        Assert.NotNull(own);
+        AssertAttribution(own, "own-tenant", "parent-user");
+    }
+
+    [Fact]
+    public async Task Run_started_under_another_activity_resolves_its_own_attribution_rather_than_inheriting()
+    {
+        var stopped = new ConcurrentBag<Activity>();
+        using var listener = CreateListener(stopped);
+
+        // A host can start a run from inside another run (a background job kicked off by a workflow). The
+        // ambient activity then carries the parent's user, but this run's context deliberately has none.
+        using var ambient = SharpOMaticDiagnostics.ActivitySource.StartActivity("host");
+        Assert.NotNull(ambient);
+        ambient.SetTag(SharpOMaticDiagnostics.TenantIdTag, "ambient-tenant");
+        ambient.SetTag(SharpOMaticDiagnostics.UserIdTag, "ambient-user");
+
+        var tenantId = Guid.NewGuid();
+        var context = new ContextObject();
+        context.Set("auth.tenantId", tenantId);
+
+        var workflow = new WorkflowBuilder().AddStart().AddEnd().Connect("start", "end").Build();
+        var run = await WorkflowRunner.RunWorkflow(context, workflow);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+
+        var runActivity = await WaitForActivity(stopped, activity => activity.OperationName.StartsWith("workflow") && HasRunTag(activity, run.RunId));
+        Assert.Equal(ambient.SpanId, runActivity.ParentSpanId);
+
+        AssertAttribution(runActivity, tenantId.ToString(), null);
+        var nodeActivities = stopped.Where(activity => activity.OperationName.StartsWith("executor.process") && HasRunTag(activity, run.RunId)).ToList();
+        Assert.NotEmpty(nodeActivities);
+        Assert.All(nodeActivities, activity => AssertAttribution(activity, tenantId.ToString(), null));
+    }
+
+    private static void AssertAttribution(Activity activity, string? tenantId, string? userId)
+    {
+        Assert.Equal(tenantId, activity.GetTagItem(SharpOMaticDiagnostics.TenantIdTag)?.ToString());
+        Assert.Equal(userId, activity.GetTagItem(SharpOMaticDiagnostics.UserIdTag)?.ToString());
+    }
+
+    /// <summary>
+    /// Runs a workflow whose model call builds the real OpenTelemetry agent and chat chain, through the
+    /// engine's queue so it executes on a worker thread, and returns every span of the run's trace.
+    /// </summary>
+    private static async Task<List<Activity>> RunAttributedModelCall(ContextObject context, Model model, WorkflowEntity workflow, params WorkflowEntity[] subWorkflows)
+    {
+        var stopped = new ConcurrentBag<Activity>();
+        using var listener = CreateListener(stopped);
+
+        using var provider = WorkflowRunner.BuildProvider(services => services.AddKeyedScoped<IModelCaller, AttributionAgentModelCaller>("openai"));
+        var repository = (TestRepositoryService)provider.GetRequiredService<IRepositoryService>();
+        await ModelCallMetricUnitTests.SeedModelCallMetadata(repository, "openai", model);
+
+        // The test chat client has no streaming path, so ask the nodes for batch output.
+        foreach (var modelCallNode in subWorkflows.Append(workflow).SelectMany(candidate => candidate.Nodes).OfType<ModelCallNodeEntity>())
+            modelCallNode.BatchOutput = true;
+
+        await repository.UpsertWorkflow(workflow);
+        foreach (var subWorkflow in subWorkflows)
+            await repository.UpsertWorkflow(subWorkflow);
+
+        using var cts = new CancellationTokenSource();
+        var executionService = provider.GetRequiredService<INodeExecutionService>();
+        var queueTask = executionService.RunQueueAsync(cts.Token);
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var engine = scope.ServiceProvider.GetRequiredService<IEngineService>();
+            var run = await engine.StartWorkflowRunAndWait(workflow.Id, context);
+            Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+
+            // The run activity completes after the awaited run result is returned, so wait for it.
+            var runActivity = await WaitForActivity(stopped, activity => activity.OperationName.StartsWith("workflow") && HasRunTag(activity, run.RunId));
+            return stopped.Where(activity => activity.TraceId == runActivity.TraceId).ToList();
+        }
+        finally
+        {
+            cts.Cancel();
+            await queueTask;
+        }
+    }
+
+    private sealed class AttributionAgentModelCaller : BaseModelCaller
+    {
+        public override async Task<ModelCallResult> Call(
+            Model model,
+            ModelConfig modelConfig,
+            Connector connector,
+            ConnectorConfig connectorConfig,
+            ProcessContext processContext,
+            ThreadContext threadContext,
+            ModelCallNodeEntity node,
+            IModelCallProgressSink progressSink
+        )
+        {
+            var services = processContext.ServiceScope.ServiceProvider;
+            var agent = ApplyAgentTelemetry(
+                new ChatClientAgent(CreateFunctionInvokingChatClient(new TwoTurnToolChatClient(), services), BuildAgentOptions(node, node.Instructions, "the-model"), services: services),
+                services
+            );
+
+            // A tool call makes the run produce two chat spans and an execute_tool span, so every span kind is covered.
+            var result = await CallConfiguredAgent(
+                agent,
+                [],
+                new ChatOptions() { Tools = [AIFunctionFactory.Create(() => "sunny", "get_weather")] },
+                jsonOutput: false,
+                node,
+                new TelemetryNullProgressSink()
+            );
+
+            // Only the spans are under test, so hand the node a plain result rather than the raw agent output.
+            return new ModelCallResult()
+            {
+                Chat = [],
+                Responses = [new ChatMessage(ChatRole.Assistant, [new TextContent("It is sunny.")])],
+                ResultValue = "It is sunny.",
+                ProviderModelName = "the-model",
+                Usage = result.Usage,
+            };
+        }
     }
 
     private sealed class CapturingChatClient : IChatClient

@@ -5,6 +5,9 @@ namespace SharpOMatic.Engine.Services;
 public static class SharpOMaticDiagnostics
 {
     public const string SourceName = "SharpOMatic.Engine";
+    public const string TenantIdTag = "bx.tenant.id";
+    public const string UserIdTag = "bx.user.id";
+    private const string RunIdTag = "sharpomatic.run.id";
 
     internal static readonly ActivitySource ActivitySource = CreateActivitySource();
 
@@ -34,11 +37,45 @@ public static class SharpOMaticDiagnostics
                 // Sample nothing on our own account: this listener exists only to edit activities the
                 // host's trace provider has already decided to record.
                 Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.None,
+                ActivityStarted = InheritAttribution,
                 ActivityStopped = StripDuplicateAgentUsage,
             }
         );
 
         return new ActivitySource(SourceName);
+    }
+
+    /// <summary>
+    /// Copies the tenant and user from the parent onto a child activity that has none. The agent and chat
+    /// activities are created by Microsoft.Extensions.AI middleware inside the model callers, so the engine
+    /// cannot stamp them where they start; they are always created under the node activity, which carries the
+    /// attribution, so inheriting from the parent reaches every one of them without touching the callers.
+    /// <para>
+    /// A run activity never inherits. A host can start one under another run's activity (a background job
+    /// kicked off from inside a workflow), and that run's own context may deliberately carry no user, so its
+    /// attribution is resolved from its own context when it finishes. Run activities are recognised by the
+    /// run id they are created with.
+    /// </para>
+    /// </summary>
+    private static void InheritAttribution(Activity activity)
+    {
+        if (activity.GetTagItem(RunIdTag) is not null)
+            return;
+
+        var parent = activity.Parent;
+        if (parent is null)
+            return;
+
+        SetAttribution(activity, parent.GetTagItem(TenantIdTag) as string, parent.GetTagItem(UserIdTag) as string);
+    }
+
+    private static void SetAttribution(Activity activity, string? tenantId, string? userId)
+    {
+        if (tenantId is not null && activity.GetTagItem(TenantIdTag) is null)
+            activity.SetTag(TenantIdTag, tenantId);
+
+        if (userId is not null && activity.GetTagItem(UserIdTag) is null)
+            activity.SetTag(UserIdTag, userId);
     }
 
     /// <summary>
@@ -65,7 +102,13 @@ public static class SharpOMaticDiagnostics
 
     internal static Activity? StartRunActivity(Run run, string? workflowName)
     {
-        var activity = ActivitySource.StartActivity(BuildRunActivityName(workflowName));
+        // The run id is supplied at creation, not set afterwards, so the listener's ActivityStarted hook can
+        // tell a run activity from the agent and chat activities that inherit their attribution.
+        var activity = ActivitySource.StartActivity(
+            ActivityKind.Internal,
+            tags: [new KeyValuePair<string, object?>(RunIdTag, run.RunId)],
+            name: BuildRunActivityName(workflowName)
+        );
         if (activity is null)
             return null;
 
@@ -73,7 +116,6 @@ public static class SharpOMaticDiagnostics
         // control flow comes from the workflow definition rather than from a model. The GenAI
         // spans belong to the model calls nested underneath it.
         activity.SetTag("sharpomatic.workflow.id", run.WorkflowId);
-        activity.SetTag("sharpomatic.run.id", run.RunId);
 
         if (workflowName is not null)
             activity.SetTag("sharpomatic.workflow.name", workflowName);
@@ -118,6 +160,9 @@ public static class SharpOMaticDiagnostics
 
         activity.SetTag("sharpomatic.run.status", run.RunStatus.ToString());
 
+        if (metric is not null)
+            SetAttribution(activity, metric.TenantId, metric.UserId);
+
         if (run.RunStatus == RunStatus.Failed)
             activity.SetStatus(ActivityStatusCode.Error, string.IsNullOrWhiteSpace(run.Error) ? run.Message : run.Error);
         else
@@ -126,8 +171,10 @@ public static class SharpOMaticDiagnostics
         activity.Dispose();
     }
 
-    internal static Activity? StartNodeActivity(ProcessContext processContext, NodeEntity node)
+    internal static Activity? StartNodeActivity(ThreadContext threadContext, NodeEntity node)
     {
+        var processContext = threadContext.ProcessContext;
+
         // Nodes execute on queue worker threads where Activity.Current does not flow from the
         // caller that started the run, so the run activity carried on ProcessContext is the parent.
         var runActivity = processContext.RunActivity;
@@ -142,6 +189,11 @@ public static class SharpOMaticDiagnostics
         activity.SetTag("sharpomatic.executor.type", node.NodeType.ToString());
         activity.SetTag("sharpomatic.executor.title", node.Title);
         activity.SetTag("sharpomatic.run.id", processContext.Run.RunId);
+
+        // The node's own workflow and context, so a node inside a Gosub is attributed the same way as the
+        // metrics it writes. Every activity nested under this node inherits the result.
+        var (tenantId, userId) = MetricAttributionHelper.Resolve(threadContext.WorkflowContext.Workflow, threadContext.NodeContext);
+        SetAttribution(activity, tenantId, userId);
         return activity;
     }
 

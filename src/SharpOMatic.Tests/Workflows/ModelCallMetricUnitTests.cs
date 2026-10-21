@@ -684,7 +684,7 @@ public class ModelCallMetricUnitTests
         Assert.Equal(2, Assert.Single(fallbackConnectorDashboard.RecentLogicalCalls).Attempts.Count);
     }
 
-    private static WorkflowEntity CreateWorkflow(Guid? modelId)
+    internal static WorkflowEntity CreateWorkflow(Guid? modelId)
     {
         var workflow = new WorkflowBuilder().WithName("Metric Workflow").AddStart().AddModelCall("model").AddEnd().Connect("start", "model").Connect("model", "end").Build();
 
@@ -727,7 +727,7 @@ public class ModelCallMetricUnitTests
         };
     }
 
-    private static async Task SeedModelCallMetadata(IRepositoryService repository, string configId, Model model)
+    internal static async Task SeedModelCallMetadata(IRepositoryService repository, string configId, Model model)
     {
         await repository.UpsertConnectorConfig(
             new ConnectorConfig()
@@ -787,7 +787,7 @@ public class ModelCallMetricUnitTests
         await repository.UpsertModel(model);
     }
 
-    private static Model CreateModel(string connectorConfigId)
+    internal static Model CreateModel(string connectorConfigId)
     {
         return new Model()
         {
