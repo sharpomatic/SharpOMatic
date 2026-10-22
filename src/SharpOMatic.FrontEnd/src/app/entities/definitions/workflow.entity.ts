@@ -13,6 +13,8 @@ export interface WorkflowSnapshot extends EntitySnapshot {
   isConversationEnabled: boolean;
   tenantIdPath?: string | null;
   userIdPath?: string | null;
+  referenceIdPath?: string | null;
+  referenceTypePath?: string | null;
   nodes: NodeSnapshot[];
   connections: ConnectionSnapshot[];
 }
@@ -32,6 +34,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
   public isConversationEnabled: WritableSignal<boolean>;
   public tenantIdPath: WritableSignal<string>;
   public userIdPath: WritableSignal<string>;
+  public referenceIdPath: WritableSignal<string>;
+  public referenceTypePath: WritableSignal<string>;
   public nodes: WritableSignal<NodeEntity<NodeSnapshot>[]>;
   public connections: WritableSignal<ConnectionEntity[]>;
   public isDirty: Signal<boolean>;
@@ -50,6 +54,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
     this.userIdPath = signal(
       snapshot.userIdPath ?? WorkflowEntity.DEFAULT_USER_ID_PATH,
     );
+    this.referenceIdPath = signal(snapshot.referenceIdPath ?? '');
+    this.referenceTypePath = signal(snapshot.referenceTypePath ?? '');
     this.nodes = signal(snapshot.nodes.map(nodeFromSnapshot));
     this.connections = signal(
       snapshot.connections.map(ConnectionEntity.fromSnapshot),
@@ -69,6 +75,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
       const currentIsConversationEnabled = this.isConversationEnabled();
       const currentTenantIdPath = this.tenantIdPath();
       const currentUserIdPath = this.userIdPath();
+      const currentReferenceIdPath = this.referenceIdPath();
+      const currentReferenceTypePath = this.referenceTypePath();
       const currentNodes = this.nodes();
       const currentConnections = this.connections();
 
@@ -102,7 +110,9 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
         currentTenantIdPath !==
           (snapshot.tenantIdPath ?? WorkflowEntity.DEFAULT_TENANT_ID_PATH) ||
         currentUserIdPath !==
-          (snapshot.userIdPath ?? WorkflowEntity.DEFAULT_USER_ID_PATH);
+          (snapshot.userIdPath ?? WorkflowEntity.DEFAULT_USER_ID_PATH) ||
+        currentReferenceIdPath !== (snapshot.referenceIdPath ?? '') ||
+        currentReferenceTypePath !== (snapshot.referenceTypePath ?? '');
 
       if (needsRefresh) {
         setTimeout(() => this.refreshCache(), 0);
@@ -123,6 +133,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
       isConversationEnabled: this.isConversationEnabled(),
       tenantIdPath: this.tenantIdPath(),
       userIdPath: this.userIdPath(),
+      referenceIdPath: this.referenceIdPath(),
+      referenceTypePath: this.referenceTypePath(),
       nodes: this.nodes().map((node) => node.toSnapshot()),
       connections: this.connections().map((connection) =>
         connection.toSnapshot(),
@@ -141,6 +153,8 @@ export class WorkflowEntity extends Entity<WorkflowSnapshot> {
       isConversationEnabled: false,
       tenantIdPath: WorkflowEntity.DEFAULT_TENANT_ID_PATH,
       userIdPath: WorkflowEntity.DEFAULT_USER_ID_PATH,
+      referenceIdPath: '',
+      referenceTypePath: '',
       nodes: [],
       connections: [],
     };

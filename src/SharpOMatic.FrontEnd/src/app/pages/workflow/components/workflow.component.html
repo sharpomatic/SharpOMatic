@@ -372,6 +372,40 @@
           />
         </div>
       </div>
+      <div class="mb-3 form-line">
+        <label for="workflow-reference-id-path" class="form-label field-label"
+          >Reference Id Path</label
+        >
+        <div class="flex-fill control-column title">
+          <input
+            type="text"
+            class="form-control w-100"
+            id="workflow-reference-id-path"
+            placeholder="Not set"
+            [ngModel]="workflowService.workflow().referenceIdPath()"
+            (ngModelChange)="
+              workflowService.workflow().referenceIdPath.set($event)
+            "
+          />
+        </div>
+      </div>
+      <div class="mb-3 form-line">
+        <label for="workflow-reference-type-path" class="form-label field-label"
+          >Reference Type Path</label
+        >
+        <div class="flex-fill control-column title">
+          <input
+            type="text"
+            class="form-control w-100"
+            id="workflow-reference-type-path"
+            placeholder="Not set"
+            [ngModel]="workflowService.workflow().referenceTypePath()"
+            (ngModelChange)="
+              workflowService.workflow().referenceTypePath.set($event)
+            "
+          />
+        </div>
+      </div>
     </div>
   </ng-template>
 

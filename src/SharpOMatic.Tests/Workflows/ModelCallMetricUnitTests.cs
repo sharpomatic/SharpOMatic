@@ -341,6 +341,8 @@ public class ModelCallMetricUnitTests
         var workflow = CreateWorkflow(modelId: null);
         workflow.TenantIdPath = "caller.tenant";
         workflow.UserIdPath = "caller.user";
+        workflow.ReferenceIdPath = "caller.reference.id";
+        workflow.ReferenceTypePath = "caller.reference.type";
         await repository.UpsertWorkflow(workflow);
 
         var saved = await repository.GetWorkflow(workflow.Id);
@@ -348,8 +350,12 @@ public class ModelCallMetricUnitTests
 
         Assert.Equal("caller.tenant", saved.TenantIdPath);
         Assert.Equal("caller.user", saved.UserIdPath);
+        Assert.Equal("caller.reference.id", saved.ReferenceIdPath);
+        Assert.Equal("caller.reference.type", saved.ReferenceTypePath);
         Assert.Equal("caller.tenant", copy.TenantIdPath);
         Assert.Equal("caller.user", copy.UserIdPath);
+        Assert.Equal("caller.reference.id", copy.ReferenceIdPath);
+        Assert.Equal("caller.reference.type", copy.ReferenceTypePath);
     }
 
     [Fact]

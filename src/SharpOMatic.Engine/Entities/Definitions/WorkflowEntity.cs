@@ -12,4 +12,6 @@ public class WorkflowEntity : Entity
     public bool IsConversationEnabled { get; set; }
     public string? TenantIdPath { get; set; }
     public string? UserIdPath { get; set; }
+    public string? ReferenceIdPath { get; set; }
+    public string? ReferenceTypePath { get; set; }
 }

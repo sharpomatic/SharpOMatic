@@ -180,7 +180,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             }
         }
 
-        var runMetric = await AppendWorkflowRunMetric(processContext, threadContext, exception, failedNode);
+        var (runMetric, runReference) = await AppendWorkflowRunMetric(processContext, threadContext, exception, failedNode);
         if (runMetric is not null)
         {
             processContext.Run.ModelCallCount = runMetric.ModelCallCount;
@@ -192,7 +192,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
 
         processContext.CompletionSource?.TrySetResult(processContext.Run);
 
-        SharpOMaticDiagnostics.CompleteRunActivity(processContext.RunActivity, processContext.Run, runMetric);
+        SharpOMaticDiagnostics.CompleteRunActivity(processContext.RunActivity, processContext.Run, runMetric, runReference);
 
         await PruneExecutionHistory(processContext);
 
@@ -216,7 +216,12 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
         processContext.ServiceScope.Dispose();
     }
 
-    private static async Task<WorkflowRunMetric?> AppendWorkflowRunMetric(ProcessContext processContext, ThreadContext threadContext, Exception? exception, NodeEntity? failedNode)
+    private static async Task<(WorkflowRunMetric? Metric, (string? ReferenceId, string? ReferenceType) Reference)> AppendWorkflowRunMetric(
+        ProcessContext processContext,
+        ThreadContext threadContext,
+        Exception? exception,
+        NodeEntity? failedNode
+    )
     {
         try
         {
@@ -229,6 +234,7 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             var started = run.Started ?? run.Created;
             var finished = run.Stopped ?? DateTime.Now;
             var attribution = MetricAttributionHelper.Resolve(workflow, threadContext.NodeContext);
+            var reference = MetricAttributionHelper.ResolveReference(workflow, threadContext.NodeContext);
 
             var metric = new WorkflowRunMetric()
             {
@@ -256,12 +262,12 @@ public class NodeExecutionService(INodeQueueService queue, IRunNodeFactory runNo
             };
 
             await processContext.RepositoryService.AppendWorkflowRunMetric(metric);
-            return metric;
+            return (metric, reference);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to append workflow run metric for run '{processContext.Run.RunId}': {ex.Message}");
-            return null;
+            return (null, default);
         }
     }
 

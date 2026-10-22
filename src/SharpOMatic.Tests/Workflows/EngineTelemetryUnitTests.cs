@@ -51,12 +51,16 @@ public sealed class EngineTelemetryUnitTests
         var stopped = new ConcurrentBag<Activity>();
         using var listener = CreateListener(stopped);
 
-        // Attribution is present so the tenant and user tags are actually exercised by the allow-list below.
+        // Attribution is present so the tenant, user and reference tags are actually exercised by the allow-list below.
         var context = new ContextObject();
         context.Set("auth.tenantId", Guid.NewGuid());
         context.Set("auth.userId", Guid.NewGuid());
+        context.Set("work.id", Guid.NewGuid());
+        context.Set("work.type", "Estimate");
 
         var workflow = new WorkflowBuilder().AddStart().AddEnd().Connect("start", "end").Build();
+        workflow.ReferenceIdPath = "work.id";
+        workflow.ReferenceTypePath = "work.type";
         var run = await WorkflowRunner.RunWorkflow(context, workflow);
 
         Assert.NotNull(run);
@@ -69,8 +73,8 @@ public sealed class EngineTelemetryUnitTests
         // Anything the engine defines itself must sit under the sharpomatic prefix so it cannot collide
         // with, or be silently absorbed into, the gen_ai and other OpenTelemetry semantic conventions.
         // The only unprefixed tags allowed are the conventions the engine deliberately participates in.
-        // The tenant and user tags are the one deliberate exception: a vendor-prefixed family shared with the
-        // host's own spans, so a backend can group by them across engine and host telemetry.
+        // The tenant, user and reference tags are the one deliberate exception: a vendor-prefixed family shared
+        // with the host's own spans, so a backend can group by them across engine and host telemetry.
         string[] allowedConventionTags =
         [
             "gen_ai.conversation.id",
@@ -78,6 +82,8 @@ public sealed class EngineTelemetryUnitTests
             "error.type",
             SharpOMaticDiagnostics.TenantIdTag,
             SharpOMaticDiagnostics.UserIdTag,
+            SharpOMaticDiagnostics.ReferenceIdTag,
+            SharpOMaticDiagnostics.ReferenceTypeTag,
         ];
 
         foreach (var activity in nodeActivities.Append(runActivity))
@@ -443,6 +449,121 @@ public sealed class EngineTelemetryUnitTests
         var nodeActivities = stopped.Where(activity => activity.OperationName.StartsWith("executor.process") && HasRunTag(activity, run.RunId)).ToList();
         Assert.NotEmpty(nodeActivities);
         Assert.All(nodeActivities, activity => AssertAttribution(activity, tenantId.ToString(), null));
+    }
+
+    [Fact]
+    public async Task Spans_carry_the_reference_named_by_the_workflow_paths()
+    {
+        var referenceId = Guid.NewGuid();
+        var context = new ContextObject();
+        context.Set("work.id", referenceId.ToString().ToUpperInvariant());
+        context.Set("work.type", "  Estimate  ");
+        var model = ModelCallMetricUnitTests.CreateModel("openai");
+        var workflow = ModelCallMetricUnitTests.CreateWorkflow(model.ModelId);
+        workflow.ReferenceIdPath = "work.id";
+        workflow.ReferenceTypePath = "work.type";
+
+        var trace = await RunAttributedModelCall(context, model, workflow);
+
+        Assert.Contains(trace, activity => activity.OperationName.StartsWith("workflow"));
+        Assert.Contains(trace, activity => IsOperation(activity, "invoke_agent"));
+        Assert.Contains(trace, activity => IsOperation(activity, "chat"));
+        Assert.All(trace, activity => AssertReference(activity, referenceId.ToString(), "Estimate"));
+    }
+
+    [Fact]
+    public async Task Spans_omit_the_reference_when_the_workflow_names_no_paths()
+    {
+        var context = new ContextObject();
+        context.Set("reference.id", Guid.NewGuid());
+        context.Set("reference.type", "Estimate");
+        var model = ModelCallMetricUnitTests.CreateModel("openai");
+        var workflow = ModelCallMetricUnitTests.CreateWorkflow(model.ModelId);
+
+        var trace = await RunAttributedModelCall(context, model, workflow);
+
+        Assert.Contains(trace, activity => IsOperation(activity, "chat"));
+        Assert.All(trace, activity => AssertReference(activity, null, null));
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task Spans_omit_the_reference_unless_both_the_id_and_the_type_resolve(bool hasId, bool hasType)
+    {
+        var context = new ContextObject();
+        if (hasId)
+            context.Set("work.id", Guid.NewGuid());
+
+        if (hasType)
+            context.Set("work.type", "Estimate");
+
+        var model = ModelCallMetricUnitTests.CreateModel("openai");
+        var workflow = ModelCallMetricUnitTests.CreateWorkflow(model.ModelId);
+        workflow.ReferenceIdPath = "work.id";
+        workflow.ReferenceTypePath = "work.type";
+
+        var trace = await RunAttributedModelCall(context, model, workflow);
+
+        Assert.Contains(trace, activity => IsOperation(activity, "chat"));
+        Assert.All(trace, activity => AssertReference(activity, null, null));
+    }
+
+    [Fact]
+    public void Child_activity_inherits_the_reference_as_a_pair_without_overwriting_its_own()
+    {
+        var stopped = new ConcurrentBag<Activity>();
+        using var listener = CreateListener(stopped);
+
+        using var parent = SharpOMaticDiagnostics.ActivitySource.StartActivity("parent");
+        Assert.NotNull(parent);
+        parent.SetTag(SharpOMaticDiagnostics.ReferenceIdTag, "parent-reference");
+        parent.SetTag(SharpOMaticDiagnostics.ReferenceTypeTag, "Estimate");
+
+        using var inheriting = SharpOMaticDiagnostics.ActivitySource.StartActivity("inheriting");
+        Assert.NotNull(inheriting);
+        AssertReference(inheriting, "parent-reference", "Estimate");
+
+        // A reference the child already carries is never mixed with the parent's: the id and type stay together.
+        using var own = SharpOMaticDiagnostics.ActivitySource.StartActivity(
+            ActivityKind.Internal,
+            tags: [new KeyValuePair<string, object?>(SharpOMaticDiagnostics.ReferenceIdTag, "own-reference")],
+            name: "own"
+        );
+        Assert.NotNull(own);
+        AssertReference(own, "own-reference", null);
+    }
+
+    [Fact]
+    public async Task Run_started_under_another_activity_does_not_inherit_its_reference()
+    {
+        var stopped = new ConcurrentBag<Activity>();
+        using var listener = CreateListener(stopped);
+
+        using var ambient = SharpOMaticDiagnostics.ActivitySource.StartActivity("host");
+        Assert.NotNull(ambient);
+        ambient.SetTag(SharpOMaticDiagnostics.ReferenceIdTag, "ambient-reference");
+        ambient.SetTag(SharpOMaticDiagnostics.ReferenceTypeTag, "Estimate");
+
+        var workflow = new WorkflowBuilder().AddStart().AddEnd().Connect("start", "end").Build();
+        workflow.ReferenceIdPath = "work.id";
+        workflow.ReferenceTypePath = "work.type";
+        var run = await WorkflowRunner.RunWorkflow([], workflow);
+        Assert.True(run.RunStatus == RunStatus.Success, run.Error);
+
+        var runActivity = await WaitForActivity(stopped, activity => activity.OperationName.StartsWith("workflow") && HasRunTag(activity, run.RunId));
+        Assert.Equal(ambient.SpanId, runActivity.ParentSpanId);
+
+        AssertReference(runActivity, null, null);
+        var nodeActivities = stopped.Where(activity => activity.OperationName.StartsWith("executor.process") && HasRunTag(activity, run.RunId)).ToList();
+        Assert.NotEmpty(nodeActivities);
+        Assert.All(nodeActivities, activity => AssertReference(activity, null, null));
+    }
+
+    private static void AssertReference(Activity activity, string? referenceId, string? referenceType)
+    {
+        Assert.Equal(referenceId, activity.GetTagItem(SharpOMaticDiagnostics.ReferenceIdTag)?.ToString());
+        Assert.Equal(referenceType, activity.GetTagItem(SharpOMaticDiagnostics.ReferenceTypeTag)?.ToString());
     }
 
     private static void AssertAttribution(Activity activity, string? tenantId, string? userId)
