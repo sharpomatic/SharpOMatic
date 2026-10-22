@@ -1073,6 +1073,12 @@ namespace SharpOMatic.Engine.SqlServer.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ReferenceIdPath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ReferenceTypePath")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("TenantIdPath")
                         .HasColumnType("nvarchar(max)");
 

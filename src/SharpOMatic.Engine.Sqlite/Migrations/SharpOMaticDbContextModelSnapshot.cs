@@ -1069,6 +1069,12 @@ namespace SharpOMatic.Engine.Sqlite.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ReferenceIdPath")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReferenceTypePath")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("TenantIdPath")
                         .HasColumnType("TEXT");
 

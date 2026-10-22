@@ -85,6 +85,10 @@ The workflow **Details** tab also has **Tenant Id Path** and **User Id Path** se
 They name the context paths, `auth.tenantId` and `auth.userId` by default, used to attribute model call and workflow run metrics to a tenant and user.
 See [Metrics](./metrics.md#tenant-and-user-attribution) for how the values are resolved.
 
+It also has **Reference Id Path** and **Reference Type Path** settings, which name the context paths of the entity the workflow is about and what kind of entity it is.
+They have no default and are blank until set.
+When both resolve, the values are recorded on the workflow's telemetry spans; see [Telemetry](../programmatic/telemetry.md#reference-attribution).
+
 ## Workflow Completion
 
 A workflow completes when either:

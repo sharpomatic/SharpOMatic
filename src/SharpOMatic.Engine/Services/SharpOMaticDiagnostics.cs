@@ -7,6 +7,8 @@ public static class SharpOMaticDiagnostics
     public const string SourceName = "SharpOMatic.Engine";
     public const string TenantIdTag = "bx.tenant.id";
     public const string UserIdTag = "bx.user.id";
+    public const string ReferenceIdTag = "bx.reference.id";
+    public const string ReferenceTypeTag = "bx.reference.type";
     private const string RunIdTag = "sharpomatic.run.id";
 
     internal static readonly ActivitySource ActivitySource = CreateActivitySource();
@@ -67,6 +69,7 @@ public static class SharpOMaticDiagnostics
             return;
 
         SetAttribution(activity, parent.GetTagItem(TenantIdTag) as string, parent.GetTagItem(UserIdTag) as string);
+        SetReference(activity, parent.GetTagItem(ReferenceIdTag) as string, parent.GetTagItem(ReferenceTypeTag) as string);
     }
 
     private static void SetAttribution(Activity activity, string? tenantId, string? userId)
@@ -76,6 +79,22 @@ public static class SharpOMaticDiagnostics
 
         if (userId is not null && activity.GetTagItem(UserIdTag) is null)
             activity.SetTag(UserIdTag, userId);
+    }
+
+    /// <summary>
+    /// The reference is the entity the work is about. Its id means nothing without its type, so the two are only
+    /// ever set together and never overwrite a reference the activity already has.
+    /// </summary>
+    private static void SetReference(Activity activity, string? referenceId, string? referenceType)
+    {
+        if (referenceId is null || referenceType is null)
+            return;
+
+        if (activity.GetTagItem(ReferenceIdTag) is not null || activity.GetTagItem(ReferenceTypeTag) is not null)
+            return;
+
+        activity.SetTag(ReferenceIdTag, referenceId);
+        activity.SetTag(ReferenceTypeTag, referenceType);
     }
 
     /// <summary>
@@ -134,7 +153,7 @@ public static class SharpOMaticDiagnostics
         return activity;
     }
 
-    internal static void CompleteRunActivity(Activity? activity, Run run, WorkflowRunMetric? metric)
+    internal static void CompleteRunActivity(Activity? activity, Run run, WorkflowRunMetric? metric, (string? ReferenceId, string? ReferenceType) reference = default)
     {
         if (activity is null)
             return;
@@ -162,6 +181,8 @@ public static class SharpOMaticDiagnostics
 
         if (metric is not null)
             SetAttribution(activity, metric.TenantId, metric.UserId);
+
+        SetReference(activity, reference.ReferenceId, reference.ReferenceType);
 
         if (run.RunStatus == RunStatus.Failed)
             activity.SetStatus(ActivityStatusCode.Error, string.IsNullOrWhiteSpace(run.Error) ? run.Message : run.Error);
@@ -194,6 +215,9 @@ public static class SharpOMaticDiagnostics
         // metrics it writes. Every activity nested under this node inherits the result.
         var (tenantId, userId) = MetricAttributionHelper.Resolve(threadContext.WorkflowContext.Workflow, threadContext.NodeContext);
         SetAttribution(activity, tenantId, userId);
+
+        var (referenceId, referenceType) = MetricAttributionHelper.ResolveReference(threadContext.WorkflowContext.Workflow, threadContext.NodeContext);
+        SetReference(activity, referenceId, referenceType);
         return activity;
     }
 

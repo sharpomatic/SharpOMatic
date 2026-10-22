@@ -123,6 +123,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             IsConversationEnabled = workflow.IsConversationEnabled,
             TenantIdPath = workflow.TenantIdPath,
             UserIdPath = workflow.UserIdPath,
+            ReferenceIdPath = workflow.ReferenceIdPath,
+            ReferenceTypePath = workflow.ReferenceTypePath,
             Nodes = JsonSerializer.Deserialize<NodeEntity[]>(workflow.Nodes, _options)!,
             Connections = JsonSerializer.Deserialize<ConnectionEntity[]>(workflow.Connections, _options)!,
         };
@@ -174,6 +176,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
         entry.IsConversationEnabled = workflow.IsConversationEnabled;
         entry.TenantIdPath = workflow.TenantIdPath;
         entry.UserIdPath = workflow.UserIdPath;
+        entry.ReferenceIdPath = workflow.ReferenceIdPath;
+        entry.ReferenceTypePath = workflow.ReferenceTypePath;
         entry.Nodes = JsonSerializer.Serialize(workflow.Nodes, _options);
         entry.Connections = JsonSerializer.Serialize(workflow.Connections, _options);
 
@@ -259,6 +263,8 @@ public class RepositoryService(IDbContextFactory<SharpOMaticDbContext> dbContext
             IsConversationEnabled = workflow.IsConversationEnabled,
             TenantIdPath = workflow.TenantIdPath,
             UserIdPath = workflow.UserIdPath,
+            ReferenceIdPath = workflow.ReferenceIdPath,
+            ReferenceTypePath = workflow.ReferenceTypePath,
             Nodes = workflow.Nodes,
             Connections = workflow.Connections,
         };

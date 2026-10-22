@@ -11,10 +11,21 @@ public static class MetricAttributionHelper
         return (ResolveValue(context, workflow.TenantIdPath, DefaultTenantIdPath), ResolveValue(context, workflow.UserIdPath, DefaultUserIdPath));
     }
 
-    private static string? ResolveValue(ContextObject context, string? path, string defaultPath)
+    public static (string? ReferenceId, string? ReferenceType) ResolveReference(WorkflowEntity workflow, ContextObject context)
+    {
+        var referenceId = ResolveValue(context, workflow.ReferenceIdPath, null);
+        var referenceType = ResolveValue(context, workflow.ReferenceTypePath, null);
+
+        return referenceId is null || referenceType is null ? (null, null) : (referenceId, referenceType);
+    }
+
+    private static string? ResolveValue(ContextObject context, string? path, string? defaultPath)
     {
         if (string.IsNullOrWhiteSpace(path))
             path = defaultPath;
+
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
 
         if (!context.TryGet<object?>(path.Trim(), out var value))
             return null;
