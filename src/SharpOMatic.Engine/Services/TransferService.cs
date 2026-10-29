@@ -1,6 +1,6 @@
 namespace SharpOMatic.Engine.Services;
 
-public class TransferService(IRepositoryService repositoryService, IAssetStore assetStore) : ITransferService
+public class TransferService(IRepositoryService repositoryService, IAssetStore assetStore, IJsonConverterService? jsonConverterService = null) : ITransferService
 {
     private const string WorkflowDirectory = "workflows";
     private const string ConnectorDirectory = "connectors";
@@ -1071,6 +1071,111 @@ public class TransferService(IRepositoryService repositoryService, IAssetStore a
 
         memoryStream.Position = 0;
         return memoryStream;
+    }
+
+    public async Task<Stream> ExportEvalRunCsvAsync(Guid evalRunId, EvalRunCsvExportOptions options, CancellationToken cancellationToken = default)
+    {
+        var runDetail = await repositoryService.GetEvalRunDetail(evalRunId);
+        var configDetail = await repositoryService.GetEvalConfigDetail(runDetail.EvalRun.EvalConfigId);
+        var runRows = await repositoryService.GetEvalRunRows(evalRunId, null, EvalRunRowSortField.Order, SortDirection.Ascending, 0, 0);
+
+        var columnIds = options.ColumnIds.ToHashSet();
+        var columns = configDetail.Columns.Where(column => columnIds.Contains(column.EvalColumnId)).OrderBy(column => column.Order).ToList();
+        var fields = options.Fields.Distinct().OrderBy(field => field).ToList();
+        var graderPaths = ParseContextPaths(options.GraderPaths);
+        var graders = runRows
+            .SelectMany(runRow => runRow.Graders)
+            .GroupBy(grader => grader.EvalGraderId)
+            .Select(group => group.First())
+            .OrderBy(grader => grader.Order)
+            .ThenBy(grader => grader.EvalGraderId)
+            .ToList();
+
+        var rowNumbers = configDetail.Rows.OrderBy(row => row.Order).Select((row, index) => (row.EvalRowId, RowNumber: index + 1)).ToDictionary(entry => entry.EvalRowId, entry => entry.RowNumber);
+        var converters = jsonConverterService?.GetConverters();
+        var jsonOptions = new JsonSerializerOptions().BuildOptions(converters);
+
+        var headers = new List<string>();
+        if (fields.Contains(EvalRunExportField.RowNumber))
+            headers.Add("Row");
+
+        headers.AddRange(columns.Select(column => column.Name));
+        headers.AddRange(fields.Where(field => field != EvalRunExportField.RowNumber).Select(field => field.ToString()));
+        foreach (var grader in graders)
+            headers.AddRange(graderPaths.Select(path => $"{grader.Label}.{path}"));
+
+        var memoryStream = new MemoryStream();
+        var writer = new StreamWriter(memoryStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), leaveOpen: true);
+
+        await using (writer)
+        {
+            WriteCsvRow(writer, headers);
+
+            foreach (var runRow in runRows)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var cells = new List<string>();
+                if (fields.Contains(EvalRunExportField.RowNumber))
+                    cells.Add(rowNumbers.TryGetValue(runRow.EvalRowId, out var rowNumber) ? rowNumber.ToString(System.Globalization.CultureInfo.InvariantCulture) : string.Empty);
+
+                var inputContext = ContextObject.Deserialize(runRow.InputContext, converters);
+                cells.AddRange(columns.Select(column => FormatContextPathValue(inputContext, EngineService.ContextPath(column), jsonOptions)));
+
+                foreach (var field in fields.Where(field => field != EvalRunExportField.RowNumber))
+                    cells.Add(FormatRunRowField(runRow, field));
+
+                var gradersById = runRow.Graders.ToDictionary(grader => grader.EvalGraderId);
+                foreach (var grader in graders)
+                {
+                    ContextObject? outputContext = null;
+                    if (gradersById.TryGetValue(grader.EvalGraderId, out var runRowGrader))
+                        outputContext = ContextObject.Deserialize(runRowGrader.OutputContext, converters);
+
+                    cells.AddRange(graderPaths.Select(path => outputContext is null ? string.Empty : FormatContextPathValue(outputContext, path, jsonOptions)));
+                }
+
+                WriteCsvRow(writer, cells);
+            }
+        }
+
+        memoryStream.Position = 0;
+        return memoryStream;
+    }
+
+    private static List<string> ParseContextPaths(IEnumerable<string> paths)
+    {
+        return paths
+            .SelectMany(path => path.Split([',', ' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static string FormatRunRowField(EvalRunRowDetail runRow, EvalRunExportField field)
+    {
+        return field switch
+        {
+            EvalRunExportField.Status => runRow.Status.ToString(),
+            EvalRunExportField.Score => runRow.Score?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+            EvalRunExportField.Error => runRow.Error ?? string.Empty,
+            EvalRunExportField.Started => runRow.Started.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),
+            EvalRunExportField.Finished => runRow.Finished?.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+            _ => string.Empty,
+        };
+    }
+
+    private static string FormatContextPathValue(ContextObject context, string path, JsonSerializerOptions jsonOptions)
+    {
+        if (!ContextPathResolver.TryGetValue(context, path, requireLeadingIndex: false, throwOnError: false, out var value) || value is null)
+            return string.Empty;
+
+        return value switch
+        {
+            string text => text,
+            bool flag => flag.ToString().ToLowerInvariant(),
+            IFormattable number when value is int or long or short or byte or float or double or decimal => number.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
+            _ => JsonSerializer.Serialize(value, jsonOptions),
+        };
     }
 
     private static Dictionary<string, EvalColumn> BuildCsvColumnLookup(List<EvalColumn> columns)

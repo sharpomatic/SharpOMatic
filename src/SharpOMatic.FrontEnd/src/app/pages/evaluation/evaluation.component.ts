@@ -33,6 +33,7 @@ import { SignalrService } from '../../services/signalr.service';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { EvalStartRunDialogComponent } from '../../dialogs/eval-start-run/eval-start-run-dialog.component';
 import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
+import { EvalExportRunDialogComponent } from '../../dialogs/eval-export-run/eval-export-run-dialog.component';
 import { EvalRunStatus } from '../../eval/enumerations/eval-run-status';
 import { EvalRunSortField } from '../../eval/enumerations/eval-run-sort-field';
 import { EvalRunRowScoreMode } from '../../eval/enumerations/eval-run-row-score-mode';
@@ -82,6 +83,9 @@ export class EvaluationComponent
   private confirmModalRef: BsModalRef<ConfirmDialogComponent> | undefined;
   private renameRunModalRef: BsModalRef<TextInputDialogComponent> | undefined;
   private infoModalRef: BsModalRef<InformationDialogComponent> | undefined;
+  private exportRunModalRef:
+    | BsModalRef<EvalExportRunDialogComponent>
+    | undefined;
   private readonly terminalReloadingRunIds = new Set<string>();
   private readonly evalRunProgressListener = (data: EvalRunSummarySnapshot) =>
     this.onEvalRunProgress(data);
@@ -145,6 +149,7 @@ export class EvaluationComponent
   public isRenamingRun = false;
   public isImportingRowsCsv = false;
   public isExportingRowsCsv = false;
+  public isExportingRunCsv = false;
 
   constructor() {
     effect(() => {
@@ -232,6 +237,7 @@ export class EvaluationComponent
         title: 'Start Evaluation Run',
         message: ``,
         rowCount,
+        rowIds: this.evalConfig.rows().map((row) => row.evalRowId),
       },
     });
 
@@ -244,8 +250,14 @@ export class EvaluationComponent
       this.isStartingRun = true;
       const runName = modalRef.content.runName;
       const sampleCount = modalRef.content.getSelectedSampleCount();
+      const evalRowIds = modalRef.content.getSelectedEvalRowIds();
       this.serverRepository
-        .startEvalRun(this.evalConfig.evalConfigId, runName, sampleCount)
+        .startEvalRun(
+          this.evalConfig.evalConfigId,
+          runName,
+          sampleCount,
+          evalRowIds,
+        )
         .subscribe({
           next: (evalRunId) => {
             this.isStartingRun = false;
@@ -835,14 +847,62 @@ export class EvaluationComponent
       });
   }
 
-  private downloadCsvExport(response: HttpResponse<Blob>): void {
+  canExportSelectedRun(): boolean {
+    return !!this.selectedRunDetail?.evalRun && !this.isExportingRunCsv;
+  }
+
+  exportSelectedRunCsv(): void {
+    const selectedRun = this.selectedRunDetail?.evalRun;
+    if (!selectedRun || !this.canExportSelectedRun()) {
+      return;
+    }
+
+    this.exportRunModalRef = this.modalService.show(
+      EvalExportRunDialogComponent,
+      {
+        initialState: {
+          title: 'Export Run to CSV',
+          columns: this.evalConfig.columns().map((column) => ({
+            evalColumnId: column.evalColumnId,
+            name: column.name(),
+          })),
+        },
+      },
+    );
+
+    const modalRef = this.exportRunModalRef;
+    modalRef.onHidden?.pipe(take(1)).subscribe(() => {
+      if (!modalRef.content?.result || this.isExportingRunCsv) {
+        return;
+      }
+
+      this.isExportingRunCsv = true;
+      this.serverRepository
+        .exportEvalRunCsv(selectedRun.evalRunId, modalRef.content.getRequest())
+        .subscribe({
+          next: (response) => {
+            this.isExportingRunCsv = false;
+            this.downloadCsvExport(response, 'eval-run.csv');
+          },
+          error: () => {
+            this.isExportingRunCsv = false;
+            this.showInfoDialog('Export Failed', 'CSV export failed.');
+          },
+        });
+    });
+  }
+
+  private downloadCsvExport(
+    response: HttpResponse<Blob>,
+    defaultFileName = 'eval-rows.csv',
+  ): void {
     if (!response.body) {
       this.showInfoDialog('Export Failed', 'CSV export returned an empty response.');
       return;
     }
 
     const header = response.headers.get('content-disposition');
-    const fileName = this.parseCsvFileName(header) ?? 'eval-rows.csv';
+    const fileName = this.parseCsvFileName(header) ?? defaultFileName;
 
     const url = window.URL.createObjectURL(response.body);
     const link = document.createElement('a');

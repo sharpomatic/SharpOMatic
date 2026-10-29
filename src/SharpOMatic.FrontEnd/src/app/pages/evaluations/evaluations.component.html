@@ -7,7 +7,16 @@
         evalConfigsTotal || evalConfigs.length
       }})
     </h2>
-    <button class="btn btn-primary" (click)="newEvalConfig()">New</button>
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-primary" (click)="newEvalConfig()">New</button>
+      <button
+        class="btn btn-danger"
+        [disabled]="selectedEvalConfigCount() === 0 || isDeletingSelected"
+        (click)="deleteSelectedEvalConfigs()"
+      >
+        {{ isDeletingSelected ? "Deleting..." : "Delete" }}
+      </button>
+    </div>
   </div>
   <hr class="m-0" />
   <div class="p-3 bg-body-tertiary h-100 d-flex flex-column evaluations-body">
@@ -41,29 +50,119 @@
         }
       </div>
     } @else {
-      <div class="d-flex flex-wrap gap-3 evaluations-list">
-        @for (config of evalConfigs; track config.evalConfigId) {
-          <div class="card workflow-card">
-            <div class="card-header">
-              <h5>{{ config.name }}</h5>
-            </div>
-            <div class="card-body">
-              <p class="card-text">{{ config.description }}</p>
-              <button
-                class="btn btn-secondary"
-                [routerLink]="['/evaluations', config.evalConfigId]"
-              >
-                Open
-              </button>
-              <button
-                class="btn btn-outline-danger ms-2"
-                (click)="deleteEvalConfig(config)"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        }
+      <div class="table-responsive evaluations-table">
+        <table class="table table-sm table-striped table-hover align-middle">
+          <thead>
+            <tr>
+              <th scope="col" class="col-select"></th>
+              <th scope="col" class="col-name">
+                <button
+                  class="btn btn-link p-0 evaluations-sort"
+                  type="button"
+                  (click)="onEvalConfigsSortChange(EvalConfigSortField.Name)"
+                >
+                  Name
+                  @if (evalConfigsSortField === EvalConfigSortField.Name) {
+                    <i
+                      class="bi"
+                      [class.bi-arrow-down]="
+                        evalConfigsSortDirection === SortDirection.Descending
+                      "
+                      [class.bi-arrow-up]="
+                        evalConfigsSortDirection === SortDirection.Ascending
+                      "
+                    ></i>
+                  }
+                </button>
+              </th>
+              <th scope="col" class="col-description">
+                <button
+                  class="btn btn-link p-0 evaluations-sort"
+                  type="button"
+                  (click)="
+                    onEvalConfigsSortChange(EvalConfigSortField.Description)
+                  "
+                >
+                  Description
+                  @if (
+                    evalConfigsSortField === EvalConfigSortField.Description
+                  ) {
+                    <i
+                      class="bi"
+                      [class.bi-arrow-down]="
+                        evalConfigsSortDirection === SortDirection.Descending
+                      "
+                      [class.bi-arrow-up]="
+                        evalConfigsSortDirection === SortDirection.Ascending
+                      "
+                    ></i>
+                  }
+                </button>
+              </th>
+              <th scope="col" class="col-modified">
+                <button
+                  class="btn btn-link p-0 evaluations-sort"
+                  type="button"
+                  (click)="
+                    onEvalConfigsSortChange(EvalConfigSortField.Modified)
+                  "
+                >
+                  Modified
+                  @if (evalConfigsSortField === EvalConfigSortField.Modified) {
+                    <i
+                      class="bi"
+                      [class.bi-arrow-down]="
+                        evalConfigsSortDirection === SortDirection.Descending
+                      "
+                      [class.bi-arrow-up]="
+                        evalConfigsSortDirection === SortDirection.Ascending
+                      "
+                    ></i>
+                  }
+                </button>
+              </th>
+              <th scope="col" class="col-actions text-end"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (config of evalConfigs; track config.evalConfigId) {
+              <tr>
+                <td class="col-select text-center">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    [id]="'eval-config-select-' + config.evalConfigId"
+                    [checked]="isEvalConfigSelected(config.evalConfigId)"
+                    [disabled]="isDeletingSelected"
+                    (change)="
+                      onEvalConfigSelectionChange(config.evalConfigId, $event)
+                    "
+                  />
+                </td>
+                <td class="col-name text-truncate" title="{{ config.name }}">
+                  {{ config.name }}
+                </td>
+                <td
+                  class="col-description text-truncate"
+                  title="{{ config.description }}"
+                >
+                  {{ config.description }}
+                </td>
+                <td class="col-modified">
+                  {{ config.modified | date: "short" }}
+                </td>
+                <td class="col-actions text-end">
+                  <button
+                    class="btn btn-sm btn-secondary"
+                    [routerLink]="['/evaluations', config.evalConfigId]"
+                  >
+                    Open
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
       @if (evalConfigsTotal > 0) {
         <div

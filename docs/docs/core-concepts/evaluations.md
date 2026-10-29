@@ -242,14 +242,20 @@ From the evaluation page, select **Start Run**.
 The start dialog allows:
 
 - **Run name (optional)**: give the run a readable label. If omitted, the system uses a timestamp-based default name.
-- **Run random sample**: enable this to execute only a subset of rows.
-- **Sample count**: choose how many runnable rows to run in the random sample.
+- **Rows to run**: choose which rows to execute. The options are **Run all rows** (the default), **Run random sample** and **Run specific rows**. Only one can apply to a run.
+- **Sample count**: shown for **Run random sample**. Choose how many runnable rows to run in the random sample.
+- **Row numbers**: shown for **Run specific rows**. Enter the rows to run as numbers separated by commas or spaces, for example `1, 3` or `1 3`.
 
 Sampling is useful for quick checks when you want faster feedback before running the full dataset.
-If sampling is enabled, sample count must be between `1` and the number of rows whose repeat value is greater than `0`.
+If sampling is selected, sample count must be between `1` and the number of rows whose repeat value is greater than `0`.
 Rows are selected randomly each run, so two sampled runs can execute different subsets.
 Sampled runs execute each selected row once, regardless of that row's repeat value.
-If sampling is disabled, all rows are executed according to their repeat values.
+If **Run all rows** is selected, all rows are executed according to their repeat values.
+
+Specific rows are useful for re-running a handful of rows, such as ones that failed or scored poorly.
+Row numbers start at `1` and follow the order of the **Rows** tab, so row `1` is the first row in the list.
+Each number must be between `1` and the total number of rows, and a number that is repeated is only run once.
+Specific rows honour their own repeat values, like **Run selected** below.
 
 ### Running a single row
 
@@ -264,6 +270,19 @@ The option is unavailable while there are unsaved changes or validation errors, 
 Each run is stored with status and progress information.
 You can review run summaries, open detailed results, and inspect grader outcomes.
 Runs can be canceled while in progress, and completed/failed/canceled runs remain in history for later comparison.
+
+The **Runs** tab toolbar has move up, move down and delete buttons, plus a run actions menu that holds **Rename**, **Cancel** and **Export to CSV** for the selected run.
+
+### Exporting a run to CSV
+
+Select a run and choose **Export to CSV** from the run actions menu to download its results.
+A dialog lets you choose what is written:
+
+- **Columns**: a checkbox for each evaluation column. The value written is the input that was actually sent to the workflow for that row, so an expression column shows its evaluated result. Values that are not simple text or numbers are written as JSON.
+- **Run details**: row number, status, score, error, started and finished. The row number is the row's position in the **Rows** tab, starting at `1`, so a row with a repeat greater than `1` shows the same number on each of its executions.
+- **Grader output paths**: context paths from each grader's output, separated by commas or spaces, such as `score` or `feedback.reason`. Each grader adds one column per path, headed `<grader label>.<path>`, and the cell is empty when that grader produced nothing at the path.
+
+The file has a header row followed by one row for each executed row in the run. Rows that failed before producing grader output still appear, with empty grader cells.
 
 Evaluation execution creates underlying workflow runs for the main workflow and any grader workflows.
 Those child workflow runs are stored like normal runs, but they are treated as background execution by the editor.
@@ -305,6 +324,7 @@ Common causes of evaluation run failures:
 - **Conversation grader selected previously**: if an older configuration references a conversation-enabled workflow as a grader, SharpOMatic clears that selection because graders must be one-shot workflows.
 - **Missing mandatory row data**: a required column has no value for one or more rows.
 - **Invalid sample count**: the sample count is outside the valid range for the current row total.
+- **Invalid row numbers**: **Run specific rows** was selected but a row number is not a whole number or is outside `1` to the total number of rows.
 - **Missing grader score**: the grader workflow does not output a numeric value at `score`, so score summaries may look incomplete.
 - **Empty AG-UI output**: **AG-UI Output** is enabled but the grader finds nothing at the configured path because the evaluation workflow suppressed its stream events, or because it produced none.
 - **Missing chat messages**: **Chat Messages** is enabled but the path is absent, which means no `IEngineNotification` returned a list. Either the host does not implement `EvalChatMessages`, or it returned null because the row did not identify a conversation it could find.

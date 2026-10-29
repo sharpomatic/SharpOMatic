@@ -8,10 +8,13 @@ import {
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
+import { finalize, forkJoin } from 'rxjs';
 import { ServerRepositoryService } from '../../services/server.repository.service';
 import { ModelSummary } from '../../metadata/definitions/model-summary';
 import { Model } from '../../metadata/definitions/model';
 import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
+import { ModelSortField } from '../../enumerations/model-sort-field';
+import { SortDirection } from '../../enumerations/sort-direction';
 
 @Component({
   selector: 'app-models',
@@ -34,6 +37,12 @@ export class ModelsComponent implements AfterViewInit {
   public readonly modelsPageSize = 50;
   public isLoading = true;
   public searchText = '';
+  public selectedModelIds = new Set<string>();
+  public isDeletingSelected = false;
+  public modelsSortField: ModelSortField = ModelSortField.Name;
+  public modelsSortDirection: SortDirection = SortDirection.Ascending;
+  public readonly ModelSortField = ModelSortField;
+  public readonly SortDirection = SortDirection;
   private searchDebounceId: ReturnType<typeof setTimeout> | undefined;
 
   ngOnInit(): void {
@@ -56,20 +65,64 @@ export class ModelsComponent implements AfterViewInit {
     });
   }
 
-  deleteModel(model: ModelSummary) {
+  selectedModelCount(): number {
+    return this.selectedModelIds.size;
+  }
+
+  isModelSelected(modelId: string): boolean {
+    return this.selectedModelIds.has(modelId);
+  }
+
+  onModelSelectionChange(modelId: string, event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    if (input?.checked) {
+      this.selectedModelIds.add(modelId);
+      return;
+    }
+
+    this.selectedModelIds.delete(modelId);
+  }
+
+  deleteSelectedModels(): void {
+    if (this.selectedModelIds.size === 0 || this.isDeletingSelected) {
+      return;
+    }
+
+    const selectedModels = this.models.filter((model) =>
+      this.selectedModelIds.has(model.modelId),
+    );
+    if (selectedModels.length === 0) {
+      this.clearSelectedModels();
+      return;
+    }
+
+    const count = selectedModels.length;
     this.confirmModalRef = this.modalService.show(ConfirmDialogComponent, {
       initialState: {
-        title: 'Delete Model',
-        message: `Are you sure you want to delete the model '${model.name}'?`,
+        title: 'Delete Models',
+        message: `Are you sure you want to delete ${count} selected model${count === 1 ? '' : 's'}?`,
       },
     });
 
     this.confirmModalRef.onHidden?.subscribe(() => {
-      if (this.confirmModalRef?.content?.result) {
-        this.serverRepository.deleteModel(model.modelId).subscribe(() => {
-          this.refreshModels();
-        });
+      if (!this.confirmModalRef?.content?.result) {
+        return;
       }
+
+      this.isDeletingSelected = true;
+      forkJoin(
+        selectedModels.map((model) =>
+          this.serverRepository.deleteModel(model.modelId),
+        ),
+      )
+        .pipe(
+          finalize(() => {
+            this.isDeletingSelected = false;
+            this.clearSelectedModels();
+            this.refreshModels();
+          }),
+        )
+        .subscribe();
     });
   }
 
@@ -107,7 +160,24 @@ export class ModelsComponent implements AfterViewInit {
       return;
     }
 
+    this.clearSelectedModels();
     this.loadModelsPage(page);
+  }
+
+  onModelsSortChange(field: ModelSortField): void {
+    if (this.modelsSortField === field) {
+      this.modelsSortDirection =
+        this.modelsSortDirection === SortDirection.Descending
+          ? SortDirection.Ascending
+          : SortDirection.Descending;
+    } else {
+      this.modelsSortField = field;
+      this.modelsSortDirection = SortDirection.Ascending;
+    }
+
+    this.clearSelectedModels();
+    this.modelsPage = 1;
+    this.refreshModels();
   }
 
   onSearchChange(event: Event): void {
@@ -122,6 +192,7 @@ export class ModelsComponent implements AfterViewInit {
       this.searchDebounceId = undefined;
     }
 
+    this.clearSelectedModels();
     this.modelsPage = 1;
     this.refreshModels();
   }
@@ -143,10 +214,17 @@ export class ModelsComponent implements AfterViewInit {
     const skip = (page - 1) * this.modelsPageSize;
     const search = this.searchText.trim();
     this.serverRepository
-      .getModelSummaries(search, skip, this.modelsPageSize)
+      .getModelSummaries(
+        search,
+        skip,
+        this.modelsPageSize,
+        this.modelsSortField,
+        this.modelsSortDirection,
+      )
       .subscribe({
         next: (models) => {
           this.models = models;
+          this.syncSelectedModelsWithPage();
           this.modelsPage = page;
           this.isLoading = false;
         },
@@ -162,5 +240,22 @@ export class ModelsComponent implements AfterViewInit {
     }
 
     this.searchDebounceId = setTimeout(() => this.applySearch(), 250);
+  }
+
+  private clearSelectedModels(): void {
+    this.selectedModelIds.clear();
+  }
+
+  private syncSelectedModelsWithPage(): void {
+    if (this.selectedModelIds.size === 0) {
+      return;
+    }
+
+    const visibleIds = new Set(this.models.map((model) => model.modelId));
+    for (const selectedId of Array.from(this.selectedModelIds)) {
+      if (!visibleIds.has(selectedId)) {
+        this.selectedModelIds.delete(selectedId);
+      }
+    }
   }
 }

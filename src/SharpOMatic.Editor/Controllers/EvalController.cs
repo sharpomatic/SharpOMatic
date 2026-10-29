@@ -226,6 +226,28 @@ public class EvalController : ControllerBase
         return File(stream, "text/csv");
     }
 
+    [HttpPost("runs/{id}/export/csv")]
+    public async Task<IActionResult> ExportEvalRunCsv(
+        ITransferService transferService,
+        IRepositoryService repositoryService,
+        Guid id,
+        [FromBody] EvalRunCsvExportOptions options
+    )
+    {
+        try
+        {
+            var runDetail = await repositoryService.GetEvalRunDetail(id);
+            var safeFileName = SanitizeFileName(runDetail.EvalRun.Name);
+            var stream = await transferService.ExportEvalRunCsvAsync(id, options, HttpContext.RequestAborted);
+            Response.Headers["Content-Disposition"] = $"attachment; filename=\"{safeFileName}-results.csv\"";
+            return File(stream, "text/csv");
+        }
+        catch (SharpOMaticException exception)
+        {
+            return BadRequest(exception.Message);
+        }
+    }
+
     private static string SanitizeFileName(string name)
     {
         var invalid = Path.GetInvalidFileNameChars();

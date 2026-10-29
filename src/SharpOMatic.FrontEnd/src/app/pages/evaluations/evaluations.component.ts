@@ -8,9 +8,12 @@ import {
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
+import { finalize, forkJoin } from 'rxjs';
 import { ServerRepositoryService } from '../../services/server.repository.service';
 import { EvalConfig } from '../../eval/definitions/eval-config';
 import { EvalConfigSummary } from '../../eval/definitions/eval-config-summary';
+import { EvalConfigSortField } from '../../eval/enumerations/eval-config-sort-field';
+import { SortDirection } from '../../enumerations/sort-direction';
 import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
 
 @Component({
@@ -34,6 +37,12 @@ export class EvaluationsComponent implements AfterViewInit {
   public readonly evalConfigsPageSize = 50;
   public isLoading = true;
   public searchText = '';
+  public selectedEvalConfigIds = new Set<string>();
+  public isDeletingSelected = false;
+  public evalConfigsSortField: EvalConfigSortField = EvalConfigSortField.Name;
+  public evalConfigsSortDirection: SortDirection = SortDirection.Ascending;
+  public readonly EvalConfigSortField = EvalConfigSortField;
+  public readonly SortDirection = SortDirection;
   private searchDebounceId: ReturnType<typeof setTimeout> | undefined;
 
   ngOnInit(): void {
@@ -56,22 +65,64 @@ export class EvaluationsComponent implements AfterViewInit {
     });
   }
 
-  deleteEvalConfig(config: EvalConfigSummary): void {
+  selectedEvalConfigCount(): number {
+    return this.selectedEvalConfigIds.size;
+  }
+
+  isEvalConfigSelected(evalConfigId: string): boolean {
+    return this.selectedEvalConfigIds.has(evalConfigId);
+  }
+
+  onEvalConfigSelectionChange(evalConfigId: string, event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    if (input?.checked) {
+      this.selectedEvalConfigIds.add(evalConfigId);
+      return;
+    }
+
+    this.selectedEvalConfigIds.delete(evalConfigId);
+  }
+
+  deleteSelectedEvalConfigs(): void {
+    if (this.selectedEvalConfigIds.size === 0 || this.isDeletingSelected) {
+      return;
+    }
+
+    const selectedConfigs = this.evalConfigs.filter((config) =>
+      this.selectedEvalConfigIds.has(config.evalConfigId),
+    );
+    if (selectedConfigs.length === 0) {
+      this.clearSelectedEvalConfigs();
+      return;
+    }
+
+    const count = selectedConfigs.length;
     this.confirmModalRef = this.modalService.show(ConfirmDialogComponent, {
       initialState: {
-        title: 'Delete Evaluation',
-        message: `Are you sure you want to delete the evaluation '${config.name}'?`,
+        title: 'Delete Evaluations',
+        message: `Are you sure you want to delete ${count} selected evaluation${count === 1 ? '' : 's'}?`,
       },
     });
 
     this.confirmModalRef.onHidden?.subscribe(() => {
-      if (this.confirmModalRef?.content?.result) {
-        this.serverRepository
-          .deleteEvalConfig(config.evalConfigId)
-          .subscribe(() => {
-            this.refreshEvalConfigs();
-          });
+      if (!this.confirmModalRef?.content?.result) {
+        return;
       }
+
+      this.isDeletingSelected = true;
+      forkJoin(
+        selectedConfigs.map((config) =>
+          this.serverRepository.deleteEvalConfig(config.evalConfigId),
+        ),
+      )
+        .pipe(
+          finalize(() => {
+            this.isDeletingSelected = false;
+            this.clearSelectedEvalConfigs();
+            this.refreshEvalConfigs();
+          }),
+        )
+        .subscribe();
     });
   }
 
@@ -109,7 +160,24 @@ export class EvaluationsComponent implements AfterViewInit {
       return;
     }
 
+    this.clearSelectedEvalConfigs();
     this.loadEvalConfigsPage(page);
+  }
+
+  onEvalConfigsSortChange(field: EvalConfigSortField): void {
+    if (this.evalConfigsSortField === field) {
+      this.evalConfigsSortDirection =
+        this.evalConfigsSortDirection === SortDirection.Descending
+          ? SortDirection.Ascending
+          : SortDirection.Descending;
+    } else {
+      this.evalConfigsSortField = field;
+      this.evalConfigsSortDirection = SortDirection.Ascending;
+    }
+
+    this.clearSelectedEvalConfigs();
+    this.evalConfigsPage = 1;
+    this.refreshEvalConfigs();
   }
 
   onSearchChange(event: Event): void {
@@ -124,6 +192,7 @@ export class EvaluationsComponent implements AfterViewInit {
       this.searchDebounceId = undefined;
     }
 
+    this.clearSelectedEvalConfigs();
     this.evalConfigsPage = 1;
     this.refreshEvalConfigs();
   }
@@ -145,10 +214,17 @@ export class EvaluationsComponent implements AfterViewInit {
     const skip = (page - 1) * this.evalConfigsPageSize;
     const search = this.searchText.trim();
     this.serverRepository
-      .getEvalConfigSummaries(search, skip, this.evalConfigsPageSize)
+      .getEvalConfigSummaries(
+        search,
+        skip,
+        this.evalConfigsPageSize,
+        this.evalConfigsSortField,
+        this.evalConfigsSortDirection,
+      )
       .subscribe({
         next: (configs) => {
           this.evalConfigs = configs;
+          this.syncSelectedEvalConfigsWithPage();
           this.evalConfigsPage = page;
           this.isLoading = false;
         },
@@ -164,5 +240,24 @@ export class EvaluationsComponent implements AfterViewInit {
     }
 
     this.searchDebounceId = setTimeout(() => this.applySearch(), 250);
+  }
+
+  private clearSelectedEvalConfigs(): void {
+    this.selectedEvalConfigIds.clear();
+  }
+
+  private syncSelectedEvalConfigsWithPage(): void {
+    if (this.selectedEvalConfigIds.size === 0) {
+      return;
+    }
+
+    const visibleIds = new Set(
+      this.evalConfigs.map((config) => config.evalConfigId),
+    );
+    for (const selectedId of Array.from(this.selectedEvalConfigIds)) {
+      if (!visibleIds.has(selectedId)) {
+        this.selectedEvalConfigIds.delete(selectedId);
+      }
+    }
   }
 }

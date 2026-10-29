@@ -267,26 +267,6 @@ export class WorkflowsComponent implements OnInit, AfterViewInit {
     });
   }
 
-  deleteWorkflow(workflow: WorkflowSummaryEntity): void {
-    this.confirmModalRef = this.modalService.show(ConfirmDialogComponent, {
-      initialState: {
-        title: 'Delete Workflow',
-        message: `Are you sure you want to delete the workflow '${workflow.name()}'?`,
-      },
-    });
-
-    this.confirmModalRef.onHidden?.subscribe(() => {
-      if (!this.confirmModalRef?.content?.result) {
-        return;
-      }
-
-      this.serverWorkflow.deleteWorkflow(workflow.id).subscribe(() => {
-        this.refreshFolders();
-        this.refreshWorkflows();
-      });
-    });
-  }
-
   selectedWorkflowCount(): number {
     return this.selectedWorkflowIds.size;
   }
