@@ -8,10 +8,13 @@ import {
 import { CommonModule } from '@angular/common';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { Router, RouterLink } from '@angular/router';
+import { finalize, forkJoin } from 'rxjs';
 import { ServerRepositoryService } from '../../services/server.repository.service';
 import { ConnectorSummary } from '../../metadata/definitions/connector-summary';
 import { ConfirmDialogComponent } from '../../dialogs/confirm/confirm-dialog.component';
 import { Connector } from '../../metadata/definitions/connector';
+import { ConnectorSortField } from '../../enumerations/connector-sort-field';
+import { SortDirection } from '../../enumerations/sort-direction';
 
 @Component({
   selector: 'app-connectors',
@@ -34,6 +37,12 @@ export class ConnectorsComponent implements AfterViewInit {
   public readonly connectorsPageSize = 50;
   public isLoading = true;
   public searchText = '';
+  public selectedConnectorIds = new Set<string>();
+  public isDeletingSelected = false;
+  public connectorsSortField: ConnectorSortField = ConnectorSortField.Name;
+  public connectorsSortDirection: SortDirection = SortDirection.Ascending;
+  public readonly ConnectorSortField = ConnectorSortField;
+  public readonly SortDirection = SortDirection;
   private searchDebounceId: ReturnType<typeof setTimeout> | undefined;
 
   ngOnInit(): void {
@@ -57,22 +66,64 @@ export class ConnectorsComponent implements AfterViewInit {
     });
   }
 
-  deleteConnector(connector: ConnectorSummary) {
+  selectedConnectorCount(): number {
+    return this.selectedConnectorIds.size;
+  }
+
+  isConnectorSelected(connectorId: string): boolean {
+    return this.selectedConnectorIds.has(connectorId);
+  }
+
+  onConnectorSelectionChange(connectorId: string, event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    if (input?.checked) {
+      this.selectedConnectorIds.add(connectorId);
+      return;
+    }
+
+    this.selectedConnectorIds.delete(connectorId);
+  }
+
+  deleteSelectedConnectors(): void {
+    if (this.selectedConnectorIds.size === 0 || this.isDeletingSelected) {
+      return;
+    }
+
+    const selectedConnectors = this.connectors.filter((connector) =>
+      this.selectedConnectorIds.has(connector.connectorId),
+    );
+    if (selectedConnectors.length === 0) {
+      this.clearSelectedConnectors();
+      return;
+    }
+
+    const count = selectedConnectors.length;
     this.confirmModalRef = this.modalService.show(ConfirmDialogComponent, {
       initialState: {
-        title: 'Delete Connector',
-        message: `Are you sure you want to delete the connector '${connector.name}'?`,
+        title: 'Delete Connectors',
+        message: `Are you sure you want to delete ${count} selected connector${count === 1 ? '' : 's'}?`,
       },
     });
 
     this.confirmModalRef.onHidden?.subscribe(() => {
-      if (this.confirmModalRef?.content?.result) {
-        this.serverWorkflow
-          .deleteConnector(connector.connectorId)
-          .subscribe(() => {
-            this.refreshConnectors();
-          });
+      if (!this.confirmModalRef?.content?.result) {
+        return;
       }
+
+      this.isDeletingSelected = true;
+      forkJoin(
+        selectedConnectors.map((connector) =>
+          this.serverWorkflow.deleteConnector(connector.connectorId),
+        ),
+      )
+        .pipe(
+          finalize(() => {
+            this.isDeletingSelected = false;
+            this.clearSelectedConnectors();
+            this.refreshConnectors();
+          }),
+        )
+        .subscribe();
     });
   }
 
@@ -110,7 +161,24 @@ export class ConnectorsComponent implements AfterViewInit {
       return;
     }
 
+    this.clearSelectedConnectors();
     this.loadConnectorsPage(page);
+  }
+
+  onConnectorsSortChange(field: ConnectorSortField): void {
+    if (this.connectorsSortField === field) {
+      this.connectorsSortDirection =
+        this.connectorsSortDirection === SortDirection.Descending
+          ? SortDirection.Ascending
+          : SortDirection.Descending;
+    } else {
+      this.connectorsSortField = field;
+      this.connectorsSortDirection = SortDirection.Ascending;
+    }
+
+    this.clearSelectedConnectors();
+    this.connectorsPage = 1;
+    this.refreshConnectors();
   }
 
   onSearchChange(event: Event): void {
@@ -125,6 +193,7 @@ export class ConnectorsComponent implements AfterViewInit {
       this.searchDebounceId = undefined;
     }
 
+    this.clearSelectedConnectors();
     this.connectorsPage = 1;
     this.refreshConnectors();
   }
@@ -146,10 +215,17 @@ export class ConnectorsComponent implements AfterViewInit {
     const skip = (page - 1) * this.connectorsPageSize;
     const search = this.searchText.trim();
     this.serverWorkflow
-      .getConnectorSummaries(search, skip, this.connectorsPageSize)
+      .getConnectorSummaries(
+        search,
+        skip,
+        this.connectorsPageSize,
+        this.connectorsSortField,
+        this.connectorsSortDirection,
+      )
       .subscribe({
         next: (connectors) => {
           this.connectors = connectors;
+          this.syncSelectedConnectorsWithPage();
           this.connectorsPage = page;
           this.isLoading = false;
         },
@@ -165,5 +241,24 @@ export class ConnectorsComponent implements AfterViewInit {
     }
 
     this.searchDebounceId = setTimeout(() => this.applySearch(), 250);
+  }
+
+  private clearSelectedConnectors(): void {
+    this.selectedConnectorIds.clear();
+  }
+
+  private syncSelectedConnectorsWithPage(): void {
+    if (this.selectedConnectorIds.size === 0) {
+      return;
+    }
+
+    const visibleIds = new Set(
+      this.connectors.map((connector) => connector.connectorId),
+    );
+    for (const selectedId of Array.from(this.selectedConnectorIds)) {
+      if (!visibleIds.has(selectedId)) {
+        this.selectedConnectorIds.delete(selectedId);
+      }
+    }
   }
 }

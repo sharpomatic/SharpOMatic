@@ -127,11 +127,40 @@
   flex-direction: column;
 }
 
+// The vertical padding lives on the number and the name instead, so the number's separator line can
+// run the full height of the row
 .rows-master-item {
+  display: flex;
+  align-items: stretch;
+  padding-top: 0;
+  padding-bottom: 0;
   border-left: 0;
   border-right: 0;
   border-radius: 0;
   text-align: left;
+}
+
+// The row's position in the list, which is the number to type in the start-run dialog
+.row-number {
+  flex: 0 0 auto;
+  min-width: 3ch;
+  margin-right: 0.5rem;
+  padding-top: var(--bs-list-group-item-padding-y);
+  padding-right: 0.5rem;
+  padding-bottom: var(--bs-list-group-item-padding-y);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  border-right: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+}
+
+.row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-top: var(--bs-list-group-item-padding-y);
+  padding-bottom: var(--bs-list-group-item-padding-y);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .rows-detail {

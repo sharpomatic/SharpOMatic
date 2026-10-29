@@ -1179,7 +1179,7 @@ public class EngineService(
         return rowIds.Take(requestedSampleCount).ToHashSet();
     }
 
-    private static string ContextPath(EvalColumn evalColumn)
+    internal static string ContextPath(EvalColumn evalColumn)
     {
         if (!string.IsNullOrWhiteSpace(evalColumn.InputPath))
             return evalColumn.InputPath;

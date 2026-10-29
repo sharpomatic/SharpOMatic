@@ -18,21 +18,25 @@
     [(ngModel)]="runName"
   />
 
-  <div class="form-check mt-3">
-    <input
-      id="eval-run-enable-sampling"
-      class="form-check-input"
-      type="checkbox"
-      [ngModel]="enableSampling"
-      (ngModelChange)="onEnableSamplingChange($event)"
-      [disabled]="!canUseSampling()"
-    />
-    <label class="form-check-label" for="eval-run-enable-sampling">
+  <label for="eval-run-selection-mode" class="form-label mb-1 mt-3">
+    Rows to run
+  </label>
+  <select
+    id="eval-run-selection-mode"
+    class="form-select"
+    [ngModel]="selectionMode"
+    (ngModelChange)="onSelectionModeChange($event)"
+  >
+    <option value="all">Run all rows</option>
+    <option value="sample" [disabled]="!canUseSampling()">
       Run random sample
-    </label>
-  </div>
+    </option>
+    <option value="rows" [disabled]="!canUseSpecificRows()">
+      Run specific rows
+    </option>
+  </select>
 
-  @if (canUseSampling() && enableSampling) {
+  @if (selectionMode === 'sample' && canUseSampling()) {
     <div class="mt-2">
       <label for="eval-run-sample-count" class="form-label mb-1">
         Sample count
@@ -45,11 +49,36 @@
         (ngModelChange)="onSampleCountChange($event)"
         min="1"
         [max]="maxSampleCount"
-        [disabled]="!enableSampling"
       />
       <div class="form-text">
         Choose between 1 and {{ maxSampleCount }} rows.
       </div>
+    </div>
+  }
+
+  @if (selectionMode === 'rows') {
+    <div class="mt-2">
+      <label for="eval-run-row-numbers" class="form-label mb-1">
+        Row numbers
+      </label>
+      <input
+        id="eval-run-row-numbers"
+        type="text"
+        class="form-control"
+        [class.is-invalid]="rowNumbersError"
+        placeholder="e.g. 1, 3 or 1 3"
+        [ngModel]="rowNumbersText"
+        (ngModelChange)="onRowNumbersChange($event)"
+        (keyup.enter)="startRun()"
+      />
+      @if (rowNumbersError) {
+        <div class="invalid-feedback">{{ rowNumbersError }}</div>
+      } @else {
+        <div class="form-text">
+          Separate row numbers with commas or spaces. Numbering starts at 1 and
+          follows the order of the rows tab (1 to {{ rowIds.length }}).
+        </div>
+      }
     </div>
   }
 </div>

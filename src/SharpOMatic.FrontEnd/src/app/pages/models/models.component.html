@@ -7,7 +7,16 @@
         modelsTotal || models.length
       }})
     </h2>
-    <button class="btn btn-primary" (click)="newModel()">New</button>
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-primary" (click)="newModel()">New</button>
+      <button
+        class="btn btn-danger"
+        [disabled]="selectedModelCount() === 0 || isDeletingSelected"
+        (click)="deleteSelectedModels()"
+      >
+        {{ isDeletingSelected ? "Deleting..." : "Delete" }}
+      </button>
+    </div>
   </div>
   <hr class="m-0" />
   <div class="p-3 bg-body-tertiary h-100 d-flex flex-column models-body">
@@ -41,29 +50,111 @@
         }
       </div>
     } @else {
-      <div class="d-flex flex-wrap gap-3 models-list">
-        @for (model of models; track model.modelId) {
-          <div class="card workflow-card">
-            <div class="card-header">
-              <h5>{{ model.name }}</h5>
-            </div>
-            <div class="card-body">
-              <p class="card-text">{{ model.description }}</p>
-              <button
-                class="btn btn-secondary"
-                [routerLink]="['/models', model.modelId]"
-              >
-                Open
-              </button>
-              <button
-                class="btn btn-outline-danger ms-2"
-                (click)="deleteModel(model)"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        }
+      <div class="table-responsive models-table">
+        <table class="table table-sm table-striped table-hover align-middle">
+          <thead>
+            <tr>
+              <th scope="col" class="col-select"></th>
+              <th scope="col" class="col-name">
+                <button
+                  class="btn btn-link p-0 models-sort"
+                  type="button"
+                  (click)="onModelsSortChange(ModelSortField.Name)"
+                >
+                  Name
+                  @if (modelsSortField === ModelSortField.Name) {
+                    <i
+                      class="bi"
+                      [class.bi-arrow-down]="
+                        modelsSortDirection === SortDirection.Descending
+                      "
+                      [class.bi-arrow-up]="
+                        modelsSortDirection === SortDirection.Ascending
+                      "
+                    ></i>
+                  }
+                </button>
+              </th>
+              <th scope="col" class="col-description">
+                <button
+                  class="btn btn-link p-0 models-sort"
+                  type="button"
+                  (click)="onModelsSortChange(ModelSortField.Description)"
+                >
+                  Description
+                  @if (modelsSortField === ModelSortField.Description) {
+                    <i
+                      class="bi"
+                      [class.bi-arrow-down]="
+                        modelsSortDirection === SortDirection.Descending
+                      "
+                      [class.bi-arrow-up]="
+                        modelsSortDirection === SortDirection.Ascending
+                      "
+                    ></i>
+                  }
+                </button>
+              </th>
+              <th scope="col" class="col-modified">
+                <button
+                  class="btn btn-link p-0 models-sort"
+                  type="button"
+                  (click)="onModelsSortChange(ModelSortField.Modified)"
+                >
+                  Modified
+                  @if (modelsSortField === ModelSortField.Modified) {
+                    <i
+                      class="bi"
+                      [class.bi-arrow-down]="
+                        modelsSortDirection === SortDirection.Descending
+                      "
+                      [class.bi-arrow-up]="
+                        modelsSortDirection === SortDirection.Ascending
+                      "
+                    ></i>
+                  }
+                </button>
+              </th>
+              <th scope="col" class="col-actions text-end"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (model of models; track model.modelId) {
+              <tr>
+                <td class="col-select text-center">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    [id]="'model-select-' + model.modelId"
+                    [checked]="isModelSelected(model.modelId)"
+                    [disabled]="isDeletingSelected"
+                    (change)="onModelSelectionChange(model.modelId, $event)"
+                  />
+                </td>
+                <td class="col-name text-truncate" title="{{ model.name }}">
+                  {{ model.name }}
+                </td>
+                <td
+                  class="col-description text-truncate"
+                  title="{{ model.description }}"
+                >
+                  {{ model.description }}
+                </td>
+                <td class="col-modified">
+                  {{ model.modified | date: "short" }}
+                </td>
+                <td class="col-actions text-end">
+                  <button
+                    class="btn btn-sm btn-secondary"
+                    [routerLink]="['/models', model.modelId]"
+                  >
+                    Open
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
       @if (modelsTotal > 0) {
         <div

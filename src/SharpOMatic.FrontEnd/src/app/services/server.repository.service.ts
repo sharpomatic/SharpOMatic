@@ -80,6 +80,7 @@ import { WorkflowFolderSummary } from '../pages/workflows/interfaces/workflow-fo
 import { TransferImportResult } from '../pages/transfer/interfaces/transfer-import-result';
 import { TransferExportRequest } from '../pages/transfer/interfaces/transfer-export-request';
 import { EvalRunSummarySnapshot } from '../eval/definitions/eval-run-summary';
+import { EvalRunCsvExportRequest } from '../eval/definitions/eval-run-csv-export-request';
 import { EvalRunDetailSnapshot } from '../eval/definitions/eval-run-detail';
 import { EvalRunRowDetailSnapshot } from '../eval/definitions/eval-run-row-detail';
 import { WorkflowConversationPageResult } from '../pages/workflow/interfaces/workflow-conversation-page-result';
@@ -1158,6 +1159,18 @@ export class ServerRepositoryService {
     const apiUrl = this.settingsService.apiUrl();
     return this.http.get(
       `${apiUrl}/api/eval/configs/${evalConfigId}/rows/export/csv`,
+      { observe: 'response', responseType: 'blob' },
+    );
+  }
+
+  public exportEvalRunCsv(
+    evalRunId: string,
+    request: EvalRunCsvExportRequest,
+  ): Observable<HttpResponse<Blob>> {
+    const apiUrl = this.settingsService.apiUrl();
+    return this.http.post(
+      `${apiUrl}/api/eval/runs/${evalRunId}/export/csv`,
+      request,
       { observe: 'response', responseType: 'blob' },
     );
   }

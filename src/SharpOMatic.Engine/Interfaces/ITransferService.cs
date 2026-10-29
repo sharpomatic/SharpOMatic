@@ -8,4 +8,5 @@ public interface ITransferService
     Task<TransferImportResult> ImportJsonAsync(Stream input, CancellationToken cancellationToken = default);
     Task<EvalRowsCsvImportResult> ImportEvalRowsCsvAsync(Guid evalConfigId, Stream input, string fileName, CancellationToken cancellationToken = default);
     Task<Stream> ExportEvalRowsCsvAsync(Guid evalConfigId, CancellationToken cancellationToken = default);
+    Task<Stream> ExportEvalRunCsvAsync(Guid evalRunId, EvalRunCsvExportOptions options, CancellationToken cancellationToken = default);
 }
