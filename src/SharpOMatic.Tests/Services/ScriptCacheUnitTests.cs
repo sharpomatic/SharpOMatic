@@ -1,3 +1,4 @@
+using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 
 namespace SharpOMatic.Tests.Services;
@@ -86,6 +87,54 @@ public sealed class ScriptCacheUnitTests
 
         // ExecutionAndPublication Lazy must compile once even under concurrency: all callers get the same runner.
         Assert.All(runners, runner => Assert.Same(runners[0], runner));
+    }
+
+    [Fact]
+    public void Transient_compile_failure_is_not_cached()
+    {
+        var compileCalls = 0;
+        var service = new ScriptOptionsService(
+            [],
+            [],
+            (code, globalsType) =>
+            {
+                compileCalls++;
+                if (compileCalls == 1)
+                    throw new OutOfMemoryException();
+
+                return CSharpScript.Create<object>(code, ScriptOptions.Default, globalsType).CreateDelegate();
+            }
+        );
+
+        Assert.Throws<OutOfMemoryException>(() => service.GetScriptRunner("1 + 1", typeof(object)));
+
+        // The failed entry was evicted, so the next call recompiles instead of rethrowing the cached exception.
+        var second = service.GetScriptRunner("1 + 1", typeof(object));
+        var third = service.GetScriptRunner("1 + 1", typeof(object));
+
+        Assert.Equal(2, compileCalls);
+        Assert.Same(second, third);
+    }
+
+    [Fact]
+    public void Compilation_error_is_cached_and_not_recompiled()
+    {
+        var compileCalls = 0;
+        var service = new ScriptOptionsService(
+            [],
+            [],
+            (code, globalsType) =>
+            {
+                compileCalls++;
+                return CSharpScript.Create<object>(code, ScriptOptions.Default, globalsType).CreateDelegate();
+            }
+        );
+
+        Assert.Throws<CompilationErrorException>(() => service.GetScriptRunner("this is not valid c#", typeof(object)));
+        Assert.Throws<CompilationErrorException>(() => service.GetScriptRunner("this is not valid c#", typeof(object)));
+
+        // Bad code is deterministic, so the cached failure is kept rather than recompiling on every run.
+        Assert.Equal(1, compileCalls);
     }
 }
 

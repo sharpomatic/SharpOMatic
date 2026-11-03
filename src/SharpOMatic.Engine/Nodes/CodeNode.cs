@@ -31,21 +31,21 @@ public class CodeNode(ThreadContext threadContext, CodeNodeEntity node) : RunNod
                 foreach (var diagnostic in e1.Diagnostics.Take(3))
                     sb.AppendLine(diagnostic.ToString());
 
-                throw new SharpOMaticException(sb.ToString());
+                throw new SharpOMaticException(sb.ToString(), e1);
             }
             catch (InvalidOperationException e2)
             {
                 StringBuilder sb = new();
                 sb.AppendLine($"Code node failed during execution.\n");
                 sb.Append(e2.Message);
-                throw new SharpOMaticException(sb.ToString());
+                throw new SharpOMaticException(sb.ToString(), e2);
             }
             catch (Exception e3)
             {
                 StringBuilder sb = new();
                 sb.AppendLine($"Code node failed during execution.\n");
                 sb.Append(e3.Message);
-                throw new SharpOMaticException(sb.ToString());
+                throw new SharpOMaticException(sb.ToString(), e3);
             }
         }
 

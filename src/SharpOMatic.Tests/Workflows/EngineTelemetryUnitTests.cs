@@ -114,7 +114,7 @@ public sealed class EngineTelemetryUnitTests
         var runActivity = await WaitForActivity(stopped, activity => activity.OperationName.StartsWith("workflow") && HasRunTag(activity, run.RunId));
         Assert.Equal(ActivityStatusCode.Error, runActivity.Status);
         Assert.Equal(nameof(RunStatus.Failed), runActivity.GetTagItem("sharpomatic.run.status")?.ToString());
-        Assert.Equal(typeof(SharpOMaticException).FullName, runActivity.GetTagItem("error.type")?.ToString());
+        Assert.Equal(typeof(InvalidOperationException).FullName, runActivity.GetTagItem("error.type")?.ToString());
 
         var failedNode = stopped.Single(activity => activity.OperationName.StartsWith("executor.process") && HasRunTag(activity, run.RunId) && activity.Status == ActivityStatusCode.Error);
         Assert.Equal(runActivity.SpanId, failedNode.ParentSpanId);
