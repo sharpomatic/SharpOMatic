@@ -40,10 +40,18 @@ public class ScriptOptionsService : IScriptOptionsService
 
     // Compiled scripts are cached per (code, globalsType). Lazy with ExecutionAndPublication guarantees the
     // (expensive) Roslyn compilation runs at most once per key, even under concurrent access from many threads.
+    // It also caches a thrown exception, so GetScriptRunner evicts entries that failed for a transient reason.
     private readonly ConcurrentDictionary<(string Code, Type GlobalsType), Lazy<ScriptRunner<object>>> _runnerCache = new();
+    private readonly Func<string, Type, ScriptRunner<object>> _compile;
 
     public ScriptOptionsService(IEnumerable<Assembly> assemblies, IEnumerable<string> imports)
+        : this(assemblies, imports, null) { }
+
+    // The compile step is replaceable so tests can simulate a transient compile failure.
+    internal ScriptOptionsService(IEnumerable<Assembly> assemblies, IEnumerable<string> imports, Func<string, Type, ScriptRunner<object>>? compile)
     {
+        _compile = compile ?? CompileWithRoslyn;
+
         var assemblySet = new HashSet<Assembly>(s_defaultAssemblies);
         foreach (var assembly in assemblies)
             if (assembly is not null)
@@ -74,14 +82,25 @@ public class ScriptOptionsService : IScriptOptionsService
         ArgumentNullException.ThrowIfNull(code);
         ArgumentNullException.ThrowIfNull(globalsType);
 
+        var cacheKey = (code, globalsType);
         var lazy = _runnerCache.GetOrAdd(
-            (code, globalsType),
-            key => new Lazy<ScriptRunner<object>>(
-                () => CSharpScript.Create<object>(key.Code, _options, key.GlobalsType).CreateDelegate(),
-                LazyThreadSafetyMode.ExecutionAndPublication
-            )
+            cacheKey,
+            key => new Lazy<ScriptRunner<object>>(() => _compile(key.Code, key.GlobalsType), LazyThreadSafetyMode.ExecutionAndPublication)
         );
 
-        return lazy.Value;
+        try
+        {
+            return lazy.Value;
+        }
+        catch (Exception ex) when (ex is not CompilationErrorException)
+        {
+            // A compilation error is deterministic, so the cached failure stays and bad code is not recompiled on
+            // every run. Anything else (e.g. OutOfMemoryException) is transient: evict so the next call retries.
+            // Removing the exact Lazy leaves any newer entry for the same key alone.
+            _runnerCache.TryRemove(new KeyValuePair<(string Code, Type GlobalsType), Lazy<ScriptRunner<object>>>(cacheKey, lazy));
+            throw;
+        }
     }
+
+    private ScriptRunner<object> CompileWithRoslyn(string code, Type globalsType) => CSharpScript.Create<object>(code, _options, globalsType).CreateDelegate();
 }
