@@ -48,6 +48,15 @@ If you also want to override the AG-UI child path, pass a second argument:
 builder.Services.AddSharpOMaticAgUi(sharpOMaticBasePath, "/myChatBot");
 ```
 
+To change the SSE keep-alive interval (see [SSE behavior](#sse-behavior)), pass a configuration delegate as the first argument. The base path and child path are optional after it:
+
+```csharp
+builder.Services.AddSharpOMaticAgUi(options => options.KeepAliveInterval = TimeSpan.FromSeconds(30));
+builder.Services.AddSharpOMaticAgUi(options => options.KeepAliveInterval = TimeSpan.FromSeconds(30), sharpOMaticBasePath, "/myChatBot");
+```
+
+`KeepAliveInterval` defaults to 15 seconds and must be greater than zero and no more than 24 days. The keep-alive cannot be turned off, and an invalid value is rejected when the host starts.
+
 ## Request contract
 
 SharpOMatic uses the AG-UI request to identify the target workflow and the AG-UI thread:
@@ -418,6 +427,10 @@ The endpoint streams AG-UI SSE events from SharpOMatic workflow stream events:
 - successful runs emit `RUN_FINISHED`
 - suspended runs also emit `RUN_FINISHED`
 - failed runs emit `RUN_ERROR`
+
+While a workflow is quiet, for example during a long model call, the endpoint writes an SSE comment line (`: keepalive` followed by a blank line) once nothing has been written for the keep-alive interval, 15 seconds by default. Proxies, load balancers and hosting platforms close connections that stay silent for too long. Azure App Service, for instance, ends a response that sends no bytes for about four minutes (230 seconds on Windows, 240 seconds on Linux), even though the workflow keeps running. SSE clients ignore comment lines, so the keep-alive never appears as an AG-UI event. It is never written after `RUN_FINISHED` or `RUN_ERROR`.
+
+Silent stream events are not written to the response, so they do not count as activity. A run that only produces silent events still receives keep-alives.
 
 The SSE request ends when the underlying workflow run finishes, suspends, or fails.
 
