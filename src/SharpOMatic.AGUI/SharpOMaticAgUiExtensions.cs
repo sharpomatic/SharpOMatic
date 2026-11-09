@@ -17,8 +17,29 @@ public static class SharpOMaticAgUiExtensions
 
         services.TryAddSingleton<IAgUiRunEventBroker, AgUiRunEventBroker>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IProgressService, AgUiProgressService>());
+        services
+            .AddOptions<AgUiOptions>()
+            .Validate(
+                options => options.KeepAliveInterval > TimeSpan.Zero && options.KeepAliveInterval <= TimeSpan.FromDays(24),
+                "AG-UI KeepAliveInterval must be greater than zero and no more than 24 days."
+            )
+            .ValidateOnStart();
 
         return services;
+    }
+
+    public static IServiceCollection AddSharpOMaticAgUi(
+        this IServiceCollection services,
+        Action<AgUiOptions> configure,
+        string? basePath = null,
+        string? childPath = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        services.Configure(configure);
+        return services.AddSharpOMaticAgUi(basePath, childPath);
     }
 
     private static void EnsureApplicationPart(IMvcBuilder builder, Assembly assembly)

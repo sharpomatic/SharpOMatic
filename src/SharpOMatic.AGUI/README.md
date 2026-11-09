@@ -27,6 +27,14 @@ Or override both the base path and the AG-UI child path:
 builder.Services.AddSharpOMaticAgUi("/banana", "/integrations/chat");
 ```
 
+Pass a configuration delegate first to change the SSE keep-alive interval. The base path and child path remain optional after it:
+
+```csharp
+builder.Services.AddSharpOMaticAgUi(options => options.KeepAliveInterval = TimeSpan.FromSeconds(30));
+```
+
+`KeepAliveInterval` defaults to 15 seconds and must be greater than zero and no more than 24 days. The keep-alive cannot be turned off.
+
 The package adds the live `POST` endpoint on the combined path and a history `POST` endpoint at the same path plus `/history`.
 
 ## Request requirements
@@ -134,6 +142,8 @@ Tool result messages use AG-UI-specific `messageId` values prefixed with `tool:`
 Activity messages use AG-UI-specific `messageId` values prefixed with `activity:` so activity updates stay distinct from assistant, reasoning, and tool messages.
 When batch-mode model calls are replayed without provider message ids, SharpOMatic synthesizes separate assistant `messageId` values for each distinct assistant text lifecycle and seeds them from the stream sequence so they remain unique across conversation turns.
 Code-node stream-event helpers can mark events as `silent`, which keeps them in SharpOMatic stream history while suppressing their live AG-UI SSE emission.
+
+While a workflow is quiet, such as during a long model call, the endpoint writes an SSE comment line (`: keepalive` followed by a blank line) once nothing has been written for the keep-alive interval (15 seconds by default), so proxies and hosting platforms do not close the idle connection. SSE clients ignore comment lines, so it never appears as an AG-UI event, and it is never written after `RUN_FINISHED` or `RUN_ERROR`. Silent stream events are not written to the response, so a run that only produces silent events still receives keep-alives.
 
 ## Workflow selection
 

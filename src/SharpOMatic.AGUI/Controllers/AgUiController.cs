@@ -6,11 +6,16 @@ namespace SharpOMatic.AGUI.Controllers;
 public sealed class AgUiController(
     IEngineService engineService,
     IAgUiRunEventBroker broker,
-    IEnumerable<IAgUiNotification>? agUiNotifications = null
+    IEnumerable<IAgUiNotification>? agUiNotifications = null,
+    IOptions<AgUiOptions>? options = null
 ) : ControllerBase
 {
     private const string ChatContextPath = "agent.chat";
     private const string StateSyncContentPath = "agent._hidden.state";
+    private const string KeepAliveFrame = ": keepalive\n\n";
+
+    private readonly TimeSpan _keepAliveInterval = options?.Value.KeepAliveInterval ?? AgUiOptions.DefaultKeepAliveInterval;
+    private long _lastWriteTimestamp = Stopwatch.GetTimestamp();
 
     [HttpPost]
     public async Task Post([FromBody] AgUiRunRequest request)
@@ -35,8 +40,14 @@ public sealed class AgUiController(
                 runId = protocolRunId
             });
 
-            await foreach (var update in broker.Subscribe(engineRunId, HttpContext.RequestAborted))
+            await foreach (var update in WithKeepAlive(broker.Subscribe(engineRunId, HttpContext.RequestAborted), HttpContext.RequestAborted))
             {
+                if (update is null)
+                {
+                    await WriteFrameAsync(KeepAliveFrame);
+                    continue;
+                }
+
                 if (update.StreamEvents is not null)
                 {
                     foreach (var streamEvent in update.StreamEvents)
@@ -948,10 +959,69 @@ public sealed class AgUiController(
         response.ContentType = "text/event-stream";
     }
 
-    private async Task WriteEventAsync(object payload)
+    private Task WriteEventAsync(object payload)
     {
-        await Response.WriteAsync($"data: {JsonSerializer.Serialize(payload)}\n\n");
+        return WriteFrameAsync($"data: {JsonSerializer.Serialize(payload)}\n\n");
+    }
+
+    private async Task WriteFrameAsync(string frame)
+    {
+        await Response.WriteAsync(frame);
         await Response.Body.FlushAsync(HttpContext.RequestAborted);
+        _lastWriteTimestamp = Stopwatch.GetTimestamp();
+    }
+
+    private async IAsyncEnumerable<AgUiRunUpdate?> WithKeepAlive(
+        IAsyncEnumerable<AgUiRunUpdate> updates,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        await using var enumerator = updates.GetAsyncEnumerator(linkedCancellation.Token);
+        Task<bool>? pendingMove = null;
+
+        try
+        {
+            while (true)
+            {
+                pendingMove ??= enumerator.MoveNextAsync().AsTask();
+
+                var untilKeepAlive = _keepAliveInterval - Stopwatch.GetElapsedTime(_lastWriteTimestamp);
+                if (untilKeepAlive > TimeSpan.Zero)
+                {
+                    try
+                    {
+                        await pendingMove.WaitAsync(untilKeepAlive, cancellationToken);
+                    }
+                    catch (TimeoutException) { }
+                }
+
+                if (!pendingMove.IsCompleted)
+                {
+                    yield return null;
+                    continue;
+                }
+
+                var moved = await pendingMove;
+                pendingMove = null;
+                if (!moved)
+                    yield break;
+
+                yield return enumerator.Current;
+            }
+        }
+        finally
+        {
+            if (pendingMove is not null)
+            {
+                linkedCancellation.Cancel();
+                try
+                {
+                    await pendingMove;
+                }
+                catch (Exception) { }
+            }
+        }
     }
 
     private sealed record ResolvedWorkflowTarget(Guid WorkflowId, bool IsConversationEnabled);
